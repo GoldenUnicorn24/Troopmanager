@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.customizeCompanion
+import com.goldenunicorn.troopmanager.engine.customizePlayer
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
@@ -56,11 +58,7 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 Row(Modifier.fillMaxWidth().padding(14.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(mission.label, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text(
-                            "Gold, Nahrung, Ruhm und gemeinsame Erfahrung",
-                            color = Mist,
-                            fontSize = 12.sp
-                        )
+                        Text("Gold, Nahrung, Ruhm und gemeinsame Erfahrung", color = Mist, fontSize = 12.sp)
                     }
                     Text("›", color = Gold, fontSize = 28.sp)
                 }
@@ -134,7 +132,16 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
 @Composable
 internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val context = LocalContext.current
+
+    var playerName by remember(state.player.name) { mutableStateOf(state.player.name) }
+    var playerAge by remember(state.player.age) { mutableStateOf(state.player.age.toString()) }
+    var playerArmor by remember(state.player.armorStyle) { mutableStateOf(state.player.armorStyle) }
+    var playerWeapon by remember(state.player.weapon) { mutableStateOf(state.player.weapon) }
+
     var companionName by remember(state.companion.name) { mutableStateOf(state.companion.name) }
+    var companionAge by remember(state.companion.age) { mutableStateOf(state.companion.age.toString()) }
+    var companionArmor by remember(state.companion.armorStyle) { mutableStateOf(state.companion.armorStyle) }
+    var companionWeapon by remember(state.companion.weapon) { mutableStateOf(state.companion.weapon) }
 
     val playerPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -158,7 +165,8 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("HOF & CHARAKTERE", "Individuelle Personen statt tausender unnötiger Einzelprofile.") }
+        item { PageTitle("HOF & CHARAKTERE", "Spieler, Gefährtin und Kommandanten sind die individuellen Figuren deines Reiches.") }
+
         item {
             CharacterPanel(
                 title = state.player.name,
@@ -175,12 +183,34 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             )
         }
 
+        item {
+            Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Spieler vollständig anpassen", color = PaleGold, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(playerName, { playerName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(playerAge, { playerAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(playerArmor, { playerArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(playerWeapon, { playerWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
+                    SmallAction("Spieler übernehmen") {
+                        onState(
+                            customizePlayer(
+                                state,
+                                playerName,
+                                playerAge.toIntOrNull() ?: state.player.age,
+                                playerArmor,
+                                playerWeapon
+                            )
+                        )
+                        onNotice("Spieler angepasst.")
+                    }
+                }
+            }
+        }
+
         item { SectionTitle("Gefährtin & spätere Mitregentin") }
         if (!state.companion.met) {
             item {
-                EmptyCard(
-                    "Ihr seid euch noch nicht begegnet. Die Soldatin schließt sich im frühen Spiel nach einigen Tagen organisch an."
-                )
+                EmptyCard("Ihr seid euch noch nicht begegnet. Die Soldatin schließt sich im frühen Spiel nach einigen Tagen organisch an.")
             }
         } else {
             item {
@@ -198,39 +228,45 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                     onPortrait = { companionPicker.launch(arrayOf("image/*")) }
                 )
             }
+
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(14.dp)) {
-                        OutlinedTextField(
-                            value = companionName,
-                            onValueChange = { companionName = it.take(24) },
-                            label = { Text("Name anpassen") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        SmallAction("Name übernehmen") {
-                            onState(GameEngine.updateCompanionIdentity(state, companionName, state.companion.portraitUri))
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Gefährtin vollständig anpassen", color = PaleGold, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(companionName, { companionName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(companionAge, { companionAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(companionArmor, { companionArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(companionWeapon, { companionWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
+                        SmallAction("Gefährtin übernehmen") {
+                            onState(
+                                customizeCompanion(
+                                    state,
+                                    companionName,
+                                    companionAge.toIntOrNull() ?: state.companion.age,
+                                    companionArmor,
+                                    companionWeapon
+                                )
+                            )
                             onNotice("Gefährtin angepasst.")
                         }
                     }
                 }
             }
+
             item {
+                val stage = relationshipStage(state.companion)
                 StatGrid(
                     listOf(
                         "Vertrauen" to (state.companion.trust.toString() + "%"),
                         "Respekt" to (state.companion.respect.toString() + "%"),
                         "Zuneigung" to (state.companion.affection.toString() + "%"),
-                        "Rolle" to state.companion.role
+                        "Beziehung" to stage
                     )
                 )
             }
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(
-                        Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         RelationshipAction("Gemeinsam sprechen", state, "talk", onState, onNotice)
                         RelationshipAction("Gemeinsam trainieren", state, "train", onState, onNotice)
                         RelationshipAction("Eigenes Kommando übertragen", state, "command", onState, onNotice)
@@ -239,21 +275,15 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 }
             }
         }
-
-        item {
-            Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Beziehungslogik", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Vertrauen, Respekt und Zuneigung steigen unabhängig. Die Gefährtin kann Kommandantin und später Mitregentin werden. Sie entwickelt eigene Kampf-, Führungs- und Diplomatie-Werte.",
-                        color = Mist,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-            }
-        }
     }
+}
+
+private fun relationshipStage(companion: Companion): String = when {
+    companion.affection >= 80 && companion.trust >= 80 && companion.respect >= 70 -> "Herrscherpaar"
+    companion.affection >= 60 && companion.trust >= 60 -> "Beziehung"
+    companion.trust >= 45 && companion.respect >= 45 -> "Enge Gefährten"
+    companion.trust >= 30 -> "Freunde"
+    else -> "Gefährten"
 }
 
 @Composable
