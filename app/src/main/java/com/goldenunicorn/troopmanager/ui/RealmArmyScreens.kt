@@ -57,6 +57,7 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
         }
         item { ResourceStrip(state.resources) }
+        item { FortressMap(state) }
         if (state.completedRealm) {
             item {
                 Surface(
