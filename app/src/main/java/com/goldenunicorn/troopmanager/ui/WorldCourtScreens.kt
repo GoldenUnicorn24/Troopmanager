@@ -65,6 +65,7 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
         }
 
+        item { TacticalBattlePreview(state, enemy, tactic) }
         item { SectionTitle("Große Schlacht") }
         item {
             Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
