@@ -124,6 +124,7 @@ data class Commander(
     val name: String,
     val culture: Culture,
     val portraitKey: String,
+    val portraitUri: String? = null,
     val level: Int = 1,
     val sword: Int = 60,
     val bow: Int = 55,
