@@ -36,3 +36,11 @@ fun renameSettlement(state: GameState, name: String): GameState {
     val cleaned = name.trim().take(28)
     return if (cleaned.isBlank()) state else state.copy(realm = state.realm.copy(settlementName = cleaned))
 }
+
+
+fun customizeCommanderPortrait(state: GameState, id: Long, portraitUri: String?): GameState =
+    state.copy(
+        commanders = state.commanders.map { commander ->
+            if (commander.id == id) commander.copy(portraitUri = portraitUri) else commander
+        }
+    )
