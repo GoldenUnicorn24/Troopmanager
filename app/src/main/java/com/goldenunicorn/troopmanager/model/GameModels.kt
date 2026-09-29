@@ -37,7 +37,10 @@ enum class UnitType(
     GOLD_ARCHER("Goldene Bogengarde", Culture.GOLD_ELF, 7, 8, 13, 25, 4, 16),
     CRANE_GUARD("Blaue Kranichgarde", Culture.WALL, 8, 8, 6, 13, 3, 9),
     EAGLE_CORPS("Adlerkorps", Culture.WALL, 4, 5, 9, 11, 2, 8),
-    TIGER_CORPS("Tigerkorps", Culture.WALL, 10, 9, 2, 14, 4, 10)
+    TIGER_CORPS("Tigerkorps", Culture.WALL, 10, 9, 2, 14, 4, 10),
+    BEAR_CORPS("Bärenkorps", Culture.WALL, 8, 12, 1, 15, 5, 11),
+    DEER_CORPS("Hirschkorps", Culture.WALL, 5, 8, 4, 10, 2, 8),
+    DRAGON_ARTILLERY("Drachenartillerie", Culture.WALL, 3, 5, 14, 22, 6, 14)
 }
 
 @Serializable
