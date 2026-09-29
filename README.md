@@ -15,7 +15,7 @@ This version contains a complete persistent progression loop rather than a menu 
 - Humans, Woodland Elves, Gold Elves and Great-Wall-inspired corps
 - Training queues that become persistent regiments
 - Regiment experience, morale, casualties and battle power
-- Individual commanders with portraits, skills, traits, ranks and training
+- Individual commanders with replaceable local portraits, skills, traits, ranks and training
 - Dynamic early companion encounter
 - Companion name/portrait customization
 - Trust, respect, affection, training, command delegation and later co-ruler role
@@ -28,6 +28,10 @@ This version contains a complete persistent progression loop rather than a menu 
 - Persistent campaign chronicle
 - Continuous High-Kingdom late game instead of a forced ending
 - Original bundled vector artwork and local custom portrait support
+- Animated 2.5D tactical battlefield preview with formations, arrows and flanking cues
+- Fortress visualization that visibly grows with territory, walls, towers, farms, markets and residence levels
+- Full editable player/companion name, age, armor style, weapon and portrait
+- Custom fortress naming
 - GitHub Actions debug APK build
 
 ## Game structure
