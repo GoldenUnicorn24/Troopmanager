@@ -20,10 +20,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.renameSettlement
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
 internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    var settlementName by remember(state.realm.settlementName) { mutableStateOf(state.realm.settlementName) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -110,6 +112,16 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                         val result = GameEngine.buyLand(state)
                         onState(result.state)
                         onNotice(result.message)
+                    }
+                    OutlinedTextField(
+                        value = settlementName,
+                        onValueChange = { settlementName = it.take(28) },
+                        label = { Text("Name deiner Stadt / Festung") },
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                    )
+                    SmallAction("Festung umbenennen") {
+                        onState(renameSettlement(state, settlementName))
+                        onNotice("Festung umbenannt.")
                     }
                 }
             }
