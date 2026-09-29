@@ -1,5 +1,8 @@
 package com.goldenunicorn.troopmanager.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -18,9 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.renameSettlement
+import com.goldenunicorn.troopmanager.engine.customizeCommanderPortrait
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
@@ -155,6 +161,19 @@ private fun BuildingRow(type: BuildingType, level: Int, onBuild: () -> Unit) {
 @Composable
 internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var selectedType by remember { mutableStateOf(UnitType.HUMAN_ARCHER) }
+    var portraitTarget by remember { mutableStateOf<Long?>(null) }
+    val context = LocalContext.current
+    val commanderPortraitPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val target = portraitTarget
+        if (uri != null && target != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            onState(customizeCommanderPortrait(state, target, uri.toString()))
+            onNotice("Kommandanten-Portrait aktualisiert.")
+        }
+        portraitTarget = null
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -269,11 +288,18 @@ internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice
             item { EmptyCard("Einzelne Soldaten werden erst bei der Beförderung zu persistenten Charakteren mit Bild und Stats.") }
         }
         items(state.commanders) { commander ->
-            CommanderCard(commander) {
-                val result = GameEngine.trainCommander(state, commander.id)
-                onState(result.state)
-                onNotice(result.message)
-            }
+            CommanderCard(
+                commander = commander,
+                onPortrait = {
+                    portraitTarget = commander.id
+                    commanderPortraitPicker.launch(arrayOf("image/*"))
+                },
+                onTrain = {
+                    val result = GameEngine.trainCommander(state, commander.id)
+                    onState(result.state)
+                    onNotice(result.message)
+                }
+            )
         }
         item { Spacer(Modifier.height(12.dp)) }
     }
@@ -311,15 +337,24 @@ private fun RecruitTypeRow(
 }
 
 @Composable
-private fun CommanderCard(commander: Commander, onTrain: () -> Unit) {
+private fun CommanderCard(commander: Commander, onPortrait: () -> Unit, onTrain: () -> Unit) {
     Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painterResource(portraitResource(commander.portraitKey)),
-                null,
-                Modifier.size(82.dp).clip(RoundedCornerShape(14.dp)),
-                contentScale = ContentScale.Crop
-            )
+            if (commander.portraitUri != null) {
+                AsyncImage(
+                    model = commander.portraitUri,
+                    contentDescription = null,
+                    modifier = Modifier.size(82.dp).clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painterResource(portraitResource(commander.portraitKey)),
+                    null,
+                    Modifier.size(82.dp).clip(RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(commander.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text(
@@ -333,8 +368,13 @@ private fun CommanderCard(commander: Commander, onTrain: () -> Unit) {
                     color = Mist,
                     fontSize = 11.sp
                 )
-                TextButton(onClick = onTrain, contentPadding = PaddingValues(0.dp)) {
-                    Text("Trainieren · 120 Gold", fontSize = 12.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onTrain, contentPadding = PaddingValues(0.dp)) {
+                        Text("Trainieren · 120 Gold", fontSize = 12.sp)
+                    }
+                    TextButton(onClick = onPortrait, contentPadding = PaddingValues(0.dp)) {
+                        Text("Bild ändern", fontSize = 12.sp)
+                    }
                 }
             }
         }
