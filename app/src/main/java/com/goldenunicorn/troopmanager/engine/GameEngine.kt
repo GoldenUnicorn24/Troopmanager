@@ -34,6 +34,7 @@ object GameEngine {
     fun advanceDay(state: GameState): ActionResult {
         val farm = state.realm.level(BuildingType.FARM)
         val saw = state.realm.level(BuildingType.SAWMILL)
+        val quarry = state.realm.level(BuildingType.QUARRY)
         val ironworks = state.realm.level(BuildingType.IRONWORKS)
         val market = state.realm.level(BuildingType.MARKET)
         val territory = state.realm.territory
@@ -42,7 +43,7 @@ object GameEngine {
             gold = state.resources.gold + 18 + market * 16 + territory * 10,
             food = state.resources.food + 28 + farm * 35 + territory * 12 - max(0, state.armySize / 40),
             wood = state.resources.wood + 10 + saw * 28,
-            stone = state.resources.stone + 8 + territory * 5,
+            stone = state.resources.stone + 4 + quarry * 30 + territory * 3,
             iron = state.resources.iron + 4 + ironworks * 18
         )
         resources = resources.copy(food = max(0, resources.food))
@@ -94,7 +95,29 @@ object GameEngine {
             )
         }
 
-        val threatGain = 2 + state.realm.territory * 2 + state.victories / 3
+        // Deterministic realm events keep long campaigns alive without requiring online content.
+        when ((state.day + 1) % 52) {
+            9 -> {
+                resources = resources.copy(gold = resources.gold + 180)
+                chronicle = chronicle + ChronicleEntry(state.day + 1, "Händlerkarawane", "Eine große Karawane erreicht ${state.realm.settlementName}. Der Handel bringt 180 Gold.")
+            }
+            13 -> {
+                resources = resources.copy(stone = resources.stone + 140)
+                chronicle = chronicle + ChronicleEntry(state.day + 1, "Neue Steinader", "Arbeiter entdecken hochwertiges Gestein. +140 Stein.")
+            }
+            17 -> {
+                population = population.copy(
+                    human = population.human + 24,
+                    humanRecruits = population.humanRecruits + 5
+                )
+                chronicle = chronicle + ChronicleEntry(state.day + 1, "Flüchtlinge an den Toren", "24 Menschen erhalten Schutz. 5 davon melden sich später als Rekruten.")
+            }
+            21 -> {
+                chronicle = chronicle + ChronicleEntry(state.day + 1, "Spähermeldung", "Feindliche Bewegung an der Grenze. Die Bedrohung steigt schneller als gewöhnlich.")
+            }
+        }
+
+        val threatGain = 2 + state.realm.territory * 2 + state.victories / 3 + if ((state.day + 1) % 52 == 21) 8 else 0
         val realm = state.realm.copy(threat = min(100, state.realm.threat + threatGain))
         val next = updateProgress(
             state.copy(
@@ -145,6 +168,7 @@ object GameEngine {
         val costs = when (type) {
             BuildingType.FARM -> Triple(140, 70, 20)
             BuildingType.SAWMILL -> Triple(120, 60, 15)
+            BuildingType.QUARRY -> Triple(170, 80, 10)
             BuildingType.IRONWORKS -> Triple(220, 120, 80)
             BuildingType.MARKET -> Triple(280, 130, 40)
             BuildingType.BARRACKS -> Triple(300, 180, 100)
@@ -276,6 +300,29 @@ object GameEngine {
     fun updatePlayerPortrait(state: GameState, portraitUri: String?): GameState =
         state.copy(player = state.player.copy(portraitUri = portraitUri))
 
+    fun markTutorialSeen(state: GameState): GameState =
+        state.copy(tutorialSeen = true)
+
+    fun assignCommander(state: GameState, commanderId: Long, regimentId: Long): ActionResult {
+        val commander = state.commanders.firstOrNull { it.id == commanderId }
+            ?: return ActionResult(state, "Kommandant nicht gefunden.")
+        val regiment = state.regiments.firstOrNull { it.id == regimentId }
+            ?: return ActionResult(state, "Regiment nicht gefunden.")
+        if (commander.culture != regiment.type.culture) {
+            return ActionResult(state, "${commander.name} kann aktuell nur Regimenter der eigenen Kultur führen.")
+        }
+        val cleared = state.regiments.map {
+            if (it.commanderId == commanderId) it.copy(commanderId = null) else it
+        }
+        val updated = cleared.map {
+            if (it.id == regimentId) it.copy(commanderId = commanderId) else it
+        }
+        return ActionResult(
+            state.copy(regiments = updated),
+            "${commander.name} übernimmt ${regiment.name}."
+        )
+    }
+
     fun promoteCommander(state: GameState): ActionResult {
         if (state.armySize < 100) return ActionResult(state, "Du brauchst mindestens 100 aktive Soldaten.")
         if (state.resources.gold < 250) return ActionResult(state, "Eine Beförderung und Ausrüstung kostet 250 Gold.")
@@ -353,7 +400,14 @@ object GameEngine {
             Tactic.FLANK -> if (enemy == EnemyType.URUK) 1.10 else 1.02
             Tactic.FORTIFY -> 1.0 + (state.realm.level(BuildingType.WALL) * 0.07) + (state.realm.level(BuildingType.TOWER) * 0.04)
         }
-        val commanderBonus = state.commanders.sumOf { it.leadership + it.tactics } / 500.0
+        val assignedIds = state.regiments.mapNotNull { it.commanderId }.toSet()
+        val assignedCommanderBonus = state.commanders
+            .filter { it.id in assignedIds }
+            .sumOf { it.leadership + it.tactics } / 420.0
+        val reserveCommanderBonus = state.commanders
+            .filterNot { it.id in assignedIds }
+            .sumOf { it.leadership + it.tactics } / 1400.0
+        val commanderBonus = assignedCommanderBonus + reserveCommanderBonus
         val companionBonus = if (state.companion.met) (state.companion.leadership + state.companion.tactics) / 300.0 else 0.0
         val playerPower = state.armyPower * tacticMultiplier * (1.0 + commanderBonus + companionBonus) * randomFactor
         val victory = playerPower >= baseEnemy
