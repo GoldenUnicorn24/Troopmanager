@@ -157,6 +157,20 @@ data class Regiment(
 }
 
 @Serializable
+data class UnitAllocation(
+    val type: UnitType,
+    val amount: Int
+)
+
+@Serializable
+data class CommanderAssignment(
+    val commanderId: Long,
+    val units: List<UnitAllocation> = emptyList()
+) {
+    val total: Int get() = units.sumOf { it.amount }
+}
+
+@Serializable
 data class TrainingOrder(
     val id: Long,
     val type: UnitType,
@@ -228,6 +242,7 @@ data class GameState(
     val regiments: List<Regiment> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),
+    val commanderAssignments: List<CommanderAssignment> = emptyList(),
     val renown: Int = 0,
     val rank: String = "Rekrut",
     val title: String = "Landlos",
@@ -241,4 +256,17 @@ data class GameState(
 ) {
     val armySize: Int get() = regiments.sumOf { it.soldiers }
     val armyPower: Int get() = regiments.sumOf { it.power }
+
+    fun soldiers(type: UnitType): Int = regiments.filter { it.type == type }.sumOf { it.soldiers }
+
+    fun assigned(type: UnitType): Int = commanderAssignments
+        .flatMap { it.units }
+        .filter { it.type == type }
+        .sumOf { it.amount }
+
+    fun assignedTo(commanderId: Long, type: UnitType): Int = commanderAssignments
+        .firstOrNull { it.commanderId == commanderId }
+        ?.units
+        ?.firstOrNull { it.type == type }
+        ?.amount ?: 0
 }
