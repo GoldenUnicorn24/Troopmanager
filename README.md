@@ -1,76 +1,52 @@
-# Realm of the Last Wall — Troopmanager
+# Realm of the Last Wall — Troopmanager v0.4.0
 
-A fully offline Android strategy/RPG hybrid: start as an unknown soldier, build a warband, promote individual commanders, meet a fully customizable companion, buy land, grow a multi-racial fortress realm and defend it against Orcs, Uruk-hai and Tao-Tei-style monster swarms.
+An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
 
-## Playable scope — v0.1.0
+## Core overhaul
 
-This version contains a complete persistent progression loop rather than a menu mockup:
+- Human, Elf and Half-Elf origins start with distinct armies; Half-Elves can use all four cultures immediately.
+- Start buildings include farm and barracks level 2 plus sawmill, quarry, ironworks, market, wall, tower and residence level 1.
+- Initial supplies: 5,000 gold, 8,000 food, 3,500 wood, 2,500 stone and 1,500 iron.
+- Faster daily production from buildings and territory, adjusted by available workers. The UI shows production, army food upkeep and net change. Food shortages reduce morale, growth and training progress.
+- Population distinguishes civilians, workers, recruits, free population, soldiers and trainees. Soldiers do not also provide civilian labor.
+- Soldiers are aggregated into one pool per unit type. Morale, experience and equipment affect power; ordinary soldiers have no individual character objects.
+- Four culture cards show army totals and training. Commanders receive explicit unit quantities without duplicate assignments. Unassigned troops remain under the player's direct command.
+- Six mission types: border patrol, caravan escort, bandit suppression, monster hunt, village defense and reconnaissance. Choose soldiers and an optional commander, pay supplies and wait for the required days. Mission troops are unavailable at home, and outcomes include real casualties and rewards. Recall requires travel time.
+- Threat produces warnings, raids and announced invasions. The arrival countdown supports wall repairs, troop preparation, recalls and allied requests. Siege devices and fortress defenses affect the attack.
+- Persistent battles advance in phases rather than calculating a final report at the start. Deploy left, center, right and reserve; respond to battle events and choose pursuit after victory. Sound cues provide an extension point without placeholder audio assets.
+- Character experience and skill points, meaningful commander stats and a companion who can command troops and missions.
+- Relationships allow at most one large or two small actions per day, with decisions and stages from companions to ruling couple.
+- Realm events offer consequential choices; cultures unlock through actual population and diplomacy. World regions connect locations with mission types.
+- A detailed, clickable fortress map opens building details and upgrades. Custom settlement names remain separate from settlement tiers.
+- Updated ten-step tutorial, help, dynamic realm goals and a campaign chronicle.
 
-- Human, Elf and Half-Elf character creation
-- Custom local portrait import for the player
-- Fully offline autosave/load
-- Day-based economy and production
-- Culture-specific population and recruit pools
-- 10 / 25 / 50 / 100% batch recruitment
-- Humans, Woodland Elves, Gold Elves and Great-Wall-inspired corps
-- Training queues that become persistent regiments
-- Regiment experience, morale, casualties and battle power
-- Individual commanders with replaceable local portraits, skills, traits, ranks and training
-- Dynamic early companion encounter
-- Companion name/portrait customization
-- Trust, respect, affection, training, command delegation and later co-ruler role
-- Missions, renown, ranks and titles
-- Buyable territory and population growth
-- Farms, sawmills, ironworks, markets, barracks, walls, towers and residence upgrades
-- Orc raids, Uruk-hai warbands and Tao Tei swarms
-- Tactical battle choices: hold, assault, ranged focus, flank and fortified defense
-- Dynamic casualties, loot, threat and wall damage
-- Persistent campaign chronicle
-- Continuous High-Kingdom late game instead of a forced ending
-- Original bundled vector artwork and local custom portrait support
-- Animated 2.5D tactical battlefield preview with formations, arrows and flanking cues
-- Fortress visualization that visibly grows with territory, walls, towers, farms, markets and residence levels
-- Full editable player/companion name, age, armor style, weapon and portrait
-- Custom fortress naming
-- GitHub Actions debug APK build
+## Structure
 
-## Game structure
+`model/` contains serializable army pools, unit allocations, missions, realm events, invasions, relationships and battle sessions. `engine/` separates economy, army, mission, battle, relationship, event and progression logic. Compose screens present the realm, army, world, court and live battle.
 
-The game deliberately does **not** simulate every inhabitant as an individual character. Population and normal soldiers are handled as pools and regiments so Android can support very large armies.
+Simulation operates on quantities, not individual soldiers, so large armies remain compact. Only the player, companion and commanders are individual characters. Original bundled army category images, menu artwork and the app icon are retained. Local custom portraits are supported; see [CREDITS.md](CREDITS.md).
 
-Only important characters are individually persistent:
+## Offline saves
 
-1. The player
-2. The companion / later co-ruler
-3. Promoted commanders
+Campaigns autosave in local Android storage with a backup and error handling. Save version 2 migrates older regiment-based saves by summing soldiers per type and weighting morale and experience. Commander allocations and current missions/battles persist. No account, server, subscription, online requirement or in-app purchases. Imported portraits remain local device references.
 
-That means a force can contain thousands of soldiers without creating thousands of portraits or character records.
+## Build and verification
 
-## Half-Elf path
+Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project directly.
 
-The Half-Elf path is the most open route. Humans, Woodland Elves, Gold Elves and Wall Corps can serve in the same realm from the start. Human and Elf origins can unlock other cultures later through renown.
-
-## Build
-
-Use JDK 17 and a recent Android Studio.
-
-- compileSdk: 35
-- targetSdk: 35
-- minSdk: 26
-- version: 0.1.0
-
-Command-line build:
+- `compileSdk` / `targetSdk`: 35
+- `minSdk`: 26
+- `versionName`: 0.4.0
+- `versionCode`: 4
 
 ```bash
-gradle :app:assembleDebug
+gradle :app:testDebugUnitTest --stacktrace
+gradle :app:assembleDebug --stacktrace
+test -f app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push to `main` also runs the included GitHub Actions workflow and uploads the debug APK as a workflow artifact when the build succeeds.
+The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Offline design
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.4.0-debug`.
 
-There are no accounts, servers, subscriptions or in-app purchases. Saves use local Android storage. Imported player/companion images are referenced locally on the device.
-
-## Visual direction
-
-The project uses original dark-fantasy vector artwork for the built-in knight, Gold Elf, Woodland Elf, Wall Guard, companion, Orc, Uruk and monster archetypes. Players can replace the two main character portraits with their own device images.
+The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; individual soldier movement and recorded battle audio are not part of this version.

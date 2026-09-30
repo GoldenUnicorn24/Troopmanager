@@ -1,6 +1,6 @@
 # Artwork credits
 
-Realm of the Last Wall v0.3.0 uses original generated artwork created specifically for this private game prototype.
+Realm of the Last Wall v0.4.0 uses original generated artwork created specifically for this private game prototype.
 
 Included visual sets:
 - Human army category

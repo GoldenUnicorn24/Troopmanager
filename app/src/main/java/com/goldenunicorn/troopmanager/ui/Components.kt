@@ -106,7 +106,7 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
 }
 
 @Composable
-internal fun ResourceStrip(r: Resources) {
+internal fun ResourceStrip(r: Resources, production: Resources? = null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         listOf(
             Triple("◈", "Gold", r.gold),
@@ -121,8 +121,12 @@ internal fun ResourceStrip(r: Resources) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(icon, color = Gold, fontSize = 12.sp)
-                    Text(value.toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                    Text(label, color = Color(0xFF9FAAB1), fontSize = 7.sp, maxLines = 1)
+                    Text(value.toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    if (production != null) {
+                        val gain = when (label) { "Gold" -> production.gold; "Nahrung" -> production.food; "Holz" -> production.wood; "Stein" -> production.stone; else -> production.iron }
+                        Text("${if (gain >= 0) "+" else ""}$gain/Tag", color = if (gain < 0) Danger else Gold, fontSize = 10.sp)
+                    }
+                    Text(label, color = Color(0xFF9FAAB1), fontSize = 10.sp, maxLines = 1)
                 }
             }
         }

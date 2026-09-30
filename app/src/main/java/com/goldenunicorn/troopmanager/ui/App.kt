@@ -59,6 +59,7 @@ fun RealmGameApp(saves: SaveRepository) {
                     hasSave = saves.hasSave(),
                     onContinue = {
                         state = saves.load()
+                        saves.lastError?.let { notice = it }
                         if (state != null) inMenu = false
                     },
                     onNew = {
@@ -71,6 +72,7 @@ fun RealmGameApp(saves: SaveRepository) {
                     onCreated = {
                         state = it
                         saves.save(it)
+                        saves.lastError?.let { notice = it }
                     },
                     onBack = { inMenu = true }
                 )
@@ -80,16 +82,20 @@ fun RealmGameApp(saves: SaveRepository) {
                     onState = {
                         state = it
                         saves.save(it)
+                        saves.lastError?.let { notice = it }
                     },
-                    onNotice = { notice = it },
+                    onNotice = { notice = saves.lastError ?: it },
                     onMenu = {
                         saves.save(state!!)
+                        saves.lastError?.let { notice = it }
                         inMenu = true
                     },
                     onDelete = {
                         saves.delete()
-                        state = null
-                        inMenu = true
+                        if (saves.lastError == null) {
+                            state = null
+                            inMenu = true
+                        } else notice = saves.lastError
                     }
                 )
             }
@@ -133,7 +139,7 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
             Text("REALM OF THE", color = PaleGold, fontSize = 18.sp, letterSpacing = 3.sp)
             Text("LAST WALL", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
             Text(
-                "Vom unbekannten Soldaten zum Herrscher einer gigantischen Festung.",
+                "Vom jungen Grenzherrn zum Herrscher einer mächtigen Festung.",
                 color = Mist,
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp)
@@ -176,7 +182,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     ) {
         Text("DEIN URSPRUNG", color = Gold, fontSize = 13.sp, letterSpacing = 2.sp)
         Text("Erschaffe den Herrscher", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Text("Du beginnst landlos. Alles danach musst du dir verdienen.", color = Mist, modifier = Modifier.padding(vertical = 8.dp))
+        Text("Du startest mit Grenzfeste, eigenem Gebiet, Vorräten und einer stehenden Armee.", color = Mist, modifier = Modifier.padding(vertical = 8.dp))
 
         Surface(
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clickable { picker.launch(arrayOf("image/*")) },
@@ -216,7 +222,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                     Text(option.label, color = if (selected) PaleGold else Color.White, fontWeight = FontWeight.Bold)
                     Text(
                         when (option) {
-                            Species.HUMAN -> "Viele Rekruten, Ritter und Mauer-Korps. Elben werden später diplomatisch freigeschaltet."
+                            Species.HUMAN -> "330 Soldaten, viele Rekruten und schwere Ritter. Andere Kulturen kommen durch Bündnisse und Einwanderung."
                             Species.ELF -> "Kleine Bevölkerung, starke Wald- und Goldelben. Menschenbündnisse folgen später."
                             Species.HALF_ELF -> "Menschen, Waldelben, Goldelben und Mauerlegionen können sofort gemeinsam dienen."
                         },
@@ -229,7 +235,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
 
         Spacer(Modifier.height(18.dp))
         GoldButton(
-            "Karriere beginnen",
+            "Reich gründen",
             {
                 onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait))
             },
@@ -272,7 +278,12 @@ private fun GameShell(
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            when (screen) {
+            if (state.battleSession != null && screen != Screen.MORE) {
+                LiveBattleScreen(state, { next ->
+                    if (next.battleSession == null) screen = Screen.WORLD
+                    onState(next)
+                }, onNotice)
+            } else when (screen) {
                 Screen.REALM -> RealmScreen(state, onState, onNotice)
                 Screen.ARMY -> ArmyScreen(state, onState, onNotice)
                 Screen.WORLD -> WorldScreen(state, onState, onNotice)
