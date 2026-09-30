@@ -101,4 +101,44 @@ class GameEngineTest {
         assertTrue(result.frames.last().minute <= 90)
         assertTrue(result.finalState.armySize <= state.armySize)
     }
+
+    @Test
+    fun commanderCanReceiveMixedUnitCounts() {
+        var state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null)
+        state = state.copy(
+            resources = state.resources.copy(gold = 100000, iron = 100000),
+            population = state.population.copy(humanRecruits = 1200)
+        )
+        state = GameEngine.recruit(state, UnitType.HUMAN_SWORD, 50).state
+        state = GameEngine.recruit(state, UnitType.HUMAN_ARCHER, 100).state
+        repeat(14) { state = GameEngine.advanceDay(state).state }
+        state = GameEngine.promoteCommander(state).state
+        val commander = state.commanders.first()
+        val result = GameEngine.setCommanderAllocation(
+            state,
+            commander.id,
+            listOf(
+                UnitAllocation(UnitType.HUMAN_SWORD, 300),
+                UnitAllocation(UnitType.HUMAN_ARCHER, 200)
+            )
+        ).state
+        assertEquals(300, result.assignedTo(commander.id, UnitType.HUMAN_SWORD))
+        assertEquals(200, result.assignedTo(commander.id, UnitType.HUMAN_ARCHER))
+    }
+
+    @Test
+    fun liveBattleProducesReadableFrames() {
+        var state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null)
+        state = state.copy(
+            resources = state.resources.copy(gold = 100000, iron = 100000),
+            population = state.population.copy(humanRecruits = 900)
+        )
+        state = GameEngine.recruit(state, UnitType.HUMAN_SWORD, 100).state
+        repeat(10) { state = GameEngine.advanceDay(state).state }
+        val battle = GameEngine.simulateBattleLive(state, EnemyType.ORC, Tactic.HOLD, seed = 42)
+        assertTrue(battle.frames.isNotEmpty())
+        assertTrue(battle.frames.last().minute >= 80)
+        assertTrue(battle.ownStart > 0)
+        assertTrue(battle.enemyStart > 0)
+    }
 }
