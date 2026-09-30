@@ -97,7 +97,7 @@ data class CharacterProfile(
 )
 
 @Serializable
-data class Companion(
+data class CompanionProfile(
     val met: Boolean = false,
     val name: String = "Alina",
     val age: Int = 21,
@@ -220,7 +220,7 @@ data class GameState(
     val version: Int = 1,
     val day: Int = 1,
     val player: CharacterProfile,
-    val companion: Companion = Companion(),
+    val companion: CompanionProfile = CompanionProfile(),
     val resources: Resources = Resources(),
     val population: Population = Population(),
     val realm: Realm = Realm(),
