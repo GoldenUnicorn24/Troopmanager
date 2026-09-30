@@ -29,6 +29,15 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Download licensed category artwork
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L --fail --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/German_-_Armor_for_Fighting_on_Horseback_-_Walters_51581.jpg?width=1000" -o app/src/main/assets/category_human.jpg
+          curl -L --fail --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Elf_Archer_in_Forest.png?width=1000" -o app/src/main/assets/category_wood_elf.png
+          curl -L --fail --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Knight-in-Shining-Armour.jpg?width=1000" -o app/src/main/assets/category_gold_elf.jpg
+          curl -L --fail --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Tang_warrior.jpg?width=1000" -o app/src/main/assets/category_wall.jpg
+          ls -lh app/src/main/assets
+
       - name: Run unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
 
@@ -43,7 +52,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v0.1.0-debug
+          name: Realm-of-the-Last-Wall-v0.2.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
