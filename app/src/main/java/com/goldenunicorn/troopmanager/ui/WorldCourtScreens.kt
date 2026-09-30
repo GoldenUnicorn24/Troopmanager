@@ -28,7 +28,23 @@ import com.goldenunicorn.troopmanager.model.*
 internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var enemy by remember { mutableStateOf(EnemyType.ORC) }
     var tactic by remember { mutableStateOf(Tactic.HOLD) }
-    var battleReport by remember { mutableStateOf<String?>(null) }
+    var liveBattle by remember { mutableStateOf<GameEngine.LiveBattleResult?>(null) }
+
+    liveBattle?.let { result ->
+        LiveBattleScreen(
+            stateBeforeBattle = state,
+            enemy = enemy,
+            tactic = tactic,
+            result = result,
+            onApplyResult = {
+                onState(it)
+                liveBattle = null
+                onNotice(if (result.victory) "Schlacht gewonnen." else "Schlacht beendet.")
+            },
+            onCancel = { liveBattle = null }
+        )
+        return
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -44,6 +60,29 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 contentScale = ContentScale.Crop
             )
         }
+
+        item { SectionTitle("Deine aktuelle Streitmacht") }
+        item {
+            Surface(color = Panel, shape = RoundedCornerShape(17.dp)) {
+                Column(Modifier.padding(15.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Gesamtstärke", color = Mist)
+                        Text(state.armySize.toString() + " Soldaten", color = PaleGold, fontWeight = FontWeight.Black)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Culture.entries.forEach { culture ->
+                        val count = UnitType.entries.filter { it.culture == culture }.sumOf { state.soldiers(it) }
+                        if (count > 0) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(culture.label, color = Color.White, fontSize = 12.sp)
+                                Text(count.toString(), color = Mist, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         item { SectionTitle("Persönliche Missionen") }
         items(MissionType.entries) { mission ->
             Surface(
@@ -58,76 +97,98 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 Row(Modifier.fillMaxWidth().padding(14.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(mission.label, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Gold, Nahrung, Ruhm und gemeinsame Erfahrung", color = Mist, fontSize = 12.sp)
+                        Text("Gold, Nahrung und Ruhm", color = Mist, fontSize = 11.sp)
                     }
                     Text("›", color = Gold, fontSize = 28.sp)
                 }
             }
         }
 
-        item { TacticalBattlePreview(state, enemy, tactic) }
-        item { SectionTitle("Große Schlacht") }
+        item { SectionTitle("Große Schlacht vorbereiten") }
         item {
             Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Text("Feind", color = PaleGold, fontWeight = FontWeight.Bold)
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("1. Gegner wählen", color = PaleGold, fontWeight = FontWeight.Bold)
                     EnemyType.entries.forEach { option ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                            RadioButton(selected = option == enemy, onClick = { enemy = option })
-                            Text(option.label, color = Color.White, modifier = Modifier.padding(top = 12.dp))
+                        val selected = enemy == option
+                        Surface(
+                            onClick = { enemy = option },
+                            color = if (selected) Color(0xFF25313A) else Color(0xFF171F26),
+                            shape = RoundedCornerShape(12.dp),
+                            border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Danger) else null
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column {
+                                    Text(option.label, color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(enemyDescription(option), color = Mist, fontSize = 10.sp)
+                                }
+                                if (selected) Text("AUSGEWÄHLT", color = Danger, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
 
-                    HorizontalDivider(color = Color(0xFF303942), modifier = Modifier.padding(vertical = 8.dp))
-                    Text("Taktik", color = PaleGold, fontWeight = FontWeight.Bold)
-
+                    Spacer(Modifier.height(4.dp))
+                    Text("2. Taktik wählen", color = PaleGold, fontWeight = FontWeight.Bold)
                     Tactic.entries.forEach { option ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-                            RadioButton(selected = option == tactic, onClick = { tactic = option })
-                            Text(option.label, color = Color.White, modifier = Modifier.padding(top = 12.dp), fontSize = 13.sp)
+                        val selected = tactic == option
+                        Surface(
+                            onClick = { tactic = option },
+                            color = if (selected) Color(0xFF25313A) else Color(0xFF171F26),
+                            shape = RoundedCornerShape(12.dp),
+                            border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(option.label, color = Color.White, fontWeight = FontWeight.Bold)
+                                    if (selected) Text("AKTIV", color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Text(tacticDescription(option), color = Mist, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                            }
+                        }
+                    }
+
+                    Surface(color = Color(0xFF11181E), shape = RoundedCornerShape(12.dp)) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("Was passiert danach?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text(
+                                "Die Schlacht läuft jetzt in einer echten Live-Ansicht über mehrere Phasen bis Minute 90. Du siehst Frontverlauf, aktuelle Mannstärke, Verluste und Ereignisse und kannst pausieren oder die Geschwindigkeit ändern.",
+                                color = Mist,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
 
                     GoldButton(
-                        "Schlacht beginnen",
+                        "Live-Schlacht starten",
                         {
-                            val result = GameEngine.simulateBattle(state, enemy, tactic)
-                            onState(result.state)
-                            battleReport = result.headline + "\n" + result.details
+                            if (state.armySize <= 0) {
+                                onNotice("Du hast noch keine einsatzbereiten Soldaten.")
+                            } else {
+                                liveBattle = GameEngine.simulateBattleLive(state, enemy, tactic)
+                            }
                         },
-                        Modifier.fillMaxWidth().padding(top = 10.dp)
+                        Modifier.fillMaxWidth()
                     )
                 }
             }
         }
-
-        battleReport?.let { report ->
-            item {
-                val won = report.startsWith("Sieg")
-                Surface(
-                    color = if (won) Color(0xFF183024) else Color(0xFF331E1E),
-                    shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (won) Success else Danger)
-                ) {
-                    Text(report, color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(16.dp))
-                }
-            }
-        }
-
-        item {
-            Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Wie die Schlacht berechnet wird", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Regimentstyp, Mannstärke, Erfahrung, Moral, Kommandanten, deine Gefährtin, Taktik sowie Mauern wirken gemeinsam. Goldelben sind mächtig, aber schwer zu ersetzen; Monster verursachen die höchsten Verluste.",
-                        color = Mist,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-            }
-        }
+        item { Spacer(Modifier.height(16.dp)) }
     }
+}
+
+private fun enemyDescription(enemy: EnemyType): String = when (enemy) {
+    EnemyType.ORC -> "Viele schwächere Gegner. Gute erste große Schlacht."
+    EnemyType.URUK -> "Schwer gerüstet, diszipliniert und gefährlich im Nahkampf."
+    EnemyType.TAO_TEI -> "Schneller Schwarm, hohe Verluste möglich. Fernkampf und Mauern helfen."
+}
+
+private fun tacticDescription(tactic: Tactic): String = when (tactic) {
+    Tactic.HOLD -> "Ausgewogen. Die Linie bleibt stabil und wartet auf Fehler des Gegners."
+    Tactic.AGGRESSIVE -> "Mehr Druck und Tempo. Stark gegen Orks, riskanter gegen schwere Gegner."
+    Tactic.RANGED -> "Bogenschützen und Artillerie erhalten mehr Einfluss auf den Schlachtverlauf."
+    Tactic.FLANK -> "Versucht den Gegner seitlich zu brechen. Besonders wirksam gegen starre Kriegsheere."
+    Tactic.FORTIFY -> "Nutzt Mauern und Türme. Sehr stark bei gut ausgebauter Festungsverteidigung."
 }
 
 @Composable
