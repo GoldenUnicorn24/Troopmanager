@@ -99,7 +99,7 @@ internal fun MoreScreen(
                         Column(Modifier.padding(14.dp)) {
                             Text("Bildnachweise", color = PaleGold, fontWeight = FontWeight.Bold)
                             Text(
-                                "Die vier großen Armee-Kategoriebilder stammen aus frei lizenzierten Wikimedia-Commons-Quellen. Genaue Urheber- und Lizenzangaben befinden sich zusätzlich in CREDITS.md im Repository.",
+                                "Die Armee-Kategoriebilder, das Hauptmenübild und das App-Icon wurden speziell für diesen Spielstand erzeugt und direkt in die APK eingebettet.",
                                 color = Mist,
                                 fontSize = 11.sp,
                                 modifier = Modifier.padding(top = 4.dp)
