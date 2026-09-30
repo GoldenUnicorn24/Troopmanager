@@ -44,4 +44,21 @@ class GameEngineTest {
         assertTrue(result.renown > state.renown)
         assertTrue(result.resources.gold > state.resources.gold)
     }
+
+    @Test
+    fun quarryProducesStone() {
+        var state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null)
+        state = state.copy(resources = state.resources.copy(gold = 5000, wood = 5000, stone = 5000))
+        state = GameEngine.build(state, BuildingType.QUARRY).state
+        val before = state.resources.stone
+        state = GameEngine.advanceDay(state).state
+        assertTrue(state.resources.stone > before)
+    }
+
+    @Test
+    fun tutorialCanBeMarkedSeen() {
+        val state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null)
+        assertFalse(state.tutorialSeen)
+        assertTrue(GameEngine.markTutorialSeen(state).tutorialSeen)
+    }
 }
