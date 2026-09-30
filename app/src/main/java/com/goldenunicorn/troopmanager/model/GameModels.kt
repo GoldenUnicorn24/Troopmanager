@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 enum class Species(val label: String) {
     HUMAN("Mensch"),
     ELF("Elb"),
-    HALF_ELF("Halbelb")
+    HALF_ELF("Halbelb"),
 }
 
 @Serializable
@@ -14,7 +14,7 @@ enum class Culture(val label: String) {
     HUMAN("Menschen"),
     WOOD_ELF("Waldelben"),
     GOLD_ELF("Goldelben"),
-    WALL("Mauerlegion")
+    WALL("Mauerlegion"),
 }
 
 @Serializable
@@ -26,7 +26,7 @@ enum class UnitType(
     val ranged: Int,
     val goldCost: Int,
     val ironCost: Int,
-    val trainingDays: Int
+    val trainingDays: Int,
 ) {
     HUMAN_SWORD("Schwertkämpfer", Culture.HUMAN, 7, 7, 1, 7, 2, 5),
     HUMAN_ARCHER("Bogenschützen", Culture.HUMAN, 3, 4, 8, 8, 1, 7),
@@ -40,7 +40,7 @@ enum class UnitType(
     TIGER_CORPS("Tigerkorps", Culture.WALL, 10, 9, 2, 14, 4, 10),
     BEAR_CORPS("Bärenkorps", Culture.WALL, 8, 12, 1, 15, 5, 11),
     DEER_CORPS("Hirschkorps", Culture.WALL, 5, 8, 4, 10, 2, 8),
-    DRAGON_ARTILLERY("Drachenartillerie", Culture.WALL, 3, 5, 14, 22, 6, 14)
+    DRAGON_ARTILLERY("Drachenartillerie", Culture.WALL, 3, 5, 14, 22, 6, 14),
 }
 
 @Serializable
@@ -53,14 +53,14 @@ enum class BuildingType(val label: String) {
     BARRACKS("Kaserne"),
     WALL("Mauer"),
     TOWER("Wehrturm"),
-    PALACE("Residenz")
+    PALACE("Residenz"),
 }
 
 @Serializable
 enum class EnemyType(val label: String) {
     ORC("Ork-Raubzug"),
     URUK("Uruk-hai-Kriegsheer"),
-    TAO_TEI("Tao-Tei-Schwarm")
+    TAO_TEI("Tao-Tei-Schwarm"),
 }
 
 @Serializable
@@ -69,7 +69,7 @@ enum class Tactic(val label: String) {
     AGGRESSIVE("Massiver Angriff"),
     RANGED("Fernkampf priorisieren"),
     FLANK("Flankenangriff"),
-    FORTIFY("Hinter Mauern verteidigen")
+    FORTIFY("Hinter Mauern verteidigen"),
 }
 
 @Serializable
@@ -77,7 +77,9 @@ enum class MissionType(val label: String) {
     PATROL("Grenzpatrouille"),
     ESCORT("Karawane eskortieren"),
     HUNT("Monsterjagd"),
-    RELIEF("Dorfverteidigung")
+    RELIEF("Dorfverteidigung"),
+    BANDITS("Banditenlager vernichten"),
+    SCOUT("Aufklärung"),
 }
 
 @Serializable
@@ -89,12 +91,14 @@ data class CharacterProfile(
     val armorStyle: String = "Grenzwächter",
     val weapon: String = "Langschwert",
     val level: Int = 1,
+    val experience: Int = 0,
+    val skillPoints: Int = 0,
     val sword: Int = 55,
     val bow: Int = 48,
     val riding: Int = 42,
     val leadership: Int = 25,
     val tactics: Int = 22,
-    val diplomacy: Int = 20
+    val diplomacy: Int = 20,
 )
 
 @Serializable
@@ -116,7 +120,7 @@ data class CompanionProfile(
     val trust: Int = 20,
     val respect: Int = 20,
     val affection: Int = 10,
-    val role: String = "Gefährtin"
+    val role: String = "Gefährtin",
 )
 
 @Serializable
@@ -134,139 +138,163 @@ data class Commander(
     val siege: Int = 35,
     val loyalty: Int = 70,
     val trait: String = "Loyal",
-    val rank: String = "Hauptmann"
+    val rank: String = "Hauptmann",
 )
 
-@Serializable
-data class Regiment(
-    val id: Long,
-    val name: String,
-    val type: UnitType,
-    val soldiers: Int,
-    val maxSoldiers: Int,
-    val experience: Int = 0,
-    val morale: Int = 70,
-    val commanderId: Long? = null
-) {
-    val power: Int
-        get() {
-            val base = type.attack + type.defense + type.ranged
-            val experienceMultiplier = 1.0 + experience.coerceAtMost(100) / 200.0
-            return (soldiers * base * experienceMultiplier).toInt()
-        }
-}
-
-@Serializable
-data class UnitAllocation(
-    val type: UnitType,
-    val amount: Int
-)
+@Serializable data class UnitAllocation(val type: UnitType, val amount: Int)
 
 @Serializable
 data class CommanderAssignment(
     val commanderId: Long,
-    val units: List<UnitAllocation> = emptyList()
+    val units: List<UnitAllocation> = emptyList(),
 ) {
-    val total: Int get() = units.sumOf { it.amount }
+    val total: Int
+        get() = units.sumOf { it.amount }
 }
 
 @Serializable
-data class TrainingOrder(
-    val id: Long,
-    val type: UnitType,
-    val amount: Int,
-    val daysRemaining: Int
-)
+data class TrainingOrder(val id: Long, val type: UnitType, val amount: Int, val daysRemaining: Int)
 
 @Serializable
 data class Resources(
-    val gold: Int = 800,
-    val food: Int = 900,
-    val wood: Int = 450,
-    val stone: Int = 350,
-    val iron: Int = 180
+    val gold: Int = 5000,
+    val food: Int = 8000,
+    val wood: Int = 3500,
+    val stone: Int = 2500,
+    val iron: Int = 1500,
 )
 
 @Serializable
 data class Population(
-    val human: Int = 180,
-    val woodElf: Int = 55,
-    val goldElf: Int = 15,
-    val wall: Int = 0,
+    val human: Int = 900,
+    val woodElf: Int = 450,
+    val goldElf: Int = 150,
+    val wall: Int = 350,
     val humanRecruits: Int = 42,
-    val woodElfRecruits: Int = 12,
-    val goldElfRecruits: Int = 4,
-    val wallRecruits: Int = 0
+    val woodElfRecruits: Int = 40,
+    val goldElfRecruits: Int = 20,
+    val wallRecruits: Int = 45,
 ) {
-    val total: Int get() = human + woodElf + goldElf + wall
-    val totalRecruits: Int get() = humanRecruits + woodElfRecruits + goldElfRecruits + wallRecruits
+    val total: Int
+        get() = human + woodElf + goldElf + wall
 
-    fun recruits(culture: Culture): Int = when (culture) {
-        Culture.HUMAN -> humanRecruits
-        Culture.WOOD_ELF -> woodElfRecruits
-        Culture.GOLD_ELF -> goldElfRecruits
-        Culture.WALL -> wallRecruits
-    }
+    val totalRecruits: Int
+        get() = humanRecruits + woodElfRecruits + goldElfRecruits + wallRecruits
+
+    fun recruits(culture: Culture): Int =
+        when (culture) {
+            Culture.HUMAN -> humanRecruits
+            Culture.WOOD_ELF -> woodElfRecruits
+            Culture.GOLD_ELF -> goldElfRecruits
+            Culture.WALL -> wallRecruits
+        }
 }
 
 @Serializable
 data class Realm(
-    val territory: Int = 0,
-    val settlementName: String = "Grenzlager",
-    val buildings: Map<BuildingType, Int> = mapOf(
-        BuildingType.FARM to 1,
-        BuildingType.BARRACKS to 1
-    ),
+    val territory: Int = 1,
+    val customSettlementName: String? = null,
+    val settlementTier: SettlementTier = SettlementTier.BORDER_KEEP,
+    val buildings: Map<BuildingType, Int> =
+        BuildingType.entries.associateWith {
+            if (it == BuildingType.FARM || it == BuildingType.BARRACKS) 2 else 1
+        },
     val threat: Int = 12,
-    val wallIntegrity: Int = 100
+    val wallIntegrity: Int = 100,
+    val tradeBonusDays: Int = 0,
+    val scoutingDays: Int = 0,
 ) {
+    val settlementName: String
+        get() = customSettlementName ?: settlementTier.label
+
     fun level(type: BuildingType): Int = buildings[type] ?: 0
 }
 
-@Serializable
-data class ChronicleEntry(
-    val day: Int,
-    val title: String,
-    val text: String
-)
+@Serializable data class ChronicleEntry(val day: Int, val title: String, val text: String)
 
 @Serializable
 data class GameState(
-    val version: Int = 1,
+    val version: Int = 2,
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),
     val resources: Resources = Resources(),
     val population: Population = Population(),
     val realm: Realm = Realm(),
-    val regiments: List<Regiment> = emptyList(),
+    val armyPools: List<ArmyUnitPool> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),
     val commanderAssignments: List<CommanderAssignment> = emptyList(),
+    val activeMissions: List<ActiveMission> = emptyList(),
+    val battleSession: BattleSession? = null,
+    val invasion: Invasion? = null,
+    val relationship: RelationshipState = RelationshipState(),
+    val pendingRealmEvent: RealmEvent? = null,
+    val regions: List<WorldRegion> = initialRegions(),
     val renown: Int = 0,
-    val rank: String = "Rekrut",
-    val title: String = "Landlos",
+    val rank: String = "Grenzhauptmann",
+    val title: String = "Grenzherr",
     val victories: Int = 0,
     val defeats: Int = 0,
     val completedRealm: Boolean = false,
     val tutorialSeen: Boolean = false,
-    val chronicle: List<ChronicleEntry> = listOf(
-        ChronicleEntry(1, "Ein unbekannter Name", "Du besitzt kaum mehr als deine Ausrüstung. Noch kennt niemand deinen Namen.")
-    )
+    val chronicle: List<ChronicleEntry> =
+        listOf(
+            ChronicleEntry(
+                1,
+                "Die Grenzfeste",
+                "Ein eigenes Gebiet, eine stehende Armee und eine arbeitende Siedlung: Dein Reich beginnt hier.",
+            )
+        ),
 ) {
-    val armySize: Int get() = regiments.sumOf { it.soldiers }
-    val armyPower: Int get() = regiments.sumOf { it.power }
+    val armySize: Int
+        get() = armyPools.sumOf { it.soldiers }
 
-    fun soldiers(type: UnitType): Int = regiments.filter { it.type == type }.sumOf { it.soldiers }
+    val armyPower: Int
+        get() = armyPools.sumOf { it.power.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
-    fun assigned(type: UnitType): Int = commanderAssignments
-        .flatMap { it.units }
-        .filter { it.type == type }
-        .sumOf { it.amount }
+    val awayArmySize: Int
+        get() = activeMissions.filter { it.status.isAway }.sumOf { it.total }
 
-    fun assignedTo(commanderId: Long, type: UnitType): Int = commanderAssignments
-        .firstOrNull { it.commanderId == commanderId }
-        ?.units
-        ?.firstOrNull { it.type == type }
-        ?.amount ?: 0
+    val homeArmySize: Int
+        get() = armySize - awayArmySize
+
+    val trainingSize: Int
+        get() = trainingQueue.sumOf { it.amount }
+
+    val civilianPopulation: Int
+        get() = (population.total - armySize - trainingSize).coerceAtLeast(0)
+
+    val workerDemand: Int
+        get() = 20 + realm.buildings.values.sum() * 25 + realm.territory * 20
+
+    val workers: Int
+        get() = (civilianPopulation - population.totalRecruits).coerceIn(0, workerDemand)
+
+    val freePopulation: Int
+        get() = (civilianPopulation - workers - population.totalRecruits).coerceAtLeast(0)
+
+    fun soldiers(type: UnitType): Int = armyPools.firstOrNull { it.type == type }?.soldiers ?: 0
+
+    fun away(type: UnitType): Int =
+        activeMissions
+            .filter { it.status.isAway }
+            .sumOf { m -> m.units.filter { it.type == type }.sumOf { it.amount } }
+
+    fun homeSoldiers(type: UnitType): Int = (soldiers(type) - away(type)).coerceAtLeast(0)
+
+    fun assigned(type: UnitType): Int =
+        commanderAssignments.sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } }
+
+    fun directCommand(type: UnitType): Int = (homeSoldiers(type) - assigned(type)).coerceAtLeast(0)
+
+    fun assignedTo(commanderId: Long, type: UnitType): Int =
+        commanderAssignments
+            .firstOrNull { it.commanderId == commanderId }
+            ?.units
+            ?.firstOrNull { it.type == type }
+            ?.amount ?: 0
+
+    fun commanderAway(id: Long): Boolean =
+        activeMissions.any { it.commanderId == id && it.status.isAway }
 }

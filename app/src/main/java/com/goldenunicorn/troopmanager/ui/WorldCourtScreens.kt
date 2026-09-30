@@ -4,9 +4,9 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,176 +19,234 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.R
+import com.goldenunicorn.troopmanager.engine.BattleEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.MissionEngine
+import com.goldenunicorn.troopmanager.engine.ProgressionEngine
+import com.goldenunicorn.troopmanager.engine.RelationshipEngine
 import com.goldenunicorn.troopmanager.engine.customizeCompanion
 import com.goldenunicorn.troopmanager.engine.customizePlayer
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
 internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    var enemy by remember { mutableStateOf(EnemyType.ORC) }
-    var tactic by remember { mutableStateOf(Tactic.HOLD) }
-    var liveBattle by remember { mutableStateOf<GameEngine.LiveBattleResult?>(null) }
-
-    liveBattle?.let { result ->
-        LiveBattleScreen(
-            stateBeforeBattle = state,
-            enemy = enemy,
-            tactic = tactic,
-            result = result,
-            onApplyResult = {
-                onState(it)
-                liveBattle = null
-                onNotice(if (result.victory) "Schlacht gewonnen." else "Schlacht beendet.")
-            },
-            onCancel = { liveBattle = null }
-        )
-        return
-    }
-
+    var selectedRegionId by remember { mutableStateOf(state.regions.firstOrNull()?.id) }
+    var missionRegion by remember { mutableStateOf<WorldRegion?>(null) }
+    var battleSetup by remember { mutableStateOf(false) }
+    val selectedRegion = state.regions.firstOrNull { it.id == selectedRegionId }
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("WELT & KRIEG", "Ruhm " + state.renown + " · Bedrohung " + state.realm.threat + "%") }
-        item {
-            Image(
-                painterResource(R.drawable.art_world_map),
-                null,
-                Modifier.fillMaxWidth().height(190.dp),
-                contentScale = ContentScale.Crop
-            )
-        }
-
-        item { SectionTitle("Deine aktuelle Streitmacht") }
-        item {
-            Surface(color = Panel, shape = RoundedCornerShape(17.dp)) {
-                Column(Modifier.padding(15.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Gesamtstärke", color = Mist)
-                        Text(state.armySize.toString() + " Soldaten", color = PaleGold, fontWeight = FontWeight.Black)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Culture.entries.forEach { culture ->
-                        val count = UnitType.entries.filter { it.culture == culture }.sumOf { state.soldiers(it) }
-                        if (count > 0) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(culture.label, color = Color.White, fontSize = 12.sp)
-                                Text(count.toString(), color = Mist, fontSize = 12.sp)
+        item { PageTitle("WELT & KRIEG", "Ruhm ${state.renown} · Bedrohung ${state.realm.threat}%") }
+        state.invasion?.let { invasion ->
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Danger)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(invasion.enemy.label, color = Danger, fontWeight = FontWeight.Bold)
+                        Text(if (invasion.arrivalDay > state.day) "Ankunft in ${invasion.arrivalDay - state.day} Tagen" else "Der Angriff steht vor den Toren!", color = Color.White)
+                        Text("${invasion.strength} Feinde · Mauer ${state.realm.wallIntegrity}%", color = Mist)
+                        if (invasion.devices.isNotEmpty()) Text(invasion.devices.joinToString(" · ") { it.label }, color = Mist, fontSize = 12.sp)
+                        SmallAction("Mauern reparieren") {
+                            val result = GameEngine.repairWall(state); onState(result.state); onNotice(result.message)
+                        }
+                        OutlinedButton(enabled = !invasion.alliesRequested, onClick = {
+                            val result = GameEngine.requestAllies(state); onState(result.state); onNotice(result.message)
+                        }, modifier = Modifier.fillMaxWidth()) { Text(if (invasion.alliesRequested) "Verbündete angefordert" else "Verbündete anfordern") }
+                        state.activeMissions.filter { it.status == MissionStatus.ACTIVE }.forEach { mission ->
+                            SmallAction("${mission.missionType.label}: zurückrufen (${mission.total})") {
+                                val result = MissionEngine.recall(state, mission.id); onState(result.state); onNotice(result.message)
                             }
+                        }
+                        Text("Truppen zuweisen und Ausbildung starten: im Armeemenü. Rückgerufene Soldaten benötigen Heimreisezeit.", color = Mist, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        item { SectionTitle("Regionen") }
+        item {
+            BoxWithConstraints(Modifier.fillMaxWidth().height(235.dp)) {
+                Image(painterResource(R.drawable.art_world_map), "Weltkarte mit auswählbaren Regionen", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                val positions = listOf(0.08f to 0.63f, 0.50f to 0.65f, 0.08f to 0.14f, 0.60f to 0.15f, 0.40f to 0.42f, 0.64f to 0.39f, 0.12f to 0.39f)
+                state.regions.take(7).forEachIndexed { index, region ->
+                    val (x, y) = positions[index % positions.size]
+                    Surface(onClick = { selectedRegionId = region.id }, modifier = Modifier.offset(x = maxWidth * x, y = maxHeight * y),
+                        color = if (selectedRegionId == region.id) Gold else Panel.copy(alpha = 0.92f), shape = RoundedCornerShape(8.dp)) {
+                        Text(region.name, color = if (selectedRegionId == region.id) Ink else Color.White, fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(max = 94.dp).padding(7.dp))
+                    }
+                }
+            }
+        }
+        if (state.regions.size > 7) item {
+            Column {
+                Text("Weitere eigene Gebiete",color=PaleGold,fontWeight=FontWeight.Bold)
+                state.regions.drop(7).chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        row.forEach { region ->
+                            FilterChip(selected=selectedRegionId==region.id,onClick={selectedRegionId=region.id},label={Text(region.name)},modifier=Modifier.weight(1f))
                         }
                     }
                 }
             }
         }
-
-        item { SectionTitle("Persönliche Missionen") }
-        items(MissionType.entries) { mission ->
-            Surface(
-                onClick = {
-                    val result = GameEngine.runMission(state, mission)
-                    onState(result.state)
-                    onNotice(result.message)
-                },
-                color = Panel,
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Row(Modifier.fillMaxWidth().padding(14.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Text(mission.label, color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Gold, Nahrung und Ruhm", color = Mist, fontSize = 11.sp)
+        selectedRegion?.let { region ->
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(region.name, color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text("${region.type.label}${if (region.owned) " · Unter deinem Schutz" else ""}", color = Mist, fontSize = 12.sp)
+                        region.mission?.let { mission -> SmallAction("${mission.label} vorbereiten") { missionRegion = region } }
                     }
-                    Text("›", color = Gold, fontSize = 28.sp)
                 }
             }
         }
-
-        item { SectionTitle("Große Schlacht vorbereiten") }
+        item { StatGrid(listOf("Zu Hause" to "${state.homeArmySize} Soldaten", "Unterwegs" to "${state.awayArmySize} Soldaten")) }
+        item { SectionTitle("Missionen") }
+        item { MissionsSection(state, onState, onNotice) }
+        state.battleSession?.takeIf { !it.isActive }?.let { battle ->
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(if (battle.status == BattleStatus.VICTORY) "Sieg auf dem Schlachtfeld" else "Schlacht verloren", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text("${battle.ownRemaining} von ${battle.ownStart} Soldaten zurück · ${battle.ownStart - battle.ownRemaining} Verluste", color = Mist)
+                        Text("Gegner: ${battle.enemyRemaining} verblieben · ${battle.lootGold} Gold Beute", color = Gold, fontSize = 12.sp)
+                        battle.log.takeLast(4).forEach { Text("${it.minute}′ ${it.text}", color = Mist, fontSize = 12.sp) }
+                        SmallAction("Bericht schließen") { onState(state.copy(battleSession = null)) }
+                    }
+                }
+            }
+        }
+        item { SectionTitle("Schlachtaufstellung") }
         item {
-            Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("1. Gegner wählen", color = PaleGold, fontWeight = FontWeight.Bold)
-                    EnemyType.entries.forEach { option ->
-                        val selected = enemy == option
-                        Surface(
-                            onClick = { enemy = option },
-                            color = if (selected) Color(0xFF25313A) else Color(0xFF171F26),
-                            shape = RoundedCornerShape(12.dp),
-                            border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Danger) else null
-                        ) {
-                            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column {
-                                    Text(option.label, color = Color.White, fontWeight = FontWeight.Bold)
-                                    Text(enemyDescription(option), color = Mist, fontSize = 10.sp)
-                                }
-                                if (selected) Text("AUSGEWÄHLT", color = Danger, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(4.dp))
-                    Text("2. Taktik wählen", color = PaleGold, fontWeight = FontWeight.Bold)
-                    Tactic.entries.forEach { option ->
-                        val selected = tactic == option
-                        Surface(
-                            onClick = { tactic = option },
-                            color = if (selected) Color(0xFF25313A) else Color(0xFF171F26),
-                            shape = RoundedCornerShape(12.dp),
-                            border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null
-                        ) {
-                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(option.label, color = Color.White, fontWeight = FontWeight.Bold)
-                                    if (selected) Text("AKTIV", color = Gold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Text(tacticDescription(option), color = Mist, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
-                            }
-                        }
-                    }
-
-                    Surface(color = Color(0xFF11181E), shape = RoundedCornerShape(12.dp)) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text("Was passiert danach?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                            Text(
-                                "Die Schlacht läuft jetzt in einer echten Live-Ansicht über mehrere Phasen bis Minute 90. Du siehst Frontverlauf, aktuelle Mannstärke, Verluste und Ereignisse und kannst pausieren oder die Geschwindigkeit ändern.",
-                                color = Mist,
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                    }
-
-                    GoldButton(
-                        "Live-Schlacht starten",
-                        {
-                            if (state.armySize <= 0) {
-                                onNotice("Du hast noch keine einsatzbereiten Soldaten.")
-                            } else {
-                                liveBattle = GameEngine.simulateBattleLive(state, enemy, tactic)
-                            }
-                        },
-                        Modifier.fillMaxWidth()
-                    )
-                }
-            }
+            EmptyCard("Verteile verfügbare Kommandos auf Flügel, Zentrum und Reserve. Soldaten auf Missionen fehlen. Die Schlacht entwickelt sich Schritt für Schritt mit deinen Entscheidungen.")
         }
+        item { GoldButton("Schlacht vorbereiten", { battleSetup = true }, Modifier.fillMaxWidth()) }
         item { Spacer(Modifier.height(16.dp)) }
     }
+    missionRegion?.let { region -> region.mission?.let { mission ->
+        MissionPreparationDialog(state, mission, region, { missionRegion = null }, onState, onNotice)
+    } }
+    if (battleSetup) BattleSetupDialog(state, { battleSetup = false }, onState, onNotice)
 }
 
-private fun enemyDescription(enemy: EnemyType): String = when (enemy) {
-    EnemyType.ORC -> "Viele schwächere Gegner. Gute erste große Schlacht."
-    EnemyType.URUK -> "Schwer gerüstet, diszipliniert und gefährlich im Nahkampf."
-    EnemyType.TAO_TEI -> "Schneller Schwarm, hohe Verluste möglich. Fernkampf und Mauern helfen."
+@Composable
+internal fun BattleSetupDialog(state: GameState, onDismiss: () -> Unit, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    val session = state.battleSession?.takeIf { it.isActive }
+    val editingFormation = session?.minute == 0
+    val invasion = state.invasion?.takeIf { it.arrivalDay <= state.day }
+    val initialDeployments = remember(session?.seed) {
+        if (session == null) BattleEngine.defaultDeployments(state)
+        else session.contingents.groupBy { it.commanderId to it.section }.map { (key, contingents) ->
+            BattleDeployment(key.first, key.second, contingents.groupBy { it.type }.map { (type, units) ->
+                UnitAllocation(type, units.sumOf { it.soldiers.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
+            }.filter { it.amount > 0 })
+        }
+    }
+    var enemy by remember { mutableStateOf(session?.enemy ?: invasion?.enemy ?: EnemyType.ORC) }
+    var tactic by remember { mutableStateOf(session?.tactic ?: Tactic.HOLD) }
+    val commanders = state.commanders.filterNot { state.commanderAway(it.id) }
+    var sections by remember {
+        mutableStateOf(commanders.associate { commander ->
+            commander.id to (initialDeployments.firstOrNull { it.commanderId == commander.id }?.section ?: BattleSection.CENTER)
+        })
+    }
+    var directCounts by remember {
+        mutableStateOf(UnitType.entries.associateWith { type ->
+            BattleSection.entries.associateWith { section ->
+                initialDeployments.filter { it.commanderId == null && it.section == section }
+                    .sumOf { deployment -> deployment.units.filter { it.type == type }.sumOf { it.amount.toLong() } }
+                    .coerceIn(0L, state.directCommand(type).toLong()).toInt()
+            }
+        })
+    }
+    val deployments = buildList {
+        commanders.forEach { commander ->
+            val units = UnitType.entries.mapNotNull { type ->
+                val count = state.assignedTo(commander.id, type).coerceAtMost(state.homeSoldiers(type))
+                if (count > 0) UnitAllocation(type, count) else null
+            }
+            if (units.isNotEmpty()) add(BattleDeployment(commander.id, sections[commander.id] ?: BattleSection.CENTER, units))
+        }
+        BattleSection.entries.forEach { section ->
+            val units = UnitType.entries.mapNotNull { type ->
+                val count = directCounts[type]?.get(section) ?: 0
+                if (count > 0) UnitAllocation(type, count) else null
+            }
+            if (units.isNotEmpty()) add(BattleDeployment(null, section, units))
+        }
+    }
+    val total = deployments.sumOf { deployment -> deployment.units.sumOf { it.amount.toLong() } }
+    val validDirectCounts = UnitType.entries.all { type ->
+        (directCounts[type]?.values?.sumOf { it.toLong() } ?: 0L) <= state.directCommand(type).toLong()
+    }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (editingFormation) "Aufstellung ändern" else "Schlacht vorbereiten") }, text = {
+        LazyColumn(Modifier.heightIn(max = 540.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                if (session != null) {
+                    Text("${session.enemy.label} · ${session.enemyStart} Gegner", color = Danger)
+                    Text("Taktik: ${session.tactic.label}", color = Gold)
+                } else {
+                    if (invasion == null) SelectionMenu("Gegner", enemy.label, EnemyType.entries, { it.label }) { enemy = it }
+                    else Text("Festungsverteidigung: ${invasion.enemy.label} · ${invasion.strength} Gegner", color = Danger)
+                    SelectionMenu("Taktik", tactic.label, Tactic.entries, { it.label }) { tactic = it }
+                }
+                Text("${state.awayArmySize} Soldaten unterwegs und nicht verfügbar.", color = Mist, fontSize = 12.sp)
+                if (editingFormation) Text("Vor dem ersten Gefecht kannst du deine Aufstellung anpassen.", color = Mist, fontSize = 12.sp)
+            }
+            commanders.forEach { commander -> item {
+                val count = UnitType.entries.sumOf { state.assignedTo(commander.id, it).toLong() }
+                Text("${commander.name} · $count Soldaten", color = PaleGold, fontWeight = FontWeight.Bold)
+                SelectionMenu("Abschnitt", (sections[commander.id] ?: BattleSection.CENTER).label, BattleSection.entries, { it.label }) {
+                    sections = sections + (commander.id to it)
+                }
+            } }
+            UnitType.entries.filter { state.directCommand(it) > 0 }.forEach { type -> item {
+                Surface(color = Panel2, shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val available = state.directCommand(type).toLong()
+                        val used = directCounts[type]?.values?.sumOf { it.toLong() } ?: 0L
+                        Text("Oberkommando: ${type.label}", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text("$used von $available aufgestellt · ${available - used} noch frei", color = Mist, fontSize = 12.sp)
+                        BattleSection.entries.forEach { section ->
+                            val current = directCounts[type]?.get(section) ?: 0
+                            val otherCounts = directCounts[type]?.filterKeys { it != section }?.values?.sumOf { it.toLong() } ?: 0L
+                            val capacity = (available - otherCounts).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+                            TroopCountPicker(section.label, capacity, current) { amount ->
+                                val counts = directCounts[type].orEmpty() + (section to amount.coerceIn(0, capacity))
+                                directCounts = directCounts + (type to counts)
+                            }
+                        }
+                    }
+                }
+            } }
+            item {
+                Text("$total Soldaten aufgestellt", color = Gold, fontWeight = FontWeight.Bold)
+                BattleSection.entries.forEach { section ->
+                    val sectionTotal = deployments.filter { it.section == section }.sumOf { d -> d.units.sumOf { it.amount.toLong() } }
+                    Text("${section.label}: $sectionTotal", color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+    }, confirmButton = {
+        Button(enabled = total > 0 && total <= Int.MAX_VALUE.toLong() && validDirectCounts && (session == null || editingFormation), onClick = {
+            val result = if (editingFormation) BattleEngine.redeploy(state, deployments)
+                else BattleEngine.start(state, enemy, tactic, deployments, enemyStrength = invasion?.strength)
+            onState(result.state); onNotice(result.message)
+            if (result.state.battleSession?.isActive == true) onDismiss()
+        }) { Text(if (editingFormation) "AUFSTELLUNG ÜBERNEHMEN" else "LIVE-SCHLACHT STARTEN") }
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Zurück") } })
 }
 
-private fun tacticDescription(tactic: Tactic): String = when (tactic) {
-    Tactic.HOLD -> "Ausgewogen. Die Linie bleibt stabil und wartet auf Fehler des Gegners."
-    Tactic.AGGRESSIVE -> "Mehr Druck und Tempo. Stark gegen Orks, riskanter gegen schwere Gegner."
-    Tactic.RANGED -> "Bogenschützen und Artillerie erhalten mehr Einfluss auf den Schlachtverlauf."
-    Tactic.FLANK -> "Versucht den Gegner seitlich zu brechen. Besonders wirksam gegen starre Kriegsheere."
-    Tactic.FORTIFY -> "Nutzt Mauern und Türme. Sehr stark bei gut ausgebauter Festungsverteidigung."
+@Composable
+private fun <T> SelectionMenu(label: String, selected: String, options: List<T>, optionLabel: (T) -> String, onSelect: (T) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text("$label: $selected") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { option -> DropdownMenuItem(text = { Text(optionLabel(option)) }, onClick = { onSelect(option); expanded = false }) }
+        }
+    }
 }
 
 @Composable
@@ -243,6 +301,31 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 ),
                 onPortrait = { playerPicker.launch(arrayOf("image/*")) }
             )
+        }
+
+        item {
+            Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Stufe ${state.player.level} · ${state.player.experience} Erfahrung", color = PaleGold, fontWeight = FontWeight.Bold)
+                    Text("${state.player.skillPoints} freie Fertigkeitspunkte", color = Gold)
+                    listOf(
+                        Triple("Schwert", "sword", state.player.sword),
+                        Triple("Bogen", "bow", state.player.bow),
+                        Triple("Reiten", "riding", state.player.riding),
+                        Triple("Führung", "leadership", state.player.leadership),
+                        Triple("Taktik", "tactics", state.player.tactics),
+                        Triple("Diplomatie", "diplomacy", state.player.diplomacy)
+                    ).forEach { (label, key, value) ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("$label: $value", color = Mist, modifier = Modifier.padding(top = 12.dp))
+                            OutlinedButton(enabled = state.player.skillPoints > 0 && value < 100, onClick = {
+                                val result = ProgressionEngine.spendPoint(state, key)
+                                onState(result.state); onNotice(result.message)
+                            }) { Text("+1") }
+                        }
+                    }
+                }
+            }
         }
 
         item {
@@ -316,7 +399,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
 
             item {
-                val stage = relationshipStage(state.companion)
+                val stage = state.companion.relationshipStage()
                 StatGrid(
                     listOf(
                         "Vertrauen" to (state.companion.trust.toString() + "%"),
@@ -326,9 +409,29 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                     )
                 )
             }
+            state.relationship.pendingEvent?.let { event ->
+                item {
+                    Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Gold)) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(event.title, color = PaleGold, fontWeight = FontWeight.Bold)
+                            Text(event.text, color = Mist)
+                            listOf("Unterstützen", "Herausfordern", "Zurückziehen").forEachIndexed { index, choice ->
+                                SmallAction(choice) {
+                                    val result = RelationshipEngine.choose(state, index)
+                                    onState(result.state); onNotice(result.message)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
+                        Text("Heute: ${2 - spent} von 2 Aktionspunkten frei", color = Gold, fontWeight = FontWeight.Bold)
+                        Text("Sprechen / Training: je 1 Punkt. Kommando / Reichsführung: je 2 Punkte. Der nächste Tag erneuert das Budget.", color = Mist, fontSize = 12.sp)
+                        Text(if (state.commanderAway(COMPANION_COMMANDER_ID)) "${state.companion.name} ist auf Mission." else "Truppen im Armeemenü zuweisen; ${state.companion.name} kann Missionen und einen Schlachtabschnitt führen.", color = Mist, fontSize = 12.sp)
                         RelationshipAction("Gemeinsam sprechen", state, "talk", onState, onNotice)
                         RelationshipAction("Gemeinsam trainieren", state, "train", onState, onNotice)
                         RelationshipAction("Eigenes Kommando übertragen", state, "command", onState, onNotice)
@@ -340,14 +443,6 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
     }
 }
 
-private fun relationshipStage(companion: CompanionProfile): String = when {
-    companion.affection >= 80 && companion.trust >= 80 && companion.respect >= 70 -> "Herrscherpaar"
-    companion.affection >= 60 && companion.trust >= 60 -> "Beziehung"
-    companion.trust >= 45 && companion.respect >= 45 -> "Enge Gefährten"
-    companion.trust >= 30 -> "Freunde"
-    else -> "Gefährten"
-}
-
 @Composable
 private fun RelationshipAction(
     label: String,
@@ -356,9 +451,14 @@ private fun RelationshipAction(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit
 ) {
-    SmallAction(label) {
-        val result = GameEngine.companionAction(state, action)
-        onState(result.state)
-        onNotice(result.message)
-    }
+    val cost = if (action in listOf("command", "court")) 2 else 1
+    val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
+    OutlinedButton(
+        enabled = spent + cost <= 2 && !state.commanderAway(COMPANION_COMMANDER_ID) && state.battleSession?.isActive != true,
+        onClick = {
+            val result = GameEngine.companionAction(state, action)
+            onState(result.state)
+            onNotice(result.message)
+        }, modifier = Modifier.fillMaxWidth()
+    ) { Text(label) }
 }

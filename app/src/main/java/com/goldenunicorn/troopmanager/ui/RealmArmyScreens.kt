@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -20,12 +21,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
+import com.goldenunicorn.troopmanager.engine.ArmyEngine
+import com.goldenunicorn.troopmanager.engine.EconomyEngine
+import com.goldenunicorn.troopmanager.engine.EventEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.renameSettlement
 import com.goldenunicorn.troopmanager.engine.customizeCommanderPortrait
@@ -33,6 +38,22 @@ import com.goldenunicorn.troopmanager.model.*
 
 @Composable
 internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    var selectedBuilding by remember { mutableStateOf<BuildingType?>(null) }
+    selectedBuilding?.let { type ->
+        val cost = GameEngine.buildingCost(state,type)
+        AlertDialog(
+            onDismissRequest = { selectedBuilding = null },
+            title = { Text(type.label + " · Stufe " + state.realm.level(type)) },
+            text = { Text("${buildingEffect(type, state.realm.level(type))}\nAusbau: ${cost.gold} Gold · ${cost.wood} Holz · ${cost.stone} Stein") },
+            confirmButton = { TextButton(onClick = {
+                val result = GameEngine.build(state, type)
+                onState(result.state)
+                onNotice(result.message)
+                selectedBuilding = null
+            }) { Text("Ausbauen") } },
+            dismissButton = { TextButton(onClick = { selectedBuilding = null }) { Text("Schließen") } }
+        )
+    }
     var settlementName by remember(state.realm.settlementName) { mutableStateOf(state.realm.settlementName) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -48,9 +69,6 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                         Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                    Box(
-                        Modifier.fillMaxSize().padding(0.dp)
-                    )
                     Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
                         Text(state.realm.settlementName.uppercase(), color = PaleGold, fontSize = 12.sp, letterSpacing = 2.sp)
                         Text(
@@ -64,9 +82,29 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 }
             }
         }
-        item { ResourceStrip(state.resources) }
+        item { ResourceStrip(state.resources, EconomyEngine.production(state).net) }
         item { DailyEconomyCard(state) }
-        item { FortressMap(state) }
+        item { FortressMap(state) { selectedBuilding = it } }
+        item { RealmGoalsCard(state) }
+        item { PopulationCard(state) }
+        item { InvasionPreparationCard(state, onState, onNotice) }
+        state.pendingRealmEvent?.let { event ->
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(event.category + " · " + event.title, color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text(event.text, color = Mist)
+                        EventEngine.choices(event).forEachIndexed { index, choice ->
+                            OutlinedButton(onClick = {
+                                val result = EventEngine.choose(state, index)
+                                onState(result.state)
+                                onNotice(result.message)
+                            }, modifier = Modifier.fillMaxWidth()) { Text(choice) }
+                        }
+                    }
+                }
+            }
+        }
         if (state.completedRealm) {
             item {
                 Surface(
@@ -138,7 +176,7 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Produktion") }
         items(listOf(BuildingType.FARM, BuildingType.SAWMILL, BuildingType.QUARRY, BuildingType.IRONWORKS, BuildingType.MARKET)) { type ->
-            BuildingDetailRow(type, state.realm.level(type)) {
+            BuildingDetailRow(state, type) {
                 val result = GameEngine.build(state, type)
                 onState(result.state)
                 onNotice(result.message)
@@ -146,7 +184,7 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Militär & Verteidigung") }
         items(listOf(BuildingType.BARRACKS, BuildingType.WALL, BuildingType.TOWER)) { type ->
-            BuildingDetailRow(type, state.realm.level(type)) {
+            BuildingDetailRow(state, type) {
                 val result = GameEngine.build(state, type)
                 onState(result.state)
                 onNotice(result.message)
@@ -154,7 +192,7 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Herrschaft") }
         item {
-            BuildingDetailRow(BuildingType.PALACE, state.realm.level(BuildingType.PALACE)) {
+            BuildingDetailRow(state, BuildingType.PALACE) {
                 val result = GameEngine.build(state, BuildingType.PALACE)
                 onState(result.state)
                 onNotice(result.message)
@@ -166,72 +204,98 @@ internal fun RealmScreen(state: GameState, onState: (GameState) -> Unit, onNotic
 
 @Composable
 private fun DailyEconomyCard(state: GameState) {
-    val farm = state.realm.level(BuildingType.FARM)
-    val saw = state.realm.level(BuildingType.SAWMILL)
-    val quarry = state.realm.level(BuildingType.QUARRY)
-    val iron = state.realm.level(BuildingType.IRONWORKS)
-    val market = state.realm.level(BuildingType.MARKET)
-    val territory = state.realm.territory
-    val food = 28 + farm * 35 + territory * 12 - state.armySize / 40
-    val wood = 10 + saw * 28
-    val stone = 4 + quarry * 30 + territory * 3
-    val ironGain = 4 + iron * 18
-    val gold = 18 + market * 16 + territory * 10
-
+    val production = EconomyEngine.production(state)
+    val net = production.net
+    fun signed(value: Int) = if (value >= 0) "+$value" else value.toString()
     Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(14.dp)) {
-            Text("Tagesproduktion", color = Color.White, fontWeight = FontWeight.Bold)
-            Text(
-                "+" + gold + " Gold · " + (if (food >= 0) "+" else "") + food + " Nahrung · +" +
-                        wood + " Holz · +" + stone + " Stein · +" + ironGain + " Eisen",
-                color = Gold,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 5.dp)
-            )
-            Text(
-                if (quarry == 0) "Tipp: Baue einen Steinbruch. Ohne ihn wächst dein Steinvorrat nur sehr langsam."
-                else "Steinbruch Stufe " + quarry + " liefert +" + (quarry * 30) + " Stein pro Tag.",
-                color = Mist,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 5.dp)
-            )
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text("Wirtschaft pro Tag", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Gold ${state.resources.gold} (${signed(net.gold)}/Tag) · Holz ${state.resources.wood} (${signed(net.wood)}/Tag)", color = PaleGold)
+            Text("Stein ${state.resources.stone} (${signed(net.stone)}/Tag) · Eisen ${state.resources.iron} (${signed(net.iron)}/Tag)", color = PaleGold)
+            Text("Nahrung ${state.resources.food} · Produktion +${production.gross.food} · Armeeunterhalt −${production.upkeep} · Netto ${signed(net.food)}/Tag", color = if (net.food < 0) Danger else Gold)
+            if (state.resources.food == 0) Text("Nahrungsmangel schwächt Moral, Wachstum, Ausbildung und Kampfkraft.", color = Danger)
+            Text("${state.workers} Arbeiter von ${state.workerDemand} benötigt. Fehlende Arbeiter senken die Produktion.", color = Mist, fontSize = 12.sp)
         }
     }
 }
 
 @Composable
-private fun BuildingDetailRow(type: BuildingType, level: Int, onBuild: () -> Unit) {
-    val effect = when (type) {
-        BuildingType.FARM -> "+" + (level * 35) + " Nahrung/Tag"
-        BuildingType.SAWMILL -> "+" + (level * 28) + " Holz/Tag"
-        BuildingType.QUARRY -> "+" + (level * 30) + " Stein/Tag"
-        BuildingType.IRONWORKS -> "+" + (level * 18) + " Eisen/Tag"
-        BuildingType.MARKET -> "+" + (level * 16) + " Gold/Tag"
-        BuildingType.BARRACKS -> "kürzere Ausbildung, höhere Startmoral"
-        BuildingType.WALL -> "stärkere befestigte Verteidigung"
-        BuildingType.TOWER -> "zusätzlicher Verteidigungsbonus"
-        BuildingType.PALACE -> "entwickelt Siedlung und Herrschaft"
+private fun RealmGoalsCard(state: GameState) {
+    val goals = buildList {
+        if (state.armySize < 1000) add("Heer auf 1.000 Soldaten ausbauen · ${state.armySize}/1.000")
+        if (state.realm.territory < 2) add("Ein zweites Gebiet erwerben")
+        if (state.realm.level(BuildingType.WALL) < 2) add("Mauer auf Stufe 2 ausbauen")
+        if (state.commanders.none { it.level > 1 }) add("Einen Kommandanten entwickeln")
+        if (state.activeMissions.none { !it.status.isAway }) add("Eine Mission abschließen")
+        if (isEmpty()) {
+            add("Reich auf ${state.realm.territory + 1} Gebiete erweitern")
+            add("Heer auf ${((state.armySize / 5000) + 1) * 5000} Soldaten ausbauen")
+            add("Verteidigung stärken und die nächste Invasion bestehen")
+        }
     }
-    Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(type.label, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Stufe " + level + " · " + effect, color = Mist, fontSize = 11.sp)
-            }
-            OutlinedButton(onClick = onBuild) { Text("Ausbauen", fontSize = 11.sp) }
+    Surface(color = Color(0xFF252619), shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Deine nächsten Ziele", color = PaleGold, fontWeight = FontWeight.Bold)
+            goals.take(3).forEach { Text("• $it", color = Mist, fontSize = 13.sp) }
         }
     }
 }
 
 @Composable
-private fun BuildingRow(type: BuildingType, level: Int, onBuild: () -> Unit) {
+private fun PopulationCard(state: GameState) {
+    Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Bevölkerung · ${state.population.total}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("${state.civilianPopulation} Zivilisten · ${state.workers} Arbeiter · ${state.population.totalRecruits} Rekruten · ${state.freePopulation} frei", color = Mist)
+            Text("${state.armySize} Soldaten · ${state.trainingSize} in Ausbildung", color = PaleGold)
+            Text("Soldaten und Auszubildende arbeiten nicht in der Wirtschaft. Rekrutierung verringert die zivile Reserve.", color = Mist, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun InvasionPreparationCard(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    val invasion = state.invasion
+    Surface(color = if (invasion != null) Color(0xFF302020) else Panel, shape = RoundedCornerShape(16.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(if (invasion == null) "Grenzlage · ${state.realm.threat}% Bedrohung" else "${invasion.enemy.label} nähert sich", color = if (invasion == null) PaleGold else Danger, fontWeight = FontWeight.Bold)
+            LinearProgressIndicator(progress = { state.realm.threat / 100f }, modifier = Modifier.fillMaxWidth(), color = Danger)
+            Text(if (invasion == null) "40% Späherwarnung · 60% Überfälle · 75% Heeresbewegung · 90% Invasion · 100% Angriff" else "Ankunft in ${(invasion.arrivalDay - state.day).coerceAtLeast(0)} Tagen · Stärke ${invasion.strength}", color = Mist, fontSize = 12.sp)
+            if (invasion != null) Text("Belagerungsgerät: ${invasion.devices.joinToString { it.label }}", color = Mist, fontSize = 12.sp)
+            Text("${state.homeArmySize} Soldaten daheim · ${state.awayArmySize} unterwegs · Mauer ${state.realm.wallIntegrity}%", color = PaleGold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { val result = GameEngine.repairWall(state); onState(result.state); onNotice(result.message) }, enabled = state.realm.wallIntegrity < 100, modifier = Modifier.weight(1f)) { Text("Mauer reparieren") }
+                if (invasion != null) OutlinedButton(onClick = { val result = GameEngine.requestAllies(state); onState(result.state); onNotice(result.message) }, enabled = !invasion.alliesRequested, modifier = Modifier.weight(1f)) { Text(if (invasion.alliesRequested) "Verbündete gerufen" else "Hilfe anfordern") }
+            }
+            if (invasion != null) Text("Vorräte sichern, Ausbildung starten, Kommandanten verteilen. Unter Welt → Missionen kannst du Truppen zurückrufen.", color = Mist, fontSize = 12.sp)
+        }
+    }
+}
+
+private fun buildingEffect(type: BuildingType, level: Int): String = when (type) {
+    BuildingType.FARM -> "+${level * 150} Nahrung/Tag vor Arbeitskraftbonus"
+    BuildingType.SAWMILL -> "+${level * 100} Holz/Tag vor Arbeitskraftbonus"
+    BuildingType.QUARRY -> "+${level * 100} Stein/Tag vor Arbeitskraftbonus"
+    BuildingType.IRONWORKS -> "+${level * 75} Eisen/Tag vor Arbeitskraftbonus"
+    BuildingType.MARKET -> "+${level * 100} Gold/Tag vor Arbeitskraftbonus"
+    BuildingType.BARRACKS -> "Kürzere Ausbildung und höhere Startmoral"
+    BuildingType.WALL -> "Stärkere befestigte Verteidigung"
+    BuildingType.TOWER -> "Zusätzlicher Verteidigungsbonus"
+    BuildingType.PALACE -> "Entwickelt Siedlung und Herrschaft"
+}
+
+@Composable
+private fun BuildingDetailRow(state:GameState, type: BuildingType, onBuild: () -> Unit) {
+    val level = state.realm.level(type)
+    val cost = GameEngine.buildingCost(state,type)
     Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(type.label, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("Stufe " + level, color = Gold, fontSize = 12.sp)
+                Text("Stufe $level · ${buildingEffect(type, level)}", color = Mist, fontSize = 12.sp)
+                Text("${cost.gold} Gold · ${cost.wood} Holz · ${cost.stone} Stein", color = Gold, fontSize = 12.sp)
             }
-            OutlinedButton(onClick = onBuild) { Text("Ausbauen", fontSize = 12.sp) }
+            OutlinedButton(onClick = onBuild) { Text("Ausbauen") }
         }
     }
 }
@@ -297,9 +361,9 @@ internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice
                 Column(Modifier.padding(14.dp)) {
                     Text("Dein Heer auf einen Blick", color = Color.White, fontWeight = FontWeight.Bold)
                     Text(
-                        "Keine künstliche Regimenter-Liste mehr: Hier siehst du die echten Gesamtzahlen pro Einheitentyp. Kommandanten erhalten daraus konkrete Kontingente.",
+                        "${state.homeArmySize} Soldaten daheim · ${state.awayArmySize} auf Mission. Nicht zugewiesene Soldaten stehen unter deinem direkten Oberkommando.",
                         color = Mist,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -310,10 +374,7 @@ internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice
             CultureArmyCard(state, culture) { selectedCulture = culture }
         }
 
-        item { SectionTitle("Gesamtbestand nach Einheit") }
-        items(UnitType.entries.filter { state.soldiers(it) > 0 || state.trainingQueue.any { q -> q.type == it } }) { type ->
-            AggregatedUnitRow(state, type)
-        }
+
         if (UnitType.entries.none { state.soldiers(it) > 0 }) {
             item { EmptyCard("Noch keine fertig ausgebildeten Soldaten. Öffne oben eine Kategorie und starte eine Ausbildung.") }
         }
@@ -361,7 +422,7 @@ internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice
 
 @Composable
 private fun CultureArmyCard(state: GameState, culture: Culture, onClick: () -> Unit) {
-    val recruits = state.population.recruits(culture)
+    val recruits = ArmyEngine.recruitable(state, culture)
     val active = UnitType.entries.filter { it.culture == culture }.sumOf { state.soldiers(it) }
     val training = state.trainingQueue.filter { it.type.culture == culture }.sumOf { it.amount }
     val unlocked = UnitType.entries.any { it.culture == culture && GameEngine.isUnitUnlocked(state, it) }
@@ -373,7 +434,7 @@ private fun CultureArmyCard(state: GameState, culture: Culture, onClick: () -> U
         shape = RoundedCornerShape(20.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, if (unlocked) Color(0xFF33414B) else Color(0xFF252A2E))
     ) {
-        Box(Modifier.fillMaxWidth().height(188.dp)) {
+        Box(Modifier.fillMaxWidth().height(218.dp)) {
             CategoryArt(culture, Modifier.fillMaxSize())
             Box(
                 Modifier.fillMaxSize().background(
@@ -382,16 +443,17 @@ private fun CultureArmyCard(state: GameState, culture: Culture, onClick: () -> U
             )
             Column(Modifier.align(Alignment.CenterStart).padding(18.dp).fillMaxWidth(0.72f)) {
                 Text(culture.label, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text(cultureSummary(culture), color = Mist, fontSize = 11.sp, maxLines = 2)
+                Text(cultureSummary(culture), color = Mist, fontSize = 12.sp, maxLines = 2)
                 Spacer(Modifier.height(8.dp))
                 Text(active.toString() + " Soldaten", color = PaleGold, fontWeight = FontWeight.Bold)
-                Text(recruits.toString() + " Rekruten · " + training + " in Ausbildung", color = Mist, fontSize = 11.sp)
+                Text(recruits.toString() + " Rekruten · " + training + " in Ausbildung", color = Mist, fontSize = 12.sp)
+                Text(UnitType.entries.filter { it.culture == culture && state.soldiers(it) > 0 }.joinToString(" · ") { "${it.label} ${state.soldiers(it)}" }.ifBlank { "Noch keine Truppen dieser Kultur" }, color = PaleGold, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
             }
             Text(
                 if (unlocked) "DETAILS & AUSBILDUNG ›" else "GESPERRT",
                 color = if (unlocked) Gold else Color.Gray,
                 fontWeight = FontWeight.Black,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.BottomEnd).padding(14.dp)
             )
         }
@@ -406,7 +468,7 @@ private fun CultureTrainingView(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit
 ) {
-    val available = state.population.recruits(culture)
+    val available = ArmyEngine.recruitable(state, culture)
     val types = UnitType.entries.filter { it.culture == culture }
 
     LazyColumn(
@@ -429,9 +491,9 @@ private fun CultureTrainingView(
                         )
                     )
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                        Text(culture.label.uppercase(), color = PaleGold, fontSize = 11.sp, letterSpacing = 2.sp)
+                        Text(culture.label.uppercase(), color = PaleGold, fontSize = 12.sp, letterSpacing = 2.sp)
                         Text(
-                            UnitType.entries.filter { it.culture == culture }.sumOf { state.soldiers(it) }.toString() + " aktive Soldaten",
+                            UnitType.entries.filter { it.culture == culture }.sumOf { state.soldiers(it) }.toString() + " Soldaten insgesamt",
                             color = Color.White,
                             fontSize = 25.sp,
                             fontWeight = FontWeight.Black
@@ -442,11 +504,17 @@ private fun CultureTrainingView(
             }
         }
 
+        item { SectionTitle("Bestände & Ausbildung") }
         items(types) { type ->
             UnitTypeDetailCard(
                 state = state,
                 type = type,
                 availableRecruits = available,
+                onRepair = {
+                    val result = ArmyEngine.repairEquipment(state, type)
+                    onState(result.state)
+                    onNotice(result.message)
+                },
                 onRecruit = { percent ->
                     val result = GameEngine.recruit(state, type, percent)
                     onState(result.state)
@@ -464,12 +532,14 @@ private fun UnitTypeDetailCard(
     state: GameState,
     type: UnitType,
     availableRecruits: Int,
+    onRepair: () -> Unit,
     onRecruit: (Int) -> Unit
 ) {
     val active = state.soldiers(type)
     val training = state.trainingQueue.filter { it.type == type }.sumOf { it.amount }
     val assigned = state.assigned(type)
     val unlocked = GameEngine.isUnitUnlocked(state, type)
+    val pool = state.armyPools.firstOrNull { it.type == type }
 
     Surface(
         color = Panel,
@@ -479,28 +549,39 @@ private fun UnitTypeDetailCard(
         Column(Modifier.padding(15.dp)) {
             Text(type.label, color = if (unlocked) Color.White else Color.Gray, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Aktiv: " + active, color = PaleGold, fontWeight = FontWeight.Bold)
-                Text("Kommandos: " + assigned, color = Mist, fontSize = 11.sp)
-                Text("Training: " + training, color = Mist, fontSize = 11.sp)
+                Text("Gesamt: " + active, color = PaleGold, fontWeight = FontWeight.Bold)
+                Text("Kommandos: " + assigned, color = Mist, fontSize = 12.sp)
+                Text("Training: " + training, color = Mist, fontSize = 12.sp)
+            }
+            Text("${state.homeSoldiers(type)} daheim · ${state.away(type)} unterwegs · ${state.directCommand(type)} direktes Oberkommando", color = Mist, fontSize = 12.sp)
+            if (pool != null) {
+                Text("Moral ${pool.morale}% · Erfahrung ${pool.experience}% · Ausrüstung ${pool.equipment}%", color = PaleGold, fontSize = 12.sp)
+                if (pool.equipment < 100) {
+                    val points = minOf(20, 100 - pool.equipment)
+                    val ironCost = maxOf(1, (pool.soldiers.toLong() * points / 20).toInt())
+                    OutlinedButton(onClick = onRepair, enabled = state.away(type) == 0 && state.battleSession?.isActive != true) {
+                        Text("Ausrüstung +$points · ${ironCost * 2} Gold + $ironCost Eisen")
+                    }
+                }
             }
             Text(
                 "Angriff " + type.attack + " · Verteidigung " + type.defense + " · Fernkampf " + type.ranged +
                         " · " + type.trainingDays + " Tage",
                 color = Mist,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
                 type.goldCost.toString() + " Gold + " + type.ironCost + " Eisen je Rekrut",
                 color = Gold,
-                fontSize = 11.sp
+                fontSize = 12.sp
             )
 
             if (unlocked) {
                 Text(
                     "Neue Ausbildung aus " + availableRecruits + " Rekruten:",
                     color = Color.White,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(top = 10.dp)
                 )
                 Row(
@@ -516,34 +597,13 @@ private fun UnitTypeDetailCard(
                             contentPadding = PaddingValues(vertical = 7.dp, horizontal = 2.dp)
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(percent.toString() + "%", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                Text(amount.toString(), fontSize = 9.sp, color = Mist)
+                                Text(percent.toString() + "%", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(amount.toString(), fontSize = 12.sp, color = Mist)
                             }
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AggregatedUnitRow(state: GameState, type: UnitType) {
-    val active = state.soldiers(type)
-    val assigned = state.assigned(type)
-    val training = state.trainingQueue.filter { it.type == type }.sumOf { it.amount }
-    Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
-        Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            UnitArt(type.culture, Modifier.size(48.dp))
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(type.label, color = Color.White, fontWeight = FontWeight.Bold)
-                Text(
-                    active.toString() + " aktiv · " + assigned + " Kommandanten zugewiesen · " + training + " in Ausbildung",
-                    color = Mist,
-                    fontSize = 11.sp
-                )
-            }
-            Text(active.toString(), color = PaleGold, fontSize = 20.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -557,6 +617,7 @@ private fun CommanderOverviewCard(
     onAssign: () -> Unit
 ) {
     val allocation = state.commanderAssignments.firstOrNull { it.commanderId == commander.id }
+    val away = state.commanderAway(commander.id)
     Surface(color = Panel, shape = RoundedCornerShape(17.dp)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (commander.portraitUri != null) {
@@ -576,37 +637,39 @@ private fun CommanderOverviewCard(
             }
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(commander.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Text(commander.rank + " · " + commander.culture.label + " · " + commander.trait, color = Gold, fontSize = 11.sp)
+                Text(commander.rank + " · " + commander.culture.label + " · " + commander.trait, color = Gold, fontSize = 12.sp)
                 Text(
                     "Führung " + commander.leadership + " · Taktik " + commander.tactics + " · Loyalität " + commander.loyalty,
                     color = Mist,
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
                 Text(
                     if (allocation == null || allocation.total == 0) "Noch keine Truppen zugewiesen"
                     else allocation.total.toString() + " Soldaten unter seinem Kommando",
                     color = PaleGold,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+                Text("Schwert ${commander.sword} · Bogen ${commander.bow} · Belagerung ${commander.siege}", color = Mist, fontSize = 12.sp)
+                if (away) Text("Unterwegs auf Mission", color = Gold, fontWeight = FontWeight.Bold)
                 if (allocation != null && allocation.units.isNotEmpty()) {
                     Text(
                         allocation.units.joinToString(" · ") { it.type.label + " " + it.amount },
                         color = Color(0xFFAAB6BD),
-                        fontSize = 9.sp,
+                        fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onAssign, contentPadding = PaddingValues(0.dp)) {
-                        Text("Truppen zuweisen", fontSize = 11.sp)
+                    TextButton(onClick = onAssign, enabled = !away, contentPadding = PaddingValues(0.dp)) {
+                        Text("Truppen zuweisen", fontSize = 12.sp)
                     }
-                    TextButton(onClick = onTrain, contentPadding = PaddingValues(0.dp)) {
-                        Text("Trainieren", fontSize = 11.sp)
+                    TextButton(onClick = onTrain, enabled = !away, contentPadding = PaddingValues(0.dp)) {
+                        Text("Trainieren", fontSize = 12.sp)
                     }
                     TextButton(onClick = onPortrait, contentPadding = PaddingValues(0.dp)) {
-                        Text("Bild", fontSize = 11.sp)
+                        Text("Bild", fontSize = 12.sp)
                     }
                 }
             }
@@ -621,7 +684,7 @@ private fun CommanderAllocationDialog(
     onDismiss: () -> Unit,
     onSave: (List<UnitAllocation>) -> Unit
 ) {
-    val types = UnitType.entries.filter { it.culture == commander.culture }
+    val types = UnitType.entries
     val fields = remember(commander.id, state.commanderAssignments) {
         mutableStateMapOf<UnitType, String>().apply {
             types.forEach { type ->
@@ -638,7 +701,7 @@ private fun CommanderAllocationDialog(
                 Text(
                     "Du verteilst konkrete Soldatenzahlen. Bereits an andere Kommandanten vergebene Soldaten sind hier nicht mehr frei.",
                     color = Mist,
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
             }
         },
@@ -655,15 +718,16 @@ private fun CommanderAllocationDialog(
                         Column(Modifier.padding(12.dp)) {
                             Text(type.label, color = Color.White, fontWeight = FontWeight.Bold)
                             Text(
-                                total.toString() + " insgesamt · " + freeForThisCommander + " für diesen Kommandanten verfügbar",
+                                "Gesamt $total · daheim ${state.homeSoldiers(type)} · unterwegs ${state.away(type)} · frei ${state.directCommand(type)} · aktuell ${state.assignedTo(commander.id, type)} zugewiesen · maximal $freeForThisCommander",
                                 color = Mist,
-                                fontSize = 10.sp
+                                fontSize = 12.sp
                             )
                             OutlinedTextField(
                                 value = fields[type] ?: "0",
                                 onValueChange = { raw ->
-                                    fields[type] = raw.filter(Char::isDigit).take(6)
+                                    fields[type] = raw.filter(Char::isDigit).take(10)
                                 },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 label = { Text("Zuweisen") },
                                 suffix = { Text("Soldaten") },
                                 singleLine = true,
@@ -673,7 +737,7 @@ private fun CommanderAllocationDialog(
                                 Modifier.fillMaxWidth().padding(top = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                listOf(0 to "0", 25 to "25%", 50 to "50%", 100 to "ALLE").forEach { (pct, label) ->
+                                listOf(0 to "0", 25 to "25%", 50 to "50%", 75 to "75%", 100 to "ALLE").forEach { (pct, label) ->
                                     TextButton(
                                         onClick = {
                                             val amount = if (pct == 0) 0 else (freeForThisCommander * pct / 100.0).toInt()
@@ -681,11 +745,11 @@ private fun CommanderAllocationDialog(
                                         },
                                         modifier = Modifier.weight(1f),
                                         contentPadding = PaddingValues(2.dp)
-                                    ) { Text(label, fontSize = 10.sp) }
+                                    ) { Text(label, fontSize = 12.sp) }
                                 }
                             }
                             if (current > freeForThisCommander) {
-                                Text("Zu hoch: maximal " + freeForThisCommander, color = Danger, fontSize = 10.sp)
+                                Text("Zu hoch: maximal " + freeForThisCommander, color = Danger, fontSize = 12.sp)
                             }
                         }
                     }
@@ -693,7 +757,7 @@ private fun CommanderAllocationDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
+            Button(enabled = !state.commanderAway(commander.id) && types.all { (fields[it].orEmpty().ifBlank { "0" }.toIntOrNull() ?: Int.MAX_VALUE) <= GameEngine.freeSoldiersForCommander(state, commander.id, it) }, onClick = {
                 val requested = types.mapNotNull { type ->
                     val amount = fields[type]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
                     if (amount > 0) UnitAllocation(type, amount) else null
@@ -712,80 +776,4 @@ private fun cultureSummary(culture: Culture): String = when (culture) {
     Culture.WOOD_ELF -> "Schnell, präzise und besonders stark im Fernkampf."
     Culture.GOLD_ELF -> "Seltene Elite. Teuer und langsam ersetzbar, dafür extrem stark."
     Culture.WALL -> "Disziplinierte Spezialkorps mit Fernkampf, Verteidigung und Artillerie."
-}
-
-@Composable
-private fun RecruitTypeRow(
-    type: UnitType,
-    selected: Boolean,
-    unlocked: Boolean,
-    recruits: Int,
-    onSelect: () -> Unit
-) {
-    Surface(
-        onClick = onSelect,
-        enabled = unlocked,
-        color = if (selected) Color(0xFF25323B) else Panel,
-        shape = RoundedCornerShape(14.dp),
-        border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null
-    ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            UnitArt(type.culture, Modifier.size(56.dp))
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(type.label, color = if (unlocked) Color.White else Color.Gray, fontWeight = FontWeight.Bold)
-                Text(type.culture.label + " · " + recruits + " Rekruten", color = Mist, fontSize = 11.sp)
-                Text(
-                    "A " + type.attack + " · V " + type.defense + " · F " + type.ranged,
-                    color = Gold,
-                    fontSize = 11.sp
-                )
-            }
-            if (!unlocked) Text("🔒")
-        }
-    }
-}
-
-@Composable
-private fun CommanderCard(commander: Commander, onPortrait: () -> Unit, onTrain: () -> Unit) {
-    Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (commander.portraitUri != null) {
-                AsyncImage(
-                    model = commander.portraitUri,
-                    contentDescription = null,
-                    modifier = Modifier.size(82.dp).clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Image(
-                    painterResource(portraitResource(commander.portraitKey)),
-                    null,
-                    Modifier.size(82.dp).clip(RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            }
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text(commander.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                Text(
-                    commander.rank + " · " + commander.culture.label + " · " + commander.trait,
-                    color = Gold,
-                    fontSize = 11.sp
-                )
-                Text(
-                    "Führung " + commander.leadership + " · Taktik " + commander.tactics +
-                            " · Loyalität " + commander.loyalty,
-                    color = Mist,
-                    fontSize = 11.sp
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onTrain, contentPadding = PaddingValues(0.dp)) {
-                        Text("Trainieren · 120 Gold", fontSize = 12.sp)
-                    }
-                    TextButton(onClick = onPortrait, contentPadding = PaddingValues(0.dp)) {
-                        Text("Bild ändern", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-    }
 }
