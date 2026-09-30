@@ -34,7 +34,7 @@ private enum class Screen(val label: String, val icon: String) {
     ARMY("Armee", "⚔"),
     WORLD("Welt", "◉"),
     COURT("Hof", "♛"),
-    CHRONICLE("Chronik", "☰")
+    MORE("Mehr", "?")
 }
 
 @Composable
@@ -114,6 +114,19 @@ fun RealmGameApp(saves: SaveRepository) {
                 }
             }
         }
+    }
+
+    if (showTutorial) {
+        TutorialDialog(
+            onFinish = {
+                showTutorial = false
+                onState(GameEngine.markTutorialSeen(state))
+            },
+            onSkip = {
+                showTutorial = false
+                onState(GameEngine.markTutorialSeen(state))
+            }
+        )
     }
 }
 
@@ -246,6 +259,7 @@ private fun GameShell(
     onDelete: () -> Unit
 ) {
     var screen by remember { mutableStateOf(Screen.REALM) }
+    var showTutorial by remember(state.tutorialSeen) { mutableStateOf(!state.tutorialSeen) }
     Scaffold(
         containerColor = Ink,
         bottomBar = {
@@ -274,7 +288,12 @@ private fun GameShell(
                 Screen.ARMY -> ArmyScreen(state, onState, onNotice)
                 Screen.WORLD -> WorldScreen(state, onState, onNotice)
                 Screen.COURT -> CourtScreen(state, onState, onNotice)
-                Screen.CHRONICLE -> ChronicleScreen(state, onMenu, onDelete)
+                Screen.MORE -> MoreScreen(
+                    state = state,
+                    onMenu = onMenu,
+                    onDelete = onDelete,
+                    onReplayTutorial = { showTutorial = true }
+                )
             }
         }
     }
