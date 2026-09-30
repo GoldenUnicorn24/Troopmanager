@@ -190,12 +190,23 @@ internal fun CategoryArt(culture: Culture, modifier: Modifier = Modifier) {
         Culture.GOLD_ELF -> R.drawable.portrait_gold_elf
         Culture.WALL -> R.drawable.portrait_wall_guard
     }
-    AsyncImage(
-        model = asset,
-        contentDescription = culture.label,
-        modifier = modifier.clip(RoundedCornerShape(16.dp)),
-        contentScale = ContentScale.Crop,
-        placeholder = painterResource(fallback),
-        error = painterResource(fallback)
-    )
+    Box(modifier.clip(RoundedCornerShape(16.dp))) {
+        AsyncImage(
+            model = asset,
+            contentDescription = culture.label,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(fallback),
+            error = painterResource(fallback)
+        )
+        val tint = when (culture) {
+            Culture.HUMAN -> Color.Transparent
+            Culture.WOOD_ELF -> Color(0x223E7B50)
+            Culture.GOLD_ELF -> Color(0x44D6A947)
+            Culture.WALL -> Color(0x33386F9C)
+        }
+        if (tint != Color.Transparent) {
+            Box(Modifier.fillMaxSize().background(tint))
+        }
+    }
 }
