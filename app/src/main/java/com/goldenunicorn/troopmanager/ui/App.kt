@@ -115,19 +115,6 @@ fun RealmGameApp(saves: SaveRepository) {
             }
         }
     }
-
-    if (showTutorial) {
-        TutorialDialog(
-            onFinish = {
-                showTutorial = false
-                onState(GameEngine.markTutorialSeen(state))
-            },
-            onSkip = {
-                showTutorial = false
-                onState(GameEngine.markTutorialSeen(state))
-            }
-        )
-    }
 }
 
 @Composable
@@ -296,5 +283,18 @@ private fun GameShell(
                 )
             }
         }
+    }
+
+    if (showTutorial) {
+        TutorialDialog(
+            onFinish = {
+                showTutorial = false
+                onState(GameEngine.markTutorialSeen(state))
+            },
+            onSkip = {
+                showTutorial = false
+                onState(GameEngine.markTutorialSeen(state))
+            }
+        )
     }
 }
