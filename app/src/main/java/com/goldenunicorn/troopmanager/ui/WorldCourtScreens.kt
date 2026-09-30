@@ -279,7 +279,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
     }
 }
 
-private fun relationshipStage(companion: Companion): String = when {
+private fun relationshipStage(companion: CompanionProfile): String = when {
     companion.affection >= 80 && companion.trust >= 80 && companion.respect >= 70 -> "Herrscherpaar"
     companion.affection >= 60 && companion.trust >= 60 -> "Beziehung"
     companion.trust >= 45 && companion.respect >= 45 -> "Enge Gefährten"
