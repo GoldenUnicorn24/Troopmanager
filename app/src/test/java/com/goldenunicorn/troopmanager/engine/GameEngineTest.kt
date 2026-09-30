@@ -61,4 +61,44 @@ class GameEngineTest {
         assertFalse(state.tutorialSeen)
         assertTrue(GameEngine.markTutorialSeen(state).tutorialSeen)
     }
+
+    @Test
+    fun commanderCanReceiveMixedUnitQuantities() {
+        var state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null)
+        state = state.copy(
+            resources = state.resources.copy(gold = 100000, iron = 100000),
+            regiments = listOf(
+                Regiment(1, "A", UnitType.HUMAN_SWORD, 500, 500),
+                Regiment(2, "B", UnitType.HUMAN_ARCHER, 300, 300)
+            )
+        )
+        state = GameEngine.promoteCommander(state).state
+        val commander = state.commanders.first()
+        val result = GameEngine.setCommanderAllocation(
+            state,
+            commander.id,
+            listOf(
+                UnitAllocation(UnitType.HUMAN_SWORD, 500),
+                UnitAllocation(UnitType.HUMAN_ARCHER, 300)
+            )
+        ).state
+        assertEquals(800, result.commanderAssignments.first().total)
+        assertEquals(500, result.assignedTo(commander.id, UnitType.HUMAN_SWORD))
+        assertEquals(300, result.assignedTo(commander.id, UnitType.HUMAN_ARCHER))
+    }
+
+    @Test
+    fun liveBattleProducesReadableTimeline() {
+        val state = GameEngine.newGame("Leon", 23, Species.HALF_ELF, null).copy(
+            regiments = listOf(
+                Regiment(1, "A", UnitType.HUMAN_SWORD, 1200, 1200),
+                Regiment(2, "B", UnitType.HUMAN_ARCHER, 800, 800)
+            )
+        )
+        val result = GameEngine.simulateBattleLive(state, EnemyType.ORC, Tactic.HOLD, seed = 42)
+        assertTrue(result.frames.size >= 5)
+        assertEquals(2000, result.ownStart)
+        assertTrue(result.frames.last().minute <= 90)
+        assertTrue(result.finalState.armySize <= state.armySize)
+    }
 }
