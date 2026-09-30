@@ -11,6 +11,25 @@ object GameEngine {
     data class ActionResult(val state: GameState, val message: String)
     data class BattleResult(val state: GameState, val headline: String, val details: String, val victory: Boolean)
 
+    data class BattleFrame(
+        val minute: Int,
+        val ownRemaining: Int,
+        val enemyRemaining: Int,
+        val ownLossesThisFrame: Int,
+        val enemyLossesThisFrame: Int,
+        val front: Int,
+        val event: String
+    )
+
+    data class LiveBattleResult(
+        val finalState: GameState,
+        val victory: Boolean,
+        val enemyStart: Int,
+        val ownStart: Int,
+        val frames: List<BattleFrame>,
+        val headline: String
+    )
+
     fun newGame(name: String, age: Int, species: Species, portraitUri: String?): GameState {
         val population = when (species) {
             Species.HUMAN -> Population(human = 250, woodElf = 0, goldElf = 0, wall = 30, humanRecruits = 55, woodElfRecruits = 0, goldElfRecruits = 0, wallRecruits = 8)
@@ -323,6 +342,53 @@ object GameEngine {
         )
     }
 
+
+    fun setCommanderAllocation(
+        state: GameState,
+        commanderId: Long,
+        requested: List<UnitAllocation>
+    ): ActionResult {
+        val commander = state.commanders.firstOrNull { it.id == commanderId }
+            ?: return ActionResult(state, "Kommandant nicht gefunden.")
+
+        val normalized = requested
+            .filter { it.amount > 0 && it.type.culture == commander.culture }
+            .groupBy { it.type }
+            .map { (type, rows) -> UnitAllocation(type, rows.sumOf { it.amount }) }
+
+        val otherAssignments = state.commanderAssignments.filterNot { it.commanderId == commanderId }
+        for (entry in normalized) {
+            val total = state.soldiers(entry.type)
+            val usedByOthers = otherAssignments
+                .flatMap { it.units }
+                .filter { it.type == entry.type }
+                .sumOf { it.amount }
+            val maxAvailable = (total - usedByOthers).coerceAtLeast(0)
+            if (entry.amount > maxAvailable) {
+                return ActionResult(
+                    state,
+                    "Von ${entry.type.label} sind nur $maxAvailable Soldaten frei verfügbar."
+                )
+            }
+        }
+
+        val updated = otherAssignments + CommanderAssignment(commanderId, normalized)
+        return ActionResult(
+            state.copy(commanderAssignments = updated),
+            "${commander.name} führt jetzt ${normalized.sumOf { it.amount }} Soldaten."
+        )
+    }
+
+    fun freeSoldiersForCommander(state: GameState, commanderId: Long, type: UnitType): Int {
+        val current = state.assignedTo(commanderId, type)
+        val usedByOthers = state.commanderAssignments
+            .filterNot { it.commanderId == commanderId }
+            .flatMap { it.units }
+            .filter { it.type == type }
+            .sumOf { it.amount }
+        return (state.soldiers(type) - usedByOthers).coerceAtLeast(current)
+    }
+
     fun promoteCommander(state: GameState): ActionResult {
         if (state.armySize < 100) return ActionResult(state, "Du brauchst mindestens 100 aktive Soldaten.")
         if (state.resources.gold < 250) return ActionResult(state, "Eine Beförderung und Ausrüstung kostet 250 Gold.")
@@ -400,14 +466,7 @@ object GameEngine {
             Tactic.FLANK -> if (enemy == EnemyType.URUK) 1.10 else 1.02
             Tactic.FORTIFY -> 1.0 + (state.realm.level(BuildingType.WALL) * 0.07) + (state.realm.level(BuildingType.TOWER) * 0.04)
         }
-        val assignedIds = state.regiments.mapNotNull { it.commanderId }.toSet()
-        val assignedCommanderBonus = state.commanders
-            .filter { it.id in assignedIds }
-            .sumOf { it.leadership + it.tactics } / 420.0
-        val reserveCommanderBonus = state.commanders
-            .filterNot { it.id in assignedIds }
-            .sumOf { it.leadership + it.tactics } / 1400.0
-        val commanderBonus = assignedCommanderBonus + reserveCommanderBonus
+        val commanderBonus = commanderBattleBonus(state)
         val companionBonus = if (state.companion.met) (state.companion.leadership + state.companion.tactics) / 300.0 else 0.0
         val playerPower = state.armyPower * tacticMultiplier * (1.0 + commanderBonus + companionBonus) * randomFactor
         val victory = playerPower >= baseEnemy
@@ -469,6 +528,207 @@ object GameEngine {
             "Gegner: ${enemy.label}\nEigene Verluste: $lost\n${if (victory) "Beute: $loot Gold · Ruhm: +$fame" else "Die verbleibenden Regimenter konnten sich retten."}",
             victory
         )
+    }
+
+
+    fun simulateBattleLive(
+        state: GameState,
+        enemy: EnemyType,
+        tactic: Tactic,
+        seed: Int = state.day * 97 + state.victories * 31 + enemy.ordinal * 17
+    ): LiveBattleResult {
+        if (state.armySize <= 0) {
+            return LiveBattleResult(state, false, 0, 0, emptyList(), "Keine einsatzbereite Armee")
+        }
+
+        val rng = Random(seed)
+        val enemyStart = when (enemy) {
+            EnemyType.ORC -> 3_500 + state.victories * 700 + state.realm.territory * 900
+            EnemyType.URUK -> 6_000 + state.victories * 1_000 + state.realm.territory * 1_300
+            EnemyType.TAO_TEI -> 8_000 + state.victories * 1_300 + state.realm.territory * 1_700
+        }
+        val ownStart = state.armySize
+
+        val rangedShare = state.regiments.sumOf { it.soldiers * it.type.ranged }.toDouble() /
+                state.regiments.sumOf { it.soldiers * max(1, it.type.attack + it.type.defense + it.type.ranged) }.coerceAtLeast(1)
+        val commanderBonus = commanderBattleBonus(state)
+        val companionBonus = if (state.companion.met) {
+            (state.companion.leadership + state.companion.tactics) / 450.0
+        } else 0.0
+        val wallBonus = if (tactic == Tactic.FORTIFY) {
+            state.realm.level(BuildingType.WALL) * 0.055 + state.realm.level(BuildingType.TOWER) * 0.03
+        } else 0.0
+        val tacticBonus = when (tactic) {
+            Tactic.HOLD -> 0.05
+            Tactic.AGGRESSIVE -> if (enemy == EnemyType.ORC) 0.11 else -0.02
+            Tactic.RANGED -> 0.05 + rangedShare * 0.35
+            Tactic.FLANK -> if (enemy == EnemyType.URUK) 0.12 else 0.04
+            Tactic.FORTIFY -> 0.08 + wallBonus
+        }
+
+        val ownQuality = state.armyPower.toDouble() / ownStart.coerceAtLeast(1)
+        val enemyQuality = when (enemy) {
+            EnemyType.ORC -> 13.0
+            EnemyType.URUK -> 20.0
+            EnemyType.TAO_TEI -> 18.0
+        }
+        val ownScore = ownStart * ownQuality * (1.0 + tacticBonus + commanderBonus + companionBonus)
+        val enemyScore = enemyStart * enemyQuality
+        val expectedWin = ownScore / enemyScore.coerceAtLeast(1.0)
+
+        var ownRemaining = ownStart
+        var enemyRemaining = enemyStart
+        var front = 50
+        val frames = mutableListOf<BattleFrame>()
+        val phases = listOf(
+            5 to "Die Linien formieren sich.",
+            12 to "Erste Fernkampfsalven treffen die Front.",
+            20 to "Die Vorhut prallt auf den Gegner.",
+            30 to "Der Hauptkampf beginnt.",
+            42 to "Reserven werden nach vorne geführt.",
+            55 to "Die Front beginnt sich sichtbar zu verschieben.",
+            68 to "Beide Seiten werfen ihre letzten frischen Kräfte hinein.",
+            78 to "Die Entscheidung naht.",
+            86 to "Eine Seite beginnt zu wanken.",
+            90 to "Die Schlacht ist entschieden."
+        )
+
+        phases.forEachIndexed { index, phase ->
+            if (ownRemaining <= 0 || enemyRemaining <= 0) return@forEachIndexed
+
+            val progress = (index + 1) / phases.size.toDouble()
+            val momentum = (expectedWin - 1.0) * 0.65 + rng.nextDouble(-0.15, 0.15)
+            val ownBaseLoss = when (enemy) {
+                EnemyType.ORC -> 0.010
+                EnemyType.URUK -> 0.016
+                EnemyType.TAO_TEI -> 0.020
+            }
+            val enemyBaseLoss = 0.018
+
+            val ownLossRate = (ownBaseLoss * (1.12 - expectedWin.coerceIn(0.55, 1.55) * 0.35) *
+                    (if (tactic == Tactic.FORTIFY) 0.78 else 1.0) *
+                    rng.nextDouble(0.78, 1.24)).coerceIn(0.003, 0.045)
+            val enemyLossRate = (enemyBaseLoss * expectedWin.coerceIn(0.50, 1.85) *
+                    (1.0 + if (tactic == Tactic.RANGED) rangedShare * 0.25 else 0.0) *
+                    rng.nextDouble(0.78, 1.24)).coerceIn(0.004, 0.055)
+
+            val ownLoss = min(ownRemaining, max(1, (ownRemaining * ownLossRate).toInt()))
+            val enemyLoss = min(enemyRemaining, max(1, (enemyRemaining * enemyLossRate).toInt()))
+            ownRemaining -= ownLoss
+            enemyRemaining -= enemyLoss
+
+            front = (front + (momentum * 9).toInt() + rng.nextInt(-2, 3)).coerceIn(10, 90)
+
+            val event = when {
+                index == 1 && rangedShare > 0.20 -> "Deine Fernkämpfer legen einen dichten Pfeilteppich."
+                index == 3 && tactic == Tactic.FLANK -> "Die Flügel schwenken ein und greifen die gegnerische Seite an."
+                index == 4 && tactic == Tactic.FORTIFY -> "Mauertruppen halten ihre vorbereiteten Stellungen."
+                index == 5 && front >= 62 -> "Deine Armee gewinnt deutlich Boden."
+                index == 5 && front <= 38 -> "Der Gegner drückt deine Front zurück."
+                index == 7 && commanderBonus > 0.10 -> "Die Kommandanten stabilisieren ihre Kontingente und treiben sie vor."
+                index == 8 && expectedWin >= 1.0 -> "Der feindliche Widerstand beginnt zu brechen."
+                index == 8 -> "Deine Linien geraten unter extremen Druck."
+                else -> phase.second
+            }
+
+            frames += BattleFrame(
+                minute = phase.first,
+                ownRemaining = ownRemaining,
+                enemyRemaining = enemyRemaining,
+                ownLossesThisFrame = ownLoss,
+                enemyLossesThisFrame = enemyLoss,
+                front = front,
+                event = event
+            )
+        }
+
+        val victory = when {
+            enemyRemaining <= 0 -> true
+            ownRemaining <= 0 -> false
+            else -> (enemyRemaining.toDouble() / enemyStart) < (ownRemaining.toDouble() / ownStart)
+        }
+
+        val targetOwnSurvivors = ownRemaining.coerceAtLeast(if (victory) 1 else 0)
+        val survivorRatio = targetOwnSurvivors.toDouble() / ownStart.coerceAtLeast(1)
+        var allocatedSurvivors = 0
+        val survivorRegs = state.regiments.mapIndexedNotNull { index, reg ->
+            val isLast = index == state.regiments.lastIndex
+            val left = if (isLast) {
+                (targetOwnSurvivors - allocatedSurvivors).coerceIn(0, reg.soldiers)
+            } else {
+                val n = (reg.soldiers * survivorRatio * rng.nextDouble(0.90, 1.10)).toInt().coerceIn(0, reg.soldiers)
+                allocatedSurvivors += n
+                n
+            }
+            if (left <= 0) null else reg.copy(
+                soldiers = left,
+                experience = min(100, reg.experience + if (victory) 7 else 3),
+                morale = (reg.morale + if (victory) 5 else -10).coerceIn(10, 100)
+            )
+        }
+
+        val loot = if (victory) enemyStart / 7 else 0
+        val fame = if (victory) enemyStart / 45 else 8
+        val finalAssignments = clampAssignments(state.copy(regiments = survivorRegs))
+        val finalState = updateProgress(
+            finalAssignments.copy(
+                resources = finalAssignments.resources.copy(
+                    gold = finalAssignments.resources.gold + loot,
+                    food = finalAssignments.resources.food + if (victory) enemyStart / 18 else 0
+                ),
+                renown = finalAssignments.renown + fame,
+                victories = finalAssignments.victories + if (victory) 1 else 0,
+                defeats = finalAssignments.defeats + if (victory) 0 else 1,
+                realm = finalAssignments.realm.copy(
+                    threat = max(0, finalAssignments.realm.threat - if (victory) 38 else 8),
+                    wallIntegrity = if (tactic == Tactic.FORTIFY) {
+                        max(15, finalAssignments.realm.wallIntegrity - if (victory) 5 else 16)
+                    } else finalAssignments.realm.wallIntegrity
+                ),
+                chronicle = (finalAssignments.chronicle + ChronicleEntry(
+                    finalAssignments.day,
+                    if (victory) "Live-Schlacht gewonnen" else "Live-Schlacht verloren",
+                    "Gegner: ${enemy.label}. Eigene Verluste: ${ownStart - targetOwnSurvivors}. Feindliche Verluste: ${enemyStart - enemyRemaining}."
+                )).takeLast(80)
+            )
+        )
+
+        return LiveBattleResult(
+            finalState = finalState,
+            victory = victory,
+            enemyStart = enemyStart,
+            ownStart = ownStart,
+            frames = frames,
+            headline = if (victory) "Sieg" else "Niederlage"
+        )
+    }
+
+    private fun commanderBattleBonus(state: GameState): Double {
+        if (state.commanders.isEmpty() || state.armySize <= 0) return 0.0
+        return state.commanderAssignments.sumOf { assignment ->
+            val commander = state.commanders.firstOrNull { it.id == assignment.commanderId }
+                ?: return@sumOf 0.0
+            val commanded = assignment.total.coerceAtMost(state.armySize)
+            val share = commanded.toDouble() / state.armySize.coerceAtLeast(1)
+            ((commander.leadership + commander.tactics) / 300.0) * share
+        }.coerceAtMost(0.55)
+    }
+
+    private fun clampAssignments(state: GameState): GameState {
+        val remainingByType = UnitType.entries.associateWith { state.soldiers(it) }.toMutableMap()
+        val cleaned = mutableListOf<CommanderAssignment>()
+        state.commanderAssignments.forEach { assignment ->
+            val commander = state.commanders.firstOrNull { it.id == assignment.commanderId } ?: return@forEach
+            val units = assignment.units.mapNotNull { unit ->
+                if (unit.type.culture != commander.culture) return@mapNotNull null
+                val remaining = remainingByType[unit.type] ?: 0
+                val amount = min(unit.amount, remaining).coerceAtLeast(0)
+                remainingByType[unit.type] = remaining - amount
+                if (amount > 0) UnitAllocation(unit.type, amount) else null
+            }
+            cleaned += CommanderAssignment(assignment.commanderId, units)
+        }
+        return state.copy(commanderAssignments = cleaned)
     }
 
     private fun removeRecruits(p: Population, culture: Culture, amount: Int): Population = when (culture) {
