@@ -109,14 +109,18 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
 internal fun ResourceStrip(r: Resources) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         listOf(
-            "Gold" to r.gold,
-            "Nahrung" to r.food,
-            "Holz" to r.wood,
-            "Stein" to r.stone,
-            "Eisen" to r.iron
-        ).forEach { (label, value) ->
-            Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp), color = Panel2) {
-                Column(Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Triple("◈", "Gold", r.gold),
+            Triple("✦", "Nahrung", r.food),
+            Triple("♣", "Holz", r.wood),
+            Triple("◆", "Stein", r.stone),
+            Triple("⚒", "Eisen", r.iron)
+        ).forEach { (icon, label, value) ->
+            Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(11.dp), color = Panel2) {
+                Column(
+                    Modifier.padding(horizontal = 3.dp, vertical = 7.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(icon, color = Gold, fontSize = 12.sp)
                     Text(value.toString(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
                     Text(label, color = Color(0xFF9FAAB1), fontSize = 7.sp, maxLines = 1)
                 }
@@ -124,7 +128,6 @@ internal fun ResourceStrip(r: Resources) {
         }
     }
 }
-
 @Composable
 internal fun CharacterPanel(
     title: String,
@@ -170,4 +173,29 @@ internal fun UnitArt(culture: Culture, modifier: Modifier = Modifier) {
         Culture.HUMAN -> R.drawable.portrait_knight
     }
     Image(painterResource(res), null, modifier.clip(RoundedCornerShape(12.dp)), contentScale = ContentScale.Crop)
+}
+
+
+@Composable
+internal fun CategoryArt(culture: Culture, modifier: Modifier = Modifier) {
+    val asset = when (culture) {
+        Culture.HUMAN -> "file:///android_asset/category_human.jpg"
+        Culture.WOOD_ELF -> "file:///android_asset/category_wood_elf.png"
+        Culture.GOLD_ELF -> "file:///android_asset/category_gold_elf.jpg"
+        Culture.WALL -> "file:///android_asset/category_wall.jpg"
+    }
+    val fallback = when (culture) {
+        Culture.HUMAN -> R.drawable.portrait_knight
+        Culture.WOOD_ELF -> R.drawable.portrait_wood_elf
+        Culture.GOLD_ELF -> R.drawable.portrait_gold_elf
+        Culture.WALL -> R.drawable.portrait_wall_guard
+    }
+    AsyncImage(
+        model = asset,
+        contentDescription = culture.label,
+        modifier = modifier.clip(RoundedCornerShape(16.dp)),
+        contentScale = ContentScale.Crop,
+        placeholder = painterResource(fallback),
+        error = painterResource(fallback)
+    )
 }
