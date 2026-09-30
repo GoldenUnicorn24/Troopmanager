@@ -47,7 +47,8 @@ enum class UnitType(
 enum class BuildingType(val label: String) {
     FARM("Bauernhof"),
     SAWMILL("Sägewerk"),
-    IRONWORKS("Eisenwerk"),
+    QUARRY("Steinbruch"),
+    IRONWORKS("Eisenmine & Schmiede"),
     MARKET("Markt"),
     BARRACKS("Kaserne"),
     WALL("Mauer"),
@@ -233,6 +234,7 @@ data class GameState(
     val victories: Int = 0,
     val defeats: Int = 0,
     val completedRealm: Boolean = false,
+    val tutorialSeen: Boolean = false,
     val chronicle: List<ChronicleEntry> = listOf(
         ChronicleEntry(1, "Ein unbekannter Name", "Du besitzt kaum mehr als deine Ausrüstung. Noch kennt niemand deinen Namen.")
     )
