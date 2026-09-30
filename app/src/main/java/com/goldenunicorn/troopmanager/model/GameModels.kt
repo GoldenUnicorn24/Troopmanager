@@ -54,6 +54,13 @@ enum class BuildingType(val label: String) {
     WALL("Mauer"),
     TOWER("Wehrturm"),
     PALACE("Residenz"),
+    RESIDENTIAL("Wohnviertel"),
+    WAREHOUSE("Lagerhaus"),
+    HOSPITAL("Lazarett"),
+    ACADEMY("Offiziersschule"),
+    STABLES("Stallungen"),
+    ARSENAL("Arsenal"),
+    EMBASSY("Botschaft"),
 }
 
 @Serializable
@@ -139,6 +146,10 @@ data class Commander(
     val loyalty: Int = 70,
     val trait: String = "Loyal",
     val rank: String = "Hauptmann",
+    val missionsCompleted: Int = 0,
+    val battlesFought: Int = 0,
+    val victories: Int = 0,
+    val casualties: Int = 0,
 )
 
 @Serializable data class UnitAllocation(val type: UnitType, val amount: Int)
@@ -197,7 +208,7 @@ data class Realm(
     val settlementTier: SettlementTier = SettlementTier.BORDER_KEEP,
     val buildings: Map<BuildingType, Int> =
         BuildingType.entries.associateWith {
-            if (it == BuildingType.FARM || it == BuildingType.BARRACKS) 2 else 1
+            if (it == BuildingType.FARM || it == BuildingType.BARRACKS) 2 else if (it.ordinal <= BuildingType.PALACE.ordinal) 1 else 0
         },
     val threat: Int = 12,
     val wallIntegrity: Int = 100,
@@ -214,13 +225,14 @@ data class Realm(
 
 @Serializable
 data class GameState(
-    val version: Int = 2,
+    val version: Int = 3,
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),
     val resources: Resources = Resources(),
     val population: Population = Population(),
     val realm: Realm = Realm(),
+    val city: CityState = CityState(),
     val armyPools: List<ArmyUnitPool> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),

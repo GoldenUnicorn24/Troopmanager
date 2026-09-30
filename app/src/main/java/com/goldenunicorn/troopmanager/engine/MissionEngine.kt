@@ -4,6 +4,22 @@ import com.goldenunicorn.troopmanager.model.*
 import kotlin.random.Random
 
 object MissionEngine {
+    data class MissionEstimate(val outcomeHint: String, val goldRange: IntRange, val xpRange: IntRange)
+    fun estimate(state: GameState, type: MissionType, units: List<UnitAllocation>, commanderId: Long?): MissionEstimate {
+        val selected = ArmyEngine.normalize(units)
+        val commander = state.commanders.find { it.id == commanderId }
+        val power = selected.sumOf { u ->
+            val pool = state.armyPools.find { it.type == u.type }
+            if (pool == null || pool.soldiers == 0) 0.0 else pool.power.toDouble() * u.amount / pool.soldiers
+        }
+        val score = power * (1 + (commander?.sword ?: state.player.sword)/180.0 +
+            (commander?.leadership ?: state.player.leadership)/350.0 +
+            (commander?.tactics ?: state.player.tactics)/350.0) *
+            (0.7 + (commander?.loyalty ?: 100)/333.0) / (type.spec().difficulty * 20.0)
+        val hint = when { score >= 1.6 -> "Sehr gute Aussichten"; score >= 1.0 -> "Gute Aussichten"; score >= 0.7 -> "Unsicherer Ausgang"; else -> "Hohes Verlustrisiko" }
+        return MissionEstimate("$hint · Schätzung, Zufall und Einheitenspezialisierung beeinflussen den Ausgang", 0..type.spec().difficulty*6, 10..maxOf(10,type.spec().difficulty*3/4))
+    }
+
     fun duration(state: GameState, type: MissionType, commanderId: Long?): Int {
         val riding =
             if (commanderId == COMPANION_COMMANDER_ID) state.companion.riding
@@ -258,12 +274,17 @@ object MissionEngine {
                 losses = lost,
                 reward = reward,
                 renownReward = fame,
+                xpReward = maxOf(10, base / 4),
             )
         var next =
             state.copy(
                 activeMissions =
                     state.activeMissions.map { if (it.id == mission.id) completed else it }
             )
+        next = next.copy(commanders = next.commanders.map { c ->
+            if (c.id == mission.commanderId) c.copy(missionsCompleted = c.missionsCompleted + 1,
+                victories = c.victories + if (success) 1 else 0, casualties = c.casualties + lost) else c
+        })
         next = ArmyEngine.applyLosses(next, losses)
         next = restoreCommand(next, mission, losses)
         next =

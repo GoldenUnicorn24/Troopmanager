@@ -216,12 +216,22 @@ object BattleEngine {
             )
         if (original.status == BattleStatus.PURSUIT)
             return resolvePursuit(state, original, decision!!)
+        if (decision != null && !canOrder(original, decision, event?.section))
+            return GameEngine.ActionResult(state, "Für diesen Befehl fehlen passende Truppen oder Voraussetzungen.")
+        if (decision == BattleDecision.ORDERED_RETREAT)
+            return resolveRetreat(state, original)
         val rng = Random(original.seed xor ((original.step + 1) * 104729))
         var troops = original.contingents
         val target = event?.section
         val commandLog = mutableListOf<String>()
-        if (decision == BattleDecision.SEND_RESERVE) {
-            var available = 300
+        val commanderEvents = original.commanderEvents.toMutableList()
+        if (decision in listOf(BattleDecision.SEND_RESERVE, BattleDecision.STRENGTHEN_SECTION, BattleDecision.RELOCATE_RESERVE, BattleDecision.RESCUE_COMMANDER)) {
+            val limit = when (decision) {
+                BattleDecision.RESCUE_COMMANDER -> 20
+                BattleDecision.RELOCATE_RESERVE -> 100
+                else -> 300
+            }
+            var available = limit
             val moved = mutableListOf<BattleContingent>()
             troops =
                 troops
@@ -239,19 +249,29 @@ object BattleEngine {
                                     section = target ?: BattleSection.CENTER,
                                     soldiers = amount,
                                     startSoldiers = initial,
+                                    morale = if (decision == BattleDecision.RELOCATE_RESERVE) (c.morale + 5).coerceAtMost(100) else c.morale,
                                 )
                             c.copy(
                                 soldiers = c.soldiers - amount,
                                 startSoldiers = c.startSoldiers - initial,
                             )
                         }
-                    }
-                    .filter { it.startSoldiers > 0 } + moved
+                    } + moved
             commandLog +=
-                "${300 - available} Reservisten verstärken ${(target ?: BattleSection.CENTER).label}."
+                "${limit - available} Reservisten verstärken ${(target ?: BattleSection.CENTER).label}."
         } else if (decision != null)
             commandLog += decision.label + ": " + (target?.label ?: "Zentrum") + "."
-        if (decision == BattleDecision.CAVALRY_CHARGE) {
+        if (decision == BattleDecision.RESCUE_COMMANDER) {
+            val rescuedIds = troops.filter { it.section == target && it.commanderWounded && !it.commanderRescued }.mapNotNull { it.commanderId }.toSet()
+            // The injury belongs to the commander, including all of his split contingents.
+            troops = troops.map { if (it.commanderId in rescuedIds) it.copy(commanderWounded = true, commanderRescued = true, morale = (it.morale + 6).coerceAtMost(100)) else it }
+            rescuedIds.forEach { id ->
+                val message = "${state.commanders.firstOrNull { it.id == id }?.name ?: "Kommandant"} wird geborgen; ein Teil seiner Führungswirkung kehrt zurück."
+                commandLog += message
+                commanderEvents += message
+            }
+        }
+        if (decision == BattleDecision.CAVALRY_CHARGE || decision == BattleDecision.OPEN_GATE) {
             troops =
                 troops.map {
                     if (it.type == UnitType.KNIGHT && it.soldiers > 0)
@@ -263,6 +283,18 @@ object BattleEngine {
         val phase = phase(minute)
         var devices = original.devices
         var integrity = original.wallIntegrity
+        if (decision == BattleDecision.ARTILLERY_TARGET && devices.isNotEmpty()) {
+            val destroyed = devices.maxBy { siegeDamage(it) }
+            devices = devices - destroyed
+            commandLog += "Gezieltes Artilleriefeuer zerstört ${destroyed.label}."
+        }
+        if (decision == BattleDecision.HOLD_GATE) {
+            troops = troops.map { if (it.section == target && it.soldiers > 0) it.copy(morale = (it.morale - 3).coerceAtLeast(0)) else it }
+            commandLog += "Die Torwache bindet den Angriff; das Halten kostet drei Moralpunkte."
+        }
+        if (decision == BattleDecision.OPEN_GATE) {
+            commandLog += "Ein Kavallerieausfall lenkt die Belagerer ab; die Reiter riskieren zusätzliche Verluste."
+        }
         val sounds = mutableListOf<BattleSoundCue>()
         if (phase == BattlePhase.RANGED) sounds += BattleSoundCue.ARROWS
         else sounds += BattleSoundCue.SWORDS
@@ -285,17 +317,12 @@ object BattleEngine {
             val damage =
                 devices
                     .map {
-                        when (it) {
-                            SiegeDevice.RAM -> 4
-                            SiegeDevice.TOWER -> 3
-                            SiegeDevice.LADDERS -> 1
-                            SiegeDevice.CATAPULT -> 5
-                            SiegeDevice.CLIMBERS -> 2
-                        }
+                        siegeDamage(it)
                     }
                     .sum()
             integrity =
-                (integrity - max(0, damage - state.realm.level(BuildingType.TOWER))).coerceAtLeast(
+                (integrity - max(0, damage - state.realm.level(BuildingType.TOWER) -
+                    if (decision == BattleDecision.HOLD_GATE) 4 else if (decision == BattleDecision.OPEN_GATE) 2 else 0)).coerceAtLeast(
                     0
                 )
             if (original.wallIntegrity > 0 && integrity == 0) {
@@ -338,6 +365,9 @@ object BattleEngine {
                                 else 1.0
                             focus && decision == BattleDecision.HOLD ->
                                 1.0 + state.player.tactics / 500.0
+                            focus && decision == BattleDecision.STRENGTHEN_SECTION -> 1.12
+                            focus && decision == BattleDecision.HOLD_GATE -> 1.08
+                            focus && decision == BattleDecision.OPEN_GATE -> 1.25
                             else -> 1.0
                         }
                 val enemyQuality =
@@ -354,11 +384,13 @@ object BattleEngine {
                         pressure.coerceIn(0.25, 4.5) *
                         rng.nextDouble(0.8, 1.2) *
                         (if (focus && decision == BattleDecision.RETREAT_LINE) 0.55 else 1.0) *
-                        (if (focus && decision == BattleDecision.CAVALRY_CHARGE) 1.3 else 1.0)
+                        (if (focus && decision == BattleDecision.CAVALRY_CHARGE) 1.3 else 1.0) *
+                        (if (focus && decision == BattleDecision.STRENGTHEN_SECTION) 0.85 else 1.0)
                 indices.forEach { i ->
                     val c = troops[i]
                     val defense = (0.65 + c.type.defense / 20.0) * (0.55 + c.equipment / 200.0)
-                    val loss = ceil(c.soldiers * lossRate / defense).toInt().coerceIn(0, c.soldiers)
+                    val sortieRisk = if (focus && decision == BattleDecision.OPEN_GATE && c.type == UnitType.KNIGHT) 1.6 else 1.0
+                    val loss = ceil(c.soldiers * lossRate * sortieRisk / defense).toInt().coerceIn(0, c.soldiers)
                     losses += UnitAllocation(c.type, loss)
                     c.commanderId?.let { id ->
                         val key = id to c.type
@@ -423,8 +455,9 @@ object BattleEngine {
                     if (changedTroops[i].commanderId == woundedId)
                         changedTroops[i] = changedTroops[i].copy(commanderWounded = true)
                 }
-                commandLog +=
-                    "${state.commanders.firstOrNull { it.id == woundedId }?.name ?: "Ein Kommandant"} ist verwundet; sein Kommando verliert an Wirkung."
+                val message = "${state.commanders.firstOrNull { it.id == woundedId }?.name ?: "Ein Kommandant"} ist verwundet; sein Kommando verliert an Wirkung."
+                commandLog += message
+                commanderEvents += message
             }
         }
         var session =
@@ -438,6 +471,7 @@ object BattleEngine {
                 wallIntegrity = integrity,
                 pendingEvent = null,
                 lastSounds = sounds.distinct(),
+                commanderEvents = commanderEvents,
                 log =
                     (original.log +
                             BattleLogEntry(
@@ -524,7 +558,7 @@ object BattleEngine {
             else 1.0
         val command =
             (1.0 + leadership / 600.0 + tactics / 450.0 + skill / 700.0) *
-                if (c.commanderWounded) 0.80 else 1.0
+                if (c.commanderRescued) 0.92 else if (c.commanderWounded) 0.80 else 1.0
         val fortress =
             if (state.battleSession?.tactic == Tactic.FORTIFY && c.type.culture == Culture.WALL)
                 1.12
@@ -549,10 +583,14 @@ object BattleEngine {
         }
 
     private fun nextEvent(session: BattleSession, rng: Random): BattleEvent {
-        val front = session.fronts.minBy { it.position + session.soldiers(it.section) / 20 }
+        val woundedSection = session.contingents.firstOrNull { it.soldiers > 0 && it.commanderWounded && !it.commanderRescued && it.section != BattleSection.RESERVE }?.section
+        val front = session.fronts.firstOrNull { it.section == woundedSection }
+            ?: session.fronts.minBy { it.position + session.soldiers(it.section) / 20 }
         val commanders = session.contingents.filter { it.commanderId != null && it.soldiers > 0 }
         val (title, text) =
             when {
+                woundedSection != null -> "Verwundeter Kommandant" to
+                    "Ein verwundeter Anführer braucht zwanzig Reservisten zur Bergung. Die Rettung stellt einen Teil seiner Führungswirkung wieder her."
                 session.tactic == Tactic.FORTIFY && session.wallIntegrity < 45 ->
                     "Das Tor droht zu brechen" to
                         "Die Belagerungsgeräte setzen dem Tor zu. Entlaste die Verteidiger."
@@ -573,7 +611,15 @@ object BattleEngine {
                         "Der Gegner versucht, deine Stellung zu umgehen."
             }
         val options = mutableListOf(BattleDecision.HOLD, BattleDecision.RETREAT_LINE)
-        if (session.soldiers(BattleSection.RESERVE) > 0) options += BattleDecision.SEND_RESERVE
+        if (session.soldiers(BattleSection.RESERVE) > 0) {
+            options += BattleDecision.SEND_RESERVE
+            options += BattleDecision.RELOCATE_RESERVE
+            options += BattleDecision.STRENGTHEN_SECTION
+        }
+        options += BattleDecision.ORDERED_RETREAT
+        listOf(BattleDecision.ARTILLERY_TARGET, BattleDecision.HOLD_GATE, BattleDecision.OPEN_GATE, BattleDecision.RESCUE_COMMANDER).forEach {
+            if (canOrder(session, it, front.section)) options += it
+        }
         if (
             session.contingents.any {
                 it.section == front.section && it.soldiers > 0 && it.type.ranged >= 8
@@ -583,6 +629,44 @@ object BattleEngine {
         if (session.contingents.any { it.soldiers > 0 && it.type == UnitType.KNIGHT })
             options += BattleDecision.CAVALRY_CHARGE
         return BattleEvent(title, text, front.section, options)
+    }
+
+    private fun canOrder(session: BattleSession, decision: BattleDecision, section: BattleSection?): Boolean = when (decision) {
+        BattleDecision.SEND_RESERVE, BattleDecision.RELOCATE_RESERVE, BattleDecision.STRENGTHEN_SECTION -> session.soldiers(BattleSection.RESERVE) > 0 && section != null && section != BattleSection.RESERVE
+        BattleDecision.ARTILLERY_TARGET -> session.tactic == Tactic.FORTIFY && session.devices.isNotEmpty() && session.contingents.any { it.type == UnitType.DRAGON_ARTILLERY && it.soldiers > 0 }
+        BattleDecision.HOLD_GATE -> session.tactic == Tactic.FORTIFY && session.wallIntegrity > 0 && session.devices.isNotEmpty() && section != null && session.soldiers(section) > 0
+        BattleDecision.OPEN_GATE -> session.tactic == Tactic.FORTIFY && session.wallIntegrity > 0 && session.devices.isNotEmpty() && session.contingents.any { it.type == UnitType.KNIGHT && it.soldiers > 0 }
+        BattleDecision.RESCUE_COMMANDER -> session.soldiers(BattleSection.RESERVE) >= 20 && session.contingents.any { it.commanderId != null && it.section == section && it.soldiers > 0 && it.commanderWounded && !it.commanderRescued }
+        else -> true
+    }
+
+    private fun siegeDamage(device: SiegeDevice): Int = when (device) {
+        SiegeDevice.RAM -> 4
+        SiegeDevice.TOWER -> 3
+        SiegeDevice.LADDERS -> 1
+        SiegeDevice.CATAPULT -> 5
+        SiegeDevice.CLIMBERS -> 2
+    }
+
+    /** An early withdrawal applies a small final exchange and ends the battle immediately. */
+    private fun resolveRetreat(state: GameState, original: BattleSession): GameEngine.ActionResult {
+        val rng = Random(original.seed xor ((original.step + 1) * 104729))
+        val losses = original.contingents.map { c ->
+            UnitAllocation(c.type, if (c.section == BattleSection.RESERVE) 0 else ceil(c.soldiers * rng.nextDouble(0.003, 0.010)).toInt().coerceAtMost(c.soldiers))
+        }
+        val commandedLosses = mutableMapOf<Pair<Long, UnitType>, Int>()
+        val troops = original.contingents.mapIndexed { index, c ->
+            val loss = losses[index].amount
+            c.commanderId?.let { id -> val key = id to c.type; commandedLosses[key] = (commandedLosses[key] ?: 0) + loss }
+            c.copy(soldiers = c.soldiers - loss)
+        }
+        val session = original.copy(
+            minute = original.minute + 5, step = original.step + 1, contingents = troops,
+            orderedRetreat = true, pendingEvent = null,
+            log = original.log + BattleLogEntry(original.minute + 5, "Geordneter Rückzug: Das Heer verlässt die Schlacht, die Reserve deckt den Rückzug.", losses.sumOf { it.amount }),
+        )
+        val next = finish(ArmyEngine.applyLosses(reduceAssignments(state, commandedLosses), losses).copy(battleSession = session), session, false)
+        return GameEngine.ActionResult(next, "Geordneter Rückzug. ${losses.sumOf { it.amount }} zusätzliche Verluste; das übrige Heer kehrt zurück.")
     }
 
     private fun resolvePursuit(
@@ -652,12 +736,23 @@ object BattleEngine {
     }
 
     private fun finish(state: GameState, session: BattleSession, victory: Boolean): GameState {
+        val wear = if (session.minute == 0) 0 else (3 + session.minute / 10).coerceAtMost(15)
+        val xp = if (victory) 90 + session.enemyStart / 8 else 30
+        val renown = if (victory) max(15, session.enemyStart / 12) else 4
+        val worn = session.contingents.map { it.copy(equipment = (it.equipment - wear).coerceAtLeast(0)) }
+        val equipmentDamage = if (session.ownRemaining == 0) 0 else
+            session.contingents.zip(worn).sumOf { (before, after) -> before.soldiers.toLong() * (before.equipment - after.equipment) }.div(session.ownRemaining).toInt()
         val final =
             session.copy(
                 status = if (victory) BattleStatus.VICTORY else BattleStatus.DEFEAT,
                 pendingEvent = null,
                 phase = BattlePhase.PURSUIT,
                 lastSounds = listOf(BattleSoundCue.HORN),
+                contingents = worn,
+                xpReward = xp,
+                renownReward = renown,
+                equipmentDamage = equipmentDamage,
+                lootFood = if (victory) session.enemyStart / 8 else 0,
             )
         val pools =
             state.armyPools.map { pool ->
@@ -681,18 +776,30 @@ object BattleEngine {
                                     (if (victory) 7L else -12L) * participants) / pool.soldiers)
                                 .toInt()
                                 .coerceIn(0, 100),
+                        equipment =
+                            ((pool.equipment.toLong() * (pool.soldiers - participants) +
+                                worn.filter { it.type == pool.type }.sumOf { it.soldiers.toLong() * it.equipment }) / pool.soldiers)
+                                .toInt().coerceIn(0, 100),
                     )
             }
         val result =
             state.copy(
                 battleSession = final,
                 armyPools = pools,
+                commanders = state.commanders.map { commander ->
+                    val deployed = session.contingents.filter { it.commanderId == commander.id && it.startSoldiers > 0 }
+                    if (deployed.isEmpty()) commander else commander.copy(
+                        battlesFought = commander.battlesFought + 1,
+                        victories = commander.victories + if (victory) 1 else 0,
+                        casualties = commander.casualties + deployed.sumOf { it.startSoldiers - it.soldiers },
+                    )
+                },
                 resources =
                     EconomyEngine.add(
                         state.resources,
                         Resources(
                             if (victory) final.lootGold else 0,
-                            if (victory) session.enemyStart / 8 else 0,
+                            final.lootFood,
                             0,
                             0,
                             0,
@@ -700,7 +807,7 @@ object BattleEngine {
                     ),
                 victories = state.victories + if (victory) 1 else 0,
                 defeats = state.defeats + if (victory) 0 else 1,
-                renown = state.renown + if (victory) max(15, session.enemyStart / 12) else 4,
+                renown = state.renown + renown,
                 invasion =
                     state.invasion?.takeUnless {
                         it.arrivalDay <= state.day && it.enemy == session.enemy
@@ -714,7 +821,7 @@ object BattleEngine {
                             ChronicleEntry(
                                 state.day,
                                 if (victory) "Schlacht gewonnen" else "Schlacht verloren",
-                                "${session.enemy.label}: ${session.ownStart - session.ownRemaining} eigene und ${session.enemyStart - session.enemyRemaining} feindliche Verluste.",
+                                "${session.enemy.label}: ${session.ownStart} eigene zu Beginn, ${session.ownRemaining} Überlebende, ${session.ownStart - session.ownRemaining} eigene und ${session.enemyStart - session.enemyRemaining} feindliche Verluste. +$xp XP, +$renown Ruhm; ${final.lootGold} Gold, ${final.lootFood} Nahrung. Moral ${session.morale} %, Verschleiß $equipmentDamage Punkte. ${session.commanderEvents.joinToString(" ")}",
                             ))
                         .takeLast(80),
             )
@@ -724,7 +831,7 @@ object BattleEngine {
                     ArmyEngine.clampAssignments(result),
                     if (victory) "feast" else "defeat",
                 ),
-                if (victory) 90 + session.enemyStart / 8 else 30,
+                xp,
             )
         )
     }

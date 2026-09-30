@@ -155,6 +155,15 @@ object ArmyEngine {
                 .coerceAtLeast(0),
         )
 
+    fun equipmentRepairCost(state: GameState, type: UnitType): Resources {
+        val pool = state.armyPools.find { it.type == type } ?: return Resources(0,0,0,0,0)
+        val points = minOf(20, 100 - pool.equipment)
+        if (points <= 0) return Resources(0,0,0,0,0)
+        val discount = 100 - state.realm.level(BuildingType.ARSENAL).coerceAtMost(5) * 8
+        val iron = maxOf(1L, pool.soldiers.toLong() * points * discount / 2000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return Resources((iron.toLong()*2).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), 0, 0, 0, iron)
+    }
+
     fun repairEquipment(state: GameState, type: UnitType): GameEngine.ActionResult {
         val pool =
             state.armyPools.find { it.type == type }
@@ -163,8 +172,12 @@ object ArmyEngine {
             return GameEngine.ActionResult(state, "Ausrüstung wird nach der Rückkehr erneuert.")
         val points = minOf(20, 100 - pool.equipment)
         if (points <= 0) return GameEngine.ActionResult(state, "Ausrüstung bereits vollständig.")
-        val iron = maxOf(1, (pool.soldiers.toLong() * points / 20).toInt())
-        val gold = iron.toLong() * 2
+        val discount = 100 - state.realm.level(BuildingType.ARSENAL).coerceAtMost(5) * 8
+        val requiredIron = maxOf(1L, pool.soldiers.toLong() * points * discount / 2000)
+        if(requiredIron * 2 > Int.MAX_VALUE) return GameEngine.ActionResult(state, "Diese Erneuerung übersteigt das maximale Goldbudget.")
+        val cost = equipmentRepairCost(state, type)
+        val iron = cost.iron
+        val gold = cost.gold.toLong()
         if (state.resources.iron < iron || state.resources.gold < gold)
             return GameEngine.ActionResult(state, "Erneuerung kostet $gold Gold und $iron Eisen.")
         return GameEngine.ActionResult(

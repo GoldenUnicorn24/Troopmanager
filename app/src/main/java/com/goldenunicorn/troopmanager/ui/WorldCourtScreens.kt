@@ -3,14 +3,18 @@ package com.goldenunicorn.troopmanager.ui
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +28,7 @@ import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.engine.ProgressionEngine
 import com.goldenunicorn.troopmanager.engine.RelationshipEngine
+import com.goldenunicorn.troopmanager.engine.RegionEngine
 import com.goldenunicorn.troopmanager.engine.customizeCompanion
 import com.goldenunicorn.troopmanager.engine.customizePlayer
 import com.goldenunicorn.troopmanager.model.*
@@ -38,7 +43,7 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("WELT & KRIEG", "Ruhm ${state.renown} · Bedrohung ${state.realm.threat}%") }
+        item { PageTitle("WELT & MISSIONEN", "${state.regions.count { it.owned }} eigene Regionen · Ruhm ${state.renown} · Bedrohung ${state.realm.threat}%") }
         state.invasion?.let { invasion ->
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Danger)) {
@@ -65,16 +70,23 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Regionen") }
         item {
-            BoxWithConstraints(Modifier.fillMaxWidth().height(235.dp)) {
-                Image(painterResource(R.drawable.art_world_map), "Weltkarte mit auswählbaren Regionen", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            BoxWithConstraints(Modifier.fillMaxWidth().height(340.dp)) {
+                AsyncImage("file:///android_asset/world_map.webp", "Weltkarte mit auswählbaren Regionen", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 val positions = listOf(0.08f to 0.63f, 0.50f to 0.65f, 0.08f to 0.14f, 0.60f to 0.15f, 0.40f to 0.42f, 0.64f to 0.39f, 0.12f to 0.39f)
                 state.regions.take(7).forEachIndexed { index, region ->
                     val (x, y) = positions[index % positions.size]
-                    Surface(onClick = { selectedRegionId = region.id }, modifier = Modifier.offset(x = maxWidth * x, y = maxHeight * y),
-                        color = if (selectedRegionId == region.id) Gold else Panel.copy(alpha = 0.92f), shape = RoundedCornerShape(8.dp)) {
+                    Surface(onClick = { selectedRegionId = region.id }, modifier = Modifier.offset(x = maxWidth * x, y = maxHeight * y).heightIn(min = 48.dp),
+                        color = if (selectedRegionId == region.id) Gold else Panel.copy(alpha = 0.92f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (region.owned) Success else Gold.copy(alpha = .6f))) {
                         Text(region.name, color = if (selectedRegionId == region.id) Ink else Color.White, fontSize = 11.sp,
                             fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(max = 94.dp).padding(7.dp))
                     }
+                }
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.regions.take(7).forEach { region ->
+                    FilterChip(selected = selectedRegionId == region.id, onClick = { selectedRegionId = region.id }, label = { Text(region.name) })
                 }
             }
         }
@@ -95,8 +107,22 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                 Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
                     Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(region.name, color = PaleGold, fontWeight = FontWeight.Bold)
-                        Text("${region.type.label}${if (region.owned) " · Unter deinem Schutz" else ""}", color = Mist, fontSize = 12.sp)
-                        region.mission?.let { mission -> SmallAction("${mission.label} vorbereiten") { missionRegion = region } }
+                        Text("${region.type.label} · ${if (region.owned) "Unter deinem Schutz" else if (RegionEngine.canAcquire(region)) "Unabhängig" else "Gefährliches Gebiet"}", color = Mist, fontSize = 12.sp)
+                        val missionsHere = state.activeMissions.filter { it.regionId == region.id && it.status.isAway }
+                        if (missionsHere.isNotEmpty()) Text("${missionsHere.size} Mission(en) unterwegs · ${missionsHere.sumOf { it.total }} Soldaten", color = Gold, fontSize = 12.sp)
+                        if (RegionEngine.bonusDescription(region).isNotBlank()) Text(RegionEngine.bonusDescription(region), color = if (region.owned) Success else Mist, fontSize = 12.sp)
+                        region.mission?.let { mission -> GoldButton("${mission.label} vorbereiten", { missionRegion = region }, Modifier.fillMaxWidth()) }
+                        if (RegionEngine.canAcquire(region)) {
+                            OutlinedButton(enabled = state.resources.gold >= RegionEngine.purchaseCost(region) && state.battleSession?.isActive != true,
+                                onClick = { val result = RegionEngine.buy(state, region.id); onState(result.state); onNotice(result.message) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Gebiet kaufen · ${RegionEngine.purchaseCost(region)} Gold")
+                            }
+                            OutlinedButton(enabled = RegionEngine.diplomacy(state) >= 35 && state.resources.gold >= RegionEngine.diplomaticCost(state, region) && state.battleSession?.isActive != true,
+                                onClick = { val result = RegionEngine.negotiate(state, region.id); onState(result.state); onNotice(result.message) }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Diplomatisch übernehmen · ${RegionEngine.diplomaticCost(state, region)} Gold")
+                            }
+                            Text("Verhandeln: mindestens 35 Diplomatie. Gefährtin unterstützt ab 45 Vertrauen.", color = Mist, fontSize = 11.sp)
+                        }
                     }
                 }
             }
@@ -194,6 +220,9 @@ internal fun BattleSetupDialog(state: GameState, onDismiss: () -> Unit, onState:
                 Text("${state.awayArmySize} Soldaten unterwegs und nicht verfügbar.", color = Mist, fontSize = 12.sp)
                 if (editingFormation) Text("Vor dem ersten Gefecht kannst du deine Aufstellung anpassen.", color = Mist, fontSize = 12.sp)
             }
+            item {
+                FormationZones(deployments, state)
+            }
             commanders.forEach { commander -> item {
                 val count = UnitType.entries.sumOf { state.assignedTo(commander.id, it).toLong() }
                 Text("${commander.name} · $count Soldaten", color = PaleGold, fontWeight = FontWeight.Bold)
@@ -206,7 +235,7 @@ internal fun BattleSetupDialog(state: GameState, onDismiss: () -> Unit, onState:
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val available = state.directCommand(type).toLong()
                         val used = directCounts[type]?.values?.sumOf { it.toLong() } ?: 0L
-                        Text("Oberkommando: ${type.label}", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text("Dein persönliches Kommando: ${type.label}", color = PaleGold, fontWeight = FontWeight.Bold)
                         Text("$used von $available aufgestellt · ${available - used} noch frei", color = Mist, fontSize = 12.sp)
                         BattleSection.entries.forEach { section ->
                             val current = directCounts[type]?.get(section) ?: 0
@@ -239,6 +268,34 @@ internal fun BattleSetupDialog(state: GameState, onDismiss: () -> Unit, onState:
 }
 
 @Composable
+private fun FormationZones(deployments: List<BattleDeployment>, state: GameState) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("SCHLACHTFELD · Front nach oben", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BattleSection.entries.filter { it != BattleSection.RESERVE }.forEach { section ->
+                FormationZone(section, deployments, state, Modifier.weight(1f))
+            }
+        }
+        FormationZone(BattleSection.RESERVE, deployments, state, Modifier.fillMaxWidth())
+        Text("Kommandos über die Abschnittsauswahl zuweisen. Persönliche Truppen je Zone verteilen.", color = Mist, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun FormationZone(section: BattleSection, deployments: List<BattleDeployment>, state: GameState, modifier: Modifier) {
+    val rows = deployments.filter { it.section == section }
+    val count = rows.sumOf { row -> row.units.sumOf { it.amount.toLong() } }
+    Surface(modifier = modifier.heightIn(min = 112.dp), color = Panel2, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Gold.copy(alpha = .45f))) {
+        Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(section.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text("$count Soldaten", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            rows.forEach { row -> Text(state.commanders.firstOrNull { it.id == row.commanderId }?.name ?: "Persönliches Kommando", color = Mist, fontSize = 10.sp) }
+            if (rows.isEmpty()) Text("Unbesetzt", color = Mist, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
 private fun <T> SelectionMenu(label: String, selected: String, options: List<T>, optionLabel: (T) -> String, onSelect: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -252,6 +309,8 @@ private fun <T> SelectionMenu(label: String, selected: String, options: List<T>,
 @Composable
 internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val context = LocalContext.current
+    var editPlayer by remember { mutableStateOf(false) }
+    var editCompanion by remember { mutableStateOf(false) }
 
     var playerName by remember(state.player.name) { mutableStateOf(state.player.name) }
     var playerAge by remember(state.player.age) { mutableStateOf(state.player.age.toString()) }
@@ -306,8 +365,13 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         item {
             Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Stufe ${state.player.level} · ${state.player.experience} Erfahrung", color = PaleGold, fontWeight = FontWeight.Bold)
-                    Text("${state.player.skillPoints} freie Fertigkeitspunkte", color = Gold)
+                    val threshold = state.player.level * 100
+                    Text("Stufe ${state.player.level}", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("${state.player.experience} / $threshold XP · ${threshold - state.player.experience} bis zur nächsten Stufe", color = Mist, fontSize = 12.sp)
+                    LinearProgressIndicator(progress = { (state.player.experience.toFloat() / threshold.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = Gold)
+                    Text("Nächstes Level: +3 Skillpunkte", color = Gold, fontWeight = FontWeight.Bold)
+                    Text("${state.player.skillPoints} freie Fertigkeitspunkte", color = if (state.player.skillPoints > 0) Success else Mist)
+                    CourtInfo("Woher kommen Spieler-XP?", "Missionen, Schlachten und Reichsentscheidungen geben XP. Schlachten bringen größere Beträge; Gebietskauf und diplomatische Übernahmen geben kleine Mengen. Bei jedem Level werden +3 Skillpunkte frei.")
                     listOf(
                         Triple("Schwert", "sword", state.player.sword),
                         Triple("Bogen", "bow", state.player.bow),
@@ -316,8 +380,11 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                         Triple("Taktik", "tactics", state.player.tactics),
                         Triple("Diplomatie", "diplomacy", state.player.diplomacy)
                     ).forEach { (label, key, value) ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("$label: $value", color = Mist, modifier = Modifier.padding(top = 12.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text("$label: $value / 100", color = PaleGold, fontWeight = FontWeight.SemiBold)
+                                Text(skillImpact(key), color = Mist, fontSize = 11.sp)
+                            }
                             OutlinedButton(enabled = state.player.skillPoints > 0 && value < 100, onClick = {
                                 val result = ProgressionEngine.spendPoint(state, key)
                                 onState(result.state); onNotice(result.message)
@@ -331,22 +398,24 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         item {
             Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Spieler vollständig anpassen", color = PaleGold, fontWeight = FontWeight.Bold)
-                    OutlinedTextField(playerName, { playerName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(playerAge, { playerAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(playerArmor, { playerArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(playerWeapon, { playerWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
-                    SmallAction("Spieler übernehmen") {
-                        onState(
-                            customizePlayer(
-                                state,
-                                playerName,
-                                playerAge.toIntOrNull() ?: state.player.age,
-                                playerArmor,
-                                playerWeapon
+                    TextButton(onClick = { editPlayer = !editPlayer }) { Text(if (editPlayer) "Anpassung schließen" else "Spieler anpassen", color = Gold) }
+                    if (editPlayer) {
+                        OutlinedTextField(playerName, { playerName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(playerAge, { playerAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(playerArmor, { playerArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(playerWeapon, { playerWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
+                        SmallAction("Spieler übernehmen") {
+                            onState(
+                                customizePlayer(
+                                    state,
+                                    playerName,
+                                    playerAge.toIntOrNull() ?: state.player.age,
+                                    playerArmor,
+                                    playerWeapon
+                                )
                             )
-                        )
-                        onNotice("Spieler angepasst.")
+                            onNotice("Spieler angepasst.")
+                        }
                     }
                 }
             }
@@ -377,22 +446,24 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Gefährtin vollständig anpassen", color = PaleGold, fontWeight = FontWeight.Bold)
-                        OutlinedTextField(companionName, { companionName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(companionAge, { companionAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(companionArmor, { companionArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
-                        OutlinedTextField(companionWeapon, { companionWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
-                        SmallAction("Gefährtin übernehmen") {
-                            onState(
-                                customizeCompanion(
-                                    state,
-                                    companionName,
-                                    companionAge.toIntOrNull() ?: state.companion.age,
-                                    companionArmor,
-                                    companionWeapon
+                        TextButton(onClick = { editCompanion = !editCompanion }) { Text(if (editCompanion) "Anpassung schließen" else "Gefährtin anpassen", color = Gold) }
+                        if (editCompanion) {
+                            OutlinedTextField(companionName, { companionName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(companionAge, { companionAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(companionArmor, { companionArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
+                            OutlinedTextField(companionWeapon, { companionWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
+                            SmallAction("Gefährtin übernehmen") {
+                                onState(
+                                    customizeCompanion(
+                                        state,
+                                        companionName,
+                                        companionAge.toIntOrNull() ?: state.companion.age,
+                                        companionArmor,
+                                        companionWeapon
+                                    )
                                 )
-                            )
-                            onNotice("Gefährtin angepasst.")
+                                onNotice("Gefährtin angepasst.")
+                            }
                         }
                     }
                 }
@@ -408,6 +479,17 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                         "Beziehung" to stage
                     )
                 )
+            }
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("Rollenboni · ${state.companion.role}", color = PaleGold, fontWeight = FontWeight.Bold)
+                        val trusted = state.companion.trust >= 45
+                        Text(if (trusted) "Handel: +${state.companion.diplomacy} Gold/Tag während eines Handelsbonus." else "Handelsunterstützung wird ab 45 Vertrauen aktiv.", color = if (trusted) Success else Mist, fontSize = 12.sp)
+                        Text(if (trusted) "Verhandlungen: +${state.companion.diplomacy / 2} gemeinsame Diplomatie." else "Gemeinsame Diplomatie benötigt 45 Vertrauen.", color = Mist, fontSize = 12.sp)
+                        Text("Als Kommandantin wirken Schwert, Bogen, Führung und Taktik auf ihr eigenes Kontingent. Reiten verkürzt Geleitschutz und Erkundung ab 75.", color = Mist, fontSize = 12.sp)
+                    }
+                }
             }
             state.relationship.pendingEvent?.let { event ->
                 item {
@@ -441,6 +523,22 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
         }
     }
+}
+
+@Composable
+private fun CourtInfo(title: String, detail: String) {
+    var expanded by remember { mutableStateOf(false) }
+    TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) { Text("? $title", color = Gold, fontSize = 12.sp) }
+    if (expanded) Text(detail, color = Mist, fontSize = 12.sp)
+}
+
+private fun skillImpact(skill: String): String = when (skill) {
+    "sword" -> "Stärkt Nahkampf, Patrouillen und Banditenmissionen."
+    "bow" -> "Stärkt Fernkampf sowie Jagd und Erkundung."
+    "riding" -> "Stärkt Ritter; ab 75 kürzere Geleitschutz- und Erkundungsmissionen."
+    "leadership" -> "Stärkt Kontingente, Erholung der Moral und Hilfsmissionen."
+    "tactics" -> "Verbessert Kampfkraft, Missionschancen und taktische Entscheidungen."
+    else -> "Mehr Gold bei Handelsbonus und günstigere Gebietsverhandlungen."
 }
 
 @Composable

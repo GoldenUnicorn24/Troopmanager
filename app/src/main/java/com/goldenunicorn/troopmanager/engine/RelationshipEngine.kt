@@ -242,6 +242,7 @@ object RelationshipEngine {
     fun syncCommander(state: GameState): GameState {
         if (!state.companion.met) return state
         val c = state.companion
+        val previous = state.commanders.find { it.id == COMPANION_COMMANDER_ID }
         val commander =
             Commander(
                 COMPANION_COMMANDER_ID,
@@ -259,6 +260,10 @@ object RelationshipEngine {
                 "Gefährtin · ${c.relationshipStage()}",
                 if (c.relationshipStage() in listOf("Mitregentin", "Herrscherpaar")) "Mitregentin"
                 else "Kommandantin",
+                missionsCompleted = previous?.missionsCompleted ?: 0,
+                battlesFought = previous?.battlesFought ?: 0,
+                victories = previous?.victories ?: 0,
+                casualties = previous?.casualties ?: 0,
             )
         return state.copy(
             commanders = state.commanders.filterNot { it.id == COMPANION_COMMANDER_ID } + commander

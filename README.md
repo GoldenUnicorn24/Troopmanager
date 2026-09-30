@@ -1,8 +1,18 @@
-# Realm of the Last Wall — Troopmanager v0.4.0
+# Realm of the Last Wall — Troopmanager v0.45.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
 
-## Core overhaul
+## City and interface overhaul
+
+- Five main pages: realm dashboard, city, army, world/missions and court. Help is available in the top menu.
+- Isometric city with pan/zoom, precise building targets, six districts, accessible building list, three architectural tiers, bounded ambient groups and the same scene during sieges.
+- Construction takes campaign days with upfront costs and one to three slots. Residential districts and warehouses expand housing/storage; tax, workers, satisfaction, prosperity and security affect the economy.
+- Market purchases/sales use different prices. Mine, forest and village ownership contributes daily production; region purchase and diplomacy retain stable IDs.
+- Hospital, officer school, stables, arsenal and embassy supply actual morale, training, upkeep, repair and diplomatic/economic effects.
+- Separate commander profiles, persistent service statistics, fullscreen quantity assignment and mission planning, meaningful new battle orders, and reports showing XP, loot, casualties and wear.
+- New original army/world/city/menu/portrait artwork, adaptive icon, resource pictograms and contextual explanations.
+
+## Campaign core
 
 - Human, Elf and Half-Elf origins start with distinct armies; Half-Elves can use all four cultures immediately.
 - Start buildings include farm and barracks level 2 plus sawmill, quarry, ironworks, market, wall, tower and residence level 1.
@@ -24,11 +34,11 @@ An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin
 
 `model/` contains serializable army pools, unit allocations, missions, realm events, invasions, relationships and battle sessions. `engine/` separates economy, army, mission, battle, relationship, event and progression logic. Compose screens present the realm, army, world, court and live battle.
 
-Simulation operates on quantities, not individual soldiers, so large armies remain compact. Only the player, companion and commanders are individual characters. Original bundled army category images, menu artwork and the app icon are retained. Local custom portraits are supported; see [CREDITS.md](CREDITS.md).
+Simulation operates on quantities, not individual soldiers, so large armies remain compact. Only the player, companion and commanders are individual characters. Original high-resolution illustrations replace the small v0.4 category/menu assets and portrait placeholders. Local custom portraits are supported; see [CREDITS.md](CREDITS.md).
 
 ## Offline saves
 
-Campaigns autosave in local Android storage with a backup and error handling. Save version 2 migrates older regiment-based saves by summing soldiers per type and weighting morale and experience. Commander allocations and current missions/battles persist. No account, server, subscription, online requirement or in-app purchases. Imported portraits remain local device references.
+Campaigns autosave in local Android storage with a backup and error handling. Save version 3 first migrates older regiment-based saves by summing soldiers per type and weighting morale and experience, then adds neutral city management. A byte-exact protected copy of the original v0.4 save survives rolling autosaves. All original v2 fields are preserved; capacities protect existing population and supplies. Future saves are rejected safely. Commander allocations and current missions/battles persist. No account, server, subscription, online requirement or in-app purchases. Imported portraits remain local device references.
 
 ## Build and verification
 
@@ -36,17 +46,21 @@ Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project
 
 - `compileSdk` / `targetSdk`: 35
 - `minSdk`: 26
-- `versionName`: 0.4.0
-- `versionCode`: 4
+- `versionName`: 0.45.0
+- `versionCode`: 5
 
 ```bash
 gradle :app:testDebugUnitTest --stacktrace
 gradle :app:assembleDebug --stacktrace
+gradle :app:lintDebug --stacktrace
 test -f app/build/outputs/apk/debug/app-debug.apk
 ```
 
 The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 
-GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.4.0-debug`.
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.45.0-debug`.
 
 The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; individual soldier movement and recorded battle audio are not part of this version.
+
+
+See [v0.45 implementation and update evidence](docs/V0.45.0-IMPLEMENTATION.md) and [third-party icon notices](docs/THIRD-PARTY-NOTICES.md). The supplied local v0.45 APK shares the supplied local v0.4 APK signing certificate. Fresh GitHub Actions debug keys belong to a different signing family unless a persistent signing configuration is provided.

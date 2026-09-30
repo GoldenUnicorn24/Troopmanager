@@ -1,13 +1,14 @@
 package com.goldenunicorn.troopmanager.data
 
 import com.goldenunicorn.troopmanager.model.*
+import com.goldenunicorn.troopmanager.engine.CityEngine
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 /** Android-independent, versioned save format. Invalid data is never silently a new game. */
 object SaveCodec {
-    const val CURRENT_VERSION = 2
+    const val CURRENT_VERSION = 3
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -38,8 +39,8 @@ object SaveCodec {
                 )
             if (version < 1) throw SaveFormatException("Die Spielstandversion ist ungültig.")
             requireCoreStructure(root, version)
-            val state =
-                if (version == 1) migrate(root) else json.decodeFromJsonElement<GameState>(root)
+            val previous = if (version == 1) migrate(root) else json.decodeFromJsonElement<GameState>(root)
+            val state = if (version <= 2) previous.copy(version = CURRENT_VERSION, city = CityEngine.migrationDefaults(previous)) else previous
             validate(state)
             return state
         } catch (error: SaveFormatException) {
@@ -82,6 +83,16 @@ object SaveCodec {
         val realm = root["realm"] as? JsonObject ?: error("Gebiet fehlt.")
         require(realm["territory"] is JsonPrimitive && realm["buildings"] is JsonObject) {
             "Gebiet ist unvollständig."
+        }
+        if (version >= 3) {
+            val city = root["city"] as? JsonObject ?: error("Stadtverwaltung fehlt.")
+            require(listOf("housingCapacity", "workerPriority", "taxLevel", "satisfaction", "prosperity", "security").all { city[it] is JsonPrimitive } && city["constructionQueue"] is JsonArray) {
+                "Stadtverwaltung ist unvollständig."
+            }
+            val storage = city["storageCapacity"] as? JsonObject ?: error("Lagerkapazitäten fehlen.")
+            require(listOf("gold", "food", "wood", "stone", "iron").all { storage[it] is JsonPrimitive }) {
+                "Lagerkapazitäten sind unvollständig."
+            }
         }
         require(root[if (version == 1) "regiments" else "armyPools"] is JsonArray) {
             "Armeebestände fehlen."
@@ -151,7 +162,7 @@ object SaveCodec {
         val upgraded =
             root.toMutableMap().apply {
                 remove("regiments")
-                put("version", JsonPrimitive(CURRENT_VERSION))
+                put("version", JsonPrimitive(2))
                 put("armyPools", json.encodeToJsonElement(pools))
                 put(
                     "realm",
@@ -279,6 +290,22 @@ object SaveCodec {
         ) {
             "Ungültiges Gebiet."
         }
+        require(state.version == CURRENT_VERSION) { "Ungültige Spielstandversion." }
+        require(state.city.housingCapacity >= 0 && ResourceKind.entries.all { it.value(state.city.storageCapacity) >= 0 }) {
+            "Ungültige Stadt- oder Lagerkapazität."
+        }
+        require(listOf(state.city.satisfaction, state.city.prosperity, state.city.security).all { it in 0..100 }) {
+            "Ungültige Stadtwerte."
+        }
+        val projects = state.city.constructionQueue
+        require(projects.size <= 3 && projects.map { it.id }.distinct().size == projects.size &&
+            projects.map { it.type }.distinct().size == projects.size && projects.all {
+                it.targetLevel in 1..100 && it.targetLevel == state.realm.level(it.type) + 1 &&
+                    it.totalDays >= 1 && it.daysRemaining in 1..it.totalDays
+            }) { "Ungültige Bauwarteschlange." }
+        require(state.commanders.all { it.missionsCompleted >= 0 && it.battlesFought >= 0 && it.victories >= 0 && it.casualties >= 0 }) {
+            "Ungültige Kommandantenhistorie."
+        }
         require(state.armyPools.map { it.type }.distinct().size == state.armyPools.size) {
             "Doppelte Armeepools."
         }
@@ -317,7 +344,7 @@ object SaveCodec {
                 mission.startDay in 1..state.day &&
                     mission.duration > 0 &&
                     mission.supplyCost >= 0 &&
-                    mission.losses >= 0
+                    mission.losses >= 0 && mission.xpReward >= 0 && mission.renownReward >= 0
             ) {
                 "Ungültige Mission."
             }
@@ -393,7 +420,8 @@ object SaveCodec {
                     battle.ownStart >= 0 &&
                     battle.enemyStart >= 0 &&
                     battle.wallIntegrity in 0..100 &&
-                    battle.lootGold >= 0
+                    battle.lootGold >= 0 && battle.lootFood >= 0 && battle.xpReward >= 0 &&
+                    battle.renownReward >= 0 && battle.equipmentDamage in 0..100
             ) {
                 "Ungültige Schlacht."
             }
@@ -402,7 +430,8 @@ object SaveCodec {
                     it.soldiers in 0..it.startSoldiers &&
                         it.experience in 0..100 &&
                         it.morale in 0..100 &&
-                        it.equipment in 0..100
+                        it.equipment in 0..100 &&
+                        (!it.commanderRescued || (it.commanderWounded && it.commanderId != null))
                 }
             ) {
                 "Ungültige Schlachttruppen."

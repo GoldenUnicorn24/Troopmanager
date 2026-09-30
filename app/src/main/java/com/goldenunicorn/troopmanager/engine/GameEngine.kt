@@ -66,7 +66,7 @@ object GameEngine {
 
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
-        var next = EconomyEngine.day(state)
+        var next = EconomyEngine.day(CityEngine.tick(state))
         next = MissionEngine.tick(next)
         next = RelationshipEngine.day(next)
         next = EventEngine.day(next)
@@ -78,6 +78,9 @@ object GameEngine {
             else "Tag ${next.day}: Wirtschaft, Ausbildung und Missionen schreiten voran."
         return ActionResult(next, message)
     }
+
+    fun trainingDays(state: GameState, type: UnitType): Int =
+        maxOf(2, type.trainingDays - state.realm.level(BuildingType.BARRACKS))
 
     fun recruit(state: GameState, type: UnitType, percent: Int): ActionResult {
         if (busy(state)) return ActionResult(state, "Rekrutierung nach der Schlacht möglich.")
@@ -94,7 +97,7 @@ object GameEngine {
         val iron = amount.toLong() * type.ironCost
         if (gold > state.resources.gold || iron > state.resources.iron)
             return ActionResult(state, "Benötigt: $gold Gold / $iron Eisen.")
-        val days = maxOf(2, type.trainingDays - state.realm.level(BuildingType.BARRACKS))
+        val days = trainingDays(state, type)
         val order =
             TrainingOrder(
                 maxOf(System.nanoTime(), (state.trainingQueue.maxOfOrNull { it.id } ?: 0) + 1),
@@ -136,51 +139,21 @@ object GameEngine {
                 BuildingType.WALL -> Resources(420, 0, 360, 160, 0)
                 BuildingType.TOWER -> Resources(360, 0, 300, 140, 0)
                 BuildingType.PALACE -> Resources(800, 0, 600, 260, 0)
+                BuildingType.RESIDENTIAL -> Resources(180, 0, 100, 30, 0)
+                BuildingType.WAREHOUSE -> Resources(220, 0, 140, 60, 0)
+                BuildingType.HOSPITAL -> Resources(300, 0, 160, 100, 20)
+                BuildingType.ACADEMY -> Resources(450, 0, 220, 180, 40)
+                BuildingType.STABLES -> Resources(260, 0, 180, 50, 20)
+                BuildingType.ARSENAL -> Resources(400, 0, 200, 160, 60)
+                BuildingType.EMBASSY -> Resources(500, 0, 200, 180, 0)
             }
         val next = state.realm.level(type).toLong() + 1
         fun cost(v: Int) = (v * next * next).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return Resources(cost(base.gold), 0, cost(base.wood), cost(base.stone), 0)
+        return Resources(cost(base.gold), 0, cost(base.wood), cost(base.stone), cost(base.iron))
     }
 
-    fun build(state: GameState, type: BuildingType): ActionResult {
-        if (busy(state)) return ActionResult(state, "Bauen nach der Schlacht möglich.")
-        if (state.realm.level(type) >= 100)
-            return ActionResult(state, "Maximale Gebäudestufe erreicht.")
-        val cost = buildingCost(state, type)
-        val r = state.resources
-        if (r.gold < cost.gold || r.wood < cost.wood || r.stone < cost.stone)
-            return ActionResult(
-                state,
-                "Benötigt: ${cost.gold} Gold / ${cost.wood} Holz / ${cost.stone} Stein.",
-            )
-        val level = state.realm.level(type) + 1
-        val next =
-            ProgressionEngine.update(
-                state.copy(
-                    resources =
-                        r.copy(
-                            gold = r.gold - cost.gold,
-                            wood = r.wood - cost.wood,
-                            stone = r.stone - cost.stone,
-                        ),
-                    realm =
-                        state.realm.copy(
-                            buildings = state.realm.buildings + (type to level),
-                            wallIntegrity =
-                                if (type == BuildingType.WALL) 100 else state.realm.wallIntegrity,
-                        ),
-                    chronicle =
-                        (state.chronicle +
-                                ChronicleEntry(
-                                    state.day,
-                                    "Bauprojekt",
-                                    "${type.label} erreicht Stufe $level.",
-                                ))
-                            .takeLast(80),
-                )
-            )
-        return ActionResult(next, "${type.label} auf Stufe $level ausgebaut.")
-    }
+    fun build(state: GameState, type: BuildingType): ActionResult =
+        CityEngine.startConstruction(state, type)
 
     fun buyLand(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Expansion nach der Schlacht möglich.")
@@ -302,13 +275,14 @@ object GameEngine {
                 ?: return ActionResult(state, "Kommandant nicht gefunden.")
         if (id == COMPANION_COMMANDER_ID) return RelationshipEngine.action(state, "train")
         if (state.resources.gold < 120) return ActionResult(state, "Training benötigt 120 Gold.")
+        val academyBonus = state.realm.level(BuildingType.ACADEMY).coerceAtMost(3)
         val updated =
             c.copy(
                 level = c.level + 1,
                 sword = (c.sword + 1).coerceAtMost(100),
                 bow = (c.bow + 1).coerceAtMost(100),
-                leadership = (c.leadership + 2).coerceAtMost(100),
-                tactics = (c.tactics + 2).coerceAtMost(100),
+                leadership = (c.leadership + 2 + academyBonus).coerceAtMost(100),
+                tactics = (c.tactics + 2 + academyBonus).coerceAtMost(100),
                 siege = (c.siege + 1).coerceAtMost(100),
                 loyalty = (c.loyalty + 1).coerceAtMost(100),
                 rank = if (c.level >= 8) "Marschall" else if (c.level >= 4) "General" else c.rank,
@@ -348,7 +322,7 @@ object GameEngine {
         val invasion = state.invasion ?: return ActionResult(state, "Keine angekündigte Invasion.")
         if (invasion.alliesRequested)
             return ActionResult(state, "Verbündete wurden bereits angefordert.")
-        val cost = (600 - state.player.diplomacy * 4).coerceAtLeast(200)
+        val cost = (600 - state.player.diplomacy * 4 - state.realm.level(BuildingType.EMBASSY).coerceAtMost(5) * 30).coerceAtLeast(150)
         if (state.resources.gold < cost)
             return ActionResult(state, "Boten und Unterstützung benötigen $cost Gold.")
         val reduction = (0.1 + state.player.diplomacy / 500.0).coerceAtMost(0.3)

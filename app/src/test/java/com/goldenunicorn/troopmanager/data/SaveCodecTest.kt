@@ -40,7 +40,7 @@ class SaveCodecTest {
     @Test
     fun migrationAggregatesWeightsAndPreservesLegacyProgress() {
         val loaded = SaveCodec.decode(legacy())
-        assertEquals(2, loaded.version)
+        assertEquals(3, loaded.version)
         assertEquals(2, loaded.armyPools.size)
         val pool = loaded.armyPools.first { it.type == UnitType.HUMAN_SWORD }
         assertEquals(400, pool.soldiers)
@@ -445,12 +445,12 @@ class SaveCodecTest {
     }
 
     @Test
-    fun legacyLoadPersistsV2AndKeepsOriginalBackup() {
+    fun legacyLoadPersistsV3AndKeepsOriginalBackup() {
         val storage = MemoryStorage()
         storage.values[PRIMARY] = legacy()
         assertNotNull(SaveRepository(storage).load())
         assertEquals(
-            2,
+            3,
             Json.parseToJsonElement(storage.values.getValue(PRIMARY))
                 .jsonObject
                 .getValue("version")

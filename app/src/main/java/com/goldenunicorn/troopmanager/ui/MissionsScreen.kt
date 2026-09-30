@@ -1,5 +1,7 @@
 package com.goldenunicorn.troopmanager.ui
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,10 +9,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.model.*
 
@@ -48,6 +56,7 @@ internal fun MissionsSection(
             }
         }
         if (tab == 0) {
+            Text("Schnellzugriff · Missionen auch über die Weltkarte starten", color = Mist, fontSize = 12.sp)
             MissionType.entries.forEach { mission ->
                 Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
                     Column(
@@ -97,6 +106,7 @@ private fun MissionCard(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
 ) {
+    var report by remember { mutableStateOf<ActiveMission?>(null) }
     Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
         Column(
             Modifier.fillMaxWidth().padding(14.dp),
@@ -105,7 +115,7 @@ private fun MissionCard(
             Text(mission.missionType.label, color = Color.White, fontWeight = FontWeight.Bold)
             Text(
                 state.commanders.firstOrNull { it.id == mission.commanderId }?.name
-                    ?: "Direktes Oberkommando",
+                    ?: "Dein persönliches Kommando",
                 color = Gold,
             )
             mission.regionId?.let { id ->
@@ -164,9 +174,11 @@ private fun MissionCard(
                     color = Gold,
                     fontSize = 12.sp,
                 )
+                SmallAction("Rückkehrbericht öffnen") { report = mission }
             }
         }
     }
+    report?.let { MissionResultScreen(state, it) { report = null } }
 }
 
 @Composable
@@ -191,108 +203,150 @@ internal fun MissionPreparationDialog(
     val total = allocations.sumOf { it.amount.toLong() }
     val duration = MissionEngine.duration(state, mission, commanderId)
     val supply = total * duration.toLong() * 2L
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(mission.label) },
-        text = {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.heightIn(max = 540.dp),
-            ) {
-                region?.let { item { Text("Ziel: ${it.name}", color = Gold) } }
-                item {
-                    Box {
-                        OutlinedButton(
-                            onClick = { menu = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(
-                                state.commanders.firstOrNull { it.id == commanderId }?.name
-                                    ?: "Direktes Oberkommando"
-                            )
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Direktes Oberkommando") },
-                                onClick = {
-                                    commanderId = null
-                                    menu = false
-                                },
-                            )
-                            state.commanders
-                                .filterNot { state.commanderAway(it.id) }
-                                .forEach { commander ->
-                                    DropdownMenuItem(
-                                        text = { Text(commander.name) },
-                                        onClick = {
-                                            commanderId = commander.id
-                                            menu = false
-                                        },
-                                    )
-                                }
+    val estimate = MissionEngine.estimate(state, mission, allocations, commanderId)
+    FullScreenMission("MISSION VORBEREITEN", onDismiss, bottomBar = {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("$total Soldaten · $duration Tage · $supply Nahrung", color = Gold, fontSize = 13.sp)
+            Button(onClick = {
+                val result = MissionEngine.start(state, mission, commanderId, allocations, region?.id)
+                onState(result.state)
+                onNotice(result.message)
+                if (result.state.activeMissions.any { launched -> state.activeMissions.none { it.id == launched.id } }) onDismiss()
+            }, modifier = Modifier.fillMaxWidth(), enabled = total >= mission.spec().minimum &&
+                total <= Int.MAX_VALUE.toLong() && supply <= state.resources.food &&
+                state.battleSession?.isActive != true, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) { Text("MISSION STARTEN", fontWeight = FontWeight.Bold) }
+        }
+    }) { padding ->
+        LazyColumn(
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 20.dp),
+            modifier = Modifier.fillMaxSize().padding(padding),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            item {
+                Box(Modifier.fillMaxWidth().height(175.dp)) {
+                    Image(painterResource(R.drawable.art_world_map), "Missionsgebiet", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    Surface(Modifier.align(Alignment.BottomStart).fillMaxWidth(), color = Ink.copy(alpha = .88f)) {
+                        Column(Modifier.padding(14.dp)) {
+                            Text(region?.name ?: mission.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                            Text(if (region?.owned == true) "Eigenes Gebiet" else region?.type?.label ?: "Grenzregion · freies Missionsziel", color = Mist, fontSize = 12.sp)
                         }
                     }
-                    Text(
-                        "Eigene Kontingente und freie Soldaten verfügbar. Andere Kommandos bleiben reserviert.",
-                        color = Mist,
-                        fontSize = 12.sp,
-                    )
-                }
-                items(UnitType.entries.filter { available.getValue(it) > 0 }) { type ->
-                    TroopCountPicker(type.label, available.getValue(type), counts[type] ?: 0) {
-                        amount ->
-                        counts = counts + (type to amount)
-                    }
-                }
-                if (available.values.sumOf { it.toLong() } == 0L)
-                    item {
-                        Text(
-                            "Keine verfügbaren Soldaten. Prüfe die Truppenzuweisungen in der Armee.",
-                            color = Mist,
-                        )
-                    }
-                item {
-                    Text(
-                        "$total Soldaten · $duration Tage · Risiko ${mission.spec().risk}",
-                        color = Gold,
-                    )
-                    Text(
-                        "Versorgung: $supply Nahrung / ${state.resources.food} verfügbar",
-                        color = if (supply > state.resources.food) Danger else Mist,
-                    )
-                    Text(
-                        "Mindestens ${mission.spec().minimum}, empfohlen ${mission.spec().recommended} Soldaten. Unterwegs fehlen sie der Festung. Belohnungen gibt es erst bei Rückkehr.",
-                        color = Mist,
-                        fontSize = 12.sp,
-                    )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                enabled =
-                    total >= mission.spec().minimum &&
-                        total <= Int.MAX_VALUE.toLong() &&
-                        supply <= state.resources.food &&
-                        state.battleSession?.isActive != true,
-                onClick = {
-                    val result =
-                        MissionEngine.start(state, mission, commanderId, allocations, region?.id)
-                    onState(result.state)
-                    onNotice(result.message)
-                    if (
-                        result.state.activeMissions.any { launched ->
-                            state.activeMissions.none { it.id == launched.id }
-                        }
-                    )
-                        onDismiss()
-                },
-            ) {
-                Text("MISSION STARTEN")
+            item {
+                Text(mission.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                Text(missionHint(mission), color = Mist, fontSize = 13.sp)
+                StatGrid(listOf("Dauer" to "$duration Tage", "Risiko" to mission.spec().risk))
             }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Zurück") } },
-    )
+            item {
+                SectionTitle("Wer führt die Mission?")
+                Box {
+                    OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(state.commanders.firstOrNull { it.id == commanderId }?.name ?: "Dein persönliches Kommando")
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text("Dein persönliches Kommando") }, onClick = { commanderId = null; menu = false })
+                        state.commanders.filterNot { state.commanderAway(it.id) }.forEach { commander ->
+                            DropdownMenuItem(text = { Text(commander.name) }, onClick = { commanderId = commander.id; menu = false })
+                        }
+                    }
+                }
+                Text("Freie Soldaten und das gewählte Kontingent. Andere Kommandos bleiben reserviert.", color = Mist, fontSize = 12.sp)
+            }
+            item { SectionTitle("Truppen auswählen") }
+            items(UnitType.entries.filter { available.getValue(it) > 0 }) { type ->
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Box(Modifier.padding(14.dp)) {
+                        TroopCountPicker(type.label, available.getValue(type), counts[type] ?: 0) { amount -> counts = counts + (type to amount) }
+                    }
+                }
+            }
+            if (available.values.sumOf { it.toLong() } == 0L) item { EmptyCard("Keine verfügbaren Soldaten. Prüfe die Truppenzuweisung in der Armee.") }
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Einschätzung", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text(estimate.outcomeHint, color = Mist)
+                        StatGrid(listOf("Goldbeute" to "${estimate.goldRange.first}–${estimate.goldRange.last}", "Spieler-XP" to "${estimate.xpRange.first}–${estimate.xpRange.last}"))
+                        Text("Schätzung ohne Erfolgsgarantie; Qualität, Führung und Zufall bestimmen die Rückkehr.", color = Mist, fontSize = 12.sp)
+                    }
+                }
+            }
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Versorgung: $supply / ${state.resources.food} Nahrung", color = if (supply > state.resources.food) Danger else Gold)
+                        Text("Mindestens ${mission.spec().minimum}, empfohlen ${mission.spec().recommended} Soldaten.", color = Mist, fontSize = 12.sp)
+                        Text("Versorgung wird beim Start bezahlt. Truppen fehlen bis zur Rückkehr in der Festung.", color = Mist, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FullScreenMission(
+    title: String,
+    onDismiss: () -> Unit,
+    bottomBar: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        BackHandler(onBack = onDismiss)
+        Scaffold(
+            modifier = Modifier.fillMaxSize(), containerColor = Ink,
+            topBar = {
+                Surface(color = Panel) {
+                    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = onDismiss) { Text("Zurück", color = Gold) }
+                        Text(title, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            },
+            bottomBar = { Surface(color = Panel, modifier = Modifier.navigationBarsPadding()) { bottomBar() } },
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun MissionResultScreen(state: GameState, mission: ActiveMission, onDismiss: () -> Unit) {
+    FullScreenMission("RÜCKKEHRBERICHT", onDismiss) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item { PageTitle(mission.missionType.label.uppercase(), mission.outcome?.label ?: "Zurückgekehrt") }
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(state.commanders.firstOrNull { it.id == mission.commanderId }?.name ?: "Dein persönliches Kommando", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text(state.regions.firstOrNull { it.id == mission.regionId }?.name ?: "Grenzregion", color = Mist)
+                        Text("Tag ${mission.startDay} · ${mission.duration} Tage · ${mission.supplyCost} Nahrung Versorgung", color = Mist, fontSize = 12.sp)
+                    }
+                }
+            }
+            item { StatGrid(listOf("Eingesetzt" to "${mission.total}", "Heimgekehrt" to "${(mission.total - mission.losses).coerceAtLeast(0)}", "Gefallen" to "${mission.losses}", "Spieler-XP" to "${mission.xpReward}")) }
+            item { SectionTitle("Beute & Ruhm") }
+            item { StatGrid(listOf("Gold" to "${mission.reward.gold}", "Nahrung" to "${mission.reward.food}", "Holz" to "${mission.reward.wood}", "Stein" to "${mission.reward.stone}", "Eisen" to "${mission.reward.iron}", "Ruhm" to "${mission.renownReward}")) }
+            item { SectionTitle("Eingesetzte Einheiten") }
+            items(mission.units) { unit ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(unit.type.label, color = Mist)
+                    Text("${unit.amount}", color = Color.White)
+                }
+            }
+            item {
+                val event = when {
+                    mission.status == MissionStatus.RETURNING || mission.outcome == null -> "Die Mission wurde zurückgerufen. Die Truppen haben die Festung erreicht."
+                    mission.missionType == MissionType.RELIEF && mission.reward.gold > 0 -> "Die Hilfsmission hat Bewohner unterstützt und den Einfluss deines Reiches gestärkt."
+                    mission.missionType == MissionType.SCOUT && mission.status == MissionStatus.COMPLETE -> "Erkundungsberichte geben deiner Festung zusätzliche Vorwarnzeit."
+                    mission.losses > 0 -> "Die Rückkehrer berichten von schweren Gefechten. Verluste sind bereits aus dem Truppenpool entfernt."
+                    else -> "Die Truppen stehen der Festung wieder zur Verfügung. Beute und Erfahrung sind bereits verbucht."
+                }
+                EmptyCard(event)
+            }
+            item { GoldButton("BERICHT SCHLIESSEN", onDismiss, Modifier.fillMaxWidth()) }
+        }
+    }
 }
 
 @Composable

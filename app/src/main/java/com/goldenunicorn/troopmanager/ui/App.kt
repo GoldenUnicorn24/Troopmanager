@@ -1,6 +1,7 @@
 package com.goldenunicorn.troopmanager.ui
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -10,8 +11,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
+import com.goldenunicorn.troopmanager.ui.icons.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -31,10 +36,10 @@ import com.goldenunicorn.troopmanager.model.Species
 
 private enum class Screen(val label: String, val icon: String) {
     REALM("Reich", "♜"),
+    CITY("Stadt", "⌂"),
     ARMY("Armee", "⚔"),
     WORLD("Welt", "◉"),
     COURT("Hof", "♛"),
-    MORE("Mehr", "?")
 }
 
 @Composable
@@ -44,74 +49,82 @@ fun RealmGameApp(saves: SaveRepository) {
     var notice by remember { mutableStateOf<String?>(null) }
 
     MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Gold,
-            onPrimary = Ink,
-            secondary = Blue,
-            background = Ink,
-            surface = Panel,
-            onSurface = Mist
-        )
+        colorScheme =
+            darkColorScheme(
+                primary = Gold,
+                onPrimary = Ink,
+                secondary = Blue,
+                background = Ink,
+                surface = Panel,
+                onSurface = Mist,
+            )
     ) {
         Box(Modifier.fillMaxSize().background(Ink)) {
             when {
-                inMenu -> MainMenu(
-                    hasSave = saves.hasSave(),
-                    onContinue = {
-                        state = saves.load()
-                        saves.lastError?.let { notice = it }
-                        if (state != null) inMenu = false
-                    },
-                    onNew = {
-                        state = null
-                        inMenu = false
-                    }
-                )
-
-                state == null -> CharacterCreation(
-                    onCreated = {
-                        state = it
-                        saves.save(it)
-                        saves.lastError?.let { notice = it }
-                    },
-                    onBack = { inMenu = true }
-                )
-
-                else -> GameShell(
-                    state = state!!,
-                    onState = {
-                        state = it
-                        saves.save(it)
-                        saves.lastError?.let { notice = it }
-                    },
-                    onNotice = { notice = saves.lastError ?: it },
-                    onMenu = {
-                        saves.save(state!!)
-                        saves.lastError?.let { notice = it }
-                        inMenu = true
-                    },
-                    onDelete = {
-                        saves.delete()
-                        if (saves.lastError == null) {
+                inMenu ->
+                    MainMenu(
+                        hasSave = saves.hasSave(),
+                        onContinue = {
+                            state = saves.load()
+                            saves.lastError?.let { notice = it }
+                            if (state != null) inMenu = false
+                        },
+                        onNew = {
                             state = null
+                            inMenu = false
+                        },
+                    )
+
+                state == null ->
+                    CharacterCreation(
+                        onCreated = {
+                            state = it
+                            saves.save(it)
+                            saves.lastError?.let { notice = it }
+                        },
+                        onBack = { inMenu = true },
+                    )
+
+                else ->
+                    GameShell(
+                        state = state!!,
+                        onState = {
+                            state = it
+                            saves.save(it)
+                            saves.lastError?.let { notice = it }
+                        },
+                        onNotice = { notice = saves.lastError ?: it },
+                        onMenu = {
+                            saves.save(state!!)
+                            saves.lastError?.let { notice = it }
                             inMenu = true
-                        } else notice = saves.lastError
-                    }
-                )
+                        },
+                        onDelete = {
+                            saves.delete()
+                            if (saves.lastError == null) {
+                                state = null
+                                inMenu = true
+                            } else notice = saves.lastError
+                        },
+                    )
             }
 
             notice?.let { text ->
                 Surface(
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 52.dp, start = 18.dp, end = 18.dp),
+                    modifier =
+                        Modifier.align(Alignment.TopCenter)
+                            .padding(top = 52.dp, start = 18.dp, end = 18.dp),
                     color = Color(0xEE24303A),
                     shape = RoundedCornerShape(14.dp),
-                    shadowElevation = 8.dp
+                    shadowElevation = 8.dp,
                 ) {
                     Text(
                         text,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.clickable { notice = null }.padding(horizontal = 18.dp, vertical = 12.dp)
+                        modifier =
+                            Modifier.clickable { notice = null }
+                                .padding(horizontal = 18.dp, vertical = 12.dp),
                     )
                 }
                 LaunchedEffect(text) {
@@ -132,9 +145,12 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             placeholder = painterResource(R.drawable.splash_fortress),
-            error = painterResource(R.drawable.splash_fortress)
+            error = painterResource(R.drawable.splash_fortress),
         )
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D)))))
+        Box(
+            Modifier.fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D))))
+        )
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Bottom) {
             Text("REALM OF THE", color = PaleGold, fontSize = 18.sp, letterSpacing = 3.sp)
             Text("LAST WALL", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
@@ -142,7 +158,7 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
                 "Vom jungen Grenzherrn zum Herrscher einer mächtigen Festung.",
                 color = Mist,
                 fontSize = 16.sp,
-                modifier = Modifier.padding(top = 8.dp, bottom = 26.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
             if (hasSave) {
                 GoldButton("Spiel fortsetzen", onContinue, Modifier.fillMaxWidth())
@@ -155,7 +171,7 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
                 "Offline · keine Echtgeldkäufe · lokaler Spielstand",
                 color = Color(0xFFA8B2B8),
                 fontSize = 12.sp,
-                modifier = Modifier.padding(top = 18.dp, bottom = 12.dp)
+                modifier = Modifier.padding(top = 18.dp, bottom = 12.dp),
             )
         }
     }
@@ -168,31 +184,57 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var species by remember { mutableStateOf(Species.HALF_ELF) }
     var portrait by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                    )
+                }
+                portrait = uri.toString()
             }
-            portrait = uri.toString()
         }
-    }
 
     Column(
         Modifier.fillMaxSize().background(Ink).verticalScroll(rememberScrollState()).padding(20.dp)
     ) {
         Text("DEIN URSPRUNG", color = Gold, fontSize = 13.sp, letterSpacing = 2.sp)
-        Text("Erschaffe den Herrscher", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Text("Du startest mit Grenzfeste, eigenem Gebiet, Vorräten und einer stehenden Armee.", color = Mist, modifier = Modifier.padding(vertical = 8.dp))
+        Text(
+            "Erschaffe den Herrscher",
+            color = Color.White,
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            "Du startest mit Grenzfeste, eigenem Gebiet, Vorräten und einer stehenden Armee.",
+            color = Mist,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
 
         Surface(
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).clickable { picker.launch(arrayOf("image/*")) },
+            modifier =
+                Modifier.fillMaxWidth().padding(top = 12.dp).clickable {
+                    picker.launch(arrayOf("image/*"))
+                },
             color = Panel,
-            shape = RoundedCornerShape(18.dp)
+            shape = RoundedCornerShape(18.dp),
         ) {
             if (portrait != null) {
-                AsyncImage(portrait, null, Modifier.fillMaxWidth().height(230.dp), contentScale = ContentScale.Crop)
+                AsyncImage(
+                    portrait,
+                    null,
+                    Modifier.fillMaxWidth().height(230.dp),
+                    contentScale = ContentScale.Crop,
+                )
             } else {
-                Image(painterResource(R.drawable.portrait_knight), null, Modifier.fillMaxWidth().height(230.dp), contentScale = ContentScale.Crop)
+                Image(
+                    painterResource(R.drawable.portrait_knight),
+                    null,
+                    Modifier.fillMaxWidth().height(230.dp),
+                    contentScale = ContentScale.Crop,
+                )
             }
         }
 
@@ -200,34 +242,43 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             name,
             { name = it.take(24) },
             label = { Text("Name") },
-            modifier = Modifier.fillMaxWidth().padding(top = 14.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
         )
         OutlinedTextField(
             age,
             { age = it.filter(Char::isDigit).take(2) },
             label = { Text("Alter") },
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
         )
 
         SectionTitle("Volk")
         Species.entries.forEach { option ->
             val selected = option == species
             Surface(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option },
+                modifier =
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option },
                 color = if (selected) Color(0xFF27313A) else Panel,
                 shape = RoundedCornerShape(14.dp),
-                border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null
+                border =
+                    if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null,
             ) {
                 Column(Modifier.padding(14.dp)) {
-                    Text(option.label, color = if (selected) PaleGold else Color.White, fontWeight = FontWeight.Bold)
+                    Text(
+                        option.label,
+                        color = if (selected) PaleGold else Color.White,
+                        fontWeight = FontWeight.Bold,
+                    )
                     Text(
                         when (option) {
-                            Species.HUMAN -> "330 Soldaten, viele Rekruten und schwere Ritter. Andere Kulturen kommen durch Bündnisse und Einwanderung."
-                            Species.ELF -> "Kleine Bevölkerung, starke Wald- und Goldelben. Menschenbündnisse folgen später."
-                            Species.HALF_ELF -> "Menschen, Waldelben, Goldelben und Mauerlegionen können sofort gemeinsam dienen."
+                            Species.HUMAN ->
+                                "330 Soldaten, viele Rekruten und schwere Ritter. Andere Kulturen kommen durch Bündnisse und Einwanderung."
+                            Species.ELF ->
+                                "Kleine Bevölkerung, starke Wald- und Goldelben. Menschenbündnisse folgen später."
+                            Species.HALF_ELF ->
+                                "Menschen, Waldelben, Goldelben und Mauerlegionen können sofort gemeinsam dienen."
                         },
                         color = Mist,
-                        fontSize = 13.sp
+                        fontSize = 13.sp,
                     )
                 }
             }
@@ -236,12 +287,12 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
         Spacer(Modifier.height(18.dp))
         GoldButton(
             "Reich gründen",
-            {
-                onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait))
-            },
-            Modifier.fillMaxWidth()
+            { onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait)) },
+            Modifier.fillMaxWidth(),
         )
-        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Zurück") }
+        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("Zurück")
+        }
     }
 }
 
@@ -251,50 +302,117 @@ private fun GameShell(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
     onMenu: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
 ) {
-    var screen by remember { mutableStateOf(Screen.REALM) }
+    var screen by rememberSaveable { mutableStateOf(Screen.REALM) }
+    var showMore by rememberSaveable { mutableStateOf(false) }
+    BackHandler(enabled = showMore || screen != Screen.REALM) {
+        if (showMore) showMore = false else screen = Screen.REALM
+    }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(!state.tutorialSeen) }
     Scaffold(
         containerColor = Ink,
+        topBar = {
+            Row(
+                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    state.realm.settlementName,
+                    color = PaleGold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                )
+                if (state.player.skillPoints > 0)
+                    TextButton(
+                        onClick = {
+                            showMore = false
+                            screen = Screen.COURT
+                        }
+                    ) {
+                        Text("${state.player.skillPoints} Skillpunkte")
+                    }
+                IconButton(onClick = { showMore = !showMore }) {
+                    Icon(Icons.Outlined.HelpOutline, "Hilfe und Menü", tint = Gold)
+                }
+            }
+        },
         bottomBar = {
             NavigationBar(containerColor = Color(0xFF0E1419)) {
                 Screen.entries.forEach { tab ->
                     NavigationBarItem(
                         selected = tab == screen,
-                        onClick = { screen = tab },
-                        icon = { Text(tab.icon, fontSize = 19.sp) },
+                        onClick = {
+                            showMore = false
+                            screen = tab
+                        },
+                        icon = {
+                            Icon(
+                                when (tab) {
+                                    Screen.REALM -> Icons.Outlined.Castle
+                                    Screen.CITY -> Icons.Outlined.LocationCity
+                                    Screen.ARMY -> Icons.Outlined.Shield
+                                    Screen.WORLD -> Icons.Outlined.Public
+                                    Screen.COURT -> Icons.Outlined.Person
+                                },
+                                contentDescription = tab.label,
+                            )
+                        },
                         label = { Text(tab.label, fontSize = 10.sp) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Ink,
-                            selectedTextColor = PaleGold,
-                            indicatorColor = Gold,
-                            unselectedIconColor = Mist,
-                            unselectedTextColor = Mist
-                        )
+                        colors =
+                            NavigationBarItemDefaults.colors(
+                                selectedIconColor = Ink,
+                                selectedTextColor = PaleGold,
+                                indicatorColor = Gold,
+                                unselectedIconColor = Mist,
+                                unselectedTextColor = Mist,
+                            ),
                     )
                 }
             }
-        }
+        },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            if (state.battleSession != null && screen != Screen.MORE) {
-                LiveBattleScreen(state, { next ->
-                    if (next.battleSession == null) screen = Screen.WORLD
-                    onState(next)
-                }, onNotice)
-            } else when (screen) {
-                Screen.REALM -> RealmScreen(state, onState, onNotice)
-                Screen.ARMY -> ArmyScreen(state, onState, onNotice)
-                Screen.WORLD -> WorldScreen(state, onState, onNotice)
-                Screen.COURT -> CourtScreen(state, onState, onNotice)
-                Screen.MORE -> MoreScreen(
-                    state = state,
-                    onMenu = onMenu,
-                    onDelete = onDelete,
-                    onReplayTutorial = { showTutorial = true }
+            if (showMore) {
+                MoreScreen(state, onMenu, onDelete, { showTutorial = true })
+            } else if (
+                state.battleSession != null && screen != Screen.CITY && screen != Screen.COURT
+            ) {
+                LiveBattleScreen(
+                    state,
+                    { next ->
+                        if (next.battleSession == null) screen = Screen.WORLD
+                        onState(next)
+                    },
+                    onNotice,
                 )
-            }
+            } else
+                when (screen) {
+                    Screen.REALM ->
+                        RealmDashboard(
+                            state,
+                            onState,
+                            onNotice,
+                            { screen = Screen.CITY },
+                            { screen = Screen.WORLD },
+                            { screen = Screen.ARMY },
+                            { screen = Screen.COURT },
+                        )
+                    Screen.CITY ->
+                        CityScreen(
+                            state,
+                            onState,
+                            onNotice,
+                            {
+                                val r = GameEngine.advanceDay(state)
+                                onState(r.state)
+                                onNotice(r.message)
+                            },
+                        )
+                    Screen.ARMY -> ArmyScreen(state, onState, onNotice)
+                    Screen.WORLD -> WorldScreen(state, onState, onNotice)
+                    Screen.COURT -> CourtScreen(state, onState, onNotice)
+                }
         }
     }
 
@@ -307,7 +425,7 @@ private fun GameShell(
             onSkip = {
                 showTutorial = false
                 onState(GameEngine.markTutorialSeen(state))
-            }
+            },
         )
     }
 }

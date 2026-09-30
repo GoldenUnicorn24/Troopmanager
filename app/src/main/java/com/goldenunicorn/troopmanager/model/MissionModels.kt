@@ -37,6 +37,7 @@ data class ActiveMission(
     val losses: Int = 0,
     val reward: Resources = Resources(0, 0, 0, 0, 0),
     val renownReward: Int = 0,
+    val xpReward: Int = 0,
     val regionId: String? = null,
     val quality: List<ArmyUnitPool> = emptyList(),
 ) {

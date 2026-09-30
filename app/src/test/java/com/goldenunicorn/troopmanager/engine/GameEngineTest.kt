@@ -30,7 +30,7 @@ class GameEngineTest {
             assertEquals(2, state.realm.level(BuildingType.BARRACKS))
             BuildingType.entries
                 .filter { it != BuildingType.FARM && it != BuildingType.BARRACKS }
-                .forEach { assertEquals(1, state.realm.level(it)) }
+                .forEach { assertEquals(if(it.ordinal<=BuildingType.PALACE.ordinal) 1 else 0, state.realm.level(it)) }
             assertEquals(state.armyPools.size, state.armyPools.map { it.type }.distinct().size)
             assertEquals(state, SaveCodec.decode(SaveCodec.encode(state)))
         }
@@ -55,7 +55,10 @@ class GameEngineTest {
     @Test
     fun quarryUpgradeAddsOneHundredStonePerDay() {
         val before = human()
-        val after = GameEngine.build(before, BuildingType.QUARRY).state
+        val queued = GameEngine.build(before, BuildingType.QUARRY).state
+        assertEquals(before.realm.level(BuildingType.QUARRY), queued.realm.level(BuildingType.QUARRY))
+        assertEquals(1, queued.city.constructionQueue.size)
+        val after = GameEngine.advanceDay(queued).state
         assertEquals(
             100,
             EconomyEngine.production(after).gross.stone -
