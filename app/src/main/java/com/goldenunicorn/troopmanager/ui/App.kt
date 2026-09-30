@@ -120,11 +120,13 @@ fun RealmGameApp(saves: SaveRepository) {
 @Composable
 private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
-        Image(
-            painterResource(R.drawable.splash_fortress),
-            null,
-            Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+        AsyncImage(
+            model = "file:///android_asset/menu_cover.webp",
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(R.drawable.splash_fortress),
+            error = painterResource(R.drawable.splash_fortress)
         )
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D)))))
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Bottom) {
