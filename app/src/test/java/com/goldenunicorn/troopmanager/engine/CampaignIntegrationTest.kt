@@ -160,7 +160,7 @@ class CampaignIntegrationTest {
     fun populationGrowthNearIntegerLimitStaysValidAndDoesNotEraseCitizens() {
         val start =
             GameEngine.newGame("Leon", 23, Species.HUMAN, null)
-                .copy(day = 6, population = Population(Int.MAX_VALUE - 5, 0, 0, 0, 120, 0, 0, 0))
+                .copy(day = 6, population = Population(Int.MAX_VALUE - 5, 0, 0, 0, 120, 0, 0, 0), city = CityState(housingCapacity=Int.MAX_VALUE))
         val end = GameEngine.advanceDay(start).state
         assertEquals(Int.MAX_VALUE, end.population.human)
         assertEquals(end, SaveCodec.decode(SaveCodec.encode(end)))

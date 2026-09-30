@@ -3,30 +3,28 @@ package com.goldenunicorn.troopmanager.data
 import android.content.Context
 import android.content.SharedPreferences
 import com.goldenunicorn.troopmanager.model.GameState
+import kotlinx.serialization.json.*
 
-/** Both values are committed together; a corrupt primary can never replace a healthy backup. */
+/** Atomic rolling backup plus a protected, byte-exact copy of the last v0.4 save. */
 class SaveRepository internal constructor(private val storage: SaveStorage) {
     constructor(context: Context) : this(PreferencesSaveStorage(
         context.getSharedPreferences("realm_save", Context.MODE_PRIVATE)))
     var lastError: String? = null
         private set
 
-    fun hasSave(): Boolean = storage.contains(KEY) || storage.contains(BACKUP_KEY)
+    fun hasSave(): Boolean = storage.contains(KEY) || storage.contains(BACKUP_KEY) || storage.contains(MIGRATION_BACKUP_KEY) || storage.contains(LEGACY_MIGRATION_BACKUP_KEY)
 
     @Synchronized
     fun save(state: GameState) {
         lastError = null
         try {
             val encoded = SaveCodec.encode(state)
-            val primary = read(KEY)
-            val backup = read(BACKUP_KEY)
-            // Do not replace a save created by a newer version, even when loading failed.
-            val validPrimary = validRaw(primary)
-            val validBackup = validRaw(backup)
-            val previous = validPrimary ?: validBackup ?: encoded
-            if (!storage.commit(mapOf(KEY to encoded, BACKUP_KEY to previous))) {
-                lastError = "Der Spielstand konnte nicht dauerhaft gespeichert werden."
-            }
+            val primary = validRaw(read(KEY))
+            val backup = validRaw(read(BACKUP_KEY))
+            val previous = primary ?: backup ?: encoded
+            val writes = mutableMapOf<String, String?>(KEY to encoded, BACKUP_KEY to previous)
+            protectMigration(previous, writes)
+            if (!storage.commit(writes)) lastError = "Der Spielstand konnte nicht dauerhaft gespeichert werden."
         } catch (error: Exception) {
             lastError = error.message ?: "Der Spielstand konnte nicht gespeichert werden."
         }
@@ -40,21 +38,17 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
             if (primary != null) {
                 try {
                     val state = SaveCodec.decode(primary)
-                    // A successful migration is persisted as v2, while the original remains a rollback copy.
                     val upgraded = SaveCodec.encode(state)
                     if (upgraded != primary) {
                         try {
-                            validRaw(read(BACKUP_KEY)) // Preserve backups from a newer app as well.
+                            validRaw(read(BACKUP_KEY))
                         } catch (error: SaveFormatException) {
-                            if (error.futureVersion) {
-                                lastError = error.message
-                                return state
-                            }
+                            if (error.futureVersion) { lastError = error.message; return state }
                             throw error
                         }
-                        if (!storage.commit(mapOf(KEY to upgraded, BACKUP_KEY to primary))) {
-                            lastError = "Spielstand geladen, aber die Migration konnte nicht gespeichert werden."
-                        }
+                        val writes = mutableMapOf<String, String?>(KEY to upgraded, BACKUP_KEY to primary)
+                        protectMigration(primary, writes)
+                        if (!storage.commit(writes)) lastError = "Spielstand geladen, aber die Migration konnte nicht gespeichert werden."
                     }
                     return state
                 } catch (error: SaveFormatException) {
@@ -62,24 +56,37 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
                     lastError = error.message
                 }
             }
-            val backup = read(BACKUP_KEY) ?: return null
-            val recovered = SaveCodec.decode(backup)
-            if (storage.commit(mapOf(KEY to SaveCodec.encode(recovered)))) {
-                lastError = "Der Hauptspielstand war beschädigt oder fehlte. Das Backup wurde wiederhergestellt."
-            } else {
-                lastError = "Backup geladen; der Hauptspielstand konnte nicht wiederhergestellt werden."
+            for (key in listOf(BACKUP_KEY, MIGRATION_BACKUP_KEY, LEGACY_MIGRATION_BACKUP_KEY)) {
+                val backup = read(key) ?: continue
+                val recovered = try { SaveCodec.decode(backup) } catch (error: SaveFormatException) {
+                    if (error.futureVersion) throw error
+                    continue
+                }
+                val writes = mutableMapOf<String, String?>(KEY to SaveCodec.encode(recovered))
+                protectMigration(backup, writes)
+                lastError = if (storage.commit(writes)) "Der Hauptspielstand war beschädigt oder fehlte. Das Backup wurde wiederhergestellt."
+                    else "Backup geladen; der Hauptspielstand konnte nicht wiederhergestellt werden."
+                return recovered
             }
-            return recovered
+            return null
         } catch (error: Exception) {
             lastError = error.message ?: "Der Spielstand konnte nicht geladen werden."
             return null
         }
     }
 
+    /** Only explicit new-game deletion removes the protected rollback copy. */
     @Synchronized
     fun delete() {
-        lastError = if (storage.commit(mapOf(KEY to null, BACKUP_KEY to null))) null
+        lastError = if (storage.commit(mapOf(KEY to null, BACKUP_KEY to null, MIGRATION_BACKUP_KEY to null, LEGACY_MIGRATION_BACKUP_KEY to null))) null
         else "Der Spielstand konnte nicht gelöscht werden."
+    }
+
+    private fun protectMigration(raw: String, writes: MutableMap<String, String?>) {
+        val version = Json.parseToJsonElement(raw).jsonObject["version"]?.jsonPrimitive?.intOrNull ?: 1
+        val key = when (version) { 2 -> MIGRATION_BACKUP_KEY; 1 -> LEGACY_MIGRATION_BACKUP_KEY; else -> return }
+        // An autosave may rotate the regular backup; this key is written only once.
+        if (!storage.contains(key)) writes[key] = raw
     }
 
     private fun read(key: String): String? = storage.read(key)
@@ -93,9 +100,10 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
     }
 
     companion object {
-        // Keep the original key so installed v0.3 games are found without touching unrelated preferences.
         private const val KEY = "game_state_v1"
         private const val BACKUP_KEY = "game_state_backup_v2"
+        private const val MIGRATION_BACKUP_KEY = "migration_backup_v2"
+        private const val LEGACY_MIGRATION_BACKUP_KEY = "migration_backup_v1"
     }
 }
 

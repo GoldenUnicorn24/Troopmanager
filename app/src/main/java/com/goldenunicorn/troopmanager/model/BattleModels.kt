@@ -39,6 +39,13 @@ enum class BattleDecision(val label: String) {
     HOLD("Position halten"),
     PURSUE("Gegner verfolgen"),
     HOLD_FORMATION("Formation halten"),
+    RELOCATE_RESERVE("Reserve verlegen"),
+    STRENGTHEN_SECTION("Abschnitt verstärken"),
+    ORDERED_RETREAT("Geordnet zurückziehen"),
+    ARTILLERY_TARGET("Artillerie auf Belagerungsgerät richten"),
+    HOLD_GATE("Tor halten"),
+    OPEN_GATE("Tor für Kavallerieausfall öffnen"),
+    RESCUE_COMMANDER("Verwundeten Kommandanten retten"),
 }
 
 /** A consumer can react to a newly persisted minute; no audio files are required. */
@@ -69,6 +76,7 @@ data class BattleContingent(
     val morale: Int,
     val equipment: Int,
     val commanderWounded: Boolean = false,
+    val commanderRescued: Boolean = false,
 )
 
 @Serializable
@@ -116,6 +124,13 @@ data class BattleSession(
         listOf(BattleLogEntry(0, "Die Truppen nehmen ihre Aufstellung ein.")),
     val lastSounds: List<BattleSoundCue> = listOf(BattleSoundCue.HORN),
     val lootGold: Int = 0,
+    val lootFood: Int = 0,
+    val xpReward: Int = 0,
+    val renownReward: Int = 0,
+    /** Average equipment points worn by surviving deployed troops, not the whole pool. */
+    val equipmentDamage: Int = 0,
+    val commanderEvents: List<String> = emptyList(),
+    val orderedRetreat: Boolean = false,
 ) {
     val isActive: Boolean
         get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT

@@ -1,0 +1,230 @@
+{
+  "version": 2,
+  "day": 1,
+  "player": {
+    "name": "Leon",
+    "age": 23,
+    "species": "HALF_ELF",
+    "portraitUri": null,
+    "armorStyle": "Grenzwächter",
+    "weapon": "Langschwert",
+    "level": 1,
+    "experience": 0,
+    "skillPoints": 0,
+    "sword": 55,
+    "bow": 48,
+    "riding": 42,
+    "leadership": 25,
+    "tactics": 22,
+    "diplomacy": 15
+  },
+  "companion": {
+    "met": false,
+    "name": "Alina",
+    "age": 21,
+    "species": "HALF_ELF",
+    "portraitUri": null,
+    "armorStyle": "Leichte Grenzrüstung",
+    "weapon": "Elbenbogen",
+    "level": 1,
+    "sword": 58,
+    "bow": 72,
+    "riding": 55,
+    "leadership": 35,
+    "tactics": 40,
+    "diplomacy": 48,
+    "trust": 20,
+    "respect": 20,
+    "affection": 10,
+    "role": "Gefährtin"
+  },
+  "resources": {
+    "gold": 5000,
+    "food": 8000,
+    "wood": 3500,
+    "stone": 2500,
+    "iron": 1500
+  },
+  "population": {
+    "human": 900,
+    "woodElf": 450,
+    "goldElf": 150,
+    "wall": 350,
+    "humanRecruits": 42,
+    "woodElfRecruits": 40,
+    "goldElfRecruits": 20,
+    "wallRecruits": 45
+  },
+  "realm": {
+    "territory": 1,
+    "customSettlementName": null,
+    "settlementTier": "BORDER_KEEP",
+    "buildings": {
+      "FARM": 2,
+      "SAWMILL": 1,
+      "QUARRY": 1,
+      "IRONWORKS": 1,
+      "MARKET": 1,
+      "BARRACKS": 2,
+      "WALL": 1,
+      "TOWER": 1,
+      "PALACE": 1
+    },
+    "threat": 12,
+    "wallIntegrity": 100,
+    "tradeBonusDays": 0,
+    "scoutingDays": 0
+  },
+  "armyPools": [
+    {
+      "type": "HUMAN_SWORD",
+      "soldiers": 100,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "HUMAN_ARCHER",
+      "soldiers": 80,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "WOOD_RANGER",
+      "soldiers": 60,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "WOOD_BLADE",
+      "soldiers": 40,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "GOLD_SPEAR",
+      "soldiers": 20,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "GOLD_ARCHER",
+      "soldiers": 10,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "CRANE_GUARD",
+      "soldiers": 40,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    },
+    {
+      "type": "EAGLE_CORPS",
+      "soldiers": 30,
+      "experience": 15,
+      "morale": 80,
+      "equipment": 80
+    }
+  ],
+  "trainingQueue": [],
+  "commanders": [
+    {
+      "id": 1,
+      "name": "Marcus",
+      "culture": "HUMAN",
+      "portraitKey": "knight",
+      "portraitUri": null,
+      "level": 1,
+      "sword": 60,
+      "bow": 55,
+      "leadership": 50,
+      "tactics": 50,
+      "siege": 35,
+      "loyalty": 70,
+      "trait": "Loyal",
+      "rank": "Hauptmann"
+    }
+  ],
+  "commanderAssignments": [],
+  "activeMissions": [],
+  "battleSession": null,
+  "invasion": null,
+  "relationship": {
+    "actionDay": 0,
+    "spentActions": 0,
+    "pendingEvent": null
+  },
+  "pendingRealmEvent": null,
+  "regions": [
+    {
+      "id": "keep",
+      "name": "Grenzfeste",
+      "type": "OWN",
+      "mission": "PATROL",
+      "owned": true
+    },
+    {
+      "id": "village",
+      "name": "Eichenfurt",
+      "type": "VILLAGE",
+      "mission": "RELIEF",
+      "owned": false
+    },
+    {
+      "id": "forest",
+      "name": "Silberwald",
+      "type": "FOREST",
+      "mission": "SCOUT",
+      "owned": false
+    },
+    {
+      "id": "mine",
+      "name": "Erzpass",
+      "type": "MINE",
+      "mission": "ESCORT",
+      "owned": false
+    },
+    {
+      "id": "ruin",
+      "name": "Alte Wacht",
+      "type": "RUIN",
+      "mission": "BANDITS",
+      "owned": false
+    },
+    {
+      "id": "orc",
+      "name": "Aschehügel",
+      "type": "ORC",
+      "mission": "BANDITS",
+      "owned": false
+    },
+    {
+      "id": "monsters",
+      "name": "Nebelklamm",
+      "type": "MONSTER",
+      "mission": "HUNT",
+      "owned": false
+    }
+  ],
+  "renown": 0,
+  "rank": "Grenzhauptmann",
+  "title": "Grenzherr",
+  "victories": 0,
+  "defeats": 0,
+  "completedRealm": false,
+  "tutorialSeen": true,
+  "chronicle": [
+    {
+      "day": 1,
+      "title": "Die Grenzfeste",
+      "text": "Ein eigenes Gebiet, eine stehende Armee und eine arbeitende Siedlung: Dein Reich beginnt hier."
+    }
+  ]
+}
