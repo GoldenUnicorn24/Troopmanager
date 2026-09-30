@@ -179,10 +179,10 @@ internal fun UnitArt(culture: Culture, modifier: Modifier = Modifier) {
 @Composable
 internal fun CategoryArt(culture: Culture, modifier: Modifier = Modifier) {
     val asset = when (culture) {
-        Culture.HUMAN -> "file:///android_asset/category_human.jpg"
-        Culture.WOOD_ELF -> "file:///android_asset/category_wood_elf.png"
-        Culture.GOLD_ELF -> "file:///android_asset/category_gold_elf.jpg"
-        Culture.WALL -> "file:///android_asset/category_wall.jpg"
+        Culture.HUMAN -> "file:///android_asset/category_human.webp"
+        Culture.WOOD_ELF -> "file:///android_asset/category_wood_elf.webp"
+        Culture.GOLD_ELF -> "file:///android_asset/category_gold_elf.webp"
+        Culture.WALL -> "file:///android_asset/category_wall.webp"
     }
     val fallback = when (culture) {
         Culture.HUMAN -> R.drawable.portrait_knight
@@ -199,14 +199,5 @@ internal fun CategoryArt(culture: Culture, modifier: Modifier = Modifier) {
             placeholder = painterResource(fallback),
             error = painterResource(fallback)
         )
-        val tint = when (culture) {
-            Culture.HUMAN -> Color.Transparent
-            Culture.WOOD_ELF -> Color(0x223E7B50)
-            Culture.GOLD_ELF -> Color(0x44D6A947)
-            Culture.WALL -> Color(0x33386F9C)
-        }
-        if (tint != Color.Transparent) {
-            Box(Modifier.fillMaxSize().background(tint))
-        }
     }
 }
