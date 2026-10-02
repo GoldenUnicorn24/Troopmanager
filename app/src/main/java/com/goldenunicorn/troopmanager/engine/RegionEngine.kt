@@ -14,8 +14,13 @@ object RegionEngine {
         else -> 0
     }
 
-    fun diplomacy(state: GameState): Int = state.player.diplomacy +
-        (if (state.companion.met && state.companion.trust >= 45) state.companion.diplomacy / 2 else 0) + CharacterEngine.bonuses(state).diplomacy
+    fun diplomacy(state: GameState): Int =
+        state.player.diplomacy +
+            OriginEngine.diplomacyBonus(state) +
+            (if (state.companion.met && state.companion.trust >= 45)
+                state.companion.diplomacy / 2
+             else 0) +
+            CharacterEngine.bonuses(state).diplomacy
 
     fun diplomaticCost(state: GameState, region: WorldRegion): Int =
         (purchaseCost(region).toLong() * (100 - diplomacy(state).coerceIn(0, 100) / 3) / 100).toInt()
