@@ -113,11 +113,7 @@ private fun MissionCard(
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Text(mission.missionType.label, color = Color.White, fontWeight = FontWeight.Bold)
-            Text(
-                state.commanders.firstOrNull { it.id == mission.commanderId }?.name
-                    ?: "Dein persönliches Kommando",
-                color = Gold,
-            )
+            Text(missionLeaderNames(state, mission), color = Gold)
             mission.regionId?.let { id ->
                 state.regions
                     .firstOrNull { it.id == id }
@@ -190,29 +186,54 @@ internal fun MissionPreparationDialog(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
 ) {
-    var commanderId by remember { mutableStateOf<Long?>(null) }
-    var menu by remember { mutableStateOf(false) }
+    var commanderIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var playerParticipates by remember { mutableStateOf(!state.playerAwayOnMission) }
+    val leaderCount = commanderIds.size + if (playerParticipates) 1 else 0
     val available =
-        UnitType.entries.associateWith { MissionEngine.available(state, commanderId, it) }
-    var counts by remember(commanderId) { mutableStateOf(emptyMap<UnitType, Int>()) }
+        UnitType.entries.associateWith {
+            MissionEngine.available(state, commanderIds.toList(), it)
+        }
+    var counts by remember(commanderIds) { mutableStateOf(emptyMap<UnitType, Int>()) }
     val allocations =
         UnitType.entries.mapNotNull { type ->
             val count = (counts[type] ?: 0).coerceIn(0, available.getValue(type))
             if (count > 0) UnitAllocation(type, count) else null
         }
     val total = allocations.sumOf { it.amount.toLong() }
-    val duration = MissionEngine.duration(state, mission, commanderId)
+    val duration =
+        MissionEngine.duration(
+            state,
+            mission,
+            commanderIds.toList(),
+            playerParticipates,
+        )
     val supply = total * duration.toLong() * 2L
-    val estimate = MissionEngine.estimate(state, mission, allocations, commanderId)
+    val estimate =
+        MissionEngine.estimate(
+            state,
+            mission,
+            allocations,
+            commanderIds.toList(),
+            playerParticipates,
+        )
     FullScreenMission("MISSION VORBEREITEN", onDismiss, bottomBar = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("$total Soldaten · $duration Tage · $supply Nahrung", color = Gold, fontSize = 13.sp)
             Button(onClick = {
-                val result = MissionEngine.start(state, mission, commanderId, allocations, region?.id)
+                val result =
+                    MissionEngine.start(
+                        state,
+                        mission,
+                        commanderIds.toList(),
+                        playerParticipates,
+                        allocations,
+                        region?.id,
+                    )
                 onState(result.state)
                 onNotice(result.message)
                 if (result.state.activeMissions.any { launched -> state.activeMissions.none { it.id == launched.id } }) onDismiss()
-            }, modifier = Modifier.fillMaxWidth(), enabled = total >= mission.spec().minimum &&
+            }, modifier = Modifier.fillMaxWidth(), enabled = leaderCount in 1..3 &&
+                total >= mission.spec().minimum &&
                 total <= Int.MAX_VALUE.toLong() && supply <= state.resources.food &&
                 state.battleSession?.isActive != true, colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) { Text("MISSION STARTEN", fontWeight = FontWeight.Bold) }
         }
@@ -239,19 +260,59 @@ internal fun MissionPreparationDialog(
                 StatGrid(listOf("Dauer" to "$duration Tage", "Risiko" to mission.spec().risk))
             }
             item {
-                SectionTitle("Wer führt die Mission?")
-                Box {
-                    OutlinedButton(onClick = { menu = true }, modifier = Modifier.fillMaxWidth()) {
-                        Text(state.commanders.firstOrNull { it.id == commanderId }?.name ?: "Dein persönliches Kommando")
-                    }
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        DropdownMenuItem(text = { Text("Dein persönliches Kommando") }, onClick = { commanderId = null; menu = false })
-                        state.commanders.filterNot { state.commanderAway(it.id) }.forEach { commander ->
-                            DropdownMenuItem(text = { Text(commander.name) }, onClick = { commanderId = commander.id; menu = false })
+                SectionTitle("Wer führt die Mission? · 1–3 Personen")
+                Text(
+                    "Du kannst selbst mitreiten und zusätzlich deine Gefährtin oder andere Kommandanten auswählen. Dauerhafte Armee-Zuteilungen bleiben nach der Mission erhalten.",
+                    color = Mist,
+                    fontSize = 12.sp,
+                )
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = playerParticipates,
+                                onCheckedChange = { checked ->
+                                    if (!checked || leaderCount < 3) playerParticipates = checked
+                                },
+                                enabled = !state.playerAwayOnMission,
+                            )
+                            Column {
+                                Text(state.player.name + " · Du selbst", color = Color.White)
+                                if (state.playerAwayOnMission)
+                                    Text("Bereits auf Mission", color = Danger, fontSize = 11.sp)
+                            }
                         }
+                        state.commanders.forEach { commander ->
+                            val checked = commander.id in commanderIds
+                            val away = state.commanderAway(commander.id)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { select ->
+                                        commanderIds =
+                                            if (select && leaderCount < 3) commanderIds + commander.id
+                                            else if (!select) commanderIds - commander.id
+                                            else commanderIds
+                                    },
+                                    enabled = !away && (checked || leaderCount < 3),
+                                )
+                                Column {
+                                    Text(
+                                        commander.name +
+                                            if (commander.id == COMPANION_COMMANDER_ID) " · Gefährtin" else " · ${commander.rank}",
+                                        color = if (away) Mist else Color.White,
+                                    )
+                                    if (away) Text("Nicht verfügbar", color = Danger, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                        Text("$leaderCount / 3 Führungspersonen gewählt", color = Gold, fontSize = 12.sp)
                     }
                 }
-                Text("Freie Soldaten und das gewählte Kontingent. Andere Kommandos bleiben reserviert.", color = Mist, fontSize = 12.sp)
+                Text("Freie Soldaten plus feste Kontingente der ausgewählten Kommandanten können temporär mitgeschickt werden.", color = Mist, fontSize = 12.sp)
             }
             item { SectionTitle("Truppen auswählen") }
             items(UnitType.entries.filter { available.getValue(it) > 0 }) { type ->
@@ -318,7 +379,7 @@ private fun MissionResultScreen(state: GameState, mission: ActiveMission, onDism
             item {
                 Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(state.commanders.firstOrNull { it.id == mission.commanderId }?.name ?: "Dein persönliches Kommando", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text(missionLeaderNames(state, mission), color = PaleGold, fontWeight = FontWeight.Bold)
                         Text(state.regions.firstOrNull { it.id == mission.regionId }?.name ?: "Grenzregion", color = Mist)
                         Text("Tag ${mission.startDay} · ${mission.duration} Tage · ${mission.supplyCost} Nahrung Versorgung", color = Mist, fontSize = 12.sp)
                     }
@@ -382,6 +443,15 @@ internal fun TroopCountPicker(label: String, available: Int, value: Int, onValue
         }
     }
 }
+
+private fun missionLeaderNames(state: GameState, mission: ActiveMission): String =
+    buildList {
+        if (mission.playerParticipates || (mission.commanderId == null && mission.commanderIds.isEmpty()))
+            add(state.player.name + " · persönlich")
+        mission.allCommanderIds.mapNotNullTo(this) { id ->
+            state.commanders.firstOrNull { it.id == id }?.name
+        }
+    }.distinct().joinToString(" · ").ifBlank { "Führung ohne Namen" }
 
 private fun missionHint(type: MissionType): String =
     when (type) {
