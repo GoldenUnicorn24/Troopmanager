@@ -113,8 +113,8 @@ class V062FeaturesTest {
         val doctrine = DoctrineEngine.set(base, MilitaryDoctrine.MASS_ARMY).state
         assertEquals(MilitaryDoctrine.MASS_ARMY, doctrine.doctrine)
         assertTrue(
-            GameEngine.trainingDays(doctrine, UnitType.HUMAN_SWORD) <
-                GameEngine.trainingDays(base, UnitType.HUMAN_SWORD)
+            GameEngine.trainingDays(doctrine, UnitType.KNIGHT) <
+                GameEngine.trainingDays(base, UnitType.KNIGHT)
         )
 
         val research = ResearchEngine.start(base, ResearchTech.SUPPLY_TRAINS).state
