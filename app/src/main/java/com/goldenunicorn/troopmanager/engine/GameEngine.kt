@@ -7,9 +7,28 @@ import kotlin.math.ceil
 object GameEngine {
     data class ActionResult(val state: GameState, val message: String)
 
+    data class StartingAttributes(
+        val sword: Int,
+        val bow: Int,
+        val riding: Int,
+        val leadership: Int,
+        val tactics: Int,
+        val diplomacy: Int,
+    ) {
+        init {
+            require(listOf(sword, bow, riding, leadership, tactics, diplomacy).all { it in 0..100 })
+        }
+    }
+
     private fun busy(state: GameState) = state.battleSession?.isActive == true
 
-    fun newGame(name: String, age: Int, species: Species, portraitUri: String?): GameState {
+    fun newGame(
+        name: String,
+        age: Int,
+        species: Species,
+        portraitUri: String?,
+        startingAttributes: StartingAttributes? = null,
+    ): GameState {
         val population =
             when (species) {
                 Species.HUMAN -> Population(1500, 0, 0, 0, 120, 0, 0, 0)
@@ -49,11 +68,17 @@ object GameEngine {
         val state = GameState(
             player =
                 CharacterProfile(
-                    name.trim().ifBlank { "Leon" }.take(24),
-                    age.coerceIn(18, 120),
-                    species,
-                    portraitUri,
-                    diplomacy = if (species == Species.HALF_ELF) 15 else 20,
+                    name = name.trim().ifBlank { "Leon" }.take(24),
+                    age = age.coerceIn(18, 120),
+                    species = species,
+                    portraitUri = portraitUri,
+                    skillPoints = 30,
+                    sword = startingAttributes?.sword ?: 55,
+                    bow = startingAttributes?.bow ?: 48,
+                    riding = startingAttributes?.riding ?: 42,
+                    leadership = startingAttributes?.leadership ?: 25,
+                    tactics = startingAttributes?.tactics ?: 22,
+                    diplomacy = startingAttributes?.diplomacy ?: if (species == Species.HALF_ELF) 15 else 20,
                 ),
             population = population,
             armyPools = units.map { ArmyUnitPool(it.type, it.amount) },
