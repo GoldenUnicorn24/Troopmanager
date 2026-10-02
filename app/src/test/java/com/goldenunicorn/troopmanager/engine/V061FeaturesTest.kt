@@ -36,6 +36,71 @@ class V061FeaturesTest {
         assertEquals(30, state.player.skillPoints)
     }
 
+
+    @Test
+    fun oneSelectedCultureKeepsFullFairStartBudget() {
+        val state =
+            GameEngine.newGame(
+                "Leon",
+                23,
+                Species.HALF_ELF,
+                null,
+                startingCultures = setOf(Culture.HUMAN),
+            )
+
+        assertEquals(2000, state.population.total)
+        assertEquals(160, state.population.totalRecruits)
+        assertEquals(400, state.armySize)
+        assertEquals(2000, state.population.human)
+        assertEquals(160, state.population.humanRecruits)
+        assertEquals(0, state.population.woodElf + state.population.goldElf + state.population.wall)
+        assertTrue(state.armyPools.all { it.type.culture == Culture.HUMAN })
+    }
+
+    @Test
+    fun humanAndGoldElfSelectionSplitsPopulationRecruitsAndSoldiersWithoutPenalty() {
+        val state =
+            GameEngine.newGame(
+                "Leon",
+                23,
+                Species.HALF_ELF,
+                null,
+                startingCultures = setOf(Culture.HUMAN, Culture.GOLD_ELF),
+            )
+
+        assertEquals(2000, state.population.total)
+        assertEquals(160, state.population.totalRecruits)
+        assertEquals(400, state.armySize)
+        assertEquals(1000, state.population.human)
+        assertEquals(1000, state.population.goldElf)
+        assertEquals(80, state.population.humanRecruits)
+        assertEquals(80, state.population.goldElfRecruits)
+        assertEquals(200, state.armyPools.filter { it.type.culture == Culture.HUMAN }.sumOf { it.soldiers })
+        assertEquals(200, state.armyPools.filter { it.type.culture == Culture.GOLD_ELF }.sumOf { it.soldiers })
+        assertTrue(state.armyPools.none { it.type.culture == Culture.WOOD_ELF || it.type.culture == Culture.WALL })
+    }
+
+    @Test
+    fun allFourCulturesStillKeepSameGlobalStartBudget() {
+        val state =
+            GameEngine.newGame(
+                "Leon",
+                23,
+                Species.HALF_ELF,
+                null,
+                startingCultures = Culture.entries.toSet(),
+            )
+
+        assertEquals(2000, state.population.total)
+        assertEquals(160, state.population.totalRecruits)
+        assertEquals(400, state.armySize)
+        Culture.entries.forEach { culture ->
+            assertEquals(500, ArmyEngine.population(state.population, culture))
+            assertEquals(40, state.population.recruits(culture))
+            assertEquals(100, state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers })
+        }
+    }
+
     @Test
     fun missionSupportsPlayerPlusTwoCommandersAndKeepsPermanentArmyAssignment() {
         var state = GameEngine.newGame("Leon", 23, Species.HUMAN, null)
