@@ -79,13 +79,14 @@ object ArmyEngine {
                 .coerceAtLeast(0)
 
     fun clampAssignments(state: GameState): GameState {
-        val left = UnitType.entries.associateWith { state.homeSoldiers(it) }.toMutableMap()
+        // Permanent Army-page assignments belong to the command even while that commander is
+        // temporarily away on a mission. Clamp against the total surviving pool, not only home troops.
+        val left = UnitType.entries.associateWith { state.soldiers(it) }.toMutableMap()
         val seen = mutableSetOf<Long>()
         val assignments =
             state.commanderAssignments.mapNotNull { assignment ->
                 if (
                     state.commanders.none { it.id == assignment.commanderId } ||
-                        state.commanderAway(assignment.commanderId) ||
                         !seen.add(assignment.commanderId)
                 )
                     return@mapNotNull null
