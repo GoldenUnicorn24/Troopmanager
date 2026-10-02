@@ -79,9 +79,13 @@ object WorldEngine {
         val terrain = 18.0 / target.terrain.movementCost
         val weather = state.world.weather.at(destinationId)
         val size = if (army.total > 10000) 0.65 else if (army.total > 2000) 0.85 else 1.0
+        val doctrine =
+            if (army.factionId == PLAYER_FACTION) DoctrineEngine.marchFactor(state) else 1.0
         return (30 * terrain * (0.7 + (road?.quality ?: 20) / 200.0) *
             state.world.weather.season.marchFactor * weather.marchFactor * size * army.marchPolicy.speed *
-            (0.8 + army.morale / 400.0) * (0.9 + leadership / 500.0)).toInt().coerceAtLeast(3)
+            (0.8 + army.morale / 400.0) * (0.9 + leadership / 500.0) * doctrine)
+            .toInt()
+            .coerceAtLeast(3)
     }
 
     fun travelDays(state: GameState, army: WorldArmy, route: List<String>): Int =
@@ -335,7 +339,10 @@ object WorldEngine {
             val intel = next.world.knowledgeFor(current.id)
             val armies = next.world.armies.filter { it.factionId == current.id && it.status != WorldArmyStatus.DESTROYED && it.missionId == null }
             // Border scouting is an explicit local action, shared rules with player scouts.
-            if (state.day % 5 == 0 && current.gold >= 75 && current.food >= 100) {
+            if (state.day % DifficultyEngine.scoutInterval(state) == 0 &&
+                current.gold >= 75 &&
+                current.food >= 100
+            ) {
                 val frontier = next.world.roads.flatMap { listOf(it.from to it.to, it.to to it.from) }.firstOrNull { it.first in intel.exploredRegions && it.second !in intel.exploredRegions }
                 if (frontier != null) {
                     val known = intel.copy(exploredRegions = (intel.exploredRegions + frontier.second).distinct())
@@ -347,7 +354,13 @@ object WorldEngine {
                 var f = next.world.faction(current.id) ?: current
                 var a = next.world.armies.first { it.id == army.id }
                 if (a.id == next.world.invasionArmyId) return@forEach
-                if (a.regionId == f.capitalId && a.total < 1500 && state.day % 6 == 0 && a.units.isNotEmpty() && next.world.recruitments.none { it.armyId == a.id }) {
+                if (
+                    a.regionId == f.capitalId &&
+                    a.total < 1500 &&
+                    state.day % DifficultyEngine.recruitmentInterval(state) == 0 &&
+                    a.units.isNotEmpty() &&
+                    next.world.recruitments.none { it.armyId == a.id }
+                ) {
                     val recruitType = a.units.first().type
                     val amount = 50
                     val goldCost = recruitType.goldCost.toLong() * amount
@@ -367,13 +380,18 @@ object WorldEngine {
                     return@forEach
                 }
                 val known = next.world.knowledgeFor(f.id)
-                val threats = known.observations.filter { it.day >= state.day - 3 && it.factionId in f.wars }
+                val threats =
+                    known.observations.filter {
+                        it.day >= state.day - DifficultyEngine.intelMemoryDays(state) &&
+                            it.factionId in f.wars
+                    }
                 val threatHere = threats.firstOrNull { it.regionId == a.regionId && it.minimum > a.total * 1.2 }
                 val suppliesLow = a.supplyDays < 2 && a.regionId != f.capitalId
                 val target = when {
                     suppliesLow || threatHere != null -> f.capitalId
                     threats.isNotEmpty() && f.aggression + (rival?.rivalry ?: 0) / 5 > 55 -> threats.filter { it.maximum < a.total * 1.4 }.minByOrNull { route(next.world, a.regionId, it.regionId).size }?.regionId
-                    state.day % (if (f.aggression > 50) 4 else 9) == 0 -> next.world.places.filter { p ->
+                    state.day % DifficultyEngine.attackInterval(state, f.aggression > 50) == 0 ->
+                        next.world.places.filter { p ->
                         p.id in known.exploredRegions && p.ownerId != f.id &&
                             (p.ownerId == NEUTRAL_FACTION || p.ownerId in f.wars) &&
                             route(next.world, a.regionId, p.id).let { it.size in 2..4 && allowedRoute(next, f.id, it) } &&
@@ -400,7 +418,18 @@ object WorldEngine {
         var army = state.world.armies.firstOrNull { it.id == id } ?: return state
         if (army.lastMovedDay >= state.day) return state
         val waiting = army.missionId?.let { missionId -> state.activeMissions.firstOrNull { it.id == missionId }?.pendingDecision != null } == true
-        val consumption = (army.dailyFood.toLong() * if (state.world.weather.season == Season.WINTER) 12 else 10) / 10
+        val logisticsFactor =
+            if (
+                army.factionId == PLAYER_FACTION &&
+                    ResearchTech.SUPPLY_TRAINS in state.research.completed
+            ) 0.88
+            else 1.0
+        val consumption =
+            ((army.dailyFood.toLong() *
+                if (state.world.weather.season == Season.WINTER) 12 else 10) /
+                10 * logisticsFactor)
+                .toLong()
+                .coerceAtLeast(1)
         if (army.supplyFood < consumption) {
             val depot = next.world.depots.firstOrNull { it.regionId == army.regionId && it.factionId == army.factionId && it.food > 0 }
             if (depot != null) {
