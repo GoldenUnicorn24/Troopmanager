@@ -13,8 +13,7 @@ object ArmyEngine {
         Culture.entries.filter { culture ->
             population(state.population, culture) > 0 ||
                 state.armyPools.any { it.type.culture == culture && it.soldiers > 0 } ||
-                state.trainingQueue.any { it.type.culture == culture && it.amount > 0 } ||
-                state.commanders.any { it.culture == culture }
+                state.trainingQueue.any { it.type.culture == culture && it.amount > 0 }
         }
 
     fun normalize(units: List<UnitAllocation>): List<UnitAllocation> =
