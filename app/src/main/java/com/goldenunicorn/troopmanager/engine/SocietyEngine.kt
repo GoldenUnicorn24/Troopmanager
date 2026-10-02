@@ -83,7 +83,9 @@ object SocietyEngine {
         val disease = approach(previous.disease, diseaseTarget, 2)
         val cultureCount = Culture.entries.count { ArmyEngine.population(state.population, it) > 0 }
         val tensionTarget = ((cultureCount - 1) * 5 + hunger / 3 + inequality / 5 +
-            (crowding - 100).coerceAtLeast(0) / 2 - if (active(state, SocietyPolicy.INTEGRATION)) 30 else 0).coerceIn(0, 100)
+            (crowding - 100).coerceAtLeast(0) / 2 -
+            (if (active(state, SocietyPolicy.INTEGRATION)) 30 else 0) -
+            OriginEngine.integrationBonus(state)).coerceIn(0, 100)
         val tension = approach(previous.culturalTension, tensionTarget)
         val crimeTarget = (65 - state.city.security + inequality / 3 + hunger / 3 -
             if (active(state, SocietyPolicy.PATROLS)) 30 else 0).coerceIn(0, 100)
