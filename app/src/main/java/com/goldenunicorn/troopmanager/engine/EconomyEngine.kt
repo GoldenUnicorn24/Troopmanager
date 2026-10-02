@@ -89,7 +89,8 @@ object EconomyEngine {
                     socialFactor *
                     seasonFactor *
                     difficultyFactor *
-                    researchFactor)
+                    researchFactor *
+                    (if (kind == ResourceKind.GOLD) OriginEngine.goldFactor(state) else 1.0))
                 .toLong()
                 .coerceIn(0, Int.MAX_VALUE.toLong())
                 .toInt()
