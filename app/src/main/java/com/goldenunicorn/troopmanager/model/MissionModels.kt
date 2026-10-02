@@ -61,10 +61,28 @@ data class ActiveMission(
     val commanderIds: List<Long> = emptyList(),
     /** The ruler can personally accompany the mission and counts as one of at most three leaders. */
     val playerParticipates: Boolean = false,
+    /** v0.61.3 separates permanent deaths from temporary medical casualties. */
+    val dead: Int = 0,
+    val wounded: Int = 0,
+    /** Expected day on which the last wounded cohort from this mission is fit for duty. */
+    val woundedRecoveryDay: Int = 0,
 
 ) {
     val total: Int
         get() = units.sumOf { it.amount }
+
+    /** Old saves stored all mission casualties only in losses; treat those as fallen in reports. */
+    val reportedDead: Int
+        get() = if (dead == 0 && wounded == 0 && losses > 0) losses else dead
+
+    val reportedWounded: Int
+        get() = wounded
+
+    val deployedTotal: Int
+        get() = if (originalTotal > 0) originalTotal else total + losses
+
+    val readyReturned: Int
+        get() = (deployedTotal - reportedDead - reportedWounded).coerceAtLeast(0)
 
     /** Backward compatible view: older saves only stored commanderId. */
     val allCommanderIds: List<Long>
