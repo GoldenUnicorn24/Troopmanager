@@ -296,7 +296,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                     }
                 }
                 Text(
-                    "Kein Zahlen-Nachteil: immer 2.000 Bevölkerung · 160 Rekruten · 400 Startsoldaten insgesamt. Die Werte werden gleichmäßig auf deine Auswahl verteilt.",
+                    "Fairer Start: immer 2.000 Bevölkerung und 160 Rekruten. Die Armee wird nach einem festen Kampfkraftbudget verteilt: Elitekulturen starten mit weniger, dafür stärkeren Soldaten; Massenkulturen mit mehr Köpfen.",
                     color = Gold,
                     fontSize = 12.sp,
                 )
