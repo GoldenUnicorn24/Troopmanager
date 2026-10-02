@@ -30,8 +30,18 @@ internal fun ArmyScreen(
     onNotice: (String) -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var culture by remember { mutableStateOf(Culture.HUMAN) }
+    val visibleCultures = ArmyEngine.visibleCultures(state)
+    var culture by remember { mutableStateOf(visibleCultures.firstOrNull() ?: Culture.HUMAN) }
     var expandedCulture by remember { mutableStateOf<Culture?>(null) }
+
+    LaunchedEffect(visibleCultures) {
+        if (culture !in visibleCultures) {
+            culture = visibleCultures.firstOrNull() ?: Culture.HUMAN
+        }
+        if (expandedCulture != null && expandedCulture !in visibleCultures) {
+            expandedCulture = null
+        }
+    }
     var commanderId by remember { mutableStateOf<Long?>(null) }
     val selectedCommander = state.commanders.firstOrNull { it.id == commanderId }
     if (selectedCommander != null) {
@@ -77,7 +87,7 @@ internal fun ArmyScreen(
                         )
                     }
                     item { PersonalCommandCard(state) }
-                    items(Culture.entries) { selected ->
+                    items(visibleCultures) { selected ->
                         ArmyCultureCard(state, selected, expandedCulture == selected) {
                             expandedCulture = if (expandedCulture == selected) null else selected
                         }
@@ -110,7 +120,7 @@ internal fun ArmyScreen(
                             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Culture.entries.forEach { selected ->
+                            visibleCultures.forEach { selected ->
                                 FilterChip(
                                     selected = culture == selected,
                                     onClick = { culture = selected },
@@ -120,7 +130,11 @@ internal fun ArmyScreen(
                             }
                         }
                     }
-                    item { ArmyCultureCard(state, culture, true, interactive = false) {} }
+                    if (visibleCultures.isEmpty()) {
+                        item { EmptyCard("Keine aktive Kultur im Reich verfügbar.") }
+                    } else {
+                        item { ArmyCultureCard(state, culture, true, interactive = false) {} }
+                    }
                     val orders = state.trainingQueue.filter { it.type.culture == culture }
                     if (orders.isNotEmpty()) {
                         item {
@@ -145,7 +159,11 @@ internal fun ArmyScreen(
                             }
                         }
                     }
-                    items(UnitType.entries.filter { it.culture == culture }) { type ->
+                    items(
+                        UnitType.entries.filter {
+                            it.culture == culture && culture in visibleCultures
+                        }
+                    ) { type ->
                         ArmyUnitCard(state, type, true, onState, onNotice)
                     }
                 }
