@@ -143,7 +143,9 @@ class V06WarTest {
         val base = army().copy(realm = army().realm.copy(buildings = army().realm.buildings + (BuildingType.ARSENAL to 2)), armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 100, equipment = 50)))
         val repaired = WarEngine.tick(base)
         assertTrue(repaired.armyPools.single().equipment > 50)
-        assertTrue(repaired.resources.iron < base.resources.iron)
+        assertEquals(base.resources.iron, repaired.resources.iron)
+        assertTrue(repaired.militaryStock.swords < base.militaryStock.swords)
+        assertTrue(repaired.militaryStock.armor < base.militaryStock.armor)
         assertEquals(repaired, WarEngine.tick(repaired))
         val stocked = repaired.copy(war = repaired.war.copy(equipment = listOf(EquipmentBatch(UnitType.HUMAN_SWORD, stock = 100))))
         val upgraded = WarEngine.upgradeEquipment(stocked, UnitType.HUMAN_SWORD).state
@@ -233,11 +235,13 @@ class V06WarTest {
         assertTrue(EquipmentQuality.IMPROVISED.power < EquipmentQuality.NORMAL.power)
     }
 
-    @Test fun partialHomeRepairsCannotConsumeStockWithoutImprovingEquipment() {
+    @Test fun partialHomeRepairsUseRealGoodsAndImproveWholeEquipmentPoints() {
         val state = army().copy(realm = army().realm.copy(buildings = army().realm.buildings + (BuildingType.ARSENAL to 2)), armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 1000, equipment = 99)), activeMissions = listOf(ActiveMission(1, MissionType.PATROL, null, listOf(UnitAllocation(UnitType.HUMAN_SWORD, 500)), 1, 1, 100, 1)), war = WarState(equipment = listOf(EquipmentBatch(UnitType.HUMAN_SWORD, stock = 100))))
         val after = WarEngine.tick(state)
-        assertEquals(99, after.armyPools.single().equipment)
-        assertEquals(140, after.war.equipment.single().stock)
+        assertEquals(100, after.armyPools.single().equipment)
+        assertTrue(after.militaryStock.swords < state.militaryStock.swords)
+        assertTrue(after.militaryStock.armor < state.militaryStock.armor)
+        assertEquals(100, after.war.equipment.single().stock)
     }
 
     @Test fun fieldInfantryCanWinAndCannotTeleportFortressReinforcements() {
