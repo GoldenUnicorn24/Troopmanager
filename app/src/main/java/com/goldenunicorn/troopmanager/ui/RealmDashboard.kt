@@ -40,6 +40,72 @@ internal fun RealmDashboard(
         }
         item { EconomyStrip(state) }
         item {
+            StatGrid(
+                listOf(
+                    "Verwundet" to state.war.wounded.sumOf { it.soldiers }.toString(),
+                    "Missionen" to state.activeMissions.count { it.status.isAway }.toString(),
+                    "Bauprojekte" to state.city.constructionQueue.size.toString(),
+                    "Forschung" to (state.research.active?.remainingDays?.let { "$it Tage" } ?: "frei"),
+                )
+            )
+        }
+        if (state.dailyReport.day == state.day && state.dailyReport.entries.isNotEmpty()) {
+            item {
+                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            "TAGESBERICHT · TAG ${state.dailyReport.day}",
+                            color = PaleGold,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        state.dailyReport.entries
+                            .sortedByDescending { it.important }
+                            .take(8)
+                            .forEach { entry ->
+                                Surface(
+                                    color = if (entry.important) Panel2 else Color.Transparent,
+                                    shape = RoundedCornerShape(10.dp),
+                                ) {
+                                    Column(Modifier.fillMaxWidth().padding(8.dp)) {
+                                        Text(
+                                            "${entry.category.label} · ${entry.title}",
+                                            color = if (entry.important) Gold else Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(entry.detail, color = Mist, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
+        }
+        state.commanderEvents.pending?.let { event ->
+            item {
+                Surface(
+                    color = Color(0xFF22202A),
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("KRIEGSRAT · ${event.title}", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text(event.text, color = Mist)
+                        Text("Entscheidung bis Tag ${event.expiresDay}", color = Gold, fontSize = 11.sp)
+                        CommanderEventEngine.choices(event).forEachIndexed { index, label ->
+                            SmallAction(label) {
+                                apply(CommanderEventEngine.resolve(state, index))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
             GoldButton(
                 "Nächsten Tag beginnen",
                 onAdvanceDay,
