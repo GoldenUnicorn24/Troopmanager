@@ -245,11 +245,11 @@ class GameEngineTest {
             MissionEngine.start(state, MissionType.PATROL, 1, allocation(UnitType.HUMAN_SWORD, 150))
                 .state
         assertEquals(0, sent.assigned(UnitType.HUMAN_SWORD))
+        // v0.61: this was a deliberate Army-page assignment, so the mission may use it
+        // temporarily but must not rewrite it on return.
+        assertEquals(150, sent.commanderAssignments.single { it.commanderId == 1L }.units.single().amount)
         val end = day(sent, 1.0)
-        assertEquals(
-            150 - end.activeMissions.first().losses,
-            end.assignedTo(1, UnitType.HUMAN_SWORD),
-        )
+        assertEquals(150, end.assignedTo(1, UnitType.HUMAN_SWORD))
     }
 
     @Test
