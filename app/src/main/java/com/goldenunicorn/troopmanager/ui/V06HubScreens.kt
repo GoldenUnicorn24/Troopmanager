@@ -30,12 +30,21 @@ internal fun WorldHubScreen(state: GameState, onState: (GameState) -> Unit, onNo
 internal fun CourtHubScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var page by remember { mutableStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        HubTabs(listOf("Menschen & Hof", "Profile & Attribute"), page) { page = it }
+        HubTabs(listOf("Menschen & Hof", "Profile & Attribute", "Forschung"), page) { page = it }
         ContextTutorialCard(state, "court", onState)
         Box(Modifier.weight(1f)) {
-            if (page == 0) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                PeopleCourtScreen(state, onState, onNotice)
-            } else CourtScreen(state, onState, onNotice)
+            when (page) {
+                0 ->
+                    Column(
+                        Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        PeopleCourtScreen(state, onState, onNotice)
+                    }
+                1 -> CourtScreen(state, onState, onNotice)
+                else -> ResearchPanel(state, onState, onNotice)
+            }
         }
     }
 }
@@ -44,11 +53,20 @@ internal fun CourtHubScreen(state: GameState, onState: (GameState) -> Unit, onNo
 internal fun ArmyHubScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var page by remember { mutableStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        HubTabs(listOf("Armee", "Lazarett & Versorgung"), page) { page = it }
+        HubTabs(listOf("Armee", "Lazarett", "Arsenal & Logistik"), page) { page = it }
         ContextTutorialCard(state, "army", onState)
         Box(Modifier.weight(1f)) {
-            if (page == 0) ArmyScreen(state, onState, onNotice) else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                WarManagementPanel(state, onState, onNotice)
+            when (page) {
+                0 -> ArmyScreen(state, onState, onNotice)
+                1 ->
+                    Column(
+                        Modifier.fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp)
+                    ) {
+                        WarManagementPanel(state, onState, onNotice)
+                    }
+                else -> MilitaryLogisticsPanel(state, onState, onNotice)
             }
         }
     }
