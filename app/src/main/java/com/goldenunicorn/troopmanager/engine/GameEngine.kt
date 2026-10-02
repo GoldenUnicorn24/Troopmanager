@@ -212,8 +212,18 @@ object GameEngine {
             Culture.WALL -> Commander(1, "Wei Jian", culture, "wall_guard")
         }
 
-    fun isUnitUnlocked(state: GameState, type: UnitType): Boolean =
-        ArmyEngine.population(state.population, type.culture) > 0
+    fun isUnitUnlocked(state: GameState, type: UnitType): Boolean {
+        val population = ArmyEngine.population(state.population, type.culture)
+        // Legacy saves predate persistent founding cultures and keep their former behavior.
+        if (state.foundingCultures.isEmpty()) return population > 0
+        if (type.culture in state.foundingCultures) return true
+        val requiredPopulation =
+            when (type.culture) {
+                Culture.GOLD_ELF -> 60
+                Culture.HUMAN, Culture.WOOD_ELF, Culture.WALL -> 100
+            }
+        return population >= requiredPopulation
+    }
 
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
