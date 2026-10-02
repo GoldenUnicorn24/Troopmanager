@@ -272,7 +272,7 @@ class GameEngineTest {
     }
 
     @Test
-    fun catastropheCausesRealLossesAndNoLoot() {
+    fun catastropheSeparatesFallenFromRecoverableWoundedAndNoLoot() {
         val state =
             MissionEngine.start(
                     human(),
@@ -282,11 +282,59 @@ class GameEngineTest {
                 )
                 .state
         val end = day(state, 0.1)
-        assertEquals(MissionOutcome.CATASTROPHIC, end.activeMissions.first().outcome)
-        assertEquals(10, end.activeMissions.first().losses)
+        val report = end.activeMissions.first()
+
+        assertEquals(MissionOutcome.CATASTROPHIC, report.outcome)
+        assertEquals(10, report.losses)
+        assertTrue(report.reportedWounded > 0)
+        assertEquals(report.losses, report.reportedDead + report.reportedWounded)
         assertEquals(320, end.armySize)
-        assertEquals(0, end.activeMissions.first().reward.gold)
-        assertEquals(state.population.total - 10, end.population.total)
+        assertEquals(0, report.reward.gold)
+        assertEquals(state.population.total - report.reportedDead, end.population.total)
+        assertEquals(report.reportedWounded, end.war.wounded.sumOf { it.soldiers })
+
+        val recovered = WarEngine.tick(end.copy(day = report.woundedRecoveryDay))
+        assertEquals(end.armySize + report.reportedWounded, recovered.armySize)
+        assertTrue(recovered.war.wounded.isEmpty())
+        assertEquals(end.population.total, recovered.population.total)
+    }
+
+    @Test
+    fun hospitalImprovesMissionSurvivalAndRecoveryTime() {
+        fun withHospital(level: Int): GameState {
+            val base = human()
+            return base.copy(
+                realm =
+                    base.realm.copy(
+                        buildings = base.realm.buildings + (BuildingType.HOSPITAL to level)
+                    )
+            )
+        }
+
+        fun resolve(start: GameState): Pair<GameState, ActiveMission> {
+            val sent =
+                MissionEngine.start(
+                        start,
+                        MissionType.PATROL,
+                        null,
+                        allocation(UnitType.HUMAN_SWORD, 50),
+                    )
+                    .state
+            val end = day(sent, 0.1)
+            return end to end.activeMissions.first()
+        }
+
+        val (withoutHospital, basicReport) = resolve(withHospital(0))
+        val (withHospital, improvedReport) = resolve(withHospital(4))
+
+        assertEquals(basicReport.losses, improvedReport.losses)
+        assertTrue(improvedReport.reportedWounded >= basicReport.reportedWounded)
+        assertTrue(improvedReport.reportedDead <= basicReport.reportedDead)
+        assertTrue(improvedReport.woundedRecoveryDay < basicReport.woundedRecoveryDay)
+        assertEquals(
+            withoutHospital.population.total - basicReport.reportedDead,
+            withHospital.population.total - improvedReport.reportedDead,
+        )
     }
 
     @Test
