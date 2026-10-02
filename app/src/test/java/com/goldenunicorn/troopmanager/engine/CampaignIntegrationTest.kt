@@ -122,13 +122,26 @@ class CampaignIntegrationTest {
                     resources = Resources(1000000, 1000000, 1000000, 1000000, 1000000),
                 )
         assertEquals(104000, state.armySize)
+        state =
+            state.copy(
+                commanders =
+                    (1L..6L).map { id ->
+                        Commander(
+                            id = id,
+                            name = "Testkommandant $id",
+                            culture = UnitType.entries[(id.toInt() - 1) % UnitType.entries.size].culture,
+                            portraitKey = "knight",
+                        )
+                    }
+            )
         repeat(6) { index ->
             state =
                 MissionEngine.start(
                         state,
                         MissionType.ESCORT,
-                        null,
-                        listOf(UnitAllocation(UnitType.entries[index], 200)),
+                        commanderIds = listOf((index + 1).toLong()),
+                        playerParticipates = false,
+                        units = listOf(UnitAllocation(UnitType.entries[index], 200)),
                     )
                     .state
         }
