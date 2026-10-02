@@ -238,11 +238,11 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                     Text(
                         when (option) {
                             Species.HUMAN ->
-                                "Menschliche Herkunft. Bestimmt deinen Charakter, nicht mehr die Zusammensetzung deiner Startarmee."
+                                "Menschliche Herkunft · +5 % Goldertrag durch Verwaltung. Deine Startarmee bleibt frei wählbar."
                             Species.ELF ->
-                                "Elbische Herkunft. Deine Startkulturen und Einheiten wählst du im nächsten Schritt frei."
+                                "Elbische Herkunft · günstigere Aufklärung und +10 % Marschtempo im Wald. Deine Startarmee bleibt frei wählbar."
                             Species.HALF_ELF ->
-                                "Halbelbische Herkunft. Besonders flexible Rolle; die Startarmee bleibt vollständig frei wählbar."
+                                "Halbelbische Herkunft · +8 Diplomatie und geringere Kulturspannung. Deine Startarmee bleibt frei wählbar."
                         },
                         color = Mist,
                         fontSize = 13.sp,
