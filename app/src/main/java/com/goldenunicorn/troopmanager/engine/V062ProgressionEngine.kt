@@ -2,6 +2,24 @@ package com.goldenunicorn.troopmanager.engine
 
 import com.goldenunicorn.troopmanager.model.*
 
+object OriginEngine {
+    /** Origins shape playstyle without restricting which cultures or units can be chosen. */
+    fun goldFactor(state: GameState): Double =
+        if (state.player.species == Species.HUMAN) 1.05 else 1.0
+
+    fun diplomacyBonus(state: GameState): Int =
+        if (state.player.species == Species.HALF_ELF) 8 else 0
+
+    fun integrationBonus(state: GameState): Int =
+        if (state.player.species == Species.HALF_ELF) 8 else 0
+
+    fun forestMarchFactor(state: GameState, terrain: WorldTerrain): Double =
+        if (state.player.species == Species.ELF && terrain == WorldTerrain.FOREST) 1.10 else 1.0
+
+    fun scoutingCostFactor(state: GameState): Double =
+        if (state.player.species == Species.ELF) 0.85 else 1.0
+}
+
 object DifficultyEngine {
     fun scoutInterval(state: GameState): Int = when (state.settings.difficulty) {
         Difficulty.STORY -> 7
