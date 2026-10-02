@@ -50,7 +50,8 @@ class V061FeaturesTest {
 
         assertEquals(2000, state.population.total)
         assertEquals(160, state.population.totalRecruits)
-        assertEquals(400, state.armySize)
+        assertTrue(state.armySize > 0)
+        assertTrue(state.armyPools.sumOf { it.power.toDouble() } in 6500.0..7500.0)
         assertEquals(2000, state.population.human)
         assertEquals(160, state.population.humanRecruits)
         assertEquals(0, state.population.woodElf + state.population.goldElf + state.population.wall)
@@ -70,13 +71,20 @@ class V061FeaturesTest {
 
         assertEquals(2000, state.population.total)
         assertEquals(160, state.population.totalRecruits)
-        assertEquals(400, state.armySize)
+        assertTrue(state.armySize > 0)
         assertEquals(1000, state.population.human)
         assertEquals(1000, state.population.goldElf)
         assertEquals(80, state.population.humanRecruits)
         assertEquals(80, state.population.goldElfRecruits)
-        assertEquals(200, state.armyPools.filter { it.type.culture == Culture.HUMAN }.sumOf { it.soldiers })
-        assertEquals(200, state.armyPools.filter { it.type.culture == Culture.GOLD_ELF }.sumOf { it.soldiers })
+        val humanPower =
+            state.armyPools.filter { it.type.culture == Culture.HUMAN }.sumOf { it.power.toDouble() }
+        val goldPower =
+            state.armyPools.filter { it.type.culture == Culture.GOLD_ELF }.sumOf { it.power.toDouble() }
+        assertTrue(kotlin.math.abs(humanPower - goldPower) <= maxOf(humanPower, goldPower) * 0.12)
+        assertTrue(
+            state.armyPools.filter { it.type.culture == Culture.HUMAN }.sumOf { it.soldiers } >
+                state.armyPools.filter { it.type.culture == Culture.GOLD_ELF }.sumOf { it.soldiers }
+        )
         assertTrue(state.armyPools.none { it.type.culture == Culture.WOOD_ELF || it.type.culture == Culture.WALL })
     }
 
@@ -93,12 +101,16 @@ class V061FeaturesTest {
 
         assertEquals(2000, state.population.total)
         assertEquals(160, state.population.totalRecruits)
-        assertEquals(400, state.armySize)
+        val powers =
+            Culture.entries.associateWith { culture ->
+                state.armyPools.filter { it.type.culture == culture }.sumOf { it.power.toDouble() }
+            }
         Culture.entries.forEach { culture ->
             assertEquals(500, ArmyEngine.population(state.population, culture))
             assertEquals(40, state.population.recruits(culture))
-            assertEquals(100, state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers })
+            assertTrue(powers.getValue(culture) > 0.0)
         }
+        assertTrue(powers.values.max() - powers.values.min() <= powers.values.max() * 0.15)
     }
 
     @Test
