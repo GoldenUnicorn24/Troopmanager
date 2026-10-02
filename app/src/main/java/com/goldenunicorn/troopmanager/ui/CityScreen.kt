@@ -381,7 +381,7 @@ internal fun CityScreen(
                                 color = Gold,
                             )
                             Text(
-                                "Residenz Stufe 3: zweiter Bauplatz · Offiziersschule Stufe 2: dritter Bauplatz",
+                                "Dein Reich besitzt dauerhaft drei parallele Bauplätze. Residenz und Offiziersschule verbessern stattdessen Verwaltung, Forschung und Führung.",
                                 color = Mist,
                                 fontSize = 12.sp,
                             )
@@ -740,7 +740,7 @@ private fun buildingEffect(type: BuildingType, state: GameState): String =
             "Die Stadtmauer schützt das Reich; Ausbau stellt die Integrität auf 100% wieder her."
         BuildingType.TOWER -> "Türme verstärken die Verteidigung und verbessern die Sicherheit."
         BuildingType.PALACE ->
-            "Die Residenz bildet das Zentrum deiner Stadt. Ab Stufe 3 steht ein zweiter Bauplatz zur Verfügung."
+            "Die Residenz bildet das Verwaltungszentrum des Reiches und prägt Rang, Wohlstand und politische Entwicklung."
         BuildingType.RESIDENTIAL ->
             "Jede Stufe schafft 600 zusätzliche Wohnplätze. Aktuell ${state.city.housingCapacity} Plätze."
         BuildingType.WAREHOUSE ->
@@ -748,11 +748,11 @@ private fun buildingEffect(type: BuildingType, state: GameState): String =
         BuildingType.HOSPITAL ->
             "Das Lazarett rettet mehr Verwundete vor dem Tod und verkürzt ihre Behandlungszeit. Patienten siehst du unter Armee → Lazarett & Versorgung."
         BuildingType.ACADEMY ->
-            "Die Offiziersschule erweitert die Verwaltung. Ab Stufe 2 steht ein dritter Bauplatz zur Verfügung."
+            "Die Offiziersschule ist dein Forschungs- und Führungszentrum: höhere Stufen verkürzen Forschung und verbessern Kommandantentraining."
         BuildingType.STABLES ->
-            "Stallungen bilden das sichtbare Zentrum deiner Kavallerie und führen zu deinen berittenen Kontingenten."
+            "Stallungen züchten Pferde, beschleunigen Ritterausbildung und unterstützen mobile Feldheere."
         BuildingType.ARSENAL ->
-            "Das Arsenal produziert und repariert aggregierte Ausrüstung. Seine Stufe erhöht die mögliche Ausrüstungsqualität."
+            "Das Arsenal verarbeitet Eisen und Holz zu Schwertern, Speeren, Bögen, Pfeilen, Rüstungen, Schilden und Belagerungsteilen. Höhere Stufen reparieren schneller und erlauben bessere Qualität."
         BuildingType.EMBASSY ->
             "Die Botschaft erhöht den angestrebten Wohlstand um 3 je Stufe und öffnet Verhandlungen, Verträge und Spionage."
     }
