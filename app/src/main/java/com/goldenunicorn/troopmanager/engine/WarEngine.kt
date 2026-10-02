@@ -15,6 +15,26 @@ object WarEngine {
     fun effectiveLevel(state: GameState, type: BuildingType): Int =
         (state.realm.level(type).toLong() * (100 - (state.war.buildingDamage[type] ?: 0).coerceIn(0, 100)) / 100).toInt()
 
+    private fun primaryGood(type: UnitType): MilitaryGood =
+        when (type) {
+            UnitType.HUMAN_ARCHER,
+            UnitType.WOOD_RANGER,
+            UnitType.GOLD_ARCHER,
+            UnitType.EAGLE_CORPS -> MilitaryGood.BOWS
+            UnitType.GOLD_SPEAR,
+            UnitType.CRANE_GUARD,
+            UnitType.BEAR_CORPS,
+            UnitType.DEER_CORPS -> MilitaryGood.SPEARS
+            UnitType.DRAGON_ARTILLERY -> MilitaryGood.SIEGE_PARTS
+            else -> MilitaryGood.SWORDS
+        }
+
+    fun hospitalCapacity(state: GameState): Int {
+        val hospital = effectiveLevel(state, BuildingType.HOSPITAL).coerceAtLeast(0)
+        val healing = CharacterEngine.bonuses(state).healing
+        return 60 + hospital * 180 + healing * 20
+    }
+
     fun validate(state: GameState) {
         val war = state.war
         require(war.wounded.size <= UnitType.entries.size * 16 && war.wounded.map { it.id }.distinct().size == war.wounded.size && war.wounded.map { it.type to it.recoveryDay }.distinct().size == war.wounded.size) { "Ungültige Verwundetenverbände." }
@@ -65,23 +85,39 @@ object WarEngine {
         if (due.isNotEmpty()) next = next.copy(chronicle = (next.chronicle + ChronicleEntry(state.day, "Verwundete kehren zurück", "${due.sumOf { it.soldiers }} Soldaten verlassen das Lazarett und stehen wieder im Heer.")).takeLast(2000))
         val arsenal = effectiveLevel(next, BuildingType.ARSENAL).coerceAtMost(20)
         if (arsenal > 0) {
-            var resources = next.resources
-            val stocks = next.war.equipment.associateBy { it.type }.toMutableMap()
-            val pools = next.armyPools.map { pool ->
-                val batch = stocks[pool.type] ?: EquipmentBatch(pool.type)
-                val produced = minOf(arsenal * 20, resources.iron, resources.wood, (1_000_000 - batch.stock).coerceAtLeast(0))
-                resources = resources.copy(iron = resources.iron - produced, wood = resources.wood - produced)
-                val stock = sum(batch.stock, produced)
-                val home = next.homeSoldiers(pool.type)
-                // Consume only repairs that produce an observable whole point in the aggregate pool.
-                val costPerPoint = ceil(pool.soldiers / 10.0).toInt().coerceAtLeast(1)
-                val repairBudget = minOf(stock.toLong(), (100 - pool.equipment).toLong() * home / 10)
-                val equipmentPoints = minOf(100 - pool.equipment, (repairBudget / costPerPoint).toInt())
-                val consumed = equipmentPoints * costPerPoint
-                stocks[pool.type] = batch.copy(stock = stock - consumed)
-                pool.copy(equipment = pool.equipment + equipmentPoints)
-            }
-            next = next.copy(resources = resources, armyPools = pools, war = next.war.copy(equipment = stocks.values.toList()))
+            var military = next.militaryStock
+            val pools =
+                next.armyPools.map { pool ->
+                    val home = next.homeSoldiers(pool.type)
+                    if (home <= 0 || pool.equipment >= 100) return@map pool
+                    val primary = primaryGood(pool.type)
+                    val costPerPoint = ceil(home / 80.0).toInt().coerceAtLeast(1)
+                    val possibleByPrimary = military.amount(primary) / costPerPoint
+                    val possibleByArmor =
+                        if (pool.type == UnitType.WOOD_RANGER || pool.type == UnitType.EAGLE_CORPS)
+                            Int.MAX_VALUE
+                        else military.armor / costPerPoint
+                    val points =
+                        minOf(
+                            100 - pool.equipment,
+                            arsenal.coerceAtLeast(1),
+                            possibleByPrimary,
+                            possibleByArmor,
+                        )
+                    if (points <= 0) return@map pool
+                    military =
+                        military.withAmount(
+                            primary,
+                            military.amount(primary) - points * costPerPoint,
+                        )
+                    if (possibleByArmor != Int.MAX_VALUE)
+                        military =
+                            military.copy(
+                                armor = (military.armor - points * costPerPoint).coerceAtLeast(0)
+                            )
+                    pool.copy(equipment = pool.equipment + points)
+                }
+            next = next.copy(militaryStock = military, armyPools = pools)
         }
         val remaining = next.armyPools.associate { it.type to it.soldiers }.toMutableMap()
         val elites = next.war.eliteUnits.map { elite ->
@@ -127,13 +163,51 @@ object WarEngine {
         if (state.battleSession?.isActive == true || state.away(type) > 0) return GameEngine.ActionResult(state, "Ausrüstung wird erst nach der Rückkehr verbessert.")
         val pool = state.armyPools.firstOrNull { it.type == type } ?: return GameEngine.ActionResult(state, "Kein Verband vorhanden.")
         val batch = state.war.equipment.firstOrNull { it.type == type } ?: EquipmentBatch(type)
-        val target = EquipmentQuality.entries.getOrNull(batch.quality.ordinal + 1) ?: return GameEngine.ActionResult(state, "Legendäre Qualität erreicht.")
+        val target =
+            EquipmentQuality.entries.getOrNull(batch.quality.ordinal + 1)
+                ?: return GameEngine.ActionResult(state, "Legendäre Qualität erreicht.")
         val level = effectiveLevel(state, BuildingType.ARSENAL)
-        val requiredLevel = when (target) { EquipmentQuality.IMPROVISED -> 0; EquipmentQuality.NORMAL -> 1; EquipmentQuality.GOOD -> 2; EquipmentQuality.MASTERWORK -> 4; EquipmentQuality.LEGENDARY -> 8 }
+        val requiredLevel =
+            when (target) {
+                EquipmentQuality.IMPROVISED -> 0
+                EquipmentQuality.NORMAL -> 1
+                EquipmentQuality.GOOD -> 2
+                EquipmentQuality.MASTERWORK -> 4
+                EquipmentQuality.LEGENDARY -> 8
+            }
         val cost = ceil(pool.soldiers / 10.0).toInt().coerceAtLeast(1)
-        if (level < requiredLevel || batch.stock < cost || state.resources.gold < cost * 2L) return GameEngine.ActionResult(state, "${target.label}: Arsenal $requiredLevel, $cost Ausrüstung und ${cost * 2L} Gold benötigt.")
-        val upgraded = batch.copy(quality = target, stock = batch.stock - cost)
-        return GameEngine.ActionResult(state.copy(resources = state.resources.copy(gold = state.resources.gold - cost * 2), war = state.war.copy(equipment = state.war.equipment.filterNot { it.type == type } + upgraded)), "${type.label} tragen jetzt ${target.label.lowercase()}e Ausrüstung.")
+        val primary = primaryGood(type)
+        val primaryMissing = (cost - state.militaryStock.amount(primary)).coerceAtLeast(0)
+        val armorMissing = (cost - state.militaryStock.armor).coerceAtLeast(0)
+        if (
+            level < requiredLevel ||
+                primaryMissing > 0 ||
+                armorMissing > 0 ||
+                state.resources.gold < cost * 2L
+        )
+            return GameEngine.ActionResult(
+                state,
+                "${target.label}: Arsenal $requiredLevel, $cost ${primary.label}, $cost Rüstungen und ${cost * 2L} Gold benötigt.",
+            )
+        var military =
+            state.militaryStock.withAmount(
+                primary,
+                state.militaryStock.amount(primary) - cost,
+            )
+        military = military.copy(armor = (military.armor - cost).coerceAtLeast(0))
+        val upgraded = batch.copy(quality = target, stock = 0)
+        return GameEngine.ActionResult(
+            state.copy(
+                resources = state.resources.copy(gold = state.resources.gold - cost * 2),
+                militaryStock = military,
+                war =
+                    state.war.copy(
+                        equipment =
+                            state.war.equipment.filterNot { it.type == type } + upgraded
+                    ),
+            ),
+            "${type.label} tragen jetzt ${target.label.lowercase()}e Ausrüstung.",
+        )
     }
 
     fun ransomCommander(state: GameState, commanderId: Long?): GameEngine.ActionResult {
@@ -212,9 +286,22 @@ object WarEngine {
         val wounded = state.war.wounded.toMutableList()
         val captives = state.war.captives.toMutableList()
         var population = state.population
+        var militaryStock = state.militaryStock
+        var projectedPatients = wounded.sumOf { it.soldiers }
+        val capacity = hospitalCapacity(state)
+        val fieldMedicine = ResearchTech.FIELD_MEDICINE in state.research.completed
         session.contingents.groupBy { it.type }.forEach { (type, troops) ->
             val lost = troops.sumOf { it.startSoldiers - it.soldiers }
-            val injured = (lost.toLong() * (35 + hospital * 5 + session.healingBonus).coerceAtMost(70) / 100).toInt()
+            val medicalBonus =
+                (if (fieldMedicine) 6 else 0) +
+                    if (militaryStock.medicine > 0) 4 else 0
+            val injured =
+                (
+                    lost.toLong() *
+                        (35 + hospital * 5 + session.healingBonus + medicalBonus)
+                            .coerceAtMost(85) /
+                        100
+                ).toInt()
             val captured = if (victory || session.orderedRetreat) 0 else lost / 10
             val missing = lost / 20
             val dead = lost - injured - captured - missing
@@ -222,7 +309,28 @@ object WarEngine {
             // ArmyEngine removes every battlefield loss from population. Living casualties stay citizens.
             population = ArmyEngine.adjustPopulation(population, type.culture, injured + captured)
             if (injured > 0) {
-                val recoveryDay = state.day + (8 - hospital).coerceAtLeast(2)
+                val medicineNeeded = ceil(injured / 4.0).toInt()
+                val medicineUsed = minOf(militaryStock.medicine, medicineNeeded)
+                militaryStock =
+                    militaryStock.copy(
+                        medicine = (militaryStock.medicine - medicineUsed).coerceAtLeast(0)
+                    )
+                projectedPatients += injured
+                val overflow = (projectedPatients - capacity).coerceAtLeast(0)
+                val overloadDays =
+                    if (overflow == 0) 0
+                    else ceil(overflow.toDouble() / capacity.coerceAtLeast(1))
+                        .toInt()
+                        .coerceAtMost(5)
+                val recoveryDay =
+                    state.day +
+                        (
+                            8 -
+                                hospital -
+                                if (fieldMedicine) 1 else 0 -
+                                if (medicineNeeded > 0 && medicineUsed >= medicineNeeded) 1 else 0 +
+                                overloadDays
+                        ).coerceAtLeast(2)
                 val previous = wounded.firstOrNull { it.type == type && it.recoveryDay == recoveryDay }
                 wounded.removeAll { it.type == type && it.recoveryDay == recoveryDay }
                 wounded += WoundedCohort(previous?.id ?: "${id}_wounded_${type.name}", type, sum(previous?.soldiers ?: 0, injured), recoveryDay, troops.maxOf { it.experience }, troops.minOf { it.equipment })
@@ -304,6 +412,29 @@ object WarEngine {
         val history = records.mapIndexed { index, entry ->
             if (index < records.size - 24 && entry.replay != null) entry.copy(replay = null, inputs = emptyList()) else entry
         }
-        return ArmyEngine.clampAssignments(state.copy(population = population, battleSession = final, war = state.war.copy(wounded = wounded, captives = captives, commanderConditions = conditions, playerCondition = playerStatus, playerRecoveryDay = state.day + 5, buildingDamage = damage, eliteUnits = elites, history = history, gateReinforcement = if (session.tactic == Tactic.FORTIFY) 0 else state.war.gateReinforcement, civiliansEvacuated = if (session.tactic == Tactic.FORTIFY) false else state.war.civiliansEvacuated)))
+        return ArmyEngine.clampAssignments(
+            state.copy(
+                population = population,
+                militaryStock = militaryStock,
+                battleSession = final,
+                war =
+                    state.war.copy(
+                        wounded = wounded,
+                        captives = captives,
+                        commanderConditions = conditions,
+                        playerCondition = playerStatus,
+                        playerRecoveryDay = state.day + 5,
+                        buildingDamage = damage,
+                        eliteUnits = elites,
+                        history = history,
+                        gateReinforcement =
+                            if (session.tactic == Tactic.FORTIFY) 0
+                            else state.war.gateReinforcement,
+                        civiliansEvacuated =
+                            if (session.tactic == Tactic.FORTIFY) false
+                            else state.war.civiliansEvacuated,
+                    ),
+            )
+        )
     }
 }
