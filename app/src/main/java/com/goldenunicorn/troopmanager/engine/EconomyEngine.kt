@@ -34,7 +34,12 @@ object EconomyEngine {
         val stableDiscount = if (state.realm.level(BuildingType.STABLES) > 0) 1 else 0
         val food = state.armyPools.sumOf { state.homeSoldiers(it.type).toLong() * (it.foodPerSoldier - if (it.type == UnitType.KNIGHT) stableDiscount else 0) } + state.trainingSize
         val winter = if (Season.forDay(state.day) == Season.WINTER) 1.15 else 1.0
-        return (food * winter).toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val logistics =
+            if (ResearchTech.SUPPLY_TRAINS in state.research.completed) 0.90 else 1.0
+        return (food * winter * logistics)
+            .toLong()
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
     }
 
     fun breakdown(state: GameState, kind: ResourceKind): ResourceBreakdown {
@@ -67,8 +72,27 @@ object EconomyEngine {
         val untaxed = safe(base.toLong() + ((building.toLong() + territory) * worker).toLong() + event)
         val socialFactor = if (kind == ResourceKind.GOLD) (1.0 + (state.city.prosperity - 50) / 500.0 + (state.city.satisfaction - 50) / 1000.0) else 1.0
         val seasonFactor = if (kind == ResourceKind.FOOD) Season.forDay(state.day).harvestFactor else 1.0
-        val difficultyFactor = if (kind == ResourceKind.FOOD && state.settings.difficulty == Difficulty.STORY) 1.2 else 1.0
-        val gross = (untaxed * (if (kind == ResourceKind.GOLD) state.city.taxLevel.goldFactor else 1.0) * socialFactor * seasonFactor * difficultyFactor).toLong().coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
+        val difficultyFactor =
+            if (kind == ResourceKind.FOOD && state.settings.difficulty == Difficulty.STORY) 1.2
+            else 1.0
+        val researchFactor =
+            when {
+                kind == ResourceKind.FOOD &&
+                    ResearchTech.CROP_ROTATION in state.research.completed -> 1.08
+                kind == ResourceKind.GOLD &&
+                    ResearchTech.CIVIC_ADMINISTRATION in state.research.completed -> 1.05
+                else -> 1.0
+            }
+        val gross =
+            (untaxed *
+                    (if (kind == ResourceKind.GOLD) state.city.taxLevel.goldFactor else 1.0) *
+                    socialFactor *
+                    seasonFactor *
+                    difficultyFactor *
+                    researchFactor)
+                .toLong()
+                .coerceIn(0, Int.MAX_VALUE.toLong())
+                .toInt()
         val taxBonus = gross - untaxed
         val consumption = if (kind == ResourceKind.FOOD) upkeep(state) else 0
         val net = gross - consumption
