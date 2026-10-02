@@ -242,6 +242,13 @@ data class GameState(
     val society: SocietyState = SocietyState(),
     val presentation: PresentationState = PresentationState(),
     val settings: GameSettings = GameSettings(),
+    /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
+    val foundingCultures: Set<Culture> = emptySet(),
+    val militaryStock: MilitaryStock = MilitaryStock(),
+    val doctrine: MilitaryDoctrine = MilitaryDoctrine.BALANCED,
+    val research: ResearchState = ResearchState(),
+    val dailyReport: DailyReport = DailyReport(),
+    val commanderEvents: CommanderEventState = CommanderEventState(),
     val armyPools: List<ArmyUnitPool> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),
