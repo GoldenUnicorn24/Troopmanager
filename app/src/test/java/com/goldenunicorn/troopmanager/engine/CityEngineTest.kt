@@ -41,10 +41,10 @@ class CityEngineTest {
     }
 
     @Test
-    fun administrationUnlocksAtMostThreeConstructionSlots() {
+    fun threeConstructionSlotsAreAvailableFromTheBeginning() {
         val expanded = human().copy(realm = human().realm.copy(buildings = human().realm.buildings +
             (BuildingType.PALACE to 3) + (BuildingType.ACADEMY to 2)))
-        assertEquals(1, CityEngine.constructionSlots(human()))
+        assertEquals(3, CityEngine.constructionSlots(human()))
         assertEquals(3, CityEngine.constructionSlots(expanded))
     }
 
