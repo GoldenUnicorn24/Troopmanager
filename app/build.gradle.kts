@@ -13,8 +13,8 @@ android {
         applicationId = "com.goldenunicorn.troopmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "0.65.0"
+        versionCode = 21
+        versionName = "0.66.0"
     }
 
     buildFeatures {
@@ -46,7 +46,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
 }
-
 
 kotlin {
     jvmToolchain(17)
