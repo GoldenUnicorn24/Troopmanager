@@ -746,7 +746,7 @@ private fun buildingEffect(type: BuildingType, state: GameState): String =
         BuildingType.WAREHOUSE ->
             "Jede Stufe schafft 5.000 weitere Lagerplätze je Ressource. Bestehende Bestände bleiben erhalten."
         BuildingType.HOSPITAL ->
-            "Das Lazarett unterstützt die Erholung: bis zu +3 Truppenmoral pro Tag."
+            "Das Lazarett rettet mehr Verwundete vor dem Tod und verkürzt ihre Behandlungszeit. Patienten siehst du unter Armee → Lazarett & Versorgung."
         BuildingType.ACADEMY ->
             "Die Offiziersschule erweitert die Verwaltung. Ab Stufe 2 steht ein dritter Bauplatz zur Verfügung."
         BuildingType.STABLES ->
