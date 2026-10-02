@@ -121,6 +121,42 @@ object DailyReportEngine {
                 true,
             )
 
+        val newOccupations =
+            after.occupations.filter { occupation ->
+                before.occupations.none { it.regionId == occupation.regionId }
+            }
+        newOccupations.forEach { occupation ->
+            add(
+                ReportCategory.WORLD,
+                "Neues Besatzungsgebiet",
+                "${after.world.place(occupation.regionId)?.name ?: occupation.regionId} · Unruhe ${occupation.unrest} %",
+                true,
+            )
+        }
+        after.occupations.filter { it.unrest >= 75 }.forEach { occupation ->
+            add(
+                ReportCategory.WARNING,
+                "Hohe Unruhe",
+                "${after.world.place(occupation.regionId)?.name ?: occupation.regionId}: ${occupation.unrest} % · Garnison oder Politik anpassen.",
+                true,
+            )
+        }
+        if (after.occupations.size < before.occupations.size) {
+            val integrated =
+                before.occupations.filter { old ->
+                    after.occupations.none { it.regionId == old.regionId } &&
+                        after.world.place(old.regionId)?.ownerId == PLAYER_FACTION
+                }
+            integrated.forEach {
+                add(
+                    ReportCategory.WORLD,
+                    "Gebiet integriert",
+                    after.world.place(it.regionId)?.name ?: it.regionId,
+                    true,
+                )
+            }
+        }
+
         val newTreaties =
             after.diplomacy.treaties.filter { treaty ->
                 before.diplomacy.treaties.none { it.id == treaty.id }
