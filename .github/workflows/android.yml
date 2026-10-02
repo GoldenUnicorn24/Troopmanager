@@ -52,3 +52,18 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Package APK signing helper
+        run: |
+          mkdir -p build/apksigner-tool/lib
+          cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" build/apksigner-tool/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build/apksigner-tool/lib/
+          chmod +x build/apksigner-tool/apksigner
+
+      - name: Upload APK signing helper
+        uses: actions/upload-artifact@v4
+        with:
+          name: apksigner-linux-buildtools-35
+          path: build/apksigner-tool
+          if-no-files-found: error
+          retention-days: 30
