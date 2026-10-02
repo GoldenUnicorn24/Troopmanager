@@ -96,6 +96,8 @@ data class BattleReplayStart(
     val location: String? = null,
     val deployedMorale: Int? = null,
     val enemyExperience: Int = 0,
+    val doctrine: MilitaryDoctrine = MilitaryDoctrine.BALANCED,
+    val rangedSupplyFactor: Double = 1.0,
 )
 
 @Serializable
