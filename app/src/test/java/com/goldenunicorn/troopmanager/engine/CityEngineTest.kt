@@ -117,7 +117,7 @@ class CityEngineTest {
             (BuildingType.WAREHOUSE to 1) + (BuildingType.HOSPITAL to 1) +
             (BuildingType.STABLES to 1) + (BuildingType.EMBASSY to 1)))
         assertEquals(360, EconomyEngine.upkeep(developed))
-        assertEquals(400, EconomyEngine.production(developed).gross.gold)
+        assertEquals(420, EconomyEngine.production(developed).gross.gold)
         val next = CityEngine.tick(developed)
         assertEquals(initial.city.storageCapacity.wood + 5000, next.city.storageCapacity.wood)
         assertEquals(initial.armyPools.first().morale + 1, next.armyPools.first().morale)
@@ -165,7 +165,7 @@ class CityEngineTest {
         val developed = initial.copy(regions = initial.regions.map { it.copy(owned = true) }, companion = CompanionProfile(met = true, role = "Mitregentin", diplomacy = 48))
         assertEquals(295, EconomyEngine.production(developed).gross.iron)
         assertEquals(450, EconomyEngine.production(developed).gross.wood)
-        assertEquals(474, EconomyEngine.production(developed).gross.gold)
+        assertEquals(497, EconomyEngine.production(developed).gross.gold)
         assertEquals(24, EconomyEngine.breakdown(developed, ResourceKind.GOLD).eventBonus)
     }
 }
