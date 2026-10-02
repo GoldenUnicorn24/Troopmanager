@@ -93,6 +93,10 @@ object GameEngine {
                     diplomacy = startingAttributes?.diplomacy ?: if (species == Species.HALF_ELF) 15 else 20,
                 ),
             population = population,
+            foundingCultures =
+                startingCultures
+                    ?: Culture.entries.filter { ArmyEngine.population(population, it) > 0 }.toSet(),
+            militaryStock = MilitaryEconomyEngine.startingStock(units),
             armyPools = units.map { ArmyUnitPool(it.type, it.amount) },
             commanders = listOf(commander),
         )
@@ -123,38 +127,53 @@ object GameEngine {
             }.filter { it.amount > 0 }
         }
 
+        fun mix(culture: Culture): List<Pair<UnitType, Int>> =
+            when (culture) {
+                Culture.HUMAN ->
+                    listOf(
+                        UnitType.HUMAN_SWORD to 55,
+                        UnitType.HUMAN_ARCHER to 35,
+                        UnitType.KNIGHT to 10,
+                    )
+                Culture.WOOD_ELF ->
+                    listOf(
+                        UnitType.WOOD_RANGER to 55,
+                        UnitType.WOOD_BLADE to 45,
+                    )
+                Culture.GOLD_ELF ->
+                    listOf(
+                        UnitType.GOLD_SPEAR to 55,
+                        UnitType.GOLD_ARCHER to 45,
+                    )
+                Culture.WALL ->
+                    listOf(
+                        UnitType.CRANE_GUARD to 25,
+                        UnitType.EAGLE_CORPS to 20,
+                        UnitType.TIGER_CORPS to 20,
+                        UnitType.BEAR_CORPS to 15,
+                        UnitType.DEER_CORPS to 10,
+                        UnitType.DRAGON_ARTILLERY to 10,
+                    )
+            }
+
+        // v0.62: every selected culture receives the same share of a fixed starting combat budget.
+        // Elite cultures therefore field fewer soldiers instead of receiving free extra combat power.
+        val totalPowerBudget = 7000.0
+        val qualityFactor = 1.075 * 0.9 * 0.9 // level-1 experience, morale and equipment defaults.
         val units =
-            ordered.flatMapIndexed { index, culture ->
-                val soldiers = share(400, index)
-                val mix =
-                    when (culture) {
-                        Culture.HUMAN ->
-                            listOf(
-                                UnitType.HUMAN_SWORD to 55,
-                                UnitType.HUMAN_ARCHER to 35,
-                                UnitType.KNIGHT to 10,
-                            )
-                        Culture.WOOD_ELF ->
-                            listOf(
-                                UnitType.WOOD_RANGER to 55,
-                                UnitType.WOOD_BLADE to 45,
-                            )
-                        Culture.GOLD_ELF ->
-                            listOf(
-                                UnitType.GOLD_SPEAR to 55,
-                                UnitType.GOLD_ARCHER to 45,
-                            )
-                        Culture.WALL ->
-                            listOf(
-                                UnitType.CRANE_GUARD to 25,
-                                UnitType.EAGLE_CORPS to 20,
-                                UnitType.TIGER_CORPS to 20,
-                                UnitType.BEAR_CORPS to 15,
-                                UnitType.DEER_CORPS to 10,
-                                UnitType.DRAGON_ARTILLERY to 10,
-                            )
+            ordered.flatMap { culture ->
+                val selectedMix = mix(culture)
+                val weight = selectedMix.sumOf { it.second }.coerceAtLeast(1)
+                val averagePower =
+                    selectedMix.sumOf { (type, shareWeight) ->
+                        (type.attack + type.defense + type.ranged) * qualityFactor * shareWeight / weight
                     }
-                split(soldiers, mix)
+                val cultureBudget = totalPowerBudget / ordered.size
+                val soldiers =
+                    kotlin.math.round(cultureBudget / averagePower)
+                        .toInt()
+                        .coerceAtLeast(40)
+                split(soldiers, selectedMix)
             }
 
         val population =
@@ -198,12 +217,17 @@ object GameEngine {
 
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
+        val before = state
         var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(state)))
+        next = ResearchEngine.tick(next)
+        next = MilitaryEconomyEngine.tick(next)
         next = WorldEngine.tick(next)
         next = MissionEngine.tick(next)
         next = WarEngine.tick(next)
         next = RelationshipEngine.day(next)
         next = CharacterEngine.tick(next)
+        next = CommanderEventEngine.expire(next)
+        next = CommanderEventEngine.tick(next)
         next = DynastyEngine.tick(next)
         next = DiplomacyEngine.tick(next)
         next = EspionageEngine.tick(next)
@@ -213,15 +237,21 @@ object GameEngine {
         next = InvasionEngine.day(next)
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
+        next = next.copy(dailyReport = DailyReportEngine.build(before, next))
         val message =
             if (next.battleSession?.isActive == true)
                 "Die Invasion erreicht deine Festung. Die Verteidigung beginnt!"
-            else "Tag ${next.day}: Wirtschaft, Ausbildung und Missionen schreiten voran."
+            else
+                "Tag ${next.day}: ${next.dailyReport.entries.count { it.important }} wichtige Meldungen im Tagesbericht."
         return ActionResult(next, message)
     }
 
-    fun trainingDays(state: GameState, type: UnitType): Int =
-        maxOf(2, type.trainingDays - state.realm.level(BuildingType.BARRACKS))
+    fun trainingDays(state: GameState, type: UnitType): Int {
+        val barracks = state.realm.level(BuildingType.BARRACKS)
+        val stable = if (type == UnitType.KNIGHT) state.realm.level(BuildingType.STABLES).coerceAtMost(2) else 0
+        val base = maxOf(2, type.trainingDays - barracks - stable)
+        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state)).toInt().coerceAtLeast(2)
+    }
 
     fun recruit(state: GameState, type: UnitType, percent: Int): ActionResult {
         if (busy(state)) return ActionResult(state, "Rekrutierung nach der Schlacht möglich.")
@@ -235,9 +265,16 @@ object GameEngine {
         if (available <= 0) return ActionResult(state, "Keine passenden Rekruten verfügbar.")
         val amount = ceil(available * percent / 100.0).toInt()
         val gold = amount.toLong() * type.goldCost
-        val iron = amount.toLong() * type.ironCost
-        if (gold > state.resources.gold || iron > state.resources.iron)
-            return ActionResult(state, "Benötigt: $gold Gold / $iron Eisen.")
+        if (gold > state.resources.gold)
+            return ActionResult(state, "Benötigt: $gold Gold.")
+        val goods = MilitaryEconomyEngine.requirements(type, amount)
+        val missing = MilitaryEconomyEngine.missing(state.militaryStock, goods)
+        if (missing.isNotEmpty())
+            return ActionResult(
+                state,
+                "Militärgüter fehlen: " +
+                    missing.entries.joinToString(" · ") { "${it.value} ${it.key.label}" },
+            )
         val days = trainingDays(state, type)
         val order =
             TrainingOrder(
@@ -252,15 +289,15 @@ object GameEngine {
                 resources =
                     state.resources.copy(
                         gold = state.resources.gold - gold.toInt(),
-                        iron = state.resources.iron - iron.toInt(),
                     ),
+                militaryStock = MilitaryEconomyEngine.consume(state.militaryStock, goods),
                 trainingQueue = state.trainingQueue + order,
                 chronicle =
                     (state.chronicle +
                             ChronicleEntry(
                                 state.day,
                                 "Ausbildung begonnen",
-                                "$amount ${type.label}, $days Tage bis zur Einsatzbereitschaft.",
+                                "$amount ${type.label}, $days Tage. Ausrüstung reserviert: ${MilitaryEconomyEngine.requirementText(type, amount)}.",
                             ))
                         .takeLast(2000),
             ),
