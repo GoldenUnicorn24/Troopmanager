@@ -151,7 +151,7 @@ internal fun RealmDashboard(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            "Ankunft Tag ${invasion.arrivalDay} · Stärke ${invasion.strength} · Mauer ${state.realm.wallIntegrity}%",
+                            "Ankunft Tag ${invasion.arrivalDay} · Stärke ${state.invasionStrengthEstimate()} · Mauer ${state.realm.wallIntegrity}%",
                             color = Mist,
                         )
                         SmallAction("Verteidigung in der Stadt prüfen", onCity)

@@ -23,6 +23,15 @@ data class RelationshipState(
     val intimacyConsentDay: Int? = null,
     val lastAutonomyDay: Int = 0,
     val politicalOpinion: String = "Eine sichere Grenze und versorgte Bevölkerung.",
+    val personality: CompanionPersonalityProfile = CompanionPersonalityProfile(),
+    val issues: List<RelationshipIssue> = emptyList(),
+    val arcs: List<RelationshipArcState> = emptyList(),
+    val eventLastDay: Map<String, Int> = emptyMap(),
+    val familyLastDay: Map<String, Int> = emptyMap(),
+    val delayedConsequences: List<RelationshipDelayedConsequence> = emptyList(),
+    val lastDirectorDay: Int = -1,
+    val lastReactionDay: Int = -1,
+    val observedPolicy: Map<String, Int> = emptyMap(),
 )
 
 @Serializable
@@ -33,6 +42,13 @@ data class RelationshipEvent(
     val adultsOnly: Boolean = false,
     val consentRequired: Boolean = false,
     val presentation: String = "DIALOGUE",
+    val options: List<RelationshipChoice> = emptyList(),
+    val category: String = "relationship",
+    val topic: String = "Gemeinsame Zukunft",
+    val variantId: String = "base",
+    val arcId: String? = null,
+    val arcStage: Int? = null,
+    val createdDay: Int = 0,
 )
 
 @Serializable

@@ -235,19 +235,24 @@ object GameEngine {
         next = OccupationEngine.tick(next)
         next = MissionEngine.tick(next)
         next = WarEngine.tick(next)
+        next = PresenceEngine.day(next)
         next = RelationshipEngine.day(next)
         next = CharacterEngine.tick(next)
         next = CommanderEventEngine.expire(next)
         next = CommanderEventEngine.tick(next)
         next = DynastyEngine.tick(next)
+        next = CoRulerEngine.day(next)
         next = DiplomacyEngine.tick(next)
         next = EspionageEngine.tick(next)
         next = SocietyEngine.tick(next)
         next = StoryDirector.tick(next)
         next = EventEngine.day(next)
         next = InvasionEngine.day(next)
+        next = FrontierEngine.tick(next)
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
+        next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
+        next = QuestJournalEngine.refresh(next)
         next = next.copy(dailyReport = DailyReportEngine.build(before, next))
         val message =
             if (next.battleSession?.isActive == true)
@@ -256,6 +261,9 @@ object GameEngine {
                 "Tag ${next.day}: ${next.dailyReport.entries.count { it.important }} wichtige Meldungen im Tagesbericht."
         return ActionResult(next, message)
     }
+
+    fun buyReinforcements(state: GameState, people: AllyPeople, amount: Int): ActionResult =
+        FrontierEngine.buyReinforcements(state, people, amount)
 
     fun trainingDays(state: GameState, type: UnitType): Int {
         val barracks = state.realm.level(BuildingType.BARRACKS)

@@ -223,7 +223,12 @@ object CharacterEngine {
             kind = SocialKind.ROMANCE
         if (state.settings.romance != RomanceMode.OFF && strength >= 95 && kind == SocialKind.ROMANCE && first.age >= 18 && second.age >= 18 && first.consent.romanceAllowed && second.consent.romanceAllowed)
             kind = SocialKind.MARRIAGE
-        val link = NpcSocialLink(pair[0], pair[1], kind, old?.sinceDay ?: state.day, strength)
+        val link = (old ?: NpcSocialLink(pair[0], pair[1], kind, state.day, strength)).copy(
+            kind = kind, strength = strength, previousStrength = old?.strength ?: strength,
+            lastChangedDay = state.day,
+            cause = old?.cause?.takeIf { it.isNotBlank() }
+                ?: if (rivalry) "Konkurrierende Karriereziele seit Tag ${state.day}" else "Gemeinsamer Dienst am Hof seit Tag ${state.day}",
+        )
         val chars = state.court.characters.map { d -> if (d.commanderId !in pair) d else {
             val other = pair.first { it != d.commanderId }
             if (rivalry) d.copy(rivals = d.rivals + other) else d.copy(friends = d.friends + other)

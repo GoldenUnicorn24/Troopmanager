@@ -169,6 +169,7 @@ internal fun CityScene(
         )
     } else remember { mutableStateOf(.35f) }
     val activity = remember(state, night) { PresentationEngine.cityActivity(state, night) }
+    val palaceView = remember(state) { palacePresentation(state) }
     val visualTime = if (night) CityTime.NIGHT else CityTime.at(state.day).takeUnless { it == CityTime.NIGHT } ?: CityTime.DAY
     val paint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -185,6 +186,8 @@ internal fun CityScene(
                             "${activity.citizens} Bewohnergruppen, ${activity.merchants} Händler, ${activity.wagons} Wagen, ${activity.soldiers} Wachgruppen. " +
                             (if (activity.hungry) "Nahrungsmangel: leere Straßen. " else "") +
                             (if (defenseMode) "Belagerung: Rauch und Mauerschäden. " else "") +
+                            "${palaceView.title}: ${if (palaceView.playerPresent) state.player.name + " anwesend" else state.player.name + " abwesend"}, " +
+                            "${if (palaceView.companionPresent) state.companion.name + " anwesend" else state.companion.name + " abwesend"}. " +
                             "${state.war.buildingDamage.count { it.value > 0 }} beschädigte Gebäude. Zwei Finger zum Zoomen und Verschieben. Gebäude auch über die Bezirksliste erreichbar."
                 }
                 .pointerInput(Unit) {
@@ -404,28 +407,7 @@ internal fun CityScene(
                     drawCircle(Color(0xFFB9AF96), 5f, Offset(x, 277f))
                     drawLine(Color(0xFF6E6B60), Offset(x - 7f, 307f), Offset(x + 7f, 307f), 5f)
                 }
-                if (
-                    state.companion.met &&
-                        (state.companion.trust >= 45 ||
-                            state.companion.role.contains("regent", true))
-                ) {
-                    val palace = citySites.first { it.type == BuildingType.PALACE }
-                    drawCitizen(palace.x + 63f, palace.y + 10f, 23, night, phase)
-                    drawCircle(
-                        PaleGold,
-                        15f,
-                        Offset(palace.x + 63f, palace.y - 7f),
-                        style = Stroke(2f),
-                    )
-                    paint.color = android.graphics.Color.rgb(255, 226, 161)
-                    paint.textSize = 10f / p.scale.coerceAtLeast(.2f)
-                    drawContext.canvas.nativeCanvas.drawText(
-                        state.companion.name,
-                        palace.x + 63f,
-                        palace.y + 38f,
-                        paint,
-                    )
-                }
+                drawPalaceCourt(state, palaceView, night, phase, paint, p.scale)
                 if (defenseMode) drawSiege(state, ring, phase, wallIntegrity, night)
                 if (night) {
                     drawRect(Color(0x55121C3C), size = Size(1600f, 1000f))
@@ -897,6 +879,70 @@ private fun DrawScope.drawFire(x: Float, y: Float, phase: Float) {
     polygon(
         listOf(Offset(x - 1f, y + 1f), Offset(x + 1f, y - 8f), Offset(x + 3f, y + 1f)),
         Color(0xFFFFDC8B),
+    )
+}
+
+private fun DrawScope.drawPalaceCourt(
+    state: GameState, view: PalacePresentation, night: Boolean, phase: Float, paint: Paint, scale: Float,
+) {
+    if (state.realm.level(BuildingType.PALACE) <= 0) return
+    val palace = citySites.first { it.type == BuildingType.PALACE }
+    val center = Offset(palace.x, palace.y)
+    val ceremony = view.sharedInsignia || view.jointCourt
+    if (view.jointCourt) {
+        drawRect(Color(0xFF384A58), center + Offset(-56f, 8f), Size(114f, 17f))
+        drawLine(PaleGold, center + Offset(-59f, 10f), center + Offset(60f, 10f), 3f)
+        state.court.offices.values.distinct().take(4).forEachIndexed { index, _ ->
+            drawCitizen(center.x - 60f + index * 35f, center.y + 56f, 4, night, phase)
+        }
+    }
+    if (ceremony) {
+        drawHeraldry(state.presentation.heraldry, center + Offset(-51f, -42f), 13f)
+        drawHeraldry(state.presentation.heraldry, center + Offset(51f, -42f), 13f)
+        drawCircle(PaleGold, 7f, center + Offset(-4f, -58f), style = Stroke(2f))
+        drawCircle(Gold, 7f, center + Offset(5f, -58f), style = Stroke(2f))
+    }
+    fun ruler(position: Offset, color: Color, crown: Boolean) {
+        drawOval(Color(0x66000000), position + Offset(-10f, -2f), Size(21f, 7f))
+        val cloak = Path().apply {
+            moveTo(position.x - 4f, position.y - 19f)
+            lineTo(position.x - 9f, position.y)
+            lineTo(position.x + 10f, position.y)
+            lineTo(position.x + 5f, position.y - 19f)
+            close()
+        }
+        drawPath(cloak, color)
+        drawCircle(Color(0xFFE3BE98), 4.5f, position + Offset(0f, -24f))
+        drawLine(PaleGold, position + Offset(-6f, -15f), position + Offset(6f, -15f), 2f)
+        if (crown) {
+            drawLine(Gold, position + Offset(-5f, -28f), position + Offset(5f, -28f), 3f)
+            repeat(3) { drawLine(Gold, position + Offset(-4f + it * 4f, -28f), position + Offset(-4f + it * 4f, -33f), 2f) }
+        }
+    }
+    if (view.playerPresent) ruler(center + Offset(if (view.companionPresent) -18f else 0f, 20f), Blue, view.jointCourt)
+    if (view.companionPresent) ruler(center + Offset(if (view.playerPresent) 18f else 0f, 20f), Gold, view.jointCourt)
+    if (!view.playerPresent && !view.companionPresent) {
+        drawCitizen(center.x, center.y + 43f, 4, night, phase)
+    }
+    if (view.crisis) {
+        repeat(4) { drawCitizen(center.x - 74f + it * 49f, center.y + 74f, 3, night, phase) }
+        drawCitizen(center.x + 86f, center.y + 44f, 1, night, phase)
+        drawCircle(Danger, 4f, center + Offset(87f, 16f))
+    } else if (view.celebration) {
+        repeat(6) { index ->
+            drawCitizen(center.x - 80f + index * 31f, center.y + 72f + (index % 2) * 8f, 4, night, phase)
+            drawLine(Gold, center + Offset(-88f + index * 35f, 45f), center + Offset(-88f + index * 35f, 62f), 2f)
+        }
+        drawLine(Gold, center + Offset(-88f, 42f), center + Offset(90f, 42f), 2f)
+    } else if (view.jointCourt && state.coRuler.pendingCaseIds.isNotEmpty()) {
+        drawCitizen(center.x + 82f, center.y + 48f, 1, night, phase)
+        drawCitizen(center.x + 62f, center.y + 68f, 4, night, phase)
+    }
+    paint.color = android.graphics.Color.rgb(255, 226, 161)
+    paint.textSize = 10f / scale.coerceAtLeast(.2f)
+    drawContext.canvas.nativeCanvas.drawText(
+        if (!view.playerPresent && !view.companionPresent) "Der Hofrat hält den Palast" else view.title,
+        palace.x, palace.y + 105f, paint,
     )
 }
 

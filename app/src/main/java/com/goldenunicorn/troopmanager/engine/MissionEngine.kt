@@ -185,12 +185,14 @@ object MissionEngine {
         val leaderCount = leaders.size + if (playerParticipates) 1 else 0
         if (leaderCount !in 1..3)
             return GameEngine.ActionResult(state, "Wähle eine bis drei Führungspersonen für die Mission.")
-        if (playerParticipates && state.playerAwayOnMission)
-            return GameEngine.ActionResult(state, "Du bist bereits persönlich auf einer Mission unterwegs.")
+        val presence = PresenceEngine.presence(state)
+        if (playerParticipates && !presence.player.available)
+            return GameEngine.ActionResult(state, "Du bist derzeit ${presence.player.location.label.lowercase()} gebunden.")
         val unavailable =
             leaders.firstOrNull { id ->
                 state.commanders.none { it.id == id } ||
                     state.commanderAway(id) ||
+                    (id == COMPANION_COMMANDER_ID && !presence.companion.available) ||
                     state.war.unavailableCommander(id)
             }
         if (unavailable != null)

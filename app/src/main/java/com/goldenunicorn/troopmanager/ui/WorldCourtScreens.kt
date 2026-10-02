@@ -50,7 +50,7 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(invasion.enemy.label, color = Danger, fontWeight = FontWeight.Bold)
                         Text(if (invasion.arrivalDay > state.day) "Ankunft in ${invasion.arrivalDay - state.day} Tagen" else "Der Angriff steht vor den Toren!", color = Color.White)
-                        Text("${invasion.strength} Feinde · Mauer ${state.realm.wallIntegrity}%", color = Mist)
+                        Text("${state.invasionStrengthEstimate()} Feinde · Mauer ${state.realm.wallIntegrity}%", color = Mist)
                         if (invasion.devices.isNotEmpty()) Text(invasion.devices.joinToString(" · ") { it.label }, color = Mist, fontSize = 12.sp)
                         SmallAction("Mauern reparieren") {
                             val result = GameEngine.repairWall(state); onState(result.state); onNotice(result.message)
@@ -216,7 +216,7 @@ internal fun BattleSetupDialog(state: GameState, onDismiss: () -> Unit, onState:
                     Text("Taktik: ${session.tactic.label}", color = Gold)
                 } else {
                     if (invasion == null) SelectionMenu("Gegner", enemy.label, EnemyType.entries, { it.label }) { enemy = it }
-                    else Text("Festungsverteidigung: ${invasion.enemy.label} · ${invasion.strength} Gegner", color = Danger)
+                    else Text("Festungsverteidigung: ${invasion.enemy.label} · ${state.invasionStrengthEstimate()} Gegner", color = Danger)
                     SelectionMenu("Taktik", tactic.label, Tactic.entries, { it.label }) { tactic = it }
                 }
                 Text("${state.awayArmySize} Soldaten unterwegs und nicht verfügbar.", color = Mist, fontSize = 12.sp)
@@ -346,7 +346,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("HOF & CHARAKTERE", "Spieler, Gefährtin und Kommandanten sind die individuellen Figuren deines Reiches.") }
+        item { PageTitle("CHARAKTER", "Attribute, Fertigkeitspunkte und dein persönliches Profil.") }
 
         item {
             CharacterPanel(
@@ -423,107 +423,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
         }
 
-        item { SectionTitle("Gefährtin & spätere Mitregentin") }
-        if (!state.companion.met) {
-            item {
-                EmptyCard("Ihr seid euch noch nicht begegnet. Die Soldatin schließt sich im frühen Spiel nach einigen Tagen organisch an.")
-            }
-        } else {
-            item {
-                CharacterPanel(
-                    title = state.companion.name,
-                    subtitle = state.companion.role + " · Stufe " + state.companion.level,
-                    uri = state.companion.portraitUri,
-                    fallback = R.drawable.portrait_companion,
-                    stats = listOf(
-                        "Schwert " + state.companion.sword,
-                        "Bogen " + state.companion.bow,
-                        "Führung " + state.companion.leadership,
-                        "Diplomatie " + state.companion.diplomacy
-                    ),
-                    onPortrait = { companionPicker.launch(arrayOf("image/*")) }
-                )
-            }
 
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = { editCompanion = !editCompanion }) { Text(if (editCompanion) "Anpassung schließen" else "Gefährtin anpassen", color = Gold) }
-                        if (editCompanion) {
-                            OutlinedTextField(companionName, { companionName = it.take(24) }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(companionAge, { companionAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(companionArmor, { companionArmor = it.take(36) }, label = { Text("Rüstung / Stil") }, modifier = Modifier.fillMaxWidth())
-                            OutlinedTextField(companionWeapon, { companionWeapon = it.take(36) }, label = { Text("Hauptwaffe") }, modifier = Modifier.fillMaxWidth())
-                            SmallAction("Gefährtin übernehmen") {
-                                onState(
-                                    customizeCompanion(
-                                        state,
-                                        companionName,
-                                        companionAge.toIntOrNull() ?: state.companion.age,
-                                        companionArmor,
-                                        companionWeapon
-                                    )
-                                )
-                                onNotice("Gefährtin angepasst.")
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                val stage = state.relationshipStage()
-                StatGrid(
-                    listOf(
-                        "Vertrauen" to (state.companion.trust.toString() + "%"),
-                        "Respekt" to (state.companion.respect.toString() + "%"),
-                        "Zuneigung" to (state.companion.affection.toString() + "%"),
-                        "Beziehung" to stage
-                    )
-                )
-            }
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Text("Rollenboni · ${state.companion.role}", color = PaleGold, fontWeight = FontWeight.Bold)
-                        val trusted = state.companion.trust >= 45
-                        Text(if (trusted) "Handel: +${state.companion.diplomacy} Gold/Tag während eines Handelsbonus." else "Handelsunterstützung wird ab 45 Vertrauen aktiv.", color = if (trusted) Success else Mist, fontSize = 12.sp)
-                        Text(if (trusted) "Verhandlungen: +${state.companion.diplomacy / 2} gemeinsame Diplomatie." else "Gemeinsame Diplomatie benötigt 45 Vertrauen.", color = Mist, fontSize = 12.sp)
-                        Text("Als Kommandantin wirken Schwert, Bogen, Führung und Taktik auf ihr eigenes Kontingent. Reiten verkürzt Geleitschutz und Erkundung ab 75.", color = Mist, fontSize = 12.sp)
-                    }
-                }
-            }
-            state.relationship.pendingEvent?.let { event ->
-                item {
-                    Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Gold)) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(event.title, color = PaleGold, fontWeight = FontWeight.Bold)
-                            Text(event.text, color = Mist)
-                            (if (event.key == "intimacy") listOf("Gemeinsam den Abend verbringen", "Über den Krieg sprechen", "Ruhe lassen") else listOf("Unterstützen", "Herausfordern", "Zurückziehen")).forEachIndexed { index, choice ->
-                                SmallAction(choice) {
-                                    val result = RelationshipEngine.choose(state, index)
-                                    onState(result.state); onNotice(result.message)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
-                        Text("Heute: ${2 - spent} von 2 Aktionspunkten frei", color = Gold, fontWeight = FontWeight.Bold)
-                        Text("Sprechen / Training: je 1 Punkt. Kommando / Reichsführung: je 2 Punkte. Der nächste Tag erneuert das Budget.", color = Mist, fontSize = 12.sp)
-                        Text(if (state.commanderAway(COMPANION_COMMANDER_ID)) "${state.companion.name} ist auf Mission." else "Truppen im Armeemenü zuweisen; ${state.companion.name} kann Missionen und einen Schlachtabschnitt führen.", color = Mist, fontSize = 12.sp)
-                        RelationshipAction("Gemeinsam sprechen", state, "talk", onState, onNotice)
-                        RelationshipAction("Gemeinsam trainieren", state, "train", onState, onNotice)
-                        RelationshipAction("Eigenes Kommando übertragen", state, "command", onState, onNotice)
-                        RelationshipAction("Gemeinsam das Reich leiten", state, "court", onState, onNotice)
-                    }
-                }
-            }
-        }
     }
 }
 

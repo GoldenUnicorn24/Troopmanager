@@ -267,10 +267,12 @@ object BattleEngine {
                         session.enemyExperience,
                         state.doctrine,
                         session.rangedSupplyFactor,
+                        frontier = state.frontier,
+                        companion = state.companion,
                     )
             )
         val next =
-            state.copy(
+            FrontierEngine.prepareBattle(state.copy(
                 battleSession = session,
                 resources = combatResources,
                 militaryStock =
@@ -281,7 +283,7 @@ object BattleEngine {
                     if (tactic == Tactic.FORTIFY)
                         state.war.copy(siegeFoodStored = 0)
                     else state.war,
-            )
+            ))
         if (session.ownStart == 0)
             return GameEngine.ActionResult(
                 finish(next, session, false),
@@ -325,7 +327,8 @@ object BattleEngine {
         return if (result.state.battleSession == null) GameEngine.ActionResult(state, result.message) else result
     }
 
-    fun advance(state: GameState, decision: BattleDecision? = null): GameEngine.ActionResult {
+    fun advance(initialState: GameState, decision: BattleDecision? = null): GameEngine.ActionResult {
+        var state = initialState
         var original =
             state.battleSession ?: return GameEngine.ActionResult(state, "Keine Schlacht aktiv.")
         if (!original.isActive)
@@ -352,6 +355,9 @@ object BattleEngine {
             return resolvePursuit(state, original, decision!!)
         if (decision == BattleDecision.ORDERED_RETREAT)
             return resolveRetreat(state, original)
+        val volley = FrontierEngine.fireWallWeapons(state, original)
+        state = volley.state
+        original = volley.battle
         val rng = Random(original.seed xor ((original.step + 1) * 104729))
         var troops = original.contingents
         val target = event?.section
@@ -775,6 +781,8 @@ object BattleEngine {
                 commanderAssignments = context.assignments,
                 settings = GameSettings(permadeath = context.permadeath),
                 doctrine = context.doctrine,
+                frontier = context.frontier,
+                companion = context.companion,
                 war =
                     WarState(
                         equipment = context.equipment,
@@ -818,6 +826,7 @@ object BattleEngine {
                         rangedSupplyFactor = context.rangedSupplyFactor,
                     ),
             )
+        replayState = FrontierEngine.prepareBattle(replayState)
         if (record.ownStart == 0) return finish(replayState, replayState.battleSession!!, false).battleSession
         record.inputs.take(exchanges.coerceIn(0, record.inputs.size)).forEach { input ->
             val current = replayState.battleSession ?: return null
@@ -871,6 +880,8 @@ object BattleEngine {
             command *
             cavalry *
             fortress *
+            FrontierEngine.customUnitPowerFactor(state, c.type) *
+            (if (c.commanderId == COMPANION_COMMANDER_ID) FrontierEngine.bondCombatFactor(state) else 1.0) *
             terrainMultiplier(terrain, c.type, phase) *
             (state.war.equipment.firstOrNull { it.type == c.type }?.quality?.power ?: 1.0) *
             (if (c.type.ranged >= 8 && phase == BattlePhase.RANGED) session?.rangedWeather ?: 1.0 else 1.0) *
@@ -1153,7 +1164,7 @@ object BattleEngine {
                             ))
                         .takeLast(2000),
             )
-        val recorded = WarEngine.recordOutcome(result, final, victory)
+        val recorded = FrontierEngine.afterBattle(WarEngine.recordOutcome(result, final, victory), final)
         val career = WorldEngine.reconcileBattle(CharacterEngine.recordBattle(recorded, session.contingents.mapNotNull { it.commanderId }.distinct(), victory, session.ownStart - session.ownRemaining, session.ownStart < session.enemyStart))
         return DynastyEngine.resolveBattleSuccession(ProgressionEngine.update(
             ProgressionEngine.awardXp(

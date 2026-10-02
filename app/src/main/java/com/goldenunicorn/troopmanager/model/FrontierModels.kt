@@ -27,6 +27,22 @@ data class AllyPact(
     val trust: Int = 55,
     val stock: Int = 180,
     val lastAidDay: Int = -30,
+    val requestsWithoutReturn: Int = 0,
+    val contributions: Int = 0,
+)
+
+@Serializable
+data class AllyReinforcement(
+    val id: Long,
+    val people: AllyPeople,
+    val type: UnitType,
+    val amount: Int,
+    val origin: String,
+    val originRegionId: String,
+    val daysRemaining: Int,
+    val arrivalDay: Int,
+    val emergency: Boolean = false,
+    val departureDay: Int = 0,
 )
 
 @Serializable
@@ -46,12 +62,23 @@ data class HordeBanner(
     val daysToArrival: Int,
     val jointWith: String? = null,
     val target: String = "Grenzfeste",
-)
+    /** Existing invasion army, when this is a scouting projection rather than a separate raid. */
+    val worldArmyId: String? = null,
+    val regionId: String = "keep",
+    val discovered: Boolean = true,
+    val estimateMinimum: Int = 0,
+    val estimateMaximum: Int = 0,
+) {
+    val estimatedStrengthLabel: String
+        get() = if (estimateMinimum > 0 && estimateMaximum >= estimateMinimum)
+            "$estimateMinimum–$estimateMaximum geschätzte Gegner" else "Stärke unklar"
+}
 
 @Serializable
 data class BorderPatrol(
     val soldiers: Int,
     val daysLeft: Int,
+    val units: List<UnitAllocation> = emptyList(),
 )
 
 @Serializable
@@ -72,7 +99,30 @@ enum class WallWeaponType(
 }
 
 @Serializable
-data class WallWeaponStock(val type: WallWeaponType, val count: Int = 0, val daysRemaining: Int = 0)
+data class WallWeaponStock(
+    val type: WallWeaponType,
+    val count: Int = 0,
+    val daysRemaining: Int = 0,
+    val ammunition: Int = 0,
+    val integrity: Int = 100,
+    val reloadRounds: Int = 0,
+    val section: BattleSection = BattleSection.CENTER,
+)
+
+@Serializable
+enum class CustomUnitRole(val label: String) {
+    INFANTRY("Infanterie"), RANGED("Fernkampf"), CAVALRY("Reiterei"), SIEGE("Belagerung"),
+}
+
+@Serializable
+enum class CustomWeapon(val label: String) {
+    SWORD("Schwert"), SPEAR("Speer"), BOW("Bogen"), CROSSBOW("Armbrust"), ARTILLERY("Geschütz"),
+}
+
+@Serializable
+enum class CustomArmor(val label: String) {
+    LIGHT("Leichte Rüstung"), MAIL("Kettenrüstung"), PLATE("Plattenrüstung"),
+}
 
 @Serializable
 data class CustomUnitDesign(
@@ -86,10 +136,18 @@ data class CustomUnitDesign(
     val soldiers: Int = 0,
     val trainingDaysLeft: Int = 0,
     val trainingAmount: Int = 0,
+    val role: CustomUnitRole = CustomUnitRole.INFANTRY,
+    val weapon: CustomWeapon = CustomWeapon.SWORD,
+    val armor: CustomArmor = CustomArmor.MAIL,
+    val shield: Boolean = true,
+    val colorHex: String = "#D6B66B",
+    /** Trained soldiers are a named subset of this real army pool, never a second army. */
+    val unitType: UnitType = UnitType.HUMAN_SWORD,
 ) {
     val goldCost: Int get() = (6 + attack + defense + ranged / 2).coerceIn(8, 40)
     val trainingDays: Int get() = (5 + (attack + defense + ranged) / 4).coerceIn(4, 24)
     val powerEach: Int get() = attack + defense + ranged
+    val foodEach: Int get() = if (role == CustomUnitRole.CAVALRY || role == CustomUnitRole.SIEGE) 3 else if (culture == Culture.GOLD_ELF) 2 else 1
 }
 
 @Serializable
@@ -97,6 +155,7 @@ data class BondVisual(
     val sessions: Int = 0,
     val lastTrainDay: Int = 0,
     val stage: String = "Bekanntschaft",
+    val sharedBattles: Int = 0,
 )
 
 @Serializable
@@ -111,4 +170,14 @@ data class FrontierState(
     val emergencyUsed: Set<String> = emptySet(),
     val lastRaidDay: Int = 0,
     val nextDesignId: Long = 1,
+    val reinforcements: List<AllyReinforcement> = emptyList(),
+    val nextReinforcementId: Long = 1,
+    val lastTickDay: Int = 0,
+    val hordePressureKeys: Set<String> = emptySet(),
 )
+
+/** Campaign forecasts reveal only what scouts have reported, including for legacy invasions. */
+fun GameState.invasionStrengthEstimate(): String = frontier.hordes.firstOrNull {
+    it.discovered && it.id.startsWith("invasion-") &&
+        (invasion?.worldArmyId == null || it.worldArmyId == invasion?.worldArmyId)
+}?.estimatedStrengthLabel ?: "Stärke unklar"

@@ -3,83 +3,12 @@ package com.goldenunicorn.troopmanager.engine
 import com.goldenunicorn.troopmanager.model.*
 
 object RelationshipEngine {
-    private val events =
-        listOf(
-            RelationshipEvent(
-                "conversation",
-                "Am Feuer",
-                "Alina spricht über die Zukunft der Grenzfeste.",
-            ),
-            RelationshipEvent(
-                "training",
-                "Gemeinsames Training",
-                "Sie will eine neue Taktik erproben.",
-            ),
-            RelationshipEvent(
-                "argument",
-                "Ein offener Streit",
-                "Die Versorgung der Armee belastet eure Beziehung.",
-            ),
-            RelationshipEvent(
-                "attack",
-                "Vor dem Angriff",
-                "Alina fragt, ob sie den gefährlichen Flügel führen soll.",
-            ),
-            RelationshipEvent(
-                "mission",
-                "Nach der Mission",
-                "Die Rückkehrer feiern. Wie würdigst du Alinas Einsatz?",
-            ),
-            RelationshipEvent(
-                "wounded",
-                "Verwundete Kameraden",
-                "Alina verlangt Zeit für die verwundeten Heimkehrer.",
-            ),
-            RelationshipEvent(
-                "feast",
-                "Das Festessen",
-                "Der Hof erwartet ein gemeinsames Zeichen der Zuversicht.",
-            ),
-            RelationshipEvent(
-                "politics",
-                "Politischer Konflikt",
-                "Eine fremde Gesandtschaft zweifelt an ihrer Stellung.",
-            ),
-            RelationshipEvent(
-                "defeat",
-                "Nach der Niederlage",
-                "Alina sorgt sich um die Zukunft eures Reiches.",
-            ),
-        )
-
-    fun onEvent(state: GameState, key: String): GameState =
-        if (!state.companion.met || state.relationship.pendingEvent != null) state
-        else
-            state.copy(
-                relationship =
-                    state.relationship.copy(
-                        pendingEvent = (events.find { it.key == key } ?: events.first()).let { event ->
-                            val context = when {
-                                state.resources.food == 0 -> "Die knappen Vorräte beschäftigen euch beide."
-                                state.relationship.conflict >= 40 -> "Euer letzter Streit ist noch nicht vergessen."
-                                state.relationship.memories.isNotEmpty() -> "Ihr erinnert euch an Tag ${state.relationship.memories.last().day}: ${state.relationship.memories.last().text}"
-                                else -> ""
-                            }
-                            val moment = when (CityTime.at(state.day)) {
-                                CityTime.MORNING -> "Am Morgen, während der Hof erwacht, nehmt ihr euch einen Augenblick Zeit."
-                                CityTime.DAY -> "Im belebten Burghof besprecht ihr die Aufgaben des Tages."
-                                CityTime.EVENING -> "Beim Abendlicht wird es ruhig genug für ein persönliches Gespräch."
-                                CityTime.NIGHT -> "Unter den Sternen wacht die Garnison, während ihr leise miteinander sprecht."
-                            }
-                            event.copy(text = "$moment ${event.text.replace("Alina", state.companion.name)} $context".trim())
-                        }
-                    )
-            )
+    fun onEvent(state: GameState, key: String): GameState = RelationshipEventDirector.open(state, key)
 
     fun day(state: GameState): GameState {
         var next =
             state.copy(
-                relationship = state.relationship.copy(actionDay = state.day, spentActions = 0)
+                relationship = state.relationship.copy(actionDay = state.day, spentActions = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0)
             )
         if (!next.companion.met && next.day >= 5)
             next =
@@ -89,22 +18,14 @@ object RelationshipEngine {
                         (next.chronicle +
                                 ChronicleEntry(
                                     next.day,
-                                    "Alina schließt sich an",
+                                    "${next.companion.name} schließt sich an",
                                     "Eine erfahrene Soldatin erreicht die Grenzfeste. Sie kann eigene Truppen führen.",
                                 ))
                             .takeLast(2000),
                 )
-        if (next.day % 4 == 0 && next.companion.met) {
-            val eligible =
-                events.filter { e ->
-                    when (e.key) {
-                        "politics" -> next.companion.trust >= 60
-                        "feast" -> next.companion.trust >= 30
-                        else -> true
-                    }
-                }
-            next = onEvent(next, eligible[(next.day / 4) % eligible.size].key)
-        }
+        if (!state.companion.met && next.companion.met)
+            next = remember(next, "first_meeting", "${next.companion.name} erreicht ${next.realm.settlementName}; ihr beginnt euren gemeinsamen Weg als Gefährten.", 4, setOf("relationship", "milestone"))
+        next = RelationshipEventDirector.day(next)
         next = normalize(next)
         if (next.companion.met && next.day % 7 == 0 && next.relationship.lastAutonomyDay < next.day) {
             val pressure = if (next.resources.food == 0 || next.city.taxLevel == TaxLevel.HIGH) 6 else -2
@@ -112,15 +33,17 @@ object RelationshipEngine {
                 conflict = (next.relationship.conflict + pressure).coerceIn(0, 100),
                 jealousy = (next.relationship.jealousy - 2).coerceAtLeast(0),
                 lastAutonomyDay = next.day,
-                politicalOpinion = if (pressure > 0) "Versorgung und faire Abgaben gehen vor einem weiteren Feldzug." else "Handel und ein starker Hof sichern unsere Zukunft.",
+                politicalOpinion = RelationshipEventDirector.currentOpinion(next),
             ))
             if (next.relationship.romanceStage >= RomanceStage.PARTNERSHIP && next.relationship.conflict >= 80) {
                 next = endRomance(next, "${next.companion.name} beendet die Partnerschaft nach anhaltenden Konflikten.", true)
-            } else if (next.relationship.romanceStage >= RomanceStage.PARTNERSHIP && !next.commanderAway(COMPANION_COMMANDER_ID) && !next.war.unavailableCommander(COMPANION_COMMANDER_ID)) {
-                next = if (pressure > 0) next.copy(city = next.city.copy(satisfaction = (next.city.satisfaction + next.companion.diplomacy / 25).coerceAtMost(100)))
-                else next.copy(realm = next.realm.copy(tradeBonusDays = maxOf(2, next.realm.tradeBonusDays)))
-                next = next.copy(chronicle = (next.chronicle + ChronicleEntry(next.day, "Eigenständiger Rat", "${next.companion.name}: ${next.relationship.politicalOpinion}")).takeLast(2000))
             }
+            // Government effects belong to CoRulerEngine: partnership itself grants no realm bonus.
+            if (pressure > 0) {
+                val topic = if (next.resources.food == 0) "Versorgung" else "Steuern"
+                next = RelationshipEventDirector.addIssue(next, topic, 8)
+            }
+
         }
         return syncCommander(next)
     }
@@ -128,8 +51,16 @@ object RelationshipEngine {
     fun action(state: GameState, action: String): GameEngine.ActionResult {
         if (!state.companion.met)
             return GameEngine.ActionResult(state, "Ihr habt euch noch nicht getroffen.")
-        if (state.battleSession?.isActive == true || state.commanderAway(COMPANION_COMMANDER_ID) || state.war.unavailableCommander(COMPANION_COMMANDER_ID))
-            return GameEngine.ActionResult(state, "Alina ist im Einsatz.")
+        if (action.startsWith("activity:")) return activityAction(state, action.removePrefix("activity:"))
+        if (action in setOf("walk", "dinner", "gift", "ride")) {
+            // The old short names were romantic invitations. Explicit activity:<id> is shared friendship time.
+            if (!state.relationship.consent.romanceAllowed || "no_romance" in state.relationship.consent.boundaries || state.relationship.consent.relationshipStyle == RelationshipStyle.FRIENDSHIP)
+                return GameEngine.ActionResult(state, "Eine romantische Einladung würde eure vereinbarte Grenze überschreiten. Freundschaftliche gemeinsame Zeit könnt ihr ausdrücklich als Aktivität wählen.")
+            return activityAction(state, action)
+        }
+        if (action in setOf("friendship", "breakup")) return romanceAction(state, action)
+        PresenceEngine.sharedActivityBlocker(state)?.let { return GameEngine.ActionResult(state, it) }
+        if (action.startsWith("issue:")) return issueAction(state, action.removePrefix("issue:"))
         if (action in romanceActions) return romanceAction(state, action)
         if (action !in listOf("talk", "train", "command", "court"))
             return GameEngine.ActionResult(state, "Unbekannte Aktion.")
@@ -197,84 +128,53 @@ object RelationshipEngine {
     }
 
     fun choose(state: GameState, choice: Int): GameEngine.ActionResult {
-        if (state.relationship.pendingEvent == null)
-            return GameEngine.ActionResult(state, "Kein Beziehungsereignis offen.")
-        if (choice !in 0..2) return GameEngine.ActionResult(state, "Ungültige Entscheidung.")
-        if (state.relationship.pendingEvent.key == "intimacy") return chooseIntimacy(state, choice)
-        if (state.battleSession?.isActive == true || state.commanderAway(COMPANION_COMMANDER_ID) || state.war.unavailableCommander(COMPANION_COMMANDER_ID))
-            return GameEngine.ActionResult(state, "Das Gespräch wartet bis zur Rückkehr.")
-        val spent =
-            if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
-        if (spent + 2 > 2)
-            return GameEngine.ActionResult(
-                state,
-                "Diese große Entscheidung benötigt eure gemeinsame Zeit für einen Tag.",
-            )
-        val c = state.companion
-        var nextC =
-            when (choice) {
-                0 ->
-                    c.copy(
-                        trust = (c.trust + 5).coerceAtMost(100),
-                        affection = (c.affection + 3).coerceAtMost(100),
-                    )
-                1 ->
-                    c.copy(
-                        respect = (c.respect + 5).coerceAtMost(100),
-                        trust = (c.trust - 2).coerceAtLeast(0),
-                        tactics = (c.tactics + 1).coerceAtMost(100),
-                    )
-                else ->
-                    c.copy(
-                        affection = (c.affection - 3).coerceAtLeast(0),
-                        trust = (c.trust - 2).coerceAtLeast(0),
-                    )
-            }
-        val key = state.relationship.pendingEvent.key
-        if (choice == 0)
-            nextC =
-                when (key) {
-                    "defeat",
-                    "wounded" -> nextC.copy(trust = (nextC.trust + 2).coerceAtMost(100))
-                    "training" ->
-                        nextC.copy(
-                            sword = (nextC.sword + 2).coerceAtMost(100),
-                            bow = (nextC.bow + 2).coerceAtMost(100),
-                        )
-                    "attack" -> nextC.copy(leadership = (nextC.leadership + 2).coerceAtMost(100))
-                    "mission" -> nextC.copy(respect = (nextC.respect + 3).coerceAtMost(100))
-                    "feast" -> nextC.copy(affection = (nextC.affection + 2).coerceAtMost(100))
-                    "politics" -> nextC.copy(diplomacy = (nextC.diplomacy + 2).coerceAtMost(100))
-                    else -> nextC
-                }
-        val realm =
-            if (choice == 0 && key == "politics")
-                state.realm.copy(tradeBonusDays = maxOf(5, state.realm.tradeBonusDays))
-            else state.realm
-        return GameEngine.ActionResult(
-            syncCommander(
-                remember(state.copy(
-                    companion = nextC,
-                    realm = realm,
-                    relationship =
-                        state.relationship.copy(
-                            actionDay = state.day,
-                            spentActions = spent + 2,
-                            pendingEvent = null,
-                            conflict = (state.relationship.conflict + when (choice) { 0 -> -5; 1 -> 2; else -> 0 }).coerceIn(0, 100),
-                        ),
-                    chronicle =
-                        (state.chronicle +
-                                ChronicleEntry(
-                                    state.day,
-                                    "Gemeinsame Entscheidung",
-                                    "${state.relationship.pendingEvent.title}: Vertrauen, Respekt und Zuneigung verändern sich.",
-                                ))
-                            .takeLast(2000),
-                ), key, "${state.relationship.pendingEvent.title}: ${when (choice) { 0 -> "Ihr unterstützt einander."; 1 -> "Ihr diskutiert verschiedene Wege."; else -> "Ihr gebt einander Zeit." }}", if (choice == 0) 2 else 0)
-            ),
-            "Entscheidung angenommen.",
-        )
+        val event = state.relationship.pendingEvent ?: return GameEngine.ActionResult(state, "Kein Beziehungsereignis offen.")
+        if (choice !in RelationshipEventDirector.options(event).indices) return GameEngine.ActionResult(state, "Ungültige Entscheidung.")
+        return if (event.key == "intimacy") chooseIntimacy(state, choice) else RelationshipEventDirector.choose(state, choice)
+    }
+
+    fun activities(state: GameState): List<RelationshipActivityAvailability> = RelationshipContentCatalog.activities.map { activity ->
+        RelationshipActivityAvailability(activity, activityBlocker(state, activity) == null, activityBlocker(state, activity))
+    }
+
+    private fun activityBlocker(state: GameState, activity: RelationshipActivity): String? {
+        PresenceEngine.sharedActivityBlocker(state, activity.id == "hospital")?.let { return it }
+        if (activity.id == "gift" && "no_gifts" in state.relationship.consent.boundaries) return "Die vereinbarte persönliche Grenze erlaubt keine Geschenke."
+        if (state.world.weather.season !in activity.seasons) return "${activity.title} ist in ${state.world.weather.season.label} nicht passend."
+        if (state.companion.trust < activity.minimumTrust) return "Diese gemeinsame Aufgabe benötigt ${activity.minimumTrust} Vertrauen."
+        if (state.resources.gold < activity.goldCost || state.resources.food < activity.foodCost) return "Benötigt ${activity.goldCost} Gold und ${activity.foodCost} Nahrung."
+        if (!activity.requirements.all { RelationshipEventDirector.meets(state, it) }) return when {
+            "outdoor" in activity.requirements && !RelationshipEventDirector.meets(state, "outdoor") -> "Das Wetter erlaubt diesen Ausflug heute nicht."
+            "peace" in activity.requirements && !RelationshipEventDirector.meets(state, "peace") -> "Dieser Ausflug braucht eine sichere Friedensphase."
+            "wounded" in activity.requirements -> "Zurzeit gibt es keinen passenden Lazarettbesuch."
+            "family" in activity.requirements -> "Zurzeit wartet keine eigene Familienrunde auf euch."
+            "victory" in activity.requirements -> "Eine Siegesfeier braucht einen kürzlich erreichten Sieg."
+            "diplomacy" in activity.requirements -> "Für den Empfang braucht ihr diplomatische Kontakte."
+            else -> "Gesundheit oder aktueller Kontext erlauben diese Aktivität heute nicht."
+        }
+        val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
+        if (spent + activity.actionCost > 2) return "Heute ist eure gemeinsame Zeit ausgeschöpft."
+        return null
+    }
+
+    private fun activityAction(state: GameState, id: String): GameEngine.ActionResult {
+        val activity = RelationshipContentCatalog.activities.firstOrNull { it.id == id } ?: return GameEngine.ActionResult(state, "Unbekannte gemeinsame Aktivität.")
+        activityBlocker(state, activity)?.let { return GameEngine.ActionResult(state, it) }
+        var next = spend(state, activity.actionCost).copy(resources = state.resources.copy(gold = state.resources.gold - activity.goldCost, food = state.resources.food - activity.foodCost))
+        next = RelationshipEventDirector.applyEffect(next, activity.effect)
+        next = remember(next, "activity:$id", activity.description, 1, activity.tags + "relationship")
+        return GameEngine.ActionResult(syncCommander(next), "${activity.title}: ${activity.description} Geschenke und gemeinsame Zeit ersetzen keine Zustimmung.")
+    }
+
+    private fun issueAction(state: GameState, id: String): GameEngine.ActionResult {
+        val issue = state.relationship.issues.firstOrNull { it.id == id || it.id == "issue:$id" }
+            ?: return GameEngine.ActionResult(state, "Dieses Konfliktthema ist nicht mehr offen.")
+        if (issue.resolved) return GameEngine.ActionResult(state, "Das Thema ${issue.topic} ist bereits geklärt; die Erinnerung bleibt erhalten.")
+        val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
+        if (spent + 1 > 2) return GameEngine.ActionResult(state, "Für das Gespräch braucht ihr morgen wieder gemeinsame Zeit.")
+        var next = remember(spend(state, 1), "issue_discussion", "Ihr besprecht ausdrücklich ${issue.topic} und benennt einen tragbaren nächsten Schritt.", 2, setOf("relationship", issue.topic))
+        next = RelationshipEventDirector.addressIssue(next, issue.topic, next.relationship.memories.last().id, 25)
+        return GameEngine.ActionResult(syncCommander(next), "Ihr klärt ${issue.topic}. Gelöste Themen bleiben als Erinnerung, ohne dauerhafte Belastung.")
     }
 
     fun syncCommander(state: GameState): GameState {
@@ -308,7 +208,7 @@ object RelationshipEngine {
         )
     }
 
-    private val romanceActions = setOf("confess", "kiss", "partner", "propose", "marry", "co_ruler", "boundaries", "intimacy", "friendship", "breakup", "apologize", "reconcile", "walk", "dinner", "gift", "ride", "open_relationship", "monogamy")
+    private val romanceActions = setOf("confess", "kiss", "partner", "propose", "marry", "co_ruler", "boundaries", "intimacy", "friendship", "breakup", "apologize", "reconcile", "open_relationship", "monogamy")
 
     fun normalize(state: GameState): GameState {
         val adults = state.player.age >= 18 && state.companion.age >= 18
@@ -341,17 +241,23 @@ object RelationshipEngine {
     private fun romanceAction(state: GameState, action: String): GameEngine.ActionResult {
         val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
         val cost = if (action in setOf("walk", "ride", "apologize")) 1 else 2
-        if (spent + cost > 2) return GameEngine.ActionResult(state, "Heute braucht ihr Zeit füreinander. Morgen könnt ihr weiter sprechen.")
+        if (action !in setOf("friendship", "breakup") && spent + cost > 2) return GameEngine.ActionResult(state, "Heute braucht ihr Zeit füreinander. Morgen könnt ihr weiter sprechen.")
         if (action in setOf("friendship", "breakup")) {
             val text = if (action == "friendship") "Ihr vereinbart, euren gemeinsamen Weg als Freunde fortzusetzen." else "Ihr beendet die Partnerschaft respektvoll."
-            val next = endRomance(spend(state, cost), text, false)
+            var next = endRomance(state, text, false)
+            if (action == "friendship") next = next.copy(relationship = next.relationship.copy(consent = next.relationship.consent.copy(romanceAllowed = false, relationshipStyle = RelationshipStyle.FRIENDSHIP)))
             return GameEngine.ActionResult(syncCommander(next), text)
         }
         if (action in setOf("apologize", "reconcile")) {
-            val next = spend(state, cost)
-            val amount = if (action == "reconcile" && state.companion.trust >= 50) 15 else 8
-            return GameEngine.ActionResult(remember(next.copy(relationship = next.relationship.copy(conflict = (next.relationship.conflict - amount).coerceAtLeast(0)), companion = next.companion.copy(trust = (next.companion.trust + 2).coerceAtMost(100))), "reconciliation", "Ihr hört einander zu und besprecht den Streit."), "Ein offenes Gespräch entschärft den Konflikt.")
+            val issue = state.relationship.issues.filterNot { it.resolved }.maxByOrNull { it.severity }
+            val amount = if (action == "reconcile" && state.companion.trust >= 50) 25 else 15
+            val text = if (issue != null) "Ihr hört einander zu und besprecht ausdrücklich ${issue.topic}." else "Ihr hört einander zu und besprecht eure Bedürfnisse ohne ein erzwungenes Versprechen."
+            var next = remember(spend(state, cost), "reconciliation", text, 2, setOf("relationship") + listOfNotNull(issue?.topic))
+            next = if (issue != null) RelationshipEventDirector.addressIssue(next, issue.topic, next.relationship.memories.last().id, amount)
+                else next.copy(relationship = next.relationship.copy(conflict = (next.relationship.conflict - amount / 2).coerceAtLeast(0)))
+            return GameEngine.ActionResult(syncCommander(next), text)
         }
+
         if (state.settings.romance == RomanceMode.OFF) return GameEngine.ActionResult(state, "Romanze ist in den Einstellungen ausgeschaltet.")
         if (state.player.age < 18 || state.companion.age < 18) return GameEngine.ActionResult(state, "Romantische Begegnungen benötigen zwei erwachsene Personen ab 18.")
         if (state.war.playerCondition != CombatantStatus.ACTIVE) return GameEngine.ActionResult(state, "Beziehungsentscheidungen warten, bis du gesund und frei verfügbar bist.")
@@ -361,13 +267,6 @@ object RelationshipEngine {
         if (state.day - r.lastRomanceDay < 3 && action !in setOf("walk", "dinner", "gift", "ride", "boundaries", "intimacy"))
             return GameEngine.ActionResult(state, "Lasst einander Zeit; eine neue Beziehungsentscheidung braucht drei Tage Abstand.")
         val c = state.companion
-        if (action in setOf("walk", "dinner", "gift", "ride")) {
-            if (r.romanceStage == RomanceStage.NONE) return GameEngine.ActionResult(state, "Ein romantischer Ausflug benötigt gegenseitiges Interesse. Gemeinsame Gespräche und Training bleiben freundschaftlich möglich.")
-            val giftCost = if (action == "dinner") 40 else if (action == "gift") 60 else 0
-            if (state.resources.gold < giftCost) return GameEngine.ActionResult(state, "$giftCost Gold benötigt.")
-            val next = spend(state, cost).copy(resources = state.resources.copy(gold = state.resources.gold - giftCost), companion = c.copy(trust = (c.trust + 2).coerceAtMost(100)), relationship = spend(state, cost).relationship.copy(conflict = (r.conflict - 3).coerceAtLeast(0)))
-            return GameEngine.ActionResult(remember(next, action, "Ihr nehmt euch Zeit für ${when(action) { "walk" -> "einen Spaziergang"; "ride" -> "einen gemeinsamen Ritt"; "gift" -> "ein persönliches Geschenk"; else -> "ein Abendessen" }}."), "Gemeinsame Zeit; Geschenke verändern keine Zustimmung.")
-        }
         if (action == "boundaries") {
             if (state.settings.romance != RomanceMode.MATURE) return GameEngine.ActionResult(state, "Private Begegnungen sind nur im Modus reife Romanze aktiviert.")
             if (r.romanceStage < RomanceStage.PARTNERSHIP || c.trust < 80 || c.respect < 70 || r.conflict > 20 || "no_intimacy" in r.consent.boundaries)
@@ -419,8 +318,12 @@ object RelationshipEngine {
     }
 
     private fun refuse(state: GameState, text: String): GameEngine.ActionResult {
-        val next = spend(state, 2).copy(relationship = spend(state, 2).relationship.copy(lastRomanceDay = state.day, intimacyConsentDay = null))
-        return GameEngine.ActionResult(remember(next, "refusal", text, -1, setOf("boundary")), text)
+        // A refusal records a neutral boundary. It consumes no budget and creates no cooldown or stat penalty.
+        val next = state.copy(relationship = state.relationship.copy(intimacyConsentDay = null))
+        // Repeating an identical question cannot overwrite a boundary or fill the album with duplicate refusals.
+        if (next.relationship.memories.any { it.day == state.day && it.type == "refusal" && it.text == text })
+            return GameEngine.ActionResult(next, text)
+        return GameEngine.ActionResult(remember(next, "refusal", text, 0, setOf("boundary", "relationship")), text)
     }
 
     private fun intimacyBlocker(state: GameState): String? = when {
@@ -430,7 +333,7 @@ object RelationshipEngine {
         !state.relationship.consent.romanceAllowed || !state.relationship.consent.intimacyAllowed || "no_intimacy" in state.relationship.consent.boundaries -> "Die vereinbarten persönlichen Grenzen erlauben diese Begegnung nicht."
         state.companion.trust < 80 || state.companion.respect < 70 || state.relationship.commitment < 45 || state.relationship.conflict > 20 -> "Heute braucht ihr ein Gespräch und Abstand; es gibt kein gemeinsames Ja."
         state.day - state.relationship.lastIntimacyDay < 7 -> "Private Nähe entsteht aus eurer Geschichte. Lasst euch Zeit."
-        state.battleSession?.isActive == true || state.commanderAway(COMPANION_COMMANDER_ID) || state.war.unavailableCommander(COMPANION_COMMANDER_ID) || state.war.playerCondition != CombatantStatus.ACTIVE -> "Im Einsatz, bei Gefangenschaft oder Verletzung findet keine intime Begegnung statt."
+        PresenceEngine.sharedActivityBlocker(state) != null -> "Im Einsatz, bei Gefangenschaft, Verletzung oder an verschiedenen Orten findet keine intime Begegnung statt."
         else -> null
     }
 
@@ -438,8 +341,8 @@ object RelationshipEngine {
         val blocker = intimacyBlocker(state)
         if (blocker != null || state.relationship.intimacyConsentDay != state.day) return GameEngine.ActionResult(state.copy(relationship = state.relationship.copy(pendingEvent = null, intimacyConsentDay = null)), blocker ?: "Die Begegnung braucht ein neues gemeinsames Ja.")
         val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
-        if (spent + 2 > 2) return GameEngine.ActionResult(state, "Heute ist eure gemeinsame Zeit ausgeschöpft.")
-        var next = spend(state, 2)
+        if (choice != 2 && spent + 2 > 2) return GameEngine.ActionResult(state, "Heute ist eure gemeinsame Zeit ausgeschöpft.")
+        var next = if (choice == 2) state else spend(state, 2)
         next = next.copy(relationship = next.relationship.copy(pendingEvent = null, intimacyConsentDay = null))
         val text = when (choice) {
             0 -> "Ihr zieht euch gemeinsam zurück. Der Rest der Nacht gehört nur euch.\nAm nächsten Morgen sprecht ihr leise über eure gemeinsame Zukunft."
@@ -447,19 +350,18 @@ object RelationshipEngine {
             else -> "Ihr lasst einander Ruhe. Ein Nein wird ohne Vorwurf angenommen."
         }
         if (choice == 0) next = next.copy(relationship = next.relationship.copy(lastIntimacyDay = state.day, intimacy = (next.relationship.intimacy + 1).coerceAtMost(100)))
-        next = remember(next, if (choice == 0) "private_evening" else "respected_boundary", text, if (choice == 0) 5 else 2, if (choice == 0) setOf("FADE_TO_BLACK", "consensual", "adults") else setOf("boundary"))
+        next = remember(next, if (choice == 0) "private_evening" else "respected_boundary", text, if (choice == 0) 5 else if (choice == 2) 0 else 2, if (choice == 0) setOf("FADE_TO_BLACK", "consensual", "adults") else setOf("boundary"))
         return GameEngine.ActionResult(next, text)
     }
 
     private fun endRomance(state: GameState, text: String, npcInitiated: Boolean): GameState {
         val previous = state.relationship.romanceStage
         var next = state.copy(relationship = state.relationship.copy(romanceStage = RomanceStage.NONE, commitment = 0, intimacyConsentDay = null,
-            pendingEvent = state.relationship.pendingEvent?.takeUnless { it.adultsOnly }, lastRomanceDay = state.day,
+            pendingEvent = state.relationship.pendingEvent?.takeUnless { it.adultsOnly }, lastRomanceDay = if (npcInitiated) state.day else state.relationship.lastRomanceDay,
             consent = state.relationship.consent.copy(intimacyAllowed = false, wantsChildren = false)),
             companion = state.companion.copy(role = "Gefährtin"),
-            dynasty = state.dynasty.copy(plannedBirthDay = null, planningParents = emptyList()),
-            realm = state.realm.copy(tradeBonusDays = if (previous == RomanceStage.CO_RULERS) 0 else state.realm.tradeBonusDays))
-        next = remember(next, if (npcInitiated) "npc_breakup" else "breakup", text, -4)
+            dynasty = state.dynasty.copy(plannedBirthDay = null, planningParents = emptyList()))
+        next = remember(next, if (npcInitiated) "npc_breakup" else "breakup", text, if (npcInitiated) -4 else 0)
         if (previous != RomanceStage.NONE) next = next.copy(chronicle = (next.chronicle + ChronicleEntry(state.day, "Getrennte Wege", text)).takeLast(2000))
         return next
     }

@@ -53,7 +53,8 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
                         }
                     }
                 }
-                item { SessionBattleField(session, state.settings.animations, state.settings.battleSpeed) }
+                item { SessionBattleField(session, state.settings.animations, state.settings.battleSpeed,
+                    if (session.tactic == Tactic.FORTIFY) replayRecord?.replay?.frontier?.weapons.orEmpty() else emptyList()) }
                 session.log.forEach { entry -> item { Text("Minute ${entry.minute}: ${entry.text} (−${entry.ownLosses}/−${entry.enemyLosses})") } }
             }
         }, confirmButton = { TextButton(onClick = { replayRecord = null; replayPlaying = false }) { Text("Schließen") } })

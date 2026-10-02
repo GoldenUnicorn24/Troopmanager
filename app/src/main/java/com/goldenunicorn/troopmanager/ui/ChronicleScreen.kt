@@ -74,13 +74,16 @@ internal fun LazyListScope.chronicleItems(state: GameState, selected: ChronicleC
         }
     }
     if (visible.isEmpty()) item(key = "chronicle_empty") { EmptyCard("In diesem Teil deiner Chronik stehen noch keine Ereignisse.") }
-    items(visible, key = { "chronicle_${it.entry.day}_${it.index}" }) { row ->
+    visible.groupBy { (it.entry.day - 1) / 365 + 1 }.forEach { (year, chapter) ->
+        item(key = "chronicle_year_$year") { SectionTitle("Jahr $year · Kapitel der Kampagne") }
+        items(chapter, key = { "chronicle_${it.entry.day}_${it.index}" }) { row ->
         val battle = if (row.entry.title in setOf("Schlacht gewonnen", "Schlacht verloren")) {
             val candidates = state.war.history.filter { it.day == row.entry.day && it.victory == (row.entry.title == "Schlacht gewonnen") }
             candidates.singleOrNull { row.entry.text.contains("${it.ownStart} eigene zu Beginn, ${it.ownRemaining} Überlebende") }
                 ?: candidates.singleOrNull()
         } else null
         ChronicleTimelineCard(row, state, battle)
+        }
     }
 }
 

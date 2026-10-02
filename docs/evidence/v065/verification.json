@@ -1,0 +1,84 @@
+{
+  "checkedAtUtc": "2026-10-02T18:27:38.231827+00:00",
+  "versionName": "0.65.0",
+  "versionCode": 14,
+  "applicationId": "com.goldenunicorn.troopmanager",
+  "saveSchema": 4,
+  "branch": "codex/v0.65",
+  "baseCommit": "b1a1be5c139804beba0bebd01ca2ec404623efdc",
+  "workingTree": "local implementation; not a remote CI run",
+  "environment": {
+    "java": "Temurin 17.0.20.1+1",
+    "gradle": "8.9",
+    "androidSdk": 35,
+    "buildTools": "35.0.0",
+    "maven": "official Maven Central mirror configured only in external local init script"
+  },
+  "command": "gradle -I /workspace/android-tools/maven-mirror.init.gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease --no-daemon --max-workers=2 --stacktrace",
+  "build": "SUCCESSFUL in 5m 8s",
+  "tests": {
+    "total": 313,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "suites": {
+      "com.goldenunicorn.troopmanager.data.SaveCodecTest": 14,
+      "com.goldenunicorn.troopmanager.data.V045MigrationTest": 8,
+      "com.goldenunicorn.troopmanager.data.V065SaveTest": 3,
+      "com.goldenunicorn.troopmanager.data.V06SaveTest": 8,
+      "com.goldenunicorn.troopmanager.engine.BattleEngineTest": 13,
+      "com.goldenunicorn.troopmanager.engine.CampaignIntegrationTest": 9,
+      "com.goldenunicorn.troopmanager.engine.CityEngineTest": 13,
+      "com.goldenunicorn.troopmanager.engine.FrontierEngineTest": 18,
+      "com.goldenunicorn.troopmanager.engine.FrontierPersistenceTest": 3,
+      "com.goldenunicorn.troopmanager.engine.GameEngineTest": 26,
+      "com.goldenunicorn.troopmanager.engine.GovernanceEngineTest": 11,
+      "com.goldenunicorn.troopmanager.engine.PresenceEngineTest": 7,
+      "com.goldenunicorn.troopmanager.engine.RegionEngineTest": 5,
+      "com.goldenunicorn.troopmanager.engine.V045BattleTest": 9,
+      "com.goldenunicorn.troopmanager.engine.V045IntegrationTest": 5,
+      "com.goldenunicorn.troopmanager.engine.V061FeaturesTest": 9,
+      "com.goldenunicorn.troopmanager.engine.V062FeaturesTest": 7,
+      "com.goldenunicorn.troopmanager.engine.V065FamilyTest": 11,
+      "com.goldenunicorn.troopmanager.engine.V065IntegrationTest": 11,
+      "com.goldenunicorn.troopmanager.engine.V065RelationshipTest": 13,
+      "com.goldenunicorn.troopmanager.engine.V06BenchmarkTest": 1,
+      "com.goldenunicorn.troopmanager.engine.V06CampaignTest": 6,
+      "com.goldenunicorn.troopmanager.engine.V06KingdomsTest": 15,
+      "com.goldenunicorn.troopmanager.engine.V06PeopleTest": 20,
+      "com.goldenunicorn.troopmanager.engine.V06PresentationTest": 6,
+      "com.goldenunicorn.troopmanager.engine.V06WarTest": 23,
+      "com.goldenunicorn.troopmanager.engine.V06WorldTest": 7,
+      "com.goldenunicorn.troopmanager.engine.WorldEngineTest": 10,
+      "com.goldenunicorn.troopmanager.model.WorldContentCatalogTest": 9,
+      "com.goldenunicorn.troopmanager.ui.CitySceneProjectionTest": 8,
+      "com.goldenunicorn.troopmanager.ui.PalacePresentationTest": 5
+    }
+  },
+  "lint": {
+    "Warning": 13,
+    "Information": 20
+  },
+  "sourceFingerprintSha256": "92880f57022e333649dd401428b104d3d04c5108a4ecb65c5d14db47049ad98c",
+  "sourceFilesChecked": 210,
+  "debugCertificateSha256": "44a4368b2849109d55e6ff1596e92e7a27813bb9062d2a82b9dd1feba746ff4f",
+  "apk": {
+    "debug": {
+      "file": "Troopmanager-v0.65.0-debug.apk",
+      "bytes": 31150355,
+      "sha256": "4125b566aba9c3fda4214deeb02339b623e6e3f28b533f5f0e818d0faa81977e",
+      "signature": "Android Debug (verified v2)"
+    },
+    "release": {
+      "file": "Troopmanager-v0.65.0-release-unsigned.apk",
+      "bytes": 25465845,
+      "sha256": "b459309f9accb66b9caa6dab4b589322f77dea229ad2c4c53a9aacbf83e92afd",
+      "signature": "unsigned; original update key required"
+    }
+  },
+  "scopeLimits": [
+    "No hardware profiling or device campaign",
+    "Production update signing must use the existing external private key",
+    "GitHub workflow configuration checked locally; no remote Actions run triggered"
+  ]
+}

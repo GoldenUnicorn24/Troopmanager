@@ -107,6 +107,9 @@ enum class ReportCategory(val label: String) {
     COURT("Hof"),
     DIPLOMACY("Diplomatie"),
     WARNING("Warnung"),
+    RULERS("Herrscherpaar"),
+    FAMILY("Familie"),
+    FRONTIER("Frontier"),
 }
 
 @Serializable
@@ -115,12 +118,14 @@ data class DailyReportEntry(
     val title: String,
     val detail: String,
     val important: Boolean = false,
+    val destination: GameDestination? = null,
 )
 
 @Serializable
 data class DailyReport(
     val day: Int = 0,
     val entries: List<DailyReportEntry> = emptyList(),
+    val trends: Map<String, Int> = emptyMap(),
 )
 
 @Serializable

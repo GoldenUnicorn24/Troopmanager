@@ -1,6 +1,12 @@
-# Realm of the Last Wall — Troopmanager v0.6.0
+# Realm of the Last Wall — Troopmanager v0.65.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v0.65: the ruling pair and a living frontier
+
+Additive local-save models connect companion personality and thematic conflicts, contextual dialogue and personal arcs, optional joint government with bounded delegation, live presence, child education and mentors, the court network, the quest journal and annual chronicle chapters. Frontier now reserves real patrol troops, moves allied reinforcements over campaign days, equips delayed custom formations and uses ammunition-bearing wall weapons in deterministic siege exchanges and replay. Existing 100 creation attribute points and 30 immediately usable skill points remain.
+
+See [v0.65 architecture and controls](docs/V0.65-RELATIONSHIP-CO-RULER.md) for the implementation and save fields. Android tests, lint, APK verification and external signing instructions remain required; a debug build does not carry the user's existing update certificate.
 
 ## Living-world v0.6 update
 
@@ -13,7 +19,7 @@ An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin
 
 ## City and interface
 
-- Five main pages: realm dashboard, city, army, world/missions and court. Help is available in the top menu.
+- Eight campaign domains: command center, city, military, world, court, ruling pair, family and character. The palace links its throne room, war council, private rooms, family and court. Help remains in the top menu.
 - Isometric city with pan/zoom, precise building targets, six districts, accessible building list, three architectural tiers, bounded ambient groups and the same scene during sieges.
 - Construction takes campaign days with upfront costs and one to three slots. Residential districts and warehouses expand housing/storage; tax, workers, satisfaction, prosperity and security affect the economy.
 - Market purchases/sales use different prices. Mine, forest and village ownership contributes daily production; region purchase and diplomacy retain stable IDs.
@@ -55,19 +61,21 @@ Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project
 
 - `compileSdk` / `targetSdk`: 35
 - `minSdk`: 26
-- `versionName`: 0.6.0
-- `versionCode`: 6
+- `versionName`: 0.65.0
+- `versionCode`: 14
 
 ```bash
 gradle :app:testDebugUnitTest --stacktrace
-gradle :app:assembleDebug --stacktrace
 gradle :app:lintDebug --stacktrace
+gradle :app:assembleDebug --stacktrace
+gradle :app:assembleRelease --stacktrace
 test -f app/build/outputs/apk/debug/app-debug.apk
 ```
 
 The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
+The unsigned release APK is `app/build/outputs/apk/release/app-release-unsigned.apk`; sign it outside the repository with the existing update key before updating an installed campaign.
 
-GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.6.0-debug`.
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → Android lint → APK build → package/version/signature verification → artifact upload on pushes and pull requests to `main`, `codex/v0.63-frontier`, `codex/v0.65` and the maintained earlier branches, plus manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.65.0-debug`.
 
 The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; visible formations represent aggregate soldiers; local synthesized audio is bundled.
 
