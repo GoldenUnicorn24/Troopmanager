@@ -3,6 +3,20 @@ package com.goldenunicorn.troopmanager.engine
 import com.goldenunicorn.troopmanager.model.*
 
 object ArmyEngine {
+    /**
+     * Cultures shown in the army UI. A culture becomes visible as soon as the realm actually owns
+     * population, soldiers, recruits in training, or a commander from that culture. This keeps the
+     * initial army overview limited to the cultures chosen during character creation while still
+     * allowing later immigration/alliance unlocks to appear automatically.
+     */
+    fun visibleCultures(state: GameState): List<Culture> =
+        Culture.entries.filter { culture ->
+            population(state.population, culture) > 0 ||
+                state.armyPools.any { it.type.culture == culture && it.soldiers > 0 } ||
+                state.trainingQueue.any { it.type.culture == culture && it.amount > 0 } ||
+                state.commanders.any { it.culture == culture }
+        }
+
     fun normalize(units: List<UnitAllocation>): List<UnitAllocation> =
         units
             .groupBy { it.type }
