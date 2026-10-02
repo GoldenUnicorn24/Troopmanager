@@ -5,9 +5,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class MilitaryGood(val label: String) {
     SWORDS("Schwerter"),
+    SPEARS("Speere"),
     BOWS("Bögen"),
     ARROWS("Pfeile"),
     ARMOR("Rüstungen"),
+    SHIELDS("Schilde"),
     HORSES("Pferde"),
     SIEGE_PARTS("Belagerungsteile"),
     MEDICINE("Heilmittel"),
@@ -15,19 +17,23 @@ enum class MilitaryGood(val label: String) {
 
 @Serializable
 data class MilitaryStock(
-    val swords: Int = 420,
+    val swords: Int = 360,
+    val spears: Int = 220,
     val bows: Int = 300,
     val arrows: Int = 6000,
     val armor: Int = 360,
+    val shields: Int = 300,
     val horses: Int = 100,
     val siegeParts: Int = 80,
     val medicine: Int = 140,
 ) {
     fun amount(good: MilitaryGood): Int = when (good) {
         MilitaryGood.SWORDS -> swords
+        MilitaryGood.SPEARS -> spears
         MilitaryGood.BOWS -> bows
         MilitaryGood.ARROWS -> arrows
         MilitaryGood.ARMOR -> armor
+        MilitaryGood.SHIELDS -> shields
         MilitaryGood.HORSES -> horses
         MilitaryGood.SIEGE_PARTS -> siegeParts
         MilitaryGood.MEDICINE -> medicine
@@ -37,9 +43,11 @@ data class MilitaryStock(
         val safe = value.coerceIn(0, Int.MAX_VALUE)
         return when (good) {
             MilitaryGood.SWORDS -> copy(swords = safe)
+            MilitaryGood.SPEARS -> copy(spears = safe)
             MilitaryGood.BOWS -> copy(bows = safe)
             MilitaryGood.ARROWS -> copy(arrows = safe)
             MilitaryGood.ARMOR -> copy(armor = safe)
+            MilitaryGood.SHIELDS -> copy(shields = safe)
             MilitaryGood.HORSES -> copy(horses = safe)
             MilitaryGood.SIEGE_PARTS -> copy(siegeParts = safe)
             MilitaryGood.MEDICINE -> copy(medicine = safe)
