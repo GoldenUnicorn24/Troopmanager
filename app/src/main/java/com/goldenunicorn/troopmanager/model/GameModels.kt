@@ -309,7 +309,9 @@ data class GameState(
     fun homeSoldiers(type: UnitType): Int = (soldiers(type) - away(type)).coerceAtLeast(0)
 
     fun assigned(type: UnitType): Int =
-        commanderAssignments.sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } }
+        commanderAssignments
+            .filterNot { commanderAway(it.commanderId) }
+            .sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } }
 
     fun directCommand(type: UnitType): Int = (homeSoldiers(type) - assigned(type)).coerceAtLeast(0)
 
@@ -320,7 +322,10 @@ data class GameState(
             ?.firstOrNull { it.type == type }
             ?.amount ?: 0
 
+    val playerAwayOnMission: Boolean
+        get() = activeMissions.any { it.playerParticipates && it.status.isAway }
+
     fun commanderAway(id: Long): Boolean =
-        activeMissions.any { it.commanderId == id && it.status.isAway } ||
+        activeMissions.any { id in it.allCommanderIds && it.status.isAway } ||
             world.playerFieldArmies.any { it.commanderId == id } || war.unavailableCommander(id)
 }
