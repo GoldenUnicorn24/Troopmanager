@@ -140,3 +140,30 @@ data class CommanderEventState(
     val history: List<CommanderDevelopmentEvent> = emptyList(),
     val lastGeneratedDay: Int = 0,
 )
+
+
+@Serializable
+enum class OccupationPolicy(val label: String, val description: String) {
+    MILITARY_RULE(
+        "Militärverwaltung",
+        "Senkt Unruhe mit einer starken Garnison schnell, belastet aber Wohlstand und Beziehungen.",
+    ),
+    INTEGRATION(
+        "Integration",
+        "Kostet Verwaltung und Nahrung, senkt dafür Kulturspannung und Unruhe nachhaltig.",
+    ),
+    AUTONOMY(
+        "Autonomie",
+        "Weniger direkte Kontrolle und Einnahmen, dafür geringere politische Reibung.",
+    ),
+}
+
+@Serializable
+data class OccupiedRegion(
+    val regionId: String,
+    val previousOwnerId: String,
+    val sinceDay: Int,
+    val unrest: Int = 60,
+    val policy: OccupationPolicy = OccupationPolicy.MILITARY_RULE,
+    val governorId: Long? = null,
+)
