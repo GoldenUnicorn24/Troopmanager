@@ -45,9 +45,9 @@ internal fun SettingsPanel(state: GameState, onState: (GameState) -> Unit) {
         SectionTitle("Schwierigkeit")
         Difficulty.entries.forEach { level -> FilterChip(settings.difficulty == level, { change(settings.copy(difficulty = level)) }, label = { Text(level.label) }) }
         Text(when (settings.difficulty) {
-            Difficulty.STORY -> "Mehr Nahrungsertrag und vorsichtigere gegnerische Entscheidungen."
-            Difficulty.STANDARD -> "Ausgewogene Planung, Versorgung und Aufklärung."
-            Difficulty.VETERAN -> "Vorausschauende Gegner und präzisere feindliche Aufklärung."
+            Difficulty.STORY -> "Mehr Nahrung, langsamere gegnerische Aufklärung und Rekrutierung, leichtere Missionen und schwächere Invasionen."
+            Difficulty.STANDARD -> "Ausgewogene Planung, Versorgung, Missionen und gegnerische Reaktionszeiten."
+            Difficulty.VETERAN -> "Schnellere gegnerische Aufklärung, Rekrutierung und Angriffe; riskantere Missionen und stärkere Invasionen."
         }, color = Mist)
         Text(if (settings.ironman) "Ironman · ein fortlaufender Autosave, kein Rückimport" else "Standardkampagne · Autosave mit Sicherungskopie", color = PaleGold)
     }
