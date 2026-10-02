@@ -169,6 +169,8 @@ data class BattleSession(
     val enemyFortification: Int = 0,
     val deployedMorale: Int? = null,
     val enemyExperience: Int = 0,
+    /** Fraction of the desired arrow load available when the battle started. */
+    val rangedSupplyFactor: Double = 1.0,
 ) {
     val isActive: Boolean
         get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT
