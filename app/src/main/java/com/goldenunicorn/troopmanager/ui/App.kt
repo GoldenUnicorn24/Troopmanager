@@ -107,7 +107,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.61.1 · Freier Startaufbau", color = PaleGold)
+            Text("v0.61.3 · Lazarett & Einsatzberichte", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
