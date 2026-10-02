@@ -18,7 +18,7 @@ enum class RegionType(val label: String) {
     FOREST("Waldgebiet"),
     MINE("Mine"),
     RUIN("Ruine"),
-    ORC("Orkgebiet"),
+    ORC("Aschenbund-Grenze"),
     MONSTER("Monstergebiet"),
 }
 
@@ -48,7 +48,8 @@ enum class SiegeDevice(val label: String) {
     TOWER("Belagerungsturm"),
     LADDERS("Leitern"),
     CATAPULT("Katapulte"),
-    CLIMBERS("Monsterkletterer"),
+    CLIMBERS("Nebelklammer"),
+    TUNNEL("Belagerungstunnel"),
 }
 
 @Serializable
@@ -59,6 +60,7 @@ data class Invasion(
     val announcedDay: Int,
     val devices: List<SiegeDevice> = emptyList(),
     val alliesRequested: Boolean = false,
+    val worldArmyId: String? = null,
 )
 
 @Serializable

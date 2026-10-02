@@ -21,6 +21,7 @@ internal fun RealmDashboard(
     onWorld: () -> Unit,
     onArmy: () -> Unit,
     onCourt: () -> Unit,
+    onAdvanceDay: () -> Unit,
 ) {
     fun apply(result: GameEngine.ActionResult) {
         onState(result.state)
@@ -41,7 +42,7 @@ internal fun RealmDashboard(
         item {
             GoldButton(
                 "Nächsten Tag beginnen",
-                { apply(GameEngine.advanceDay(state)) },
+                onAdvanceDay,
                 Modifier.fillMaxWidth(),
             )
         }

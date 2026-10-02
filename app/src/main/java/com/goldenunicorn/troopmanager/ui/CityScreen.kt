@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.CityEngine
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.WarEngine
 import com.goldenunicorn.troopmanager.engine.renameSettlement
 import com.goldenunicorn.troopmanager.model.*
 
@@ -35,9 +36,10 @@ internal fun CityScreen(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
     onNextDay: () -> Unit = {},
+    onNavigate: ((BuildingType) -> Unit)? = null,
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var night by rememberSaveable { mutableStateOf(false) }
+    var night by remember(state.day) { mutableStateOf(CityTime.at(state.day) == CityTime.NIGHT) }
     var cityName by
         remember(state.realm.settlementName) { mutableStateOf(state.realm.settlementName) }
     var districtName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -62,7 +64,10 @@ internal fun CityScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("DEINE STADT", color = Gold, fontSize = 11.sp, letterSpacing = 2.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    BannerBadge(state.presentation.heraldry, 28.dp)
+                    Text("DEINE STADT", color = Gold, fontSize = 11.sp, letterSpacing = 2.sp)
+                }
                 Text(
                     state.realm.settlementName,
                     color = Color.White,
@@ -70,7 +75,7 @@ internal fun CityScreen(
                     fontSize = 22.sp,
                 )
                 Text(
-                    "${state.realm.settlementTier.label} · ${state.population.total} Einwohner",
+                    "${state.realm.settlementTier.label} · ${state.population.total} Einwohner · ${CityTime.at(state.day).label}",
                     color = Mist,
                     fontSize = 11.sp,
                 )
@@ -79,12 +84,12 @@ internal fun CityScreen(
                 Text("Tag ${state.day} →", color = Gold)
             }
         }
-        TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
-            listOf("Stadtansicht", "Verwaltung", "Bauen").forEachIndexed { index, label ->
+        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp, containerColor = Panel, contentColor = Gold) {
+            listOf("Stadtansicht", "Verwaltung", "Bauen", "Legenden").forEachIndexed { index, label ->
                 Tab(
                     selected = tab == index,
                     onClick = { tab = index },
-                    text = { Text(label, fontSize = 12.sp) },
+                    text = { Text(label, fontSize = 12.sp, maxLines = 1) },
                 )
             }
         }
@@ -187,6 +192,7 @@ internal fun CityScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
+                    item { ContextTutorialCard(state, "city", onState) }
                     item {
                         StatGrid(
                             listOf(
@@ -199,6 +205,21 @@ internal fun CityScreen(
                                 "Mauerintegrität" to "${state.realm.wallIntegrity}%",
                             )
                         )
+                    }
+                    item {
+                        CityPanel("Gesellschaft & Aussicht") {
+                            StatGrid(listOf("Kriminalität" to "${state.society.crime}%", "Ungleichheit" to "${state.society.inequality}%",
+                                "Krankheit" to "${state.society.disease}%", "Hunger" to "${state.society.hunger}%",
+                                "Kulturelle Spannungen" to "${state.society.culturalTension}%", "Politische Loyalität" to "${state.society.politicalLoyalty}%",
+                                "Kriegsmüdigkeit" to "${state.society.warExhaustion}%", "Zuzug heute" to "${state.society.lastMigration}"))
+                            Text("Kriminalität senkt Sicherheit; Hunger und Krankheit hemmen Wachstum; politische Loyalität und Kriegsmüdigkeit beeinflussen Ordnung und Truppenmoral.", color = Mist, fontSize = 12.sp)
+                            val p = EconomyEngine.production(state)
+                            val foodDeficit = (p.upkeep.toLong() - p.gross.food).coerceAtLeast(0)
+                            Text(if (foodDeficit == 0L) "Nahrung: Der heutige Ertrag deckt den Unterhalt."
+                                else "Nahrungsvorrat: ungefähr ${state.resources.food / foodDeficit} Tage bei unverändertem Unterhalt.",
+                                color = if (foodDeficit > 0) PaleGold else Success, fontSize = 13.sp)
+                            Text("Vorschau ohne künftige Ereignisse, Wetterwechsel und neue Heeresaufträge.", color = Mist, fontSize = 11.sp)
+                        }
                     }
                     item {
                         CityPanel("Wohnen & Ordnung") {
@@ -375,7 +396,7 @@ internal fun CityScreen(
                     }
                 }
             }
-            else -> {
+            2 -> {
                 CityDistrictFilter(district) { districtName = it?.name }
                 QueueSummary(state)
                 LazyColumn(
@@ -388,6 +409,7 @@ internal fun CityScreen(
                     }
                 }
             }
+            else -> PresentationScreen(state, onState, onNotice)
         }
     }
     if (selected != null) {
@@ -396,9 +418,14 @@ internal fun CityScreen(
             containerColor = Panel,
             contentColor = Mist,
         ) {
-            BuildingDetails(state, selected) {
-                applyAction(CityEngine.startConstruction(state, selected))
-            }
+            BuildingDetails(state, selected,
+                onConstruction = { applyAction(CityEngine.startConstruction(state, selected)) },
+                onRepair = { applyAction(WarEngine.repairBuilding(state, selected)) },
+                onNavigate = onNavigate?.let { navigate -> {
+                    selectedName = null
+                    if (selected == BuildingType.MARKET) tab = 1 else navigate(selected)
+                } },
+            )
         }
     }
 }
@@ -555,7 +582,7 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
                     state.resources.gold >= buyCost &&
                         resource.value(state.resources).toLong() + amount <=
                             resource.value(state.city.storageCapacity).toLong() &&
-                        state.realm.level(BuildingType.MARKET) > 0 &&
+                        WarEngine.effectiveLevel(state, BuildingType.MARKET) > 0 &&
                         state.battleSession?.isActive != true,
                 modifier = Modifier.weight(1f),
             ) {
@@ -567,7 +594,7 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
                     resource.value(state.resources) >= amount &&
                         state.resources.gold.toLong() + sale <=
                             state.city.storageCapacity.gold.toLong() &&
-                        state.realm.level(BuildingType.MARKET) > 0 &&
+                        WarEngine.effectiveLevel(state, BuildingType.MARKET) > 0 &&
                         state.battleSession?.isActive != true,
                 modifier = Modifier.weight(1f),
             ) {
@@ -578,7 +605,8 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
 }
 
 @Composable
-private fun BuildingDetails(state: GameState, type: BuildingType, onConstruction: () -> Unit) {
+private fun BuildingDetails(state: GameState, type: BuildingType, onConstruction: () -> Unit,
+    onRepair: () -> Unit, onNavigate: (() -> Unit)?) {
     val level = state.realm.level(type)
     val cost = GameEngine.buildingCost(state, type)
     val queue = state.city.constructionQueue.firstOrNull { it.type == type }
@@ -596,6 +624,22 @@ private fun BuildingDetails(state: GameState, type: BuildingType, onConstruction
         Text(type.label, color = PaleGold, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Text("Stufe $level · ${citySites.first { it.type == type }.district.label}", color = Gold)
         Text(buildingEffect(type, state), color = Mist, fontSize = 13.sp)
+        val destination = when (type) {
+            BuildingType.BARRACKS, BuildingType.STABLES, BuildingType.ARSENAL -> "Heer & Ausrüstung"
+            BuildingType.PALACE, BuildingType.ACADEMY -> "Hof & Charaktere"
+            BuildingType.MARKET -> "Markt & Handel"
+            BuildingType.EMBASSY -> "Diplomatie"
+            BuildingType.WALL, BuildingType.TOWER -> "Weltkarte & Feldzüge"
+            else -> null
+        }
+        if (destination != null && onNavigate != null) GoldButton("$destination öffnen", onNavigate, Modifier.fillMaxWidth())
+        val damage = (state.war.buildingDamage[type] ?: 0).coerceIn(0, 100)
+        if (damage > 0) CityPanel("Kriegsschäden") {
+            Text("$damage% beschädigt · wirksame Stufe ${WarEngine.effectiveLevel(state, type)}", color = PaleGold)
+            Text("Reparatur: ${damage * 3} Gold · ${damage * 2} Holz · ${damage * 2} Stein", color = Mist)
+            OutlinedButton(onClick = onRepair, enabled = state.battleSession?.isActive != true,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Gebäude reparieren") }
+        }
         if (producing != null) {
             val detail = EconomyEngine.breakdown(state, producing)
             CityPanel("${producing.label} / Tag") {
@@ -706,9 +750,9 @@ private fun buildingEffect(type: BuildingType, state: GameState): String =
         BuildingType.ACADEMY ->
             "Die Offiziersschule erweitert die Verwaltung. Ab Stufe 2 steht ein dritter Bauplatz zur Verfügung."
         BuildingType.STABLES ->
-            "Stallungen bilden das sichtbare Zentrum deiner Kavallerie. Zusätzliche Produktionsboni sind für den weiteren Ausbau vorbereitet."
+            "Stallungen bilden das sichtbare Zentrum deiner Kavallerie und führen zu deinen berittenen Kontingenten."
         BuildingType.ARSENAL ->
-            "Das Arsenal bildet das Zentrum für Ausrüstung und Reparaturen. Weitere Ausrüstungsboni sind vorbereitet."
+            "Das Arsenal produziert und repariert aggregierte Ausrüstung. Seine Stufe erhöht die mögliche Ausrüstungsqualität."
         BuildingType.EMBASSY ->
-            "Die Botschaft erhöht den angestrebten Wohlstand um 3 je Stufe und bereitet weitere Diplomatieoptionen vor."
+            "Die Botschaft erhöht den angestrebten Wohlstand um 3 je Stufe und öffnet Verhandlungen, Verträge und Spionage."
     }

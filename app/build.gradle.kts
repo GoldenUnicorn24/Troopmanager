@@ -13,8 +13,8 @@ android {
         applicationId = "com.goldenunicorn.troopmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.45.0"
+        versionCode = 6
+        versionName = "0.6.0"
     }
 
     buildFeatures {
@@ -40,6 +40,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("io.coil-kt:coil-compose:2.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")

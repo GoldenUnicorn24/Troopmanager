@@ -12,15 +12,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.model.GameState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 internal fun MoreScreen(
     state: GameState,
     onMenu: () -> Unit,
     onDelete: () -> Unit,
-    onReplayTutorial: () -> Unit
+    onReplayTutorial: () -> Unit,
+    onState: (GameState) -> Unit,
+    onNotice: (String) -> Unit,
+    controller: GameViewModel,
 ) {
     var page by remember { mutableStateOf("help") }
+    var chronicleCategory by remember { mutableStateOf(ChronicleCategory.ALL) }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -30,7 +35,7 @@ internal fun MoreScreen(
         item { PageTitle("MEHR", "Hilfe, Chronik und Spielstand") }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("help" to "Hilfe", "chronicle" to "Chronik", "save" to "Spielstand").forEach { entry ->
+                listOf("help" to "Hilfe", "chronicle" to "Chronik", "settings" to "Optionen", "save" to "Spielstand").forEach { entry ->
                     FilterChip(
                         selected = page == entry.first,
                         onClick = { page = entry.first },
@@ -42,6 +47,7 @@ internal fun MoreScreen(
         }
 
         when (page) {
+            "settings" -> { item { SettingsPanel(state, onState) } }
             "help" -> {
                 items(listOf(
                     "Dein Grenzreich" to "Du beginnst mit einem eigenen Gebiet, einer Grenzfeste, ausgebauten Produktionsgebäuden, Vorräten und einer einsatzfähigen Armee. Entwickle dein Reich bis zum Hochkönig; danach bleiben Invasionen und Ausbau spielbar.",
@@ -54,7 +60,7 @@ internal fun MoreScreen(
                     "Soldaten unterwegs" to "Missionstruppen und ihre Kommandanten fehlen in der Festung, bei neuen Zuweisungen und bei weiteren Missionen. Ein Rückruf benötigt Rückreisezeit. Missionen können großen Erfolg, Erfolg, Teilerfolg, Scheitern oder eine Katastrophe bringen. Erfahrung, Moral, Truppentyp und Führung verändern die Chancen.",
                     "Invasionen vorbereiten" to "40% Bedrohung bringt Späherwarnungen, 60% Grenzüberfälle, 75% Heeresbewegungen und 90% eine angekündigte Invasion. Bei voller Bedrohung beginnt ein Angriff. Der Countdown lässt Zeit für Vorräte, Mauerreparaturen, Ausbildung, Rückrufe und verbündete Hilfe. Nur Soldaten daheim verteidigen deine Festung.",
                     "Interaktive Schlachten" to "Verteile daheim verfügbare Truppen und Kommandanten auf linken Flügel, Zentrum, rechten Flügel und Reserve. Die Schlacht läuft schrittweise über Aufstellung, Fernkampf, Kontakt, Hauptkampf, Reserven und Entscheidung. Reagiere auf Ereignisse, setze Reserven ein und entscheide nach einem Sieg über Verfolgung oder Formation halten. Eine laufende Schlacht wird gespeichert.",
-                    "Gefährtin & Beziehungen" to "Vertrauen, Respekt und Zuneigung entwickeln sich durch Ereignisse und Entscheidungen. Pro Tag sind höchstens eine große oder zwei kleine Beziehungsaktionen möglich. Beziehungen wachsen von Gefährten bis zum Herrscherpaar. Die Gefährtin kann als Kommandantin Truppen führen und Missionen übernehmen.",
+                    "Gefährtin & Beziehungen" to "Vertrauen, Respekt und Zuneigung entwickeln sich durch Ereignisse und Entscheidungen. Pro Tag sind höchstens eine große oder zwei kleine Beziehungsaktionen möglich. Freundschaft und freiwillige Romanze verlaufen getrennt; Romantik ist in den Optionen abschaltbar. Die Gefährtin kann als Kommandantin Truppen führen und Missionen übernehmen.",
                     "Kulturen & Charakter" to "Halbelben starten mit allen vier Kulturen. Menschen und Elben benötigen echte Bevölkerung durch diplomatische Begegnungen, Bündnisse und Immigration, bevor fremde Kulturen ausgebildet werden. Missionen, Schlachten und Ereignisse geben Erfahrung; neue Level ermöglichen die Verteilung von Skillpunkten auf wirksame Charakterwerte.",
                     "Offline & Spielstände" to "Alles bleibt auf deinem Gerät: kein Konto, kein Server, keine Echtgeldkäufe. Das Spiel speichert automatisch mit Sicherungskopie. Frühere Spielstände werden beim Laden migriert; alte Truppenbestände werden je Einheitentyp zusammengeführt. Eigene Bilder bleiben lokale Gerätedateien."
                 )) { (title, body) -> HelpCard(title, body) }
@@ -63,18 +69,11 @@ internal fun MoreScreen(
             }
 
             "chronicle" -> {
-                items(state.chronicle.asReversed().size) { index ->
-                    val entry = state.chronicle.asReversed()[index]
-                    Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
-                        Column(Modifier.padding(14.dp)) {
-                            Text("Tag " + entry.day + " · " + entry.title, color = PaleGold, fontWeight = FontWeight.Bold)
-                            Text(entry.text, color = Mist, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-                        }
-                    }
-                }
+                chronicleItems(state, chronicleCategory) { chronicleCategory = it }
             }
 
             else -> {
+                item { val ui by controller.ui.collectAsStateWithLifecycle(); SaveSlotsPanel(ui, controller) }
                 item {
                     HelpCard(
                         "Lokaler Spielstand",

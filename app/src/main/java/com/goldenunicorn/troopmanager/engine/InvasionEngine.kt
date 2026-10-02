@@ -6,7 +6,7 @@ object InvasionEngine {
     fun day(state: GameState): GameState {
         var next = state
         val old = next.realm.threat
-        val threat = (old + 2 + next.realm.territory + next.victories / 4).coerceAtMost(100)
+        val threat = (old.toLong() + 2 + next.realm.territory + next.victories / 4).coerceAtMost(100).toInt()
         next = next.copy(realm = next.realm.copy(threat = threat))
         listOf(40 to "Späherwarnung", 60 to "Grenzüberfälle", 75 to "Große feindliche Bewegung")
             .forEach { (threshold, label) ->
@@ -26,9 +26,7 @@ object InvasionEngine {
                     next =
                         next.copy(
                             chronicle =
-                                (next.chronicle + ChronicleEntry(next.day, label, detail)).takeLast(
-                                    80
-                                )
+                                (next.chronicle + ChronicleEntry(next.day, label, detail)).takeLast(2000)
                         )
                 }
             }
@@ -64,10 +62,11 @@ object InvasionEngine {
                                     "Invasion angekündigt",
                                     "${enemy.label}: $strength Gegner erreichen die Festung in $delay Tagen.",
                                 ))
-                            .takeLast(80),
+                            .takeLast(2000),
                 )
             next = RelationshipEngine.onEvent(next, "attack")
         }
+        if (next.world.initialized && next.invasion != null) next = WorldEngine.bindInvasion(next)
         val invasion = next.invasion
         if (invasion != null && next.day < invasion.arrivalDay)
             next = next.copy(realm = next.realm.copy(threat = next.realm.threat.coerceAtMost(99)))
@@ -77,6 +76,11 @@ object InvasionEngine {
                 next.day >= invasion.arrivalDay &&
                 next.battleSession?.isActive != true
         ) {
+            val worldArmy = invasion.worldArmyId?.let { id -> next.world.armies.firstOrNull { it.id == id } }
+            if (worldArmy != null && worldArmy.regionId != "keep") return next
+            if (worldArmy != null) next = next.copy(world = next.world.copy(armies = next.world.armies.map {
+                if (it.id == worldArmy.id) it.copy(status = WorldArmyStatus.ENGAGED) else it
+            }))
             next = next.copy(realm = next.realm.copy(threat = 100))
             if (next.homeArmySize > 0)
                 next =
@@ -84,7 +88,17 @@ object InvasionEngine {
                             next,
                             invasion.enemy,
                             Tactic.FORTIFY,
-                            enemyStrength = invasion.strength,
+                            enemyStrength = worldArmy?.total ?: invasion.strength,
+                            enemyFactionId = worldArmy?.factionId,
+                            enemyFactionName = worldArmy?.factionId?.let { next.world.faction(it)?.name },
+                            enemyArmyName = worldArmy?.name,
+                            enemyUnits = worldArmy?.units.orEmpty(),
+                            enemyMorale = worldArmy?.morale ?: 80,
+                            enemyExperience = worldArmy?.enemyCommanderId?.let { id -> next.world.enemyCommanders.firstOrNull { it.id == id }?.experience } ?: 0,
+                            location = next.realm.settlementName,
+                            rangedWeather = next.world.weather.at("keep").rangedFactor,
+                            cavalryWeather = next.world.weather.at("keep").cavalryFactor,
+                            seasonPenalty = if (next.world.weather.season == Season.WINTER) .8 else 1.0,
                         )
                         .state
             else {
@@ -115,9 +129,11 @@ object InvasionEngine {
                                         "Unverteidigte Festung",
                                         "Die Invasion plündert die Festung. Missionstruppen bleiben unterwegs. Die Siedlung kann sich erholen.",
                                     ))
-                                .takeLast(80),
+                                .takeLast(2000),
                     )
                 next = RelationshipEngine.onEvent(next, "defeat")
+                if (worldArmy != null) next = next.copy(world = next.world.copy(invasionArmyId = null,
+                    armies = next.world.armies.map { if (it.id == worldArmy.id) it.copy(status = WorldArmyStatus.HOLDING) else it }))
             }
         }
         return next

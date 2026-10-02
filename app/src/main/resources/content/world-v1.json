@@ -1,0 +1,606 @@
+{
+  "version": 1,
+  "places": [
+    {
+      "id": "keep",
+      "name": "Grenzfeste",
+      "kind": "KEEP",
+      "terrain": "CITY",
+      "x": 0.16,
+      "y": 0.68,
+      "ownerId": "last_wall",
+      "population": 250,
+      "fortification": 80,
+      "prosperity": 50
+    },
+    {
+      "id": "village",
+      "name": "Eichenfurt",
+      "kind": "VILLAGE",
+      "terrain": "RIVER",
+      "x": 0.4,
+      "y": 0.73,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "forest",
+      "name": "Silberwald",
+      "kind": "FOREST",
+      "terrain": "FOREST",
+      "x": 0.2,
+      "y": 0.34,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "mine",
+      "name": "Erzpass",
+      "kind": "MINE",
+      "terrain": "MOUNTAIN",
+      "x": 0.55,
+      "y": 0.35,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "ruin",
+      "name": "Alte Wacht",
+      "kind": "RUIN",
+      "terrain": "HILLS",
+      "x": 0.41,
+      "y": 0.49,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "orc",
+      "name": "Aschehügel",
+      "kind": "PASS",
+      "terrain": "HILLS",
+      "x": 0.69,
+      "y": 0.5,
+      "ownerId": "ash_covenant",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "monsters",
+      "name": "Nebelklamm",
+      "kind": "MONSTER_DEN",
+      "terrain": "MARSH",
+      "x": 0.1,
+      "y": 0.49,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "region_north_pass_01",
+      "name": "Windbruchpass",
+      "kind": "PASS",
+      "terrain": "MOUNTAIN",
+      "x": 0.4,
+      "y": 0.21,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "capital_ash_01",
+      "name": "Glutkrone",
+      "kind": "CAPITAL",
+      "terrain": "CITY",
+      "x": 0.83,
+      "y": 0.34,
+      "ownerId": "ash_covenant",
+      "population": 1900,
+      "fortification": 70,
+      "prosperity": 50
+    },
+    {
+      "id": "capital_verdant_01",
+      "name": "Wurzelthron",
+      "kind": "CAPITAL",
+      "terrain": "FOREST",
+      "x": 0.15,
+      "y": 0.12,
+      "ownerId": "verdant_compact",
+      "population": 1500,
+      "fortification": 60,
+      "prosperity": 50
+    },
+    {
+      "id": "capital_copper_01",
+      "name": "Kupferhafen",
+      "kind": "CAPITAL",
+      "terrain": "COAST",
+      "x": 0.76,
+      "y": 0.83,
+      "ownerId": "copper_league",
+      "population": 1800,
+      "fortification": 65,
+      "prosperity": 50
+    },
+    {
+      "id": "temple_moon_01",
+      "name": "Mondquell",
+      "kind": "TEMPLE",
+      "terrain": "FOREST",
+      "x": 0.32,
+      "y": 0.09,
+      "ownerId": "verdant_compact",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "village_salt_01",
+      "name": "Salzbrück",
+      "kind": "VILLAGE",
+      "terrain": "PLAIN",
+      "x": 0.62,
+      "y": 0.68,
+      "ownerId": "copper_league",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "ruin_crown_01",
+      "name": "Kronenbruch",
+      "kind": "RUIN",
+      "terrain": "HILLS",
+      "x": 0.61,
+      "y": 0.14,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    },
+    {
+      "id": "port_dawn_01",
+      "name": "Morgenkai",
+      "kind": "PORT",
+      "terrain": "COAST",
+      "x": 0.48,
+      "y": 0.89,
+      "ownerId": "free_holds",
+      "population": 250,
+      "fortification": 0,
+      "prosperity": 50
+    }
+  ],
+  "roads": [
+    {
+      "id": "road_keep_village",
+      "from": "keep",
+      "to": "village",
+      "distance": 22,
+      "quality": 70
+    },
+    {
+      "id": "road_keep_forest",
+      "from": "keep",
+      "to": "forest",
+      "distance": 28,
+      "quality": 70
+    },
+    {
+      "id": "road_keep_monsters",
+      "from": "keep",
+      "to": "monsters",
+      "distance": 22,
+      "quality": 70
+    },
+    {
+      "id": "road_village_ruin",
+      "from": "village",
+      "to": "ruin",
+      "distance": 21,
+      "quality": 70
+    },
+    {
+      "id": "road_village_village_salt_01",
+      "from": "village",
+      "to": "village_salt_01",
+      "distance": 24,
+      "quality": 70
+    },
+    {
+      "id": "road_village_port_dawn_01",
+      "from": "village",
+      "to": "port_dawn_01",
+      "distance": 25,
+      "quality": 70
+    },
+    {
+      "id": "road_forest_ruin",
+      "from": "forest",
+      "to": "ruin",
+      "distance": 26,
+      "quality": 70
+    },
+    {
+      "id": "road_forest_capital_verdant_01",
+      "from": "forest",
+      "to": "capital_verdant_01",
+      "distance": 25,
+      "quality": 70
+    },
+    {
+      "id": "road_forest_region_north_pass_01",
+      "from": "forest",
+      "to": "region_north_pass_01",
+      "distance": 31,
+      "quality": 70
+    },
+    {
+      "id": "road_ruin_mine",
+      "from": "ruin",
+      "to": "mine",
+      "distance": 28,
+      "quality": 70
+    },
+    {
+      "id": "road_ruin_orc",
+      "from": "ruin",
+      "to": "orc",
+      "distance": 27,
+      "quality": 70
+    },
+    {
+      "id": "road_mine_region_north_pass_01",
+      "from": "mine",
+      "to": "region_north_pass_01",
+      "distance": 32,
+      "quality": 70
+    },
+    {
+      "id": "road_mine_capital_ash_01",
+      "from": "mine",
+      "to": "capital_ash_01",
+      "distance": 30,
+      "quality": 70
+    },
+    {
+      "id": "road_orc_capital_ash_01",
+      "from": "orc",
+      "to": "capital_ash_01",
+      "distance": 26,
+      "quality": 70
+    },
+    {
+      "id": "road_orc_village_salt_01",
+      "from": "orc",
+      "to": "village_salt_01",
+      "distance": 24,
+      "quality": 70
+    },
+    {
+      "id": "road_region_north_pass_01_temple_moon_01",
+      "from": "region_north_pass_01",
+      "to": "temple_moon_01",
+      "distance": 24,
+      "quality": 70
+    },
+    {
+      "id": "road_region_north_pass_01_ruin_crown_01",
+      "from": "region_north_pass_01",
+      "to": "ruin_crown_01",
+      "distance": 28,
+      "quality": 70
+    },
+    {
+      "id": "road_temple_moon_01_capital_verdant_01",
+      "from": "temple_moon_01",
+      "to": "capital_verdant_01",
+      "distance": 20,
+      "quality": 70
+    },
+    {
+      "id": "road_ruin_crown_01_capital_ash_01",
+      "from": "ruin_crown_01",
+      "to": "capital_ash_01",
+      "distance": 32,
+      "quality": 70
+    },
+    {
+      "id": "road_village_salt_01_capital_copper_01",
+      "from": "village_salt_01",
+      "to": "capital_copper_01",
+      "distance": 24,
+      "quality": 70
+    },
+    {
+      "id": "road_port_dawn_01_capital_copper_01",
+      "from": "port_dawn_01",
+      "to": "capital_copper_01",
+      "distance": 29,
+      "quality": 70
+    }
+  ],
+  "factions": [
+    {
+      "id": "last_wall",
+      "name": "Reich der Letzten Mauer",
+      "culture": "WALL",
+      "capitalId": "keep",
+      "ruler": "Spieler",
+      "personality": "HONORABLE",
+      "militaryStyle": "Gemischte Kontingente und befestigte Grenzen",
+      "longTermGoal": "Die Grenzlande einen",
+      "gold": 3000,
+      "food": 12000,
+      "population": 1850,
+      "aggression": 40,
+      "relations": {},
+      "wars": [],
+      "rulerAge": 40,
+      "successionCount": 0,
+      "buildings": 1,
+      "lastDecision": "Grenzen sichern",
+      "lastDecisionDay": 0,
+      "iron": 2000
+    },
+    {
+      "id": "free_holds",
+      "name": "Freie Grenzmarken",
+      "culture": "HUMAN",
+      "capitalId": "village",
+      "ruler": "Rat der Freihöfe",
+      "personality": "CAUTIOUS",
+      "militaryStyle": "Milizen und lokale Wachen",
+      "longTermGoal": "Unabhängigkeit bewahren",
+      "gold": 3000,
+      "food": 12000,
+      "population": 4000,
+      "aggression": 5,
+      "relations": {},
+      "wars": [],
+      "rulerAge": 40,
+      "successionCount": 0,
+      "buildings": 1,
+      "lastDecision": "Grenzen sichern",
+      "lastDecisionDay": 0,
+      "iron": 2000
+    },
+    {
+      "id": "ash_covenant",
+      "name": "Aschenbund",
+      "culture": "HUMAN",
+      "capitalId": "capital_ash_01",
+      "ruler": "Regentin Veyra Glutborn",
+      "personality": "EXPANSIONIST",
+      "militaryStyle": "Schwere Glutwachen und aggressive Flanken",
+      "longTermGoal": "Die alten Pässe beherrschen",
+      "gold": 3000,
+      "food": 12000,
+      "population": 4000,
+      "aggression": 75,
+      "relations": {
+        "last_wall": -35,
+        "verdant_compact": -45,
+        "copper_league": -10
+      },
+      "wars": [],
+      "rulerAge": 40,
+      "successionCount": 0,
+      "buildings": 1,
+      "lastDecision": "Grenzen sichern",
+      "lastDecisionDay": 0,
+      "iron": 2000
+    },
+    {
+      "id": "verdant_compact",
+      "name": "Hainpakt",
+      "culture": "WOOD_ELF",
+      "capitalId": "capital_verdant_01",
+      "ruler": "Hüterin Sera Wurzelstern",
+      "personality": "CAUTIOUS",
+      "militaryStyle": "Waldkundige Fernkämpfer und Hinterhalte",
+      "longTermGoal": "Heilige Wälder schützen",
+      "gold": 3000,
+      "food": 12000,
+      "population": 4000,
+      "aggression": 25,
+      "relations": {
+        "last_wall": 10,
+        "ash_covenant": -45,
+        "copper_league": 5
+      },
+      "wars": [],
+      "rulerAge": 40,
+      "successionCount": 0,
+      "buildings": 1,
+      "lastDecision": "Grenzen sichern",
+      "lastDecisionDay": 0,
+      "iron": 2000
+    },
+    {
+      "id": "copper_league",
+      "name": "Kupferliga",
+      "culture": "WALL",
+      "capitalId": "capital_copper_01",
+      "ruler": "Konsul Daren Kupfersiegel",
+      "personality": "MERCANTILE",
+      "militaryStyle": "Disziplinierte Speere und Handelsstraßen",
+      "longTermGoal": "Häfen und Handelswege verbinden",
+      "gold": 3000,
+      "food": 12000,
+      "population": 4000,
+      "aggression": 35,
+      "relations": {
+        "last_wall": 15,
+        "ash_covenant": -10,
+        "verdant_compact": 5
+      },
+      "wars": [],
+      "rulerAge": 40,
+      "successionCount": 0,
+      "buildings": 1,
+      "lastDecision": "Grenzen sichern",
+      "lastDecisionDay": 0,
+      "iron": 2000
+    }
+  ],
+  "enemyCommanders": [
+    {
+      "id": "enemy_veyk_01",
+      "factionId": "ash_covenant",
+      "name": "Veyk Aschenhand",
+      "culture": "HUMAN",
+      "portraitKey": "knight",
+      "personality": "AGGRESSIVE",
+      "trait": "Unbeugsam",
+      "rank": "Hauptmann",
+      "experience": 0,
+      "victories": 0,
+      "defeats": 0,
+      "injuries": 0,
+      "rivalry": 0,
+      "epithet": null,
+      "revengeTarget": null,
+      "rulerLoyalty": 70
+    },
+    {
+      "id": "enemy_nera_01",
+      "factionId": "verdant_compact",
+      "name": "Nera Farnklinge",
+      "culture": "WOOD_ELF",
+      "portraitKey": "wood_elf",
+      "personality": "CAUTIOUS",
+      "trait": "Waldkundig",
+      "rank": "Hauptmann",
+      "experience": 0,
+      "victories": 0,
+      "defeats": 0,
+      "injuries": 0,
+      "rivalry": 0,
+      "epithet": null,
+      "revengeTarget": null,
+      "rulerLoyalty": 70
+    },
+    {
+      "id": "enemy_oren_01",
+      "factionId": "copper_league",
+      "name": "Oren Brückenschild",
+      "culture": "WALL",
+      "portraitKey": "wall_guard",
+      "personality": "HONORABLE",
+      "trait": "Diszipliniert",
+      "rank": "Hauptmann",
+      "experience": 0,
+      "victories": 0,
+      "defeats": 0,
+      "injuries": 0,
+      "rivalry": 0,
+      "epithet": null,
+      "revengeTarget": null,
+      "rulerLoyalty": 70
+    }
+  ],
+  "armies": [
+    {
+      "id": "army_ash_01",
+      "factionId": "ash_covenant",
+      "name": "Glutwacht",
+      "units": [
+        {
+          "type": "HUMAN_SWORD",
+          "amount": 300
+        },
+        {
+          "type": "KNIGHT",
+          "amount": 60
+        }
+      ],
+      "regionId": "capital_ash_01",
+      "commanderId": null,
+      "enemyCommanderId": "enemy_veyk_01",
+      "destinationId": null,
+      "route": [],
+      "routeIndex": 0,
+      "legProgress": 0,
+      "arrivalDay": null,
+      "supplyFood": 3360,
+      "morale": 80,
+      "marchPolicy": "NORMAL",
+      "status": "HOLDING",
+      "missionId": null,
+      "lastMovedDay": 0,
+      "lastLosses": 0
+    },
+    {
+      "id": "army_verdant_01",
+      "factionId": "verdant_compact",
+      "name": "Farnbanner",
+      "units": [
+        {
+          "type": "WOOD_RANGER",
+          "amount": 220
+        },
+        {
+          "type": "WOOD_BLADE",
+          "amount": 100
+        }
+      ],
+      "regionId": "capital_verdant_01",
+      "commanderId": null,
+      "enemyCommanderId": "enemy_nera_01",
+      "destinationId": null,
+      "route": [],
+      "routeIndex": 0,
+      "legProgress": 0,
+      "arrivalDay": null,
+      "supplyFood": 2240,
+      "morale": 80,
+      "marchPolicy": "NORMAL",
+      "status": "HOLDING",
+      "missionId": null,
+      "lastMovedDay": 0,
+      "lastLosses": 0
+    },
+    {
+      "id": "army_copper_01",
+      "factionId": "copper_league",
+      "name": "Brückenbanner",
+      "units": [
+        {
+          "type": "BEAR_CORPS",
+          "amount": 200
+        },
+        {
+          "type": "EAGLE_CORPS",
+          "amount": 100
+        }
+      ],
+      "regionId": "capital_copper_01",
+      "commanderId": null,
+      "enemyCommanderId": "enemy_oren_01",
+      "destinationId": null,
+      "route": [],
+      "routeIndex": 0,
+      "legProgress": 0,
+      "arrivalDay": null,
+      "supplyFood": 2100,
+      "morale": 80,
+      "marchPolicy": "NORMAL",
+      "status": "HOLDING",
+      "missionId": null,
+      "lastMovedDay": 0,
+      "lastLosses": 0
+    }
+  ]
+}

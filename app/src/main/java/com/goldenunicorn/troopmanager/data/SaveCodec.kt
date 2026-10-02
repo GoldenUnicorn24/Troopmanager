@@ -1,14 +1,15 @@
 package com.goldenunicorn.troopmanager.data
 
 import com.goldenunicorn.troopmanager.model.*
-import com.goldenunicorn.troopmanager.engine.CityEngine
+import com.goldenunicorn.troopmanager.engine.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import java.security.MessageDigest
 
 /** Android-independent, versioned save format. Invalid data is never silently a new game. */
 object SaveCodec {
-    const val CURRENT_VERSION = 3
+    const val CURRENT_VERSION = 4
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -19,7 +20,8 @@ object SaveCodec {
             "Unbekannte Spielstandversion ${state.version}."
         }
         validate(state)
-        return json.encodeToString(state)
+        val payload = json.encodeToJsonElement(state).jsonObject
+        return JsonObject(payload + ("_checksum" to JsonPrimitive(checksum(payload.toString())))).toString()
     }
 
     fun decode(raw: String): GameState {
@@ -38,9 +40,22 @@ object SaveCodec {
                     true,
                 )
             if (version < 1) throw SaveFormatException("Die Spielstandversion ist ungültig.")
+            require(version < CURRENT_VERSION || root["_checksum"] != null) {
+                "Die Prüfsumme des v0.6-Spielstands fehlt. Der Originalspielstand bleibt erhalten."
+            }
+            root["_checksum"]?.let { stored ->
+                require((stored as? JsonPrimitive)?.content == checksum(JsonObject(root - "_checksum").toString())) {
+                    "Die Prüfsumme stimmt nicht. Der Originalspielstand bleibt erhalten."
+                }
+            }
             requireCoreStructure(root, version)
             val previous = if (version == 1) migrate(root) else json.decodeFromJsonElement<GameState>(root)
-            val state = if (version <= 2) previous.copy(version = CURRENT_VERSION, city = CityEngine.migrationDefaults(previous)) else previous
+            var state = if (version <= 2) previous.copy(version = CURRENT_VERSION, city = CityEngine.migrationDefaults(previous)) else previous.copy(version = CURRENT_VERSION)
+            if (version < CURRENT_VERSION) {
+                state = WorldEngine.initialize(state)
+                state = CharacterEngine.initialize(state)
+                state = DiplomacyEngine.initialize(state)
+            }
             validate(state)
             return state
         } catch (error: SaveFormatException) {
@@ -52,6 +67,9 @@ object SaveCodec {
             )
         }
     }
+
+    private fun checksum(payload: String): String = MessageDigest.getInstance("SHA-256")
+        .digest(payload.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
     private fun requireCoreStructure(root: JsonObject, version: Int) {
         require(root["day"] is JsonPrimitive) { "Tag fehlt." }
@@ -92,6 +110,11 @@ object SaveCodec {
             val storage = city["storageCapacity"] as? JsonObject ?: error("Lagerkapazitäten fehlen.")
             require(listOf("gold", "food", "wood", "stone", "iron").all { storage[it] is JsonPrimitive }) {
                 "Lagerkapazitäten sind unvollständig."
+            }
+        }
+        if (version >= 4) {
+            require(listOf("world", "war", "court", "dynasty", "diplomacy", "espionage", "society", "settings", "presentation").all { root[it] is JsonObject }) {
+                "Die v0.6-Weltdaten sind unvollständig."
             }
         }
         require(root[if (version == 1) "regiments" else "armyPools"] is JsonArray) {
@@ -291,6 +314,11 @@ object SaveCodec {
             "Ungültiges Gebiet."
         }
         require(state.version == CURRENT_VERSION) { "Ungültige Spielstandversion." }
+        require(state.settings.textScale in 0.8f..1.6f && state.settings.battleSpeed in 0.5f..3f) { "Ungültige Einstellungen." }
+        WorldEngine.validate(state)
+        CharacterEngine.validate(state)
+        WarEngine.validate(state)
+        DiplomacyEngine.validate(state)
         require(state.city.housingCapacity >= 0 && ResourceKind.entries.all { it.value(state.city.storageCapacity) >= 0 }) {
             "Ungültige Stadt- oder Lagerkapazität."
         }
@@ -349,7 +377,7 @@ object SaveCodec {
                 "Ungültige Mission."
             }
             validateAllocations(mission.units)
-            require(mission.losses <= mission.total) {
+            require(mission.losses <= (if (mission.originalTotal > 0) mission.originalTotal else mission.total)) {
                 "Missionsverluste überschreiten die Truppenstärke."
             }
             if (mission.quality.isNotEmpty()) {
@@ -374,13 +402,12 @@ object SaveCodec {
 
             if (mission.status.isAway) {
                 require(
-                    mission.units.isNotEmpty() && mission.remainingDays in 1..mission.duration
+                    mission.units.isNotEmpty() && mission.remainingDays in 1..(if (mission.regionId == null && mission.originalTotal == 0 && mission.phase == MissionPhase.OPERATING) mission.duration else 1000)
                 ) {
                     "Ungültige laufende Mission."
                 }
-                require(mission.losses == 0 && mission.outcome == null) {
-                    "Laufende Mission besitzt bereits ein Ergebnis."
-                }
+                if (mission.status == MissionStatus.ACTIVE)
+                    require(mission.outcome == null) { "Aktive Mission besitzt bereits ein Ergebnis." }
                 if (mission.commanderId != null)
                     require(state.commanders.any { it.id == mission.commanderId }) {
                         "Missionskommandant fehlt."
@@ -401,10 +428,7 @@ object SaveCodec {
             require(!state.commanderAway(commander.id)) { "Ungültige Kommandantenzuweisung." }
         }
         UnitType.entries.forEach { type ->
-            val away =
-                state.activeMissions
-                    .filter { it.status.isAway }
-                    .sumOf { m -> m.units.filter { it.type == type }.sumOf { it.amount.toLong() } }
+            val away = state.away(type).toLong()
             val assigned =
                 state.commanderAssignments.sumOf { a ->
                     a.units.filter { it.type == type }.sumOf { it.amount.toLong() }

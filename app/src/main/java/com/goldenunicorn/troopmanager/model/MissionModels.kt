@@ -23,6 +23,16 @@ enum class MissionOutcome(val label: String) {
 }
 
 @Serializable
+enum class MissionPhase { OUTBOUND, OPERATING, RETURNING, DONE }
+
+@Serializable
+data class MissionDecision(
+    val title: String,
+    val text: String,
+    val options: List<String>,
+)
+
+@Serializable
 data class ActiveMission(
     val id: Long,
     val missionType: MissionType,
@@ -40,6 +50,14 @@ data class ActiveMission(
     val xpReward: Int = 0,
     val regionId: String? = null,
     val quality: List<ArmyUnitPool> = emptyList(),
+    val phase: MissionPhase = MissionPhase.OPERATING,
+    val operationDaysRemaining: Int = 0,
+    val pendingDecision: MissionDecision? = null,
+    val routeDecisionMade: Boolean = false,
+    val riskFactor: Double = 1.0,
+    val originalTotal: Int = 0,
+    val lastTickDay: Int = 0,
+
 ) {
     val total: Int
         get() = units.sumOf { it.amount }

@@ -40,7 +40,7 @@ class SaveCodecTest {
     @Test
     fun migrationAggregatesWeightsAndPreservesLegacyProgress() {
         val loaded = SaveCodec.decode(legacy())
-        assertEquals(3, loaded.version)
+        assertEquals(SaveCodec.CURRENT_VERSION, loaded.version)
         assertEquals(2, loaded.armyPools.size)
         val pool = loaded.armyPools.first { it.type == UnitType.HUMAN_SWORD }
         assertEquals(400, pool.soldiers)
@@ -380,7 +380,13 @@ class SaveCodecTest {
         assertEquals(saved, SaveCodec.decode(SaveCodec.encode(saved)))
     }
 
-    private fun raw(state: GameState): String = Json { encodeDefaults = true }.encodeToString(state)
+    private fun raw(state: GameState): String {
+        // Give intentionally invalid domain fixtures a valid envelope so semantic validation runs.
+        val payload = Json { encodeDefaults = true }.encodeToJsonElement(state).jsonObject
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(payload.toString().toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        return JsonObject(payload + ("_checksum" to JsonPrimitive(digest))).toString()
+    }
 
     @Test
     fun backupRecoversCorruptPrimaryAndSurvivesFurtherSave() {
@@ -445,12 +451,12 @@ class SaveCodecTest {
     }
 
     @Test
-    fun legacyLoadPersistsV3AndKeepsOriginalBackup() {
+    fun legacyLoadPersistsCurrentSchemaAndKeepsOriginalBackup() {
         val storage = MemoryStorage()
         storage.values[PRIMARY] = legacy()
         assertNotNull(SaveRepository(storage).load())
         assertEquals(
-            3,
+            SaveCodec.CURRENT_VERSION,
             Json.parseToJsonElement(storage.values.getValue(PRIMARY))
                 .jsonObject
                 .getValue("version")

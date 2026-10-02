@@ -1,0 +1,23 @@
+--------- beginning of main
+--------- beginning of system
+10-02 07:27:52.948  1643  2783 I ActivityManager: Force stopping com.goldenunicorn.troopmanager appid=10065 user=0: from pid 3734
+10-02 07:27:52.953  1643  2783 I ActivityManager: Killing 3027:com.goldenunicorn.troopmanager/u0a65 (adj 0): stop com.goldenunicorn.troopmanager
+10-02 07:27:52.968  1643  2783 W ActivityManager: Force removing ActivityRecord{32e3a31 u0 com.goldenunicorn.troopmanager/.MainActivity t5}: app died, no saved state
+10-02 07:27:53.869  1643  1667 W ActivityManager: setHasOverlayUi called on unknown pid: 3027
+10-02 07:27:57.925  1643  1657 I ActivityManager: START u0 {flg=0x10000000 cmp=com.goldenunicorn.troopmanager/.MainActivity} from uid 2000
+10-02 07:27:58.438  1643  1808 W ActivityManager: Slow operation: 296ms so far, now at startProcess: returned from zygote!
+10-02 07:27:58.439  1643  1808 W ActivityManager: Slow operation: 298ms so far, now at startProcess: done updating battery stats
+10-02 07:27:58.439  1643  1808 W ActivityManager: Slow operation: 299ms so far, now at startProcess: building log message
+10-02 07:27:58.439  1643  1808 I ActivityManager: Start proc 3744:com.goldenunicorn.troopmanager/u0a65 for activity com.goldenunicorn.troopmanager/.MainActivity
+10-02 07:27:58.439  1643  1808 W ActivityManager: Slow operation: 299ms so far, now at startProcess: starting to update pids map
+10-02 07:27:58.440  1643  1808 W ActivityManager: Slow operation: 299ms so far, now at startProcess: done updating pids map
+10-02 07:27:58.440  1643  1808 W ActivityManager: Slow operation: 305ms so far, now at startProcess: done starting proc!
+10-02 07:27:59.316  1643  3736 W ActivityManager: Slow operation: 205ms so far, now at attachApplicationLocked: after mServices.attachApplicationLocked
+10-02 07:28:08.072  1643  1660 W ActivityManager: Launch timeout has expired, giving up wake lock!
+10-02 07:28:14.013  1643  1667 I ActivityManager: Displayed com.goldenunicorn.troopmanager/.MainActivity: +15s795ms
+10-02 07:29:09.151  3837  3837 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-02 07:29:10.524  3837  3837 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-02 07:29:16.742  3837  3837 D AndroidRuntime: Shutting down VM
+10-02 07:29:22.270  3852  3852 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-02 07:29:28.012  3852  3852 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-02 07:29:29.254  3852  3852 D AndroidRuntime: Shutting down VM

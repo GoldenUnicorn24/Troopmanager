@@ -477,7 +477,7 @@ object EventEngine {
                         scoutingDays = maxOf(state.realm.scoutingDays, c.scoutingDays),
                     ),
                 chronicle =
-                    (state.chronicle + ChronicleEntry(state.day, event.title, c.label)).takeLast(80),
+                    (state.chronicle + ChronicleEntry(state.day, event.title, c.label)).takeLast(2000),
             )
         if (c.desertion) {
             val losses =

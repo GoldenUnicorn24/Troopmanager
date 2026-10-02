@@ -9,7 +9,7 @@ class CampaignIntegrationTest {
     @Test
     fun sixtyDayCampaignsRemainSaveableAcrossMissionsInvasionsAndBattles() {
         Species.entries.forEach { species ->
-            var state = GameEngine.newGame("Leon", 23, species, null)
+            var state = DiplomacyEngine.declareWar(GameEngine.newGame("Leon", 23, species, null), "ash_covenant").state
             state = GameEngine.recruit(state, state.armyPools.first().type, 25).state
             repeat(60) {
                 if (state.pendingRealmEvent != null) state = EventEngine.choose(state, 0).state
@@ -46,7 +46,7 @@ class CampaignIntegrationTest {
                         }
                     }
                     assertFalse("Battle stalled for $species", state.battleSession!!.isActive)
-                    state = state.copy(battleSession = null)
+                    state = WorldEngine.reconcileBattle(state).copy(battleSession = null)
                 }
             }
             assertEquals(61, state.day)

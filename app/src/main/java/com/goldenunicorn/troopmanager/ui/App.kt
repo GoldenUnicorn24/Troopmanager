@@ -31,8 +31,11 @@ import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.data.SaveRepository
 import com.goldenunicorn.troopmanager.engine.GameEngine
-import com.goldenunicorn.troopmanager.model.GameState
-import com.goldenunicorn.troopmanager.model.Species
+import com.goldenunicorn.troopmanager.model.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.goldenunicorn.troopmanager.audio.GameSoundscape
 
 private enum class Screen(val label: String, val icon: String) {
     REALM("Reich", "♜"),
@@ -44,92 +47,35 @@ private enum class Screen(val label: String, val icon: String) {
 
 @Composable
 fun RealmGameApp(saves: SaveRepository) {
-    var state by remember { mutableStateOf<GameState?>(null) }
-    var inMenu by remember { mutableStateOf(true) }
-    var notice by remember { mutableStateOf<String?>(null) }
-
-    MaterialTheme(
-        colorScheme =
-            darkColorScheme(
-                primary = Gold,
-                onPrimary = Ink,
-                secondary = Blue,
-                background = Ink,
-                surface = Panel,
-                onSurface = Mist,
-            )
-    ) {
-        Box(Modifier.fillMaxSize().background(Ink)) {
-            when {
-                inMenu ->
-                    MainMenu(
-                        hasSave = saves.hasSave(),
-                        onContinue = {
-                            state = saves.load()
-                            saves.lastError?.let { notice = it }
-                            if (state != null) inMenu = false
-                        },
-                        onNew = {
-                            state = null
-                            inMenu = false
-                        },
-                    )
-
-                state == null ->
-                    CharacterCreation(
-                        onCreated = {
-                            state = it
-                            saves.save(it)
-                            saves.lastError?.let { notice = it }
-                        },
-                        onBack = { inMenu = true },
-                    )
-
-                else ->
-                    GameShell(
-                        state = state!!,
-                        onState = {
-                            state = it
-                            saves.save(it)
-                            saves.lastError?.let { notice = it }
-                        },
-                        onNotice = { notice = saves.lastError ?: it },
-                        onMenu = {
-                            saves.save(state!!)
-                            saves.lastError?.let { notice = it }
-                            inMenu = true
-                        },
-                        onDelete = {
-                            saves.delete()
-                            if (saves.lastError == null) {
-                                state = null
-                                inMenu = true
-                            } else notice = saves.lastError
-                        },
-                    )
-            }
-
-            notice?.let { text ->
-                Surface(
-                    modifier =
-                        Modifier.align(Alignment.TopCenter)
-                            .padding(top = 52.dp, start = 18.dp, end = 18.dp),
-                    color = Color(0xEE24303A),
-                    shape = RoundedCornerShape(14.dp),
-                    shadowElevation = 8.dp,
-                ) {
-                    Text(
-                        text,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier =
-                            Modifier.clickable { notice = null }
-                                .padding(horizontal = 18.dp, vertical = 12.dp),
-                    )
+    val controller: GameViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = GameViewModel.factory(saves))
+    val ui by controller.ui.collectAsStateWithLifecycle()
+    val state = ui.game
+    val systemDensity = LocalDensity.current
+    val settings = state?.settings ?: GameSettings()
+    CompositionLocalProvider(LocalDensity provides Density(systemDensity.density, systemDensity.fontScale * settings.textScale)) {
+        MaterialTheme(colorScheme = darkColorScheme(primary = Gold, onPrimary = Ink, secondary = Blue,
+            background = Ink, surface = Panel, onSurface = Mist)) {
+            Box(Modifier.fillMaxSize().background(Ink)) {
+                when {
+                    ui.inMenu -> MainMenu(ui, controller)
+                    state == null -> CharacterCreation(controller::create, controller::menu)
+                    else -> GameShell(state, { controller.update(state, it) }, { controller.notice(it) },
+                        controller::menu, controller::delete, controller::advanceDay, controller)
                 }
-                LaunchedEffect(text) {
-                    kotlinx.coroutines.delay(2300)
-                    notice = null
+                ui.notice?.let { message ->
+                    Surface(Modifier.align(Alignment.TopCenter).padding(top = 52.dp, start = 18.dp, end = 18.dp),
+                        color = Color(0xEE24303A), shape = RoundedCornerShape(14.dp), shadowElevation = 8.dp) {
+                        Text(message, color = Color.White, fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable { controller.notice(null) }.padding(16.dp))
+                    }
+                    LaunchedEffect(message) { kotlinx.coroutines.delay(4500); controller.notice(null) }
+                }
+                if (ui.busy) {
+                    Surface(Modifier.fillMaxSize().clickable(onClick = {}), color = Ink.copy(alpha = .45f)) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = Gold)
+                        }
+                    }
                 }
             }
         }
@@ -137,7 +83,8 @@ fun RealmGameApp(saves: SaveRepository) {
 }
 
 @Composable
-private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit) {
+private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
+    GameSoundscape(ui.game, "menu")
     Box(Modifier.fillMaxSize()) {
         AsyncImage(
             model = "file:///android_asset/menu_cover.webp",
@@ -151,7 +98,7 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
             Modifier.fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D))))
         )
-        Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Bottom) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Bottom) {
             Text("REALM OF THE", color = PaleGold, fontSize = 18.sp, letterSpacing = 3.sp)
             Text("LAST WALL", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
             Text(
@@ -160,11 +107,19 @@ private fun MainMenu(hasSave: Boolean, onContinue: () -> Unit, onNew: () -> Unit
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            if (hasSave) {
-                GoldButton("Spiel fortsetzen", onContinue, Modifier.fillMaxWidth())
+            Text("v0.6 · Lebendige Reiche", color = PaleGold)
+            SaveSlotsPanel(ui, controller)
+            if (ui.hasSave) {
+                GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
             }
-            OutlinedButton(onClick = onNew, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+            var confirmOverwrite by remember { mutableStateOf(false) }
+            if (confirmOverwrite) AlertDialog(onDismissRequest = { confirmOverwrite = false },
+                title = { Text("Neues Reich in Platz ${ui.activeSlot}?") },
+                text = { Text("Die Kampagne in diesem Platz wird beim Gründen ersetzt. Wähle einen leeren Platz, um sie zu behalten.") },
+                confirmButton = { TextButton(onClick = { confirmOverwrite = false; controller.newGame() }) { Text("Neues Reich") } },
+                dismissButton = { TextButton(onClick = { confirmOverwrite = false }) { Text("Abbrechen") } })
+            OutlinedButton(onClick = { if (ui.hasSave) confirmOverwrite = true else controller.newGame() }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
                 Text("Neues Reich", fontWeight = FontWeight.Bold, color = PaleGold)
             }
             Text(
@@ -182,6 +137,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var name by remember { mutableStateOf("Leon") }
     var age by remember { mutableStateOf("23") }
     var species by remember { mutableStateOf(Species.HALF_ELF) }
+    var ironman by remember { mutableStateOf(false) }
     var portrait by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val picker =
@@ -284,10 +240,13 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             }
         }
 
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Switch(ironman, { ironman = it }); Text("Ironman · ein fortlaufender Spielstand", color = Mist)
+        }
         Spacer(Modifier.height(18.dp))
         GoldButton(
             "Reich gründen",
-            { onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait)) },
+            { onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait).let { it.copy(settings = it.settings.copy(ironman = ironman)) }) },
             Modifier.fillMaxWidth(),
         )
         TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -303,13 +262,16 @@ private fun GameShell(
     onNotice: (String) -> Unit,
     onMenu: () -> Unit,
     onDelete: () -> Unit,
+    onAdvanceDay: () -> Unit,
+    controller: GameViewModel,
 ) {
-    var screen by rememberSaveable { mutableStateOf(Screen.REALM) }
+    var screen by rememberSaveable { mutableStateOf(Screen.CITY) }
+    var worldPage by rememberSaveable { mutableStateOf(0) }
     var showMore by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = showMore || screen != Screen.REALM) {
-        if (showMore) showMore = false else screen = Screen.REALM
+    BackHandler(enabled = showMore || screen != Screen.CITY) {
+        if (showMore) showMore = false else screen = Screen.CITY
     }
-    var showTutorial by remember(state.tutorialSeen) { mutableStateOf(!state.tutorialSeen) }
+    var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
     Scaffold(
         containerColor = Ink,
         topBar = {
@@ -374,7 +336,7 @@ private fun GameShell(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (showMore) {
-                MoreScreen(state, onMenu, onDelete, { showTutorial = true })
+                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller)
             } else if (
                 state.battleSession != null && screen != Screen.CITY && screen != Screen.COURT
             ) {
@@ -397,24 +359,31 @@ private fun GameShell(
                             { screen = Screen.WORLD },
                             { screen = Screen.ARMY },
                             { screen = Screen.COURT },
+                            onAdvanceDay,
                         )
                     Screen.CITY ->
                         CityScreen(
                             state,
                             onState,
                             onNotice,
-                            {
-                                val r = GameEngine.advanceDay(state)
-                                onState(r.state)
-                                onNotice(r.message)
-                            },
+                            onAdvanceDay,
+                            onNavigate = { type ->
+                                worldPage = if (type == BuildingType.EMBASSY) 2 else 0
+                                screen = when (type) {
+                                BuildingType.BARRACKS, BuildingType.STABLES, BuildingType.ARSENAL, BuildingType.HOSPITAL -> Screen.ARMY
+                                BuildingType.PALACE, BuildingType.ACADEMY -> Screen.COURT
+                                BuildingType.EMBASSY, BuildingType.WALL, BuildingType.TOWER -> Screen.WORLD
+                                else -> Screen.CITY
+                            } },
                         )
-                    Screen.ARMY -> ArmyScreen(state, onState, onNotice)
-                    Screen.WORLD -> WorldScreen(state, onState, onNotice)
-                    Screen.COURT -> CourtScreen(state, onState, onNotice)
+                    Screen.ARMY -> ArmyHubScreen(state, onState, onNotice)
+                    Screen.WORLD -> WorldHubScreen(state, onState, onNotice, worldPage)
+                    Screen.COURT -> CourtHubScreen(state, onState, onNotice)
                 }
         }
     }
+
+    GameSoundscape(state, if (!showMore && state.battleSession != null && screen != Screen.CITY && screen != Screen.COURT) "battle" else screen.name.lowercase())
 
     if (showTutorial) {
         TutorialDialog(

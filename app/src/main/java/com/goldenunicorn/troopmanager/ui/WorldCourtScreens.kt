@@ -145,9 +145,11 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Schlachtaufstellung") }
         item {
-            EmptyCard("Verteile verfügbare Kommandos auf Flügel, Zentrum und Reserve. Soldaten auf Missionen fehlen. Die Schlacht entwickelt sich Schritt für Schritt mit deinen Entscheidungen.")
+            EmptyCard(if (state.world.initialized)
+                "Entsende dein Feldheer über die Kampagnenkarte. Trifft es einen tatsächlichen Gegner, beginnt die Schlacht. Vor dem ersten Gefecht verteilst du die angereisten Kommandos auf Flügel, Zentrum und Reserve. Invasionen erreichen die Stadt über ihren Marschweg."
+                else "Verteile verfügbare Kommandos auf Flügel, Zentrum und Reserve. Soldaten auf Missionen fehlen. Die Schlacht entwickelt sich Schritt für Schritt mit deinen Entscheidungen.")
         }
-        item { GoldButton("Schlacht vorbereiten", { battleSetup = true }, Modifier.fillMaxWidth()) }
+        if (!state.world.initialized) item { GoldButton("Schlacht vorbereiten", { battleSetup = true }, Modifier.fillMaxWidth()) }
         item { Spacer(Modifier.height(16.dp)) }
     }
     missionRegion?.let { region -> region.mission?.let { mission ->
@@ -296,7 +298,7 @@ private fun FormationZone(section: BattleSection, deployments: List<BattleDeploy
 }
 
 @Composable
-private fun <T> SelectionMenu(label: String, selected: String, options: List<T>, optionLabel: (T) -> String, onSelect: (T) -> Unit) {
+internal fun <T> SelectionMenu(label: String, selected: String, options: List<T>, optionLabel: (T) -> String, onSelect: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text("$label: $selected") }
@@ -470,7 +472,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
             }
 
             item {
-                val stage = state.companion.relationshipStage()
+                val stage = state.relationshipStage()
                 StatGrid(
                     listOf(
                         "Vertrauen" to (state.companion.trust.toString() + "%"),
@@ -497,7 +499,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(event.title, color = PaleGold, fontWeight = FontWeight.Bold)
                             Text(event.text, color = Mist)
-                            listOf("Unterstützen", "Herausfordern", "Zurückziehen").forEachIndexed { index, choice ->
+                            (if (event.key == "intimacy") listOf("Gemeinsam den Abend verbringen", "Über den Krieg sprechen", "Ruhe lassen") else listOf("Unterstützen", "Herausfordern", "Zurückziehen")).forEachIndexed { index, choice ->
                                 SmallAction(choice) {
                                     val result = RelationshipEngine.choose(state, index)
                                     onState(result.state); onNotice(result.message)

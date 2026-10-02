@@ -46,7 +46,7 @@ object GameEngine {
         val commander =
             if (species == Species.ELF) Commander(1, "Caelen", Culture.WOOD_ELF, "wood_elf")
             else Commander(1, "Marcus", Culture.HUMAN, "knight")
-        return GameState(
+        val state = GameState(
             player =
                 CharacterProfile(
                     name.trim().ifBlank { "Leon" }.take(24),
@@ -59,6 +59,7 @@ object GameEngine {
             armyPools = units.map { ArmyUnitPool(it.type, it.amount) },
             commanders = listOf(commander),
         )
+        return DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state)))
     }
 
     fun isUnitUnlocked(state: GameState, type: UnitType): Boolean =
@@ -66,12 +67,21 @@ object GameEngine {
 
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
-        var next = EconomyEngine.day(CityEngine.tick(state))
+        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(state)))
+        next = WorldEngine.tick(next)
         next = MissionEngine.tick(next)
+        next = WarEngine.tick(next)
         next = RelationshipEngine.day(next)
+        next = CharacterEngine.tick(next)
+        next = DynastyEngine.tick(next)
+        next = DiplomacyEngine.tick(next)
+        next = EspionageEngine.tick(next)
+        next = SocietyEngine.tick(next)
+        next = StoryDirector.tick(next)
         next = EventEngine.day(next)
         next = InvasionEngine.day(next)
         next = ProgressionEngine.update(next)
+        next = PresentationEngine.tick(next)
         val message =
             if (next.battleSession?.isActive == true)
                 "Die Invasion erreicht deine Festung. Die Verteidigung beginnt!"
@@ -121,7 +131,7 @@ object GameEngine {
                                 "Ausbildung begonnen",
                                 "$amount ${type.label}, $days Tage bis zur Einsatzbereitschaft.",
                             ))
-                        .takeLast(80),
+                        .takeLast(2000),
             ),
             "$amount ${type.label} beginnen die Ausbildung.",
         )
@@ -199,7 +209,7 @@ object GameEngine {
                                     "Neues Gebiet",
                                     "Dein Reich besitzt $territory Gebiete.",
                                 ))
-                            .takeLast(80),
+                            .takeLast(2000),
                 )
             ),
             "Neues Gebiet und zusätzliche Bevölkerung.",
@@ -261,7 +271,7 @@ object GameEngine {
                                 "Neue Führungskraft",
                                 "$name übernimmt ein eigenes Kommando.",
                             ))
-                        .takeLast(80),
+                        .takeLast(2000),
             ),
             "$name befördert. Truppen können nun zugewiesen werden.",
         )
@@ -322,6 +332,7 @@ object GameEngine {
         val invasion = state.invasion ?: return ActionResult(state, "Keine angekündigte Invasion.")
         if (invasion.alliesRequested)
             return ActionResult(state, "Verbündete wurden bereits angefordert.")
+        if (state.world.initialized) return requestWorldAllies(state, invasion)
         val cost = (600 - state.player.diplomacy * 4 - state.realm.level(BuildingType.EMBASSY).coerceAtMost(5) * 30).coerceAtLeast(150)
         if (state.resources.gold < cost)
             return ActionResult(state, "Boten und Unterstützung benötigen $cost Gold.")
@@ -341,10 +352,39 @@ object GameEngine {
                                 "Verbündete mobilisiert",
                                 "Unterstützung bindet feindliche Kräfte; die angreifende Streitmacht wird kleiner.",
                             ))
-                        .takeLast(80),
+                        .takeLast(2000),
             ),
             "Verbündete schwächen den anrückenden Feind.",
         )
+    }
+
+    private fun requestWorldAllies(state: GameState, invasion: Invasion): ActionResult {
+        val enemy = state.world.armies.firstOrNull { it.id == (invasion.worldArmyId ?: state.world.invasionArmyId) }
+            ?: return ActionResult(state, "Zuerst muss das anrückende Heer bestätigt werden.")
+        val allies = DiplomacyEngine.defensiveAllies(state, PLAYER_FACTION)
+        val army = state.world.armies.firstOrNull { it.factionId in allies && it.status.isAway && it.missionId == null && it.total > 0 && it.id != state.world.invasionArmyId }
+            ?: return ActionResult(state, "Ein Verteidigungsbündnis und ein verfügbares verbündetes Heer werden benötigt.")
+        val faction = state.world.faction(army.factionId) ?: return ActionResult(state, "Verbündetes Reich fehlt.")
+        val target = state.world.knowledgeFor(PLAYER_FACTION).observations.firstOrNull { it.armyId == enemy.id && it.day >= state.day - 3 }?.regionId ?: "village"
+        val route = WorldEngine.route(state.world, army.regionId, target)
+        if (route.isEmpty() || !WorldEngine.routeAllowed(state, army.factionId, route))
+            return ActionResult(state, "Das verbündete Heer findet keinen erlaubten Weg zur Grenze.")
+        val days = WorldEngine.travelDays(state, army, route)
+        val provisions = (army.dailyFood.toLong() * (days + 3)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val topUp = (provisions - army.supplyFood).coerceAtLeast(0)
+        if (faction.food < topUp) return ActionResult(state, "Der Verbündete hat nicht genug Vorräte für diesen Einsatz.")
+        val cost = (600 - state.player.diplomacy * 4 - state.realm.level(BuildingType.EMBASSY).coerceAtMost(5) * 30).coerceAtLeast(150)
+        if (state.resources.gold < cost) return ActionResult(state, "Boten und Unterstützung benötigen $cost Gold.")
+        var next = state.copy(resources = state.resources.copy(gold = state.resources.gold - cost),
+            invasion = invasion.copy(alliesRequested = true),
+            diplomacy = state.diplomacy.copy(treaties = state.diplomacy.treaties.filterNot { it.connects(army.factionId, enemy.factionId) }),
+            world = state.world.copy(armies = state.world.armies.map { if (it.id == army.id) it.copy(destinationId = target, route = route,
+                routeIndex = 0, legProgress = 0, arrivalDay = state.day + days, supplyFood = army.supplyFood + topUp, status = WorldArmyStatus.MARCHING) else it },
+                factions = state.world.factions.map { if (it.id == faction.id) it.copy(food = it.food - topUp, gold = (it.gold.toLong() + cost).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) else it }))
+        next = DiplomacyEngine.changeRelation(next, army.factionId, enemy.factionId, -15, -10, "Verteidigungsbündnis: Hilfe für die Letzte Mauer", atWar = true)
+        return ActionResult(next.copy(chronicle = (next.chronicle + ChronicleEntry(state.day, "Verbündete mobilisiert",
+            "${army.name} marschiert mit ${army.total} Soldaten zur Grenze. Geschätzte Ankunft Tag ${state.day + days}; der Feind verliert erst im tatsächlichen Kampf Truppen.")).takeLast(2000)),
+            "${army.name} wurde mobilisiert; Reisezeit etwa $days Tage.")
     }
 
     fun companionAction(state: GameState, action: String): ActionResult =

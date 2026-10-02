@@ -3,6 +3,8 @@ package com.goldenunicorn.troopmanager.ui
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,6 +26,7 @@ import com.goldenunicorn.troopmanager.model.*
 @Composable
 internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val session = state.battleSession ?: return
+    var commandSection by remember { mutableStateOf(BattleSection.CENTER) }
     var showSetup by remember { mutableStateOf(false) }
     if (showSetup) BattleSetupDialog(state, { showSetup = false }, onState, onNotice)
     fun advance(decision: BattleDecision? = null) {
@@ -35,14 +38,18 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
         modifier = Modifier.fillMaxSize().background(Ink), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("LIVE-SCHLACHT", "${session.enemy.label} · ${session.tactic.label}") }
+        item { ContextTutorialCard(state, "battle", onState) }
+        item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { BannerBadge(state.presentation.heraldry, extent = 42.dp); PageTitle("LIVE-SCHLACHT", "${session.enemyFactionName ?: session.enemyArmyName ?: session.enemy.label} · ${session.tactic.label}") } }
         item {
             Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Minute ${session.minute} · ${session.phase.label}", color = PaleGold, fontWeight = FontWeight.Bold)
                     BattleStrength("Dein Heer", session.ownRemaining, session.ownStart, Gold)
                     BattleStrength("Gegner", session.enemyRemaining, session.enemyStart, Danger)
-                    Text("Moral ${session.morale} % · ${session.soldiers(BattleSection.RESERVE)} in Reserve", color = Mist)
+                    Text("Moral ${session.morale} % · ${MoraleState.from(session.morale).label} · ${session.soldiers(BattleSection.RESERVE)} in Reserve", color = Mist)
+                    Text("Befehlspunkte ${session.commandPoints} / ${session.maxCommandPoints} · +${BattleEngine.commandRegeneration(state, session)} je Austausch", color = PaleGold)
+                    if (session.enemyFortification > 0) Text("Gegnerische Befestigung ${session.enemyFortification} % · Leiter, Rammbock, Turm oder Tunnel öffnen Wege.", color = PaleGold, fontSize = 12.sp)
+                    Text("${session.fightingRemaining} kämpfen · ${session.ownRemaining - session.fightingRemaining} auf der Flucht · ${session.participation.label}", color = Mist, fontSize = 12.sp)
                     if (session.tactic == Tactic.FORTIFY) {
                         Text("Mauerzustand ${session.wallIntegrity} %", color = if (session.wallIntegrity < 30) Danger else PaleGold)
                         Text(if (session.devices.isEmpty()) "Keine feindlichen Belagerungsgeräte mehr" else session.devices.joinToString(" · ") { it.label }, color = Mist, fontSize = 12.sp)
@@ -52,7 +59,9 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
             }
         }
         if (session.minute == 0 && session.isActive) item {
-            GoldButton("Aufstellung vor Kampfbeginn anpassen", { showSetup = true }, Modifier.fillMaxWidth())
+            WarFormationPanel(state, onState, onNotice)
+            if (state.world.encounter == null) GoldButton("Truppenzahlen vor Kampfbeginn anpassen", { showSetup = true }, Modifier.fillMaxWidth())
+            else Text("Die Expedition stellt nur ihre anwesenden Soldaten auf; Verstärkung muss zuerst zum Schlachtort marschieren.", color = Mist, fontSize = 12.sp)
         }
         if (session.tactic == Tactic.FORTIFY) item {
             Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
@@ -62,7 +71,15 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                 }
             }
         }
-        item { SessionBattleField(session) }
+        item { SessionBattleField(session, state.settings.animations, state.settings.battleSpeed) }
+        if (session.isActive && session.pendingEvent == null) item {
+            SelectionMenu("Befehlsabschnitt", commandSection.label, BattleSection.entries.filterNot { it == BattleSection.RESERVE }, { it.label }) { commandSection = it }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(BattleDecision.ADVANCE, BattleDecision.HOLD, BattleDecision.RETREAT_LINE, BattleDecision.SEND_RESERVE, BattleDecision.STRENGTHEN_SECTION, BattleDecision.CAVALRY_CHARGE, BattleDecision.ARROW_VOLLEY, BattleDecision.FOCUS_FIRE, BattleDecision.ARTILLERY_TARGET, BattleDecision.HOLD_GATE, BattleDecision.OPEN_GATE, BattleDecision.RALLY, BattleDecision.FEIGNED_RETREAT, BattleDecision.ORDERED_RETREAT, BattleDecision.SCALE_WALL, BattleDecision.BREACH_GATE, BattleDecision.TOWER_ASSAULT, BattleDecision.UNDERMINE).filter { BattleEngine.canOrder(session, it, commandSection) }.forEach { order ->
+                    OutlinedButton(enabled = session.commandPoints >= BattleEngine.orderCost(session, order), onClick = { val result = BattleEngine.order(state, order, commandSection); onState(result.state); onNotice(result.message) }) { Text("${order.label} (${BattleEngine.orderCost(session, order)})") }
+                }
+            }
+        }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(BattleSection.LEFT, BattleSection.CENTER, BattleSection.RIGHT).forEach { section ->
@@ -72,6 +89,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                             Text(section.label, color = PaleGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             Text("${session.soldiers(section)} eigene", color = Gold, fontSize = 12.sp)
                             Text("${front?.enemySoldiers ?: 0} Gegner", color = Danger, fontSize = 12.sp)
+                            Text(session.terrain[section]?.label ?: "Ebene", color = PaleGold, fontSize = 11.sp)
                             Text(when { (front?.position ?: 50) > 55 -> "Gewinnt Boden"; (front?.position ?: 50) < 40 -> "Unter Druck"; else -> "Linie hält" }, color = Mist, fontSize = 11.sp)
                             session.contingents.filter { it.section == section && it.soldiers > 0 }.map { it.commanderId }.distinct().forEach { id ->
                                 Text(if (id == null) "Oberkommando" else state.commanders.firstOrNull { it.id == id }?.name ?: "Kommandant", color = Mist, fontSize = 11.sp)
@@ -90,7 +108,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     Text("${contingent.type.label} · ${contingent.soldiers} / ${contingent.startSoldiers}", color = PaleGold, fontWeight = FontWeight.Bold)
                     Text("$commander · ${contingent.section.label}", color = Mist, fontSize = 12.sp)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Moral ${contingent.morale} %", color = if (contingent.morale < 35) Danger else Success, fontSize = 12.sp)
+                        Text("Moral ${contingent.morale} % · ${MoraleState.from(contingent.morale, contingent.routed).label}", color = if (contingent.morale < 35) Danger else Success, fontSize = 12.sp)
                         Text("Erfahrung ${contingent.experience} · Ausrüstung ${contingent.equipment} %", color = Mist, fontSize = 12.sp)
                     }
                     if (contingent.commanderWounded) Text(if (contingent.commanderRescued) "Kommandant geborgen · Führung teilweise wiederhergestellt" else "Kommandant verwundet · Führung geschwächt", color = Danger, fontSize = 12.sp)
@@ -105,7 +123,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                         Text(event.title, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         Text(event.text, color = Mist)
                         event.options.forEach { option ->
-                            OutlinedButton(onClick = { advance(option) }, modifier = Modifier.fillMaxWidth()) { Text(option.label) }
+                            OutlinedButton(enabled = session.commandPoints >= BattleEngine.orderCost(session, option), onClick = { advance(option) }, modifier = Modifier.fillMaxWidth()) { Text("${option.label} · ${BattleEngine.orderCost(session, option)} Punkte") }
                         }
                     }
                 }
@@ -118,7 +136,8 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(if (session.status == BattleStatus.VICTORY) "SIEG" else "NIEDERLAGE", color = if (session.status == BattleStatus.VICTORY) Success else Danger, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                         if (session.orderedRetreat) Text("Geordneter Rückzug · Überlebende in Sicherheit", color = PaleGold)
-                        Text("Heer: ${session.ownStart} zu Beginn · ${session.ownRemaining} Überlebende · ${session.ownStart - session.ownRemaining} Tote", color = Color.White)
+                        Text("Heer: ${session.ownStart} zu Beginn · ${session.ownRemaining} einsatzfähige Überlebende", color = Color.White)
+                        Text("${session.casualties.dead} gefallen · ${session.casualties.wounded} verwundet · ${session.casualties.missing} vermisst · ${session.casualties.captured} gefangen", color = Mist)
                         Text("Gegner: ${session.enemyStart} zu Beginn · ${session.enemyRemaining} verblieben · ${session.enemyStart - session.enemyRemaining} Verluste", color = Mist)
                         Text("+${session.xpReward} Spieler-XP · +${session.renownReward} Ruhm", color = PaleGold)
                         Text("Moral der Überlebenden: ${session.morale} % · Ausrüstungsverschleiß: ${session.equipmentDamage} Punkte im eingesetzten Heer", color = Mist)
@@ -126,7 +145,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                         session.contingents.groupBy { it.type }.forEach { (type, troops) ->
                             val initial = troops.sumOf { it.startSoldiers }
                             val survivors = troops.sumOf { it.soldiers }
-                            Text("${type.label}: $initial → $survivors · ${initial - survivors} Tote", color = Mist, fontSize = 12.sp)
+                            Text("${type.label}: $initial → $survivors · ${initial - survivors} Ausfälle", color = Mist, fontSize = 12.sp)
                         }
                         session.commanderEvents.forEach { Text(it, color = PaleGold, fontSize = 12.sp) }
                         Text("Das Ergebnis wurde übernommen. Deine überlebenden Truppen stehen wieder zur Verfügung.", color = Mist)
@@ -152,10 +171,11 @@ private fun BattleStrength(label: String, current: Int, initial: Int, color: Col
 
 /** Aggregate formations stay tied to persisted positions and casualties; pulse only animates the current exchange. */
 @Composable
-private fun SessionBattleField(session: BattleSession) {
+internal fun SessionBattleField(session: BattleSession, animations: Boolean, battleSpeed: Float) {
+    val visualGroups = remember(session) { BattleEngine.visualGroups(session) }
     val transition = rememberInfiniteTransition(label = "battle-exchange")
-    val animated by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(1500), RepeatMode.Restart), label = "battle-motion")
-    val pulse = if (session.isActive && session.minute > 0) animated else 0.5f
+    val animated by transition.animateFloat(0f, 1f, infiniteRepeatable(tween((1500 / battleSpeed.coerceIn(0.5f, 3f)).toInt()), RepeatMode.Restart), label = "battle-motion")
+    val pulse = if (animations && session.isActive && session.minute > 0) animated else 0.5f
     Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("GEFECHTSKARTE", color = PaleGold, fontWeight = FontWeight.Bold)
@@ -164,6 +184,20 @@ private fun SessionBattleField(session: BattleSession) {
                 val w = size.width
                 val h = size.height
                 drawRect(Color(0xFF202A22))
+                listOf(BattleSection.LEFT, BattleSection.CENTER, BattleSection.RIGHT).forEachIndexed { index, section ->
+                    val terrainColor = when (session.terrain[section]) {
+                        BattleTerrain.FOREST -> Color(0xFF263F29)
+                        BattleTerrain.RIVER, BattleTerrain.BRIDGE -> Color(0xFF264958)
+                        BattleTerrain.HILL, BattleTerrain.PASS -> Color(0xFF514B3A)
+                        BattleTerrain.MUD -> Color(0xFF493C2C)
+                        BattleTerrain.WALL, BattleTerrain.STREET -> Color(0xFF474844)
+                        else -> Color(0xFF34432E)
+                    }
+                    drawRect(terrainColor, Offset(w * index / 3f, 0f), Size(w / 3f, h * 0.83f))
+                }
+                if (session.participation == BattleParticipation.PERSONAL) {
+                    drawCircle(Color.White, 6.dp.toPx(), Offset(w * 0.5f, h * 0.64f), style = Stroke(2.dp.toPx()))
+                }
                 repeat(14) { n ->
                     val x = (n * 97f % w)
                     val y = (n * 73f % h)
@@ -179,16 +213,16 @@ private fun SessionBattleField(session: BattleSession) {
                     if (index > 0) drawLine(Color(0xFF56624A).copy(alpha = 0.55f), Offset(w * index / 3f, 0f), Offset(w * index / 3f, h * 0.84f), 1.dp.toPx())
                     val pressed = (front?.position ?: 50) < 40
                     drawLine((if (pressed) Danger else PaleGold).copy(alpha = 0.7f), Offset(x - w * 0.13f, y), Offset(x + w * 0.13f, y), 2.dp.toPx())
-                    val ownMarkers = if (own == 0) 0 else (own / 35 + 1).coerceAtMost(18)
+                    val ownMarkers = visualGroups.count { !it.enemy && it.section == section }
                     repeat(ownMarkers) { n ->
-                        val marker = Offset(x + (n % 6 - 2.5f) * w * 0.036f, y + h * 0.09f + n / 6 * h * 0.047f)
-                        drawRect(Gold, marker - Offset(3.dp.toPx(), 3.dp.toPx()), Size(6.dp.toPx(), 6.dp.toPx()))
+                        val marker = Offset(x + (n % 10 - 4.5f) * w * 0.025f, y + h * 0.06f + (n / 10) * h * 0.20f / ((ownMarkers + 9) / 10).coerceAtLeast(1))
+                        drawRect(if (visualGroups.filter { !it.enemy && it.section == section }.getOrNull(n)?.routed == true) Color(0xFFE6B77C) else Gold, marker - Offset(3.dp.toPx(), 3.dp.toPx()), Size(6.dp.toPx(), 6.dp.toPx()))
                         drawLine(PaleGold, marker + Offset(-2.dp.toPx(), -4.dp.toPx()), marker + Offset(2.dp.toPx(), -4.dp.toPx()), 1.dp.toPx())
                     }
                     val enemies = front?.enemySoldiers ?: 0
-                    val enemyMarkers = if (enemies == 0) 0 else (enemies / 35 + 1).coerceAtMost(18)
+                    val enemyMarkers = visualGroups.count { it.enemy && it.section == section }
                     repeat(enemyMarkers) { n ->
-                        drawCircle(Danger, 3.dp.toPx(), Offset(x + (n % 6 - 2.5f) * w * 0.036f, y - h * 0.085f - n / 6 * h * 0.047f))
+                        drawCircle(Danger, 3.dp.toPx(), Offset(x + (n % 10 - 4.5f) * w * 0.025f, y - h * 0.06f - (n / 10) * h * 0.20f / ((enemyMarkers + 9) / 10).coerceAtLeast(1)))
                     }
                     val local = session.contingents.filter { it.section == section && it.soldiers > 0 }
                     if (session.phase == BattlePhase.RANGED && local.any { it.type.ranged >= 8 } && enemies > 0) repeat(4) { n ->
@@ -239,12 +273,12 @@ private fun SessionBattleField(session: BattleSession) {
                     }
                 }
                 val reserves = session.soldiers(BattleSection.RESERVE)
-                if (reserves > 0) repeat((reserves / 40 + 1).coerceAtMost(12)) { n ->
-                    drawRect(Color(0xFF6CA8C7), Offset(w * 0.30f + (n % 6) * w * 0.075f, reserveY + n / 6 * h * 0.045f), Size(5.dp.toPx(), 5.dp.toPx()))
+                if (reserves > 0) repeat(visualGroups.count { !it.enemy && it.section == BattleSection.RESERVE }) { n ->
+                    drawRect(Color(0xFF6CA8C7), Offset(w * 0.25f + (n % 10) * w * 0.05f, reserveY + (n / 10) * h * 0.075f / ((visualGroups.count { !it.enemy && it.section == BattleSection.RESERVE } + 9) / 10).coerceAtLeast(1)), Size(5.dp.toPx(), 5.dp.toPx()))
                 }
             }
             Text("■ Heer · ● Gegner · ◆ Kavallerie · Blau: Reserve · Orange: Artillerie", color = Mist, fontSize = 11.sp)
-            Text("Front und Formationen folgen dem laufenden Schlachtstand.", color = Mist, fontSize = 11.sp)
+            Text("${visualGroups.size} sichtbare Gruppen · ${visualGroups.minOfOrNull { it.soldiers } ?: 0}–${visualGroups.maxOfOrNull { it.soldiers } ?: 0} Soldaten je Gruppe · weiße Markierung: persönliche Teilnahme.", color = Mist, fontSize = 11.sp)
         }
     }
 }

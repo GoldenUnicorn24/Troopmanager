@@ -157,7 +157,7 @@ object CityEngine {
                                     "Bau abgeschlossen",
                                     "${order.type.label} erreicht Stufe ${order.targetLevel}.",
                                 ))
-                            .takeLast(80),
+                            .takeLast(2000),
                 )
         }
         // Capacity also grows after new territory or a settlement-tier promotion.
@@ -170,8 +170,8 @@ object CityEngine {
             }
         val securityTarget =
             (50 +
-                    next.realm.level(BuildingType.WALL) * 3 +
-                    next.realm.level(BuildingType.TOWER) * 2 -
+                    WarEngine.effectiveLevel(next, BuildingType.WALL) * 3 +
+                    WarEngine.effectiveLevel(next, BuildingType.TOWER) * 2 -
                     next.realm.threat / 2 -
                     (100 - next.realm.wallIntegrity) / 4)
                 .coerceIn(0, 100)
@@ -180,8 +180,8 @@ object CityEngine {
         val enoughFood = next.resources.food.toLong() + production.gross.food >= production.upkeep
         val prosperityTarget =
             (50 +
-                    (next.realm.level(BuildingType.MARKET) - 1) * 4 +
-                    next.realm.level(BuildingType.EMBASSY) * 3 +
+                    (WarEngine.effectiveLevel(next, BuildingType.MARKET) - 1) * 4 +
+                    WarEngine.effectiveLevel(next, BuildingType.EMBASSY) * 3 +
                     (if (next.realm.tradeBonusDays > 0) 8 else 0) - (if (enoughFood) 0 else 20))
                 .coerceIn(0, 100)
         val city =
@@ -193,8 +193,9 @@ object CityEngine {
                     ),
                 security = approach(next.city.security, securityTarget),
                 prosperity = approach(next.city.prosperity, prosperityTarget),
+                season = Season.forDay(next.day + 1),
             )
-        val hospital = next.realm.level(BuildingType.HOSPITAL)
+        val hospital = WarEngine.effectiveLevel(next, BuildingType.HOSPITAL)
         return next.copy(
             city = city,
             armyPools =
@@ -245,7 +246,7 @@ object CityEngine {
     ): GameEngine.ActionResult {
         if (state.battleSession?.isActive == true)
             return GameEngine.ActionResult(state, "Handel nach der Schlacht möglich.")
-        if (state.realm.level(BuildingType.MARKET) < 1)
+        if (WarEngine.effectiveLevel(state, BuildingType.MARKET) < 1)
             return GameEngine.ActionResult(state, "Ein Markt wird benötigt.")
         if (amount <= 0 || kind == ResourceKind.GOLD)
             return GameEngine.ActionResult(state, "Ungültige Handelsmenge.")

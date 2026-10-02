@@ -2,9 +2,9 @@ name: Android APK
 
 on:
   push:
-    branches: [ "main", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "main", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
   pull_request:
-    branches: [ "main", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "main", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
   workflow_dispatch:
 
 permissions:
@@ -48,7 +48,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v0.45.0-debug
+          name: Realm-of-the-Last-Wall-v0.6.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

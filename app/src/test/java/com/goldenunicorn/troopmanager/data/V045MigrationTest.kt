@@ -49,7 +49,7 @@ class V045MigrationTest {
     fun v04SaveMigratesAndReloadsWithoutChangingAnyExistingCoreField() {
         val original = Json.parseToJsonElement(v2()).jsonObject
         val loaded = SaveCodec.decode(v2())
-        assertEquals(3, loaded.version)
+        assertEquals(SaveCodec.CURRENT_VERSION, loaded.version)
         assertEquals("Eichenkrone", loaded.realm.customSettlementName)
         assertTrue(loaded.city.housingCapacity >= loaded.population.total)
         ResourceKind.entries.forEach { assertTrue(it.value(loaded.city.storageCapacity) >= it.value(loaded.resources)) }
@@ -102,12 +102,12 @@ class V045MigrationTest {
     @Test
     fun futureSchemaCannotOverwritePrimaryOrRollingBackup() {
         val storage = MemoryStorage()
-        storage.values[PRIMARY] = """{"version":4}"""
+        storage.values[PRIMARY] = """{"version":99}"""
         storage.values[BACKUP] = v2()
         val repository = SaveRepository(storage)
         assertNull(repository.load())
         repository.save(SaveCodec.decode(v2()))
-        assertEquals("""{"version":4}""", storage.values[PRIMARY])
+        assertEquals("""{"version":99}""", storage.values[PRIMARY])
         assertEquals(v2(), storage.values[BACKUP])
         assertNotNull(repository.lastError)
     }

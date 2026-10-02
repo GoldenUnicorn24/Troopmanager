@@ -88,7 +88,7 @@ object ProgressionEngine {
                                     "Hochkönigreich",
                                     "Das Reich steht. Größere Invasionen und politische Herausforderungen warten weiterhin.",
                                 ))
-                            .takeLast(80)
+                            .takeLast(2000)
                 )
         return next
     }

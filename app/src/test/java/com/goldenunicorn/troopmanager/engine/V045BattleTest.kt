@@ -150,6 +150,7 @@ class V045BattleTest {
         original = original.copy(battleSession = original.battleSession!!.copy(
             pendingEvent = original.battleSession!!.pendingEvent!!.copy(options = listOf(BattleDecision.HOLD, BattleDecision.SEND_RESERVE))))
         val root = Json.parseToJsonElement(SaveCodec.encode(original)).jsonObject.toMutableMap()
+        root.remove("_checksum")
         root["version"] = JsonPrimitive(2)
         root.remove("city")
         val battle = root.getValue("battleSession").jsonObject.toMutableMap()
@@ -158,7 +159,7 @@ class V045BattleTest {
         root["battleSession"] = JsonObject(battle)
         val migrated = SaveCodec.decode(JsonObject(root).toString())
         assertEquals(original.battleSession, migrated.battleSession)
-        assertEquals(BattleEngine.advance(original.copy(city = migrated.city), BattleDecision.HOLD).state,
+        assertEquals(BattleEngine.advance(original.copy(city = migrated.city, world = migrated.world, court = migrated.court, diplomacy = migrated.diplomacy), BattleDecision.HOLD).state,
             BattleEngine.advance(migrated, BattleDecision.HOLD).state)
     }
 }

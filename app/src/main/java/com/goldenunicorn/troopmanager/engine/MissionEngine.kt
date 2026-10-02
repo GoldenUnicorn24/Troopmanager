@@ -70,8 +70,17 @@ object MissionEngine {
         }
         if (regionId != null && state.regions.none { it.id == regionId && it.mission == type })
             return GameEngine.ActionResult(state, "Diese Region bietet die Mission nicht an.")
-        val days = duration(state, type, commanderId)
-        val supply = total.toLong() * days * 2
+        val worldState = WorldEngine.initialize(state)
+        val target = regionId ?: "keep"
+        val path = WorldEngine.route(worldState.world, "keep", target)
+        if (!WorldEngine.routeAllowed(worldState, PLAYER_FACTION, path))
+            return GameEngine.ActionResult(state, "Kein zugänglicher Weg: Militärzugang oder Kriegserklärung nötig.")
+        val previewArmy = WorldArmy("preview", PLAYER_FACTION, type.label, selected, "keep")
+        val travel = WorldEngine.travelDays(worldState, previewArmy, path)
+        val operationDays = duration(state, type, commanderId)
+        val days = operationDays + travel * 2
+        val supply = maxOf(total.toLong() * days * 2, previewArmy.dailyFood.toLong() * days)
+
         if (supply > state.resources.food)
             return GameEngine.ActionResult(state, "Versorgung benötigt $supply Nahrung.")
         val mission =
@@ -85,13 +94,16 @@ object MissionEngine {
                 supplyCost = supply.toInt(),
                 duration = days,
                 regionId = regionId,
+                phase = if (travel > 0) MissionPhase.OUTBOUND else MissionPhase.OPERATING,
+                operationDaysRemaining = operationDays,
+                originalTotal = total,
+                lastTickDay = state.day,
                 quality =
                     selected.map { u ->
                         state.armyPools.first { it.type == u.type }.copy(soldiers = u.amount)
                     },
             )
-        return GameEngine.ActionResult(
-            state.copy(
+        val launched = worldState.copy(
                 resources = state.resources.copy(food = state.resources.food - supply.toInt()),
                 commanderAssignments =
                     state.commanderAssignments.filterNot { it.commanderId == commanderId },
@@ -106,14 +118,16 @@ object MissionEngine {
                                 "Mission gestartet",
                                 "${type.label}: $total Soldaten sind $days Tage unterwegs; $supply Nahrung eingelagert.",
                             ))
-                        .takeLast(80),
-            ),
-            "Mission gestartet. Rückkehr frühestens an Tag ${state.day + days}.",
+                        .takeLast(2000),
+            )
+        return GameEngine.ActionResult(
+            WorldEngine.attachMission(launched, mission),
+            "Mission gestartet. Rückkehr voraussichtlich an Tag ${state.day + days}; Wetter und Routenwahl beeinflussen die Reise.",
         )
     }
 
     private fun nextId(state: GameState): Long =
-        maxOf(System.nanoTime(), (state.activeMissions.maxOfOrNull { it.id } ?: 0) + 1)
+        (state.activeMissions.maxOfOrNull { it.id } ?: 0) + 1
 
     fun recall(state: GameState, id: Long): GameEngine.ActionResult {
         if (state.battleSession?.isActive == true)
@@ -122,42 +136,82 @@ object MissionEngine {
             state.activeMissions.find { it.id == id && it.status == MissionStatus.ACTIVE }
                 ?: return GameEngine.ActionResult(state, "Mission kann nicht zurückgerufen werden.")
         // A recall still takes a travel day and never grants completion rewards.
-        val returning = mission.copy(status = MissionStatus.RETURNING, remainingDays = 1)
-        return GameEngine.ActionResult(
-            state.copy(
-                activeMissions = state.activeMissions.map { if (it.id == id) returning else it }
-            ),
-            "Truppen kehren am nächsten Tag zurück. Keine Missionsbeute.",
-        )
+        val army = state.world.armies.firstOrNull { it.missionId == id }
+        val path = army?.let { WorldEngine.route(state.world, it.regionId, "keep") } ?: emptyList()
+        val days = army?.let { WorldEngine.travelDays(state, it, path) }?.coerceAtLeast(1) ?: 1
+        val returning = mission.copy(status = MissionStatus.RETURNING, phase = MissionPhase.RETURNING, remainingDays = days, pendingDecision = null)
+        val next = WorldEngine.returnMission(state.copy(activeMissions = state.activeMissions.map { if (it.id == id) returning else it }), id)
+        return GameEngine.ActionResult(next, "Rückmarsch etwa $days Tage. Unvollendete Missionen gewähren keine Beute.")
+    }
+
+    fun chooseRoute(state: GameState, id: Long, choice: Int): GameEngine.ActionResult {
+        val mission = state.activeMissions.firstOrNull { it.id == id && it.status == MissionStatus.ACTIVE }
+            ?: return GameEngine.ActionResult(state, "Mission ist nicht verfügbar.")
+        val decision = mission.pendingDecision ?: return GameEngine.ActionResult(state, "Keine Routenentscheidung offen.")
+        if (choice !in decision.options.indices || state.battleSession?.isActive == true)
+            return GameEngine.ActionResult(state, "Diese Entscheidung ist gerade nicht möglich.")
+        val army = state.world.armies.firstOrNull { it.missionId == id }
+        if (choice == 2 && state.resources.gold < 100) return GameEngine.ActionResult(state, "Lokale Vorräte kosten 100 Gold.")
+        val localOwner = army?.let { state.world.place(it.regionId)?.ownerId } ?: NEUTRAL_FACTION
+        val localFaction = state.world.faction(localOwner)
+        val purchased = army?.dailyFood?.toLong()?.times(2)?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt() ?: 0
+        if (choice == 2 && (localFaction?.food ?: 0) < purchased)
+            return GameEngine.ActionResult(state, "Die örtlichen Vorräte reichen nicht für das Heer.")
+        val policy = when (choice) { 0 -> MarchPolicy.SAFE; 1 -> MarchPolicy.FORCED; else -> MarchPolicy.NORMAL }
+        val updated = mission.copy(pendingDecision = null, routeDecisionMade = true,
+            riskFactor = when (choice) { 0 -> .8; 1 -> 1.25; else -> .9 })
+        var next = state.copy(activeMissions = state.activeMissions.map { if (it.id == id) updated else it },
+            resources = if (choice == 2) state.resources.copy(gold = state.resources.gold - 100) else state.resources)
+        if (army != null) next = next.copy(world = next.world.copy(armies = next.world.armies.map { if (it.id == army.id) it.copy(marchPolicy = policy,
+            supplyFood = if (choice == 2) (it.supplyFood.toLong() + purchased).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() else it.supplyFood) else it },
+            factions = if (choice == 2) next.world.factions.map { if (it.id == localOwner) it.copy(food = it.food - purchased, gold = (it.gold.toLong() + 100).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) else it } else next.world.factions))
+        return GameEngine.ActionResult(next, "${decision.options[choice]}: Marsch und Missionsrisiko wurden angepasst.")
     }
 
     fun tick(state: GameState, randomFactor: Double? = null): GameState {
         var next = state
-        state.activeMissions
-            .filter { it.status.isAway }
-            .forEach { mission ->
-                if (mission.remainingDays > 1) {
-                    next =
-                        next.copy(
-                            activeMissions =
-                                next.activeMissions.map {
-                                    if (it.id == mission.id)
-                                        it.copy(remainingDays = it.remainingDays - 1)
-                                    else it
-                                }
-                        )
-                } else
-                    next =
-                        finish(
-                            next,
-                            mission,
-                            randomFactor
-                                ?: Random((mission.id xor state.day.toLong()).toInt())
-                                    .nextDouble(0.75, 1.26),
-                        )
+        // Direct callers from earlier integrations still move the same world armies once per day.
+        if (next.world.initialized && next.world.lastTickDay < next.day) next = WorldEngine.tick(next)
+        next.activeMissions.filter { it.status.isAway }.toList().forEach { original ->
+            val previous = next.activeMissions.first { it.id == original.id }
+            if (previous.lastTickDay >= next.day) return@forEach
+            val mission = previous.copy(lastTickDay = next.day)
+            next = update(next, mission)
+            val army = next.world.armies.firstOrNull { it.missionId == mission.id }
+            if (mission.pendingDecision != null) return@forEach
+            if (mission.phase == MissionPhase.OUTBOUND && army != null) {
+                if (!mission.routeDecisionMade && next.day > mission.startDay && army.route.size > 1) {
+                    next = update(next, mission.copy(pendingDecision = MissionDecision(
+                        "Ein schwieriger Reiseabschnitt", "Die Vorhut meldet einen gefährlichen schnellen Weg. Eine vorsichtige Route schont das Heer; lokale Händler können Vorräte verkaufen.",
+                        listOf("Sicheren Weg wählen", "Gewaltmarsch wagen", "Lokale Vorräte kaufen (100 Gold)"))))
+                    return@forEach
+                }
+                if (army.status != WorldArmyStatus.MISSION) {
+                    next = update(next, mission.copy(remainingDays = ((army.arrivalDay ?: next.day + 1) - next.day).coerceAtLeast(1) + mission.operationDaysRemaining))
+                    return@forEach
+                }
+                next = update(next, mission.copy(phase = MissionPhase.OPERATING, remainingDays = mission.operationDaysRemaining.coerceAtLeast(1)))
+                return@forEach
             }
+            if (mission.phase == MissionPhase.RETURNING && army != null && army.status != WorldArmyStatus.HOME && army.status != WorldArmyStatus.DESTROYED) {
+                next = update(next, mission.copy(remainingDays = ((army.arrivalDay ?: next.day + 1) - next.day).coerceAtLeast(1)))
+                return@forEach
+            }
+            if (mission.phase == MissionPhase.RETURNING && mission.outcome != null) {
+                val done = mission.copy(status = if (mission.outcome <= MissionOutcome.PARTIAL) MissionStatus.COMPLETE else MissionStatus.FAILED, remainingDays = 0, phase = MissionPhase.DONE)
+                next = update(next, done)
+                next = restoreCommand(next, done, emptyList())
+                if (army != null) next = next.copy(resources = EconomyEngine.add(next.resources, Resources(0, army.supplyFood, 0, 0, 0)),
+                    world = next.world.copy(armies = next.world.armies.map { if (it.id == army.id) it.copy(supplyFood = 0, status = WorldArmyStatus.HOME) else it }))
+                return@forEach
+            }
+            if (mission.remainingDays > 1 && mission.phase != MissionPhase.RETURNING) next = update(next, mission.copy(remainingDays = mission.remainingDays - 1, operationDaysRemaining = (mission.operationDaysRemaining - 1).coerceAtLeast(0)))
+            else next = finish(next, mission, randomFactor ?: Random((mission.id xor state.day.toLong()).toInt()).nextDouble(.75, 1.26))
+        }
         return next
     }
+
+    private fun update(state: GameState, mission: ActiveMission): GameState = state.copy(activeMissions = state.activeMissions.map { if (it.id == mission.id) mission else it })
 
     private fun finish(state: GameState, mission: ActiveMission, roll: Double): GameState {
         if (mission.status == MissionStatus.RETURNING) {
@@ -166,10 +220,11 @@ object MissionEngine {
                     activeMissions =
                         state.activeMissions.map {
                             if (it.id == mission.id)
-                                it.copy(status = MissionStatus.FAILED, remainingDays = 0)
+                                it.copy(status = MissionStatus.FAILED, remainingDays = 0, phase = MissionPhase.DONE)
                             else it
                         }
                 )
+            next = WorldEngine.completeMission(next, mission, emptyList())
             next = restoreCommand(next, mission, emptyList())
             return next.copy(
                 chronicle =
@@ -179,7 +234,7 @@ object MissionEngine {
                                 "Truppen zurückgerufen",
                                 "${mission.total} Soldaten von ${mission.missionType.label} sind wieder verfügbar.",
                             ))
-                        .takeLast(80)
+                        .takeLast(2000)
             )
         }
         val commander = state.commanders.find { it.id == mission.commanderId }
@@ -223,7 +278,7 @@ object MissionEngine {
             power *
                 (1 + skill / 180.0 + leadership / 350.0 + tactics / 350.0) *
                 (0.7 + loyalty / 333.0) *
-                roll.coerceIn(0.1, 2.0) / (mission.missionType.spec().difficulty * 20.0)
+                roll.coerceIn(0.1, 2.0) / (mission.missionType.spec().difficulty * 20.0 * mission.riskFactor)
         val outcome =
             when {
                 score >= 1.6 -> MissionOutcome.GREAT_SUCCESS
@@ -266,12 +321,18 @@ object MissionEngine {
                     else 0,
             )
         val fame = base / (if (mission.missionType == MissionType.HUNT) 5 else 10)
+        val worldArmy = state.world.armies.firstOrNull { it.missionId == mission.id }
+        val needsReturn = mission.regionId != null && worldArmy != null && worldArmy.regionId != "keep"
+        val survivors = mission.units.mapNotNull { u -> val n = u.amount - (losses.firstOrNull { it.type == u.type }?.amount ?: 0); if (n > 0) u.copy(amount = n) else null }
         val completed =
             mission.copy(
-                remainingDays = 0,
-                status = if (success) MissionStatus.COMPLETE else MissionStatus.FAILED,
+                status = if (needsReturn) MissionStatus.RETURNING else if (success) MissionStatus.COMPLETE else MissionStatus.FAILED,
+                phase = if (needsReturn) MissionPhase.RETURNING else MissionPhase.DONE,
+                units = if (needsReturn) survivors else mission.units,
+                quality = if (needsReturn) mission.quality.mapNotNull { p -> survivors.firstOrNull { it.type == p.type }?.let { p.copy(soldiers = it.amount) } } else mission.quality,
+                remainingDays = if (needsReturn) WorldEngine.travelDays(state, worldArmy!!, WorldEngine.route(state.world, worldArmy.regionId, "keep")).coerceAtLeast(1) else 0,
                 outcome = outcome,
-                losses = lost,
+                losses = mission.losses + lost,
                 reward = reward,
                 renownReward = fame,
                 xpReward = maxOf(10, base / 4),
@@ -285,8 +346,13 @@ object MissionEngine {
             if (c.id == mission.commanderId) c.copy(missionsCompleted = c.missionsCompleted + 1,
                 victories = c.victories + if (success) 1 else 0, casualties = c.casualties + lost) else c
         })
+        if (worldArmy != null) next = next.copy(world = next.world.copy(armies = next.world.armies.map { if (it.id == worldArmy.id) it.copy(units = survivors) else it }))
         next = ArmyEngine.applyLosses(next, losses)
-        next = restoreCommand(next, mission, losses)
+        if (needsReturn) next = WorldEngine.returnMission(next, mission.id)
+        else {
+            next = WorldEngine.completeMission(next, mission, emptyList())
+            next = restoreCommand(next, mission, losses)
+        }
         next =
             next.copy(
                 resources = EconomyEngine.add(next.resources, reward),
@@ -332,9 +398,9 @@ object MissionEngine {
                             ChronicleEntry(
                                 next.day,
                                 "${mission.missionType.label}: ${outcome.label}",
-                                "${mission.total - lost} kehren zurück, $lost Verluste. +${reward.gold} Gold, +$fame Ruhm.",
+                                "${mission.total - lost} überleben, $lost Verluste. ${if (needsReturn) "Der Rückmarsch beginnt." else "Das Heer ist wieder verfügbar."} +${reward.gold} Gold, +$fame Ruhm.",
                             ))
-                        .takeLast(80),
+                        .takeLast(2000),
             )
         if (success && mission.missionType == MissionType.RELIEF) {
             val culture = mission.units.maxBy { it.amount }.type.culture
@@ -361,6 +427,7 @@ object MissionEngine {
                             trust = (next.companion.trust + if (success) 3 else -2).coerceIn(0, 100)
                         )
                 )
+        if (mission.commanderId != null) next = CharacterEngine.recordMission(next, mission.commanderId, success, mission.missionType.label)
         next = RelationshipEngine.onEvent(next, if (success) "mission" else "wounded")
         return ProgressionEngine.update(ProgressionEngine.awardXp(next, maxOf(10, base / 4)))
     }

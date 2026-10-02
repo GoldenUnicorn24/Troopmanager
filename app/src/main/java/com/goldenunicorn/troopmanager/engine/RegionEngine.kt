@@ -15,7 +15,7 @@ object RegionEngine {
     }
 
     fun diplomacy(state: GameState): Int = state.player.diplomacy +
-        if (state.companion.met && state.companion.trust >= 45) state.companion.diplomacy / 2 else 0
+        (if (state.companion.met && state.companion.trust >= 45) state.companion.diplomacy / 2 else 0) + CharacterEngine.bonuses(state).diplomacy
 
     fun diplomaticCost(state: GameState, region: WorldRegion): Int =
         (purchaseCost(region).toLong() * (100 - diplomacy(state).coerceIn(0, 100) / 3) / 100).toInt()
@@ -31,6 +31,9 @@ object RegionEngine {
             return GameEngine.ActionResult(state, "Gebietsverhandlungen nach der Schlacht möglich.")
         if (region.owned) return GameEngine.ActionResult(state, "${region.name} gehört bereits zu deinem Reich.")
         if (!canAcquire(region)) return GameEngine.ActionResult(state, "Diese Region steht nicht zum Verkauf.")
+        val owner = state.world.place(regionId)?.ownerId
+        if (owner != null && owner !in listOf(NEUTRAL_FACTION, PLAYER_FACTION))
+            return GameEngine.ActionResult(state, "Diese Region gehört einem anderen Reich. Verhandle mit dessen Herrscher.")
         if (negotiated && diplomacy(state) < 35)
             return GameEngine.ActionResult(state, "Verhandlungen benötigen mindestens 35 gemeinsame Diplomatie.")
         val cost = if (negotiated) diplomaticCost(state, region) else purchaseCost(region)
@@ -55,7 +58,7 @@ object RegionEngine {
             realm = state.realm.copy(territory = state.realm.territory + 1),
             regions = state.regions.map { if (it.id == region.id) it.copy(owned = true) else it },
             chronicle = (state.chronicle + ChronicleEntry(state.day, "${region.name} übernommen",
-                "${if (negotiated) "Diplomatische Einigung" else "Gebietskauf"}: $cost Gold. ${bonusDescription(region)}")).takeLast(80),
+                "${if (negotiated) "Diplomatische Einigung" else "Gebietskauf"}: $cost Gold. ${bonusDescription(region)}")).takeLast(2000),
         ), 15))
         return GameEngine.ActionResult(next, "${region.name} gehört nun zu deinem Reich. ${bonusDescription(region)}")
     }

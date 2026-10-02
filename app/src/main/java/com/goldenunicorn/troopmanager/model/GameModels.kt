@@ -65,9 +65,9 @@ enum class BuildingType(val label: String) {
 
 @Serializable
 enum class EnemyType(val label: String) {
-    ORC("Ork-Raubzug"),
-    URUK("Uruk-hai-Kriegsheer"),
-    TAO_TEI("Tao-Tei-Schwarm"),
+    ORC("Aschebund-Raubzug"),
+    URUK("Eisenpakt-Kriegsheer"),
+    TAO_TEI("Nebelbrut-Schwarm"),
 }
 
 @Serializable
@@ -225,7 +225,7 @@ data class Realm(
 
 @Serializable
 data class GameState(
-    val version: Int = 3,
+    val version: Int = 4,
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),
@@ -233,6 +233,15 @@ data class GameState(
     val population: Population = Population(),
     val realm: Realm = Realm(),
     val city: CityState = CityState(),
+    val world: WorldState = WorldState(),
+    val war: WarState = WarState(),
+    val court: CourtState = CourtState(),
+    val dynasty: DynastyState = DynastyState(),
+    val diplomacy: DiplomacyState = DiplomacyState(),
+    val espionage: EspionageState = EspionageState(),
+    val society: SocietyState = SocietyState(),
+    val presentation: PresentationState = PresentationState(),
+    val settings: GameSettings = GameSettings(),
     val armyPools: List<ArmyUnitPool> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),
@@ -266,16 +275,19 @@ data class GameState(
         get() = armyPools.sumOf { it.power.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
     val awayArmySize: Int
-        get() = activeMissions.filter { it.status.isAway }.sumOf { it.total }
+        get() = activeMissions.filter { it.status.isAway }.sumOf { it.total } +
+            world.playerFieldArmies.sumOf { it.total }
 
     val homeArmySize: Int
-        get() = armySize - awayArmySize
+        get() = (armySize - awayArmySize).coerceAtLeast(0)
 
     val trainingSize: Int
         get() = trainingQueue.sumOf { it.amount }
 
     val civilianPopulation: Int
-        get() = (population.total - armySize - trainingSize).coerceAtLeast(0)
+        get() = (population.total.toLong() - armySize - trainingSize -
+            war.wounded.sumOf { it.soldiers.toLong() } - war.captives.filter { it.own }.sumOf { it.soldiers.toLong() })
+            .coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
 
     val workerDemand: Int
         get() = 20 + realm.buildings.values.sum() * 25 + realm.territory * 20
@@ -291,7 +303,8 @@ data class GameState(
     fun away(type: UnitType): Int =
         activeMissions
             .filter { it.status.isAway }
-            .sumOf { m -> m.units.filter { it.type == type }.sumOf { it.amount } }
+            .sumOf { m -> m.units.filter { it.type == type }.sumOf { it.amount } } +
+            world.playerFieldArmies.sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } }
 
     fun homeSoldiers(type: UnitType): Int = (soldiers(type) - away(type)).coerceAtLeast(0)
 
@@ -308,5 +321,6 @@ data class GameState(
             ?.amount ?: 0
 
     fun commanderAway(id: Long): Boolean =
-        activeMissions.any { it.commanderId == id && it.status.isAway }
+        activeMissions.any { it.commanderId == id && it.status.isAway } ||
+            world.playerFieldArmies.any { it.commanderId == id } || war.unavailableCommander(id)
 }

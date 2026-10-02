@@ -1,0 +1,16 @@
+{
+  "versionName": "0.6.0",
+  "versionCode": 6,
+  "applicationId": "com.goldenunicorn.troopmanager",
+  "minSdk": 26,
+  "targetSdk": 35,
+  "saveSchema": 4,
+  "tests": 214,
+  "failures": 0,
+  "errors": 0,
+  "buildAndLint": "BUILD SUCCESSFUL in 3m 20s",
+  "apkSha256": "7f6b6119ddae61d8a9e503a6c96b12f54cf80cb68492317fa6cc5b60c36e97fb",
+  "signerCertificateSha256": "64b8feb897954956b568cc67ea0287a3256d13a8e0e7c3c7d4a2b174d7f6666d",
+  "physicalDevicesTested": [],
+  "benchmarksJvm": "V06_BENCH new_campaign median_us=61 p90_us=1392 soldiers=100000\nV06_BENCH city_projection median_us=10 p90_us=12 soldiers=100000\nV06_BENCH battle_exchange median_us=30 p90_us=49 soldiers=100000\nV06_BENCH save_encode median_us=835 p90_us=41088 soldiers=100000\nV06_BENCH save_decode median_us=849 p90_us=6488 soldiers=100000\nV06_BENCH day_tick median_us=188 p90_us=263 soldiers=100000\nV06_BENCH ai_turn median_us=64 p90_us=203 soldiers=100000\n"
+}

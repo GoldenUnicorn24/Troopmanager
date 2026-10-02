@@ -28,6 +28,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.goldenunicorn.troopmanager.model.*
+import com.goldenunicorn.troopmanager.engine.PresentationEngine
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.*
 
 internal enum class CityDistrict(val label: String) {
@@ -36,6 +39,8 @@ internal enum class CityDistrict(val label: String) {
     MILITARY("Militärviertel"),
     PRODUCTION("Produktionsviertel"),
     PALACE("Palastbezirk"),
+    DIPLOMATIC("Diplomatieviertel"),
+    CULTURAL("Kulturviertel"),
     OUTSKIRTS("Außenland"),
 }
 
@@ -60,8 +65,8 @@ internal val citySites =
         CitySite(BuildingType.QUARRY, 1265f, 270f, CityDistrict.OUTSKIRTS),
         CitySite(BuildingType.FARM, 270f, 705f, CityDistrict.OUTSKIRTS),
         CitySite(BuildingType.PALACE, 735f, 325f, CityDistrict.PALACE),
-        CitySite(BuildingType.ACADEMY, 590f, 385f, CityDistrict.PALACE),
-        CitySite(BuildingType.EMBASSY, 900f, 360f, CityDistrict.PALACE),
+        CitySite(BuildingType.ACADEMY, 590f, 385f, CityDistrict.CULTURAL),
+        CitySite(BuildingType.EMBASSY, 900f, 360f, CityDistrict.DIPLOMATIC),
         CitySite(BuildingType.TOWER, 1110f, 780f, CityDistrict.MILITARY),
         CitySite(BuildingType.WALL, 780f, 820f, CityDistrict.MILITARY),
     )
@@ -131,33 +136,40 @@ internal fun cityWallIntegrity(state: GameState): Int =
 internal fun CityScene(
     state: GameState,
     modifier: Modifier = Modifier,
-    night: Boolean = false,
+    night: Boolean = CityTime.at(state.day) == CityTime.NIGHT,
     season: Season = Season.SUMMER,
     defenseMode: Boolean = cityInDefense(state),
     wallIntegrity: Int = cityWallIntegrity(state),
     onBuilding: (BuildingType) -> Unit = {},
 ) {
-    val context = LocalContext.current
-    val landscape =
-        remember(context) {
+    val context = LocalContext.current.applicationContext
+    var landscape by remember(context) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(context) {
+        // Decode once off main; disposal cancels publication of a stale result.
+        val decoded = withContext(Dispatchers.IO) {
             runCatching {
-                    context.assets.open("city_landscape.webp").use { BitmapFactory.decodeStream(it) }
-                }
-                .getOrNull()
-                ?.asImageBitmap()
+                context.assets.open("city_landscape.webp").use {
+                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inScaled = false })
+                }?.asImageBitmap()
+            }.getOrNull()
         }
+        landscape = decoded
+    }
     val minimumTouchRadius = with(LocalDensity.current) { 24.dp.toPx() }
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     val currentBuildingAction by rememberUpdatedState(onBuilding)
-    val clock = rememberInfiniteTransition(label = "Stadtatmosphäre")
-    val phase by
+    val phaseState: State<Float> = if (state.settings.animations) {
+        val clock = rememberInfiniteTransition(label = "Stadtatmosphäre")
         clock.animateFloat(
             0f,
             1f,
             infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Restart),
             label = "Bewohner und Fahnen",
         )
+    } else remember { mutableStateOf(.35f) }
+    val activity = remember(state, night) { PresentationEngine.cityActivity(state, night) }
+    val visualTime = if (night) CityTime.NIGHT else CityTime.at(state.day).takeUnless { it == CityTime.NIGHT } ?: CityTime.DAY
     val paint = remember {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
@@ -169,7 +181,11 @@ internal fun CityScene(
             Modifier.fillMaxSize()
                 .semantics {
                     contentDescription =
-                        "${state.realm.settlementName}, isometrische Stadt. Zwei Finger zum Zoomen und Verschieben. Gebäude auch über die Bezirksliste erreichbar."
+                        "${state.realm.settlementName}, ${visualTime.label}, ${season.label}. " +
+                            "${activity.citizens} Bewohnergruppen, ${activity.merchants} Händler, ${activity.wagons} Wagen, ${activity.soldiers} Wachgruppen. " +
+                            (if (activity.hungry) "Nahrungsmangel: leere Straßen. " else "") +
+                            (if (defenseMode) "Belagerung: Rauch und Mauerschäden. " else "") +
+                            "${state.war.buildingDamage.count { it.value > 0 }} beschädigte Gebäude. Zwei Finger zum Zoomen und Verschieben. Gebäude auch über die Bezirksliste erreichbar."
                 }
                 .pointerInput(Unit) {
                     detectTransformGestures { centroid, shift, zoomChange, _ ->
@@ -216,6 +232,8 @@ internal fun CityScene(
                     }
                 }
         ) {
+            // Read the animation in draw scope so frames do not rebuild semantics and composition.
+            val phase = phaseState.value
             val p = CityProjection(size.width, size.height, zoom, pan.x, pan.y).bounded()
             // Full-screen atmospheric backdrop remains behind the zoomable, architecturally layered
             // city.
@@ -247,7 +265,7 @@ internal fun CityScene(
                         ),
                         size = Size(1600f, 1000f),
                     )
-                if (season != Season.SUMMER)
+                if (season == Season.WINTER || season == Season.AUTUMN)
                     drawRect(
                         if (season == Season.WINTER) Color(0x447C96A7) else Color(0x33765522),
                         size = Size(1600f, 1000f),
@@ -314,7 +332,16 @@ internal fun CityScene(
                                 Offset(site.x, site.y + 8f),
                                 2f,
                             )
-                        } else drawSite(site, tier, night, phase, wallIntegrity)
+                        } else {
+                            val damage = state.war.buildingDamage[site.type] ?: 0
+                            if (damage < 100) drawSite(site, tier, night, phase, wallIntegrity)
+                            else {
+                                drawOval(Color(0xCC2D2A26), Offset(site.x - 45f, site.y - 22f), Size(90f, 46f))
+                                drawLine(Color(0xFF746C5C), Offset(site.x - 25f, site.y - 10f), Offset(site.x - 25f, site.y - 30f), 10f)
+                                drawLine(Color(0xFF746C5C), Offset(site.x + 20f, site.y - 5f), Offset(site.x + 20f, site.y - 23f), 10f)
+                            }
+                            if (damage > 0) drawBuildingDamage(site, damage, defenseMode, phase)
+                        }
                         if (
                             zoom >= 1.65f ||
                                 site.type in
@@ -336,8 +363,8 @@ internal fun CityScene(
                             )
                         }
                     }
-                // A fixed cap of 20 decorative groups: no persistent individual simulation.
-                repeat(20) { i ->
+                // Bounded representative groups react to the saved society and campaign state.
+                repeat(activity.groups) { i ->
                     val travel = (phase + i * .173f) % 1f
                     val route = i % 4
                     val x =
@@ -354,7 +381,28 @@ internal fun CityScene(
                             2 -> 480f
                             else -> 745f
                         }
-                    drawCitizen(x, y, i, night, phase)
+                    val kind = when {
+                        i < activity.citizens -> if (i % 2 == 0) 4 else 5
+                        i < activity.citizens + activity.merchants -> 1
+                        i < activity.citizens + activity.merchants + activity.wagons -> 0
+                        else -> 3
+                    }
+                    if (i >= activity.groups - activity.returningArmies) {
+                        drawCitizen(1260f - travel * 390f, 960f - travel * 110f, 3, night, phase)
+                        drawCitizen(1280f - travel * 390f, 960f - travel * 110f, 2, night, phase)
+                    } else drawCitizen(x, y, kind, night, phase)
+                    if (kind == 1) drawLine(PaleGold, Offset(x - 5f, y - 16f), Offset(x + 4f, y - 16f), 3f)
+                }
+                listOf(Offset(735f, 225f), Offset(1010f, 530f), Offset(780f, 790f)).forEach {
+                    drawLine(Color(0xFFB8A57B), it + Offset(0f, 25f), it - Offset(0f, 28f), 3f)
+                    drawHeraldry(state.presentation.heraldry, it, 17f)
+                }
+                // Statuary is earned through career and battle evidence, rather than decoration.
+                state.presentation.legends.take(6).forEachIndexed { i, _ ->
+                    val x = 620f + i * 25f
+                    drawLine(Color(0xFFAAA28A), Offset(x, 304f), Offset(x, 283f), 7f)
+                    drawCircle(Color(0xFFB9AF96), 5f, Offset(x, 277f))
+                    drawLine(Color(0xFF6E6B60), Offset(x - 7f, 307f), Offset(x + 7f, 307f), 5f)
                 }
                 if (
                     state.companion.met &&
@@ -396,6 +444,12 @@ internal fun CityScene(
                         drawFire(x, y, phase + i)
                     }
                 }
+                else when (visualTime) {
+                    CityTime.MORNING -> drawRect(Color(0x228CAAB7), size = Size(1600f, 1000f))
+                    CityTime.EVENING -> drawRect(Color(0x447A4528), size = Size(1600f, 1000f))
+                    else -> Unit
+                }
+                if (activity.hungry) drawRect(Color(0x22544834), size = Size(1600f, 1000f))
                 // District labels are geographically attached and remain readable at overview
                 // scale.
                 val districtLabels =
@@ -405,6 +459,8 @@ internal fun CityScene(
                         Triple("MILITÄRVIERTEL", 1020f, 835f),
                         Triple("PRODUKTION", 1285f, 485f),
                         Triple("PALASTBEZIRK", 745f, 195f),
+                        Triple("KULTURVIERTEL", 545f, 300f),
+                        Triple("DIPLOMATIE", 955f, 290f),
                         Triple("AUSSENLAND", 265f, 835f),
                     )
                 paint.color = android.graphics.Color.rgb(235, 212, 168)
@@ -414,6 +470,26 @@ internal fun CityScene(
                 }
             }
         }
+    }
+}
+
+private fun DrawScope.drawBuildingDamage(site: CitySite, damage: Int, siege: Boolean, phase: Float) {
+    drawOval(Color(0xBB292726), Offset(site.x - 38f, site.y - 20f), Size(76f, 28f))
+    val crack = Path().apply {
+        moveTo(site.x - 12f, site.y - 55f); lineTo(site.x + 1f, site.y - 34f)
+        lineTo(site.x - 7f, site.y - 20f); lineTo(site.x + 7f, site.y - 4f)
+    }
+    drawPath(crack, Color(0xFF100F0D), style = Stroke(if (damage >= 60) 7f else 3f))
+    repeat((damage / 15 + 1).coerceAtMost(7)) { i ->
+        drawCircle(Color(0xFF898477), 4f, Offset(site.x - 25f + i * 8f, site.y + 5f + i % 2 * 6f))
+    }
+    if (siege && damage >= 35) {
+        repeat(3) { i ->
+            val rise = (phase + i * .29f) % 1f
+            drawCircle(Color(0xFF3A3735).copy(alpha = .5f * (1f - rise)), 7f + rise * 14f,
+                Offset(site.x + 12f + rise * 15f, site.y - 40f - rise * 65f))
+        }
+        if (damage >= 65) drawFire(site.x + 10f, site.y - 12f, phase)
     }
 }
 
@@ -437,6 +513,8 @@ private fun DrawScope.drawDistricts(state: GameState, ring: Float) {
             Triple(1010f, 625f, 135f),
             Triple(1155f, 415f, 110f),
             Triple(750f, 350f, 170f),
+            Triple(590f, 385f, 75f),
+            Triple(900f, 360f, 75f),
         )
         .forEach { (x, y, half) ->
             polygon(
@@ -602,12 +680,16 @@ private fun DrawScope.drawSite(
     val stone =
         when (site.district) {
             CityDistrict.PALACE -> Color(0xFFB8A991)
+            CityDistrict.DIPLOMATIC -> Color(0xFFADB8BB)
+            CityDistrict.CULTURAL -> Color(0xFFC0AD83)
             CityDistrict.MILITARY -> Color(0xFF87918C)
             else -> Color(0xFF9F977F)
         }
     val roof =
         when (site.district) {
             CityDistrict.PALACE -> Color(0xFF3A5B68)
+            CityDistrict.DIPLOMATIC -> Color(0xFF704649)
+            CityDistrict.CULTURAL -> Color(0xFF3E6553)
             CityDistrict.MILITARY -> Color(0xFF38484D)
             CityDistrict.PRODUCTION -> Color(0xFF66503F)
             else -> Color(0xFF774A3F)
@@ -1031,9 +1113,19 @@ private fun DrawScope.drawSiege(
                     )
                 }
             }
+            SiegeDevice.TUNNEL -> {
+                drawOval(Color(0xFF171612), Offset(x - 27f, y - 12f), Size(54f, 27f))
+                drawOval(Color(0xFF84715A), Offset(x - 32f, y - 17f), Size(64f, 37f), style = Stroke(7f))
+                drawLine(Color(0xFFAD9671), Offset(x - 22f, y + 2f), Offset(x - 22f, y - 24f), 5f)
+                drawLine(Color(0xFFAD9671), Offset(x + 22f, y + 2f), Offset(x + 22f, y - 24f), 5f)
+                drawLine(Color(0xFFAD9671), Offset(x - 25f, y - 24f), Offset(x + 25f, y - 24f), 5f)
+                repeat(4) { i -> drawCircle(Color(0xFF8D7C63), 5f, Offset(x - 30f + i * 18f, y + 16f)) }
+            }
         }
-        drawCircle(Color(0xFF35382F), 5f, Offset(x - 18f, y + 5f))
-        drawCircle(Color(0xFF35382F), 5f, Offset(x + 21f, y + 2f))
+        if (device != SiegeDevice.TUNNEL) {
+            drawCircle(Color(0xFF35382F), 5f, Offset(x - 18f, y + 5f))
+            drawCircle(Color(0xFF35382F), 5f, Offset(x + 21f, y + 2f))
+        }
     }
     if (active) {
         repeat(5) { i -> drawCitizen(520f + i * 132f, 827f, 3, night, phase) }

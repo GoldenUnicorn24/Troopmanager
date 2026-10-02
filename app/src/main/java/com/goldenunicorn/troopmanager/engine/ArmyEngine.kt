@@ -109,7 +109,7 @@ object ArmyEngine {
                 population = adjustPopulation(population, p.type.culture, -count)
                 if (p.soldiers == count) null else p.copy(soldiers = p.soldiers - count)
             }
-        return clampAssignments(state.copy(armyPools = pools, population = population))
+        return WarEngine.afterCombatLosses(state, clampAssignments(state.copy(armyPools = pools, population = population)))
     }
 
     fun adjustPopulation(p: Population, culture: Culture, delta: Int): Population {
@@ -151,7 +151,9 @@ object ArmyEngine {
             state.population.recruits(culture),
             (population(state.population, culture) -
                     state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers } -
-                    state.trainingQueue.filter { it.type.culture == culture }.sumOf { it.amount })
+                    state.trainingQueue.filter { it.type.culture == culture }.sumOf { it.amount } -
+                    state.war.wounded.filter { it.type.culture == culture }.sumOf { it.soldiers } -
+                    state.war.captives.filter { it.own && it.type?.culture == culture }.sumOf { it.soldiers })
                 .coerceAtLeast(0),
         )
 

@@ -11,10 +11,13 @@ fun customizePlayer(
 ): GameState = state.copy(
     player = state.player.copy(
         name = name.ifBlank { state.player.name },
-        age = age.coerceIn(18, 120),
+        age = if (state.dynasty.members.isEmpty()) age.coerceIn(18, 120) else state.player.age,
         armorStyle = armorStyle.ifBlank { state.player.armorStyle },
         weapon = weapon.ifBlank { state.player.weapon }
-    )
+    ),
+    dynasty = state.dynasty.copy(members = state.dynasty.members.map {
+        if (it.id == state.dynasty.rulerId) it.copy(name = name.ifBlank { state.player.name }) else it
+    }),
 )
 
 fun customizeCompanion(
@@ -26,10 +29,13 @@ fun customizeCompanion(
 ): GameState = RelationshipEngine.syncCommander(state.copy(
     companion = state.companion.copy(
         name = name.ifBlank { state.companion.name },
-        age = age.coerceIn(18, 120),
+        age = if (state.dynasty.members.isEmpty()) age.coerceIn(18, 120) else state.companion.age,
         armorStyle = armorStyle.ifBlank { state.companion.armorStyle },
         weapon = weapon.ifBlank { state.companion.weapon }
-    )
+    ),
+    dynasty = state.dynasty.copy(members = state.dynasty.members.map {
+        if (it.id == "companion") it.copy(name = name.ifBlank { state.companion.name }) else it
+    }),
 ))
 
 fun renameSettlement(state: GameState, name: String): GameState {

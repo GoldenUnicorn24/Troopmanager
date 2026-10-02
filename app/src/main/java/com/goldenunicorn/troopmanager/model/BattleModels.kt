@@ -46,6 +46,15 @@ enum class BattleDecision(val label: String) {
     HOLD_GATE("Tor halten"),
     OPEN_GATE("Tor für Kavallerieausfall öffnen"),
     RESCUE_COMMANDER("Verwundeten Kommandanten retten"),
+    ADVANCE("Vorrücken"),
+    ARROW_VOLLEY("Pfeilsalve"),
+    FOCUS_FIRE("Fokusfeuer"),
+    RALLY("Schlachtrede"),
+    FEIGNED_RETREAT("Falscher Rückzug"),
+    SCALE_WALL("Leiterangriff"),
+    BREACH_GATE("Rammbock einsetzen"),
+    TOWER_ASSAULT("Belagerungsturm vorschieben"),
+    UNDERMINE("Tunnel vorantreiben"),
 }
 
 /** A consumer can react to a newly persisted minute; no audio files are required. */
@@ -56,6 +65,10 @@ enum class BattleSoundCue {
     ARROWS,
     MONSTERS,
     WALL_BREAK,
+    ARTILLERY,
+    HORSES,
+    FIRE,
+    GATE,
 }
 
 @Serializable
@@ -77,6 +90,7 @@ data class BattleContingent(
     val equipment: Int,
     val commanderWounded: Boolean = false,
     val commanderRescued: Boolean = false,
+    val routed: Boolean = false,
 )
 
 @Serializable
@@ -131,12 +145,39 @@ data class BattleSession(
     val equipmentDamage: Int = 0,
     val commanderEvents: List<String> = emptyList(),
     val orderedRetreat: Boolean = false,
+    val terrain: Map<BattleSection, BattleTerrain> = emptyMap(),
+    val commandPoints: Int = 20,
+    val maxCommandPoints: Int = 20,
+    val participation: BattleParticipation = BattleParticipation.COMMAND,
+    val casualties: CasualtyReport = CasualtyReport(),
+    val replayStart: BattleReplayStart? = null,
+    val inputs: List<BattleInput> = emptyList(),
+    val heroPerk: Boolean = false,
+    val reservePerk: Boolean = false,
+    val feignedRetreatPerk: Boolean = false,
+    val rallyPerk: Boolean = false,
+    val moraleBonus: Int = 0,
+    val rangedWeather: Double = 1.0,
+    val cavalryWeather: Double = 1.0,
+    val seasonPenalty: Double = 1.0,
+    val healingBonus: Int = 0,
+    val enemyFactionName: String? = null,
+    val enemyUnits: List<UnitAllocation> = emptyList(),
+    val location: String? = null,
+    val enemyFactionId: String? = null,
+    val enemyArmyName: String? = null,
+    val enemyFortification: Int = 0,
+    val deployedMorale: Int? = null,
+    val enemyExperience: Int = 0,
 ) {
     val isActive: Boolean
         get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT
 
     val ownRemaining: Int
         get() = contingents.sumOf { it.soldiers }
+
+    val fightingRemaining: Int
+        get() = contingents.filterNot { it.routed }.sumOf { it.soldiers }
 
     val enemyRemaining: Int
         get() = fronts.sumOf { it.enemySoldiers }
@@ -145,6 +186,9 @@ data class BattleSession(
         get() =
             if (ownRemaining == 0) 0
             else (contingents.sumOf { it.soldiers.toLong() * it.morale } / ownRemaining).toInt()
+
+    fun fighting(section: BattleSection): Int =
+        contingents.filter { it.section == section && !it.routed }.sumOf { it.soldiers }
 
     fun soldiers(section: BattleSection): Int =
         contingents.filter { it.section == section }.sumOf { it.soldiers }

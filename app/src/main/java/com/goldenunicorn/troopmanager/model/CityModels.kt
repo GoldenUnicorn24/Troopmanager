@@ -20,13 +20,6 @@ enum class TaxLevel(val label: String, val goldFactor: Double, val growthFactor:
 }
 
 @Serializable
-enum class Season(val label: String) {
-    SUMMER("Sommer"),
-    AUTUMN("Herbst"),
-    WINTER("Winter"),
-}
-
-@Serializable
 enum class ResourceKind(val label: String) {
     GOLD("Gold"),
     FOOD("Nahrung"),

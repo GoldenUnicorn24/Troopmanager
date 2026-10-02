@@ -1,8 +1,17 @@
-# Realm of the Last Wall — Troopmanager v0.45.0
+# Realm of the Last Wall — Troopmanager v0.6.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
 
-## City and interface overhaul
+## Living-world v0.6 update
+
+- Persistent original realms, named rivals, world armies, travel, scouting and faction-specific fog, seasons, weather, prepaid logistics, depots and convoys.
+- Tactical formations, command points, functional terrain and morale routing, casualties/captives, arsenal equipment, siege damage and deterministic battle replay.
+- Court offices and commander careers, six perk paths, explicit optional adult romance with consent gates, memories, autonomous advice and optional dynasty/succession.
+- Negotiated treaties, finite resource transfers, alliances/vassals, spies, social groups, disease, migration and delayed story chains.
+- Dynamic local music, 48 original local audio cues, haptics, heraldry, achievements, records and a hall of legends.
+- Immutable StateFlow/ViewModel UI; background simulation and save IO; three campaign slots, checksums, protected migrations, atomic writes and SAF export/import.
+
+## City and interface
 
 - Five main pages: realm dashboard, city, army, world/missions and court. Help is available in the top menu.
 - Isometric city with pan/zoom, precise building targets, six districts, accessible building list, three architectural tiers, bounded ambient groups and the same scene during sieges.
@@ -23,7 +32,7 @@ An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin
 - Four culture cards show army totals and training. Commanders receive explicit unit quantities without duplicate assignments. Unassigned troops remain under the player's direct command.
 - Six mission types: border patrol, caravan escort, bandit suppression, monster hunt, village defense and reconnaissance. Choose soldiers and an optional commander, pay supplies and wait for the required days. Mission troops are unavailable at home, and outcomes include real casualties and rewards. Recall requires travel time.
 - Threat produces warnings, raids and announced invasions. The arrival countdown supports wall repairs, troop preparation, recalls and allied requests. Siege devices and fortress defenses affect the attack.
-- Persistent battles advance in phases rather than calculating a final report at the start. Deploy left, center, right and reserve; respond to battle events and choose pursuit after victory. Sound cues provide an extension point without placeholder audio assets.
+- Persistent battles advance in phases rather than calculating a final report at the start. Deploy left, center, right and reserve; respond to battle events and choose pursuit after victory. Sound cues play bundled original synthesized effects.
 - Character experience and skill points, meaningful commander stats and a companion who can command troops and missions.
 - Relationships allow at most one large or two small actions per day, with decisions and stages from companions to ruling couple.
 - Realm events offer consequential choices; cultures unlock through actual population and diplomacy. World regions connect locations with mission types.
@@ -38,7 +47,7 @@ Simulation operates on quantities, not individual soldiers, so large armies rema
 
 ## Offline saves
 
-Campaigns autosave in local Android storage with a backup and error handling. Save version 3 first migrates older regiment-based saves by summing soldiers per type and weighting morale and experience, then adds neutral city management. A byte-exact protected copy of the original v0.4 save survives rolling autosaves. All original v2 fields are preserved; capacities protect existing population and supplies. Future saves are rejected safely. Commander allocations and current missions/battles persist. No account, server, subscription, online requirement or in-app purchases. Imported portraits remain local device references.
+Campaigns autosave in local Android storage with a backup and error handling. Save version 4 first migrates older regiment-based saves by summing soldiers per type and weighting morale and experience, then adds neutral city management and persistent world/court/diplomacy domains. A byte-exact protected copy of the original v0.4 save survives rolling autosaves. All original v2 fields are preserved; capacities protect existing population and supplies. Future saves are rejected safely. Commander allocations and current missions/battles persist. No account, server, subscription, online requirement or in-app purchases. Imported portraits remain local device references.
 
 ## Build and verification
 
@@ -46,8 +55,8 @@ Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project
 
 - `compileSdk` / `targetSdk`: 35
 - `minSdk`: 26
-- `versionName`: 0.45.0
-- `versionCode`: 5
+- `versionName`: 0.6.0
+- `versionCode`: 6
 
 ```bash
 gradle :app:testDebugUnitTest --stacktrace
@@ -58,9 +67,9 @@ test -f app/build/outputs/apk/debug/app-debug.apk
 
 The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 
-GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.45.0-debug`.
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → APK build → file verification → artifact upload on pushes and pull requests to `main` and manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.6.0-debug`.
 
-The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; individual soldier movement and recorded battle audio are not part of this version.
+The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; visible formations represent aggregate soldiers; local synthesized audio is bundled.
 
 
-See [v0.45 implementation and update evidence](docs/V0.45.0-IMPLEMENTATION.md) and [third-party icon notices](docs/THIRD-PARTY-NOTICES.md). The supplied local v0.45 APK shares the supplied local v0.4 APK signing certificate. Fresh GitHub Actions debug keys belong to a different signing family unless a persistent signing configuration is provided.
+See [v0.6 implementation matrix and evidence](docs/V0.6.0-IMPLEMENTATION.md), [device test profiles](docs/V06-DEVICE-PROFILES.md), [v0.45 implementation and update evidence](docs/V0.45.0-IMPLEMENTATION.md) and [third-party icon notices](docs/THIRD-PARTY-NOTICES.md). The delivered v0.6 debug APK uses a new local debug certificate. Updating an existing v0.4/v0.45 installation requires its original signing key; never clear campaign data to bypass a signing mismatch. Fresh CI debug keys also require a persistent signing configuration for subsequent updates.

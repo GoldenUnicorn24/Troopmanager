@@ -43,12 +43,12 @@ class GameEngineTest {
     fun dailyProductionMatchesSpecifiedRatesAndIncludesMaintenance() {
         val state = human()
         val p = EconomyEngine.production(state)
-        assertEquals(Resources(375, 800, 350, 300, 220), p.gross)
+        assertEquals(Resources(375, 880, 350, 300, 220), p.gross)
         assertEquals(390, p.upkeep)
-        assertEquals(410, p.net.food)
+        assertEquals(490, p.net.food)
         val after = EconomyEngine.day(state)
         assertEquals(state.resources.gold + 375, after.resources.gold)
-        assertEquals(state.resources.food + 410, after.resources.food)
+        assertEquals(state.resources.food + 490, after.resources.food)
         assertEquals(state.resources.stone + 300, after.resources.stone)
     }
 
@@ -358,17 +358,19 @@ class GameEngineTest {
 
     @Test
     fun threatAnnouncesInvasionAndGuaranteesSixDayPreparation() {
-        var state = human().copy(realm = human().realm.copy(threat = 89))
+        var state = DiplomacyEngine.declareWar(human(), "ash_covenant").state.let { it.copy(realm = it.realm.copy(threat = 89)) }
         state = GameEngine.advanceDay(state).state
         assertNotNull(state.invasion)
         val arrival = state.invasion!!.arrivalDay
-        assertEquals(state.day + 6, arrival)
-        while (state.day < arrival - 1) {
+        assertTrue(arrival >= state.day + 6)
+        while (state.day < state.invasion!!.announcedDay + 5) {
             state = GameEngine.advanceDay(state).state
             assertNull(state.battleSession)
         }
-        state = GameEngine.advanceDay(state).state
-        assertEquals(arrival, state.day)
+        var days = 0
+        while (state.battleSession?.isActive != true && days++ < 80) state = GameEngine.advanceDay(state).state
+        assertTrue("Die reale Invasionsarmee muss ihre zugängliche Route abschließen.", state.battleSession?.isActive == true)
+        assertTrue(state.day >= arrival)
         assertEquals(100, state.realm.threat)
         assertTrue(state.battleSession!!.isActive)
         assertEquals(state, GameEngine.advanceDay(state).state)
@@ -384,10 +386,11 @@ class GameEngineTest {
     }
 
     @Test
-    fun absentArmyCannotDefendButDoesNotLoseMissionTroops() {
+    fun legacyAbsentArmyCannotDefendButDoesNotLoseMissionTroops() {
         val before =
             human()
                 .copy(
+                    world = WorldState(),
                     activeMissions =
                         listOf(
                             ActiveMission(

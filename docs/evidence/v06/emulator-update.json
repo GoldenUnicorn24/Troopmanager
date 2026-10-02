@@ -1,0 +1,10 @@
+{
+  "action": "update",
+  "serial": "emulator-5554",
+  "timeUtc": "2026-10-02T07:41:25Z",
+  "install": "Performing Streamed Install\nSuccess\n",
+  "amStart": "Starting: Intent { cmp=com.goldenunicorn.troopmanager/.MainActivity }\nStatus: ok\nActivity: com.goldenunicorn.troopmanager/.MainActivity\nThisTime: 8139\nTotalTime: 8139\nWaitTime: 8268\nComplete\n",
+  "campaignPreserved": true,
+  "launchStatusOk": true,
+  "pass": true
+}

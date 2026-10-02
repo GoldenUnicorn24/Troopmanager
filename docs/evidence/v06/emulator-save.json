@@ -1,0 +1,11 @@
+{
+  "action": "verify",
+  "serial": "emulator-5554",
+  "timeUtc": "2026-10-02T07:40:41Z",
+  "day": 2,
+  "version": 4,
+  "armyPools": 8,
+  "factions": 5,
+  "checksum": true,
+  "pass": true
+}
