@@ -5,37 +5,153 @@ import kotlin.random.Random
 
 object MissionEngine {
     data class MissionEstimate(val outcomeHint: String, val goldRange: IntRange, val xpRange: IntRange)
-    fun estimate(state: GameState, type: MissionType, units: List<UnitAllocation>, commanderId: Long?): MissionEstimate {
-        val selected = ArmyEngine.normalize(units)
-        val commander = state.commanders.find { it.id == commanderId }
-        val power = selected.sumOf { u ->
-            val pool = state.armyPools.find { it.type == u.type }
-            if (pool == null || pool.soldiers == 0) 0.0 else pool.power.toDouble() * u.amount / pool.soldiers
+
+    private data class LeaderStats(
+        val sword: Int,
+        val bow: Int,
+        val riding: Int,
+        val leadership: Int,
+        val tactics: Int,
+        val loyalty: Int,
+    )
+
+    private fun participantStats(
+        state: GameState,
+        commanderIds: List<Long>,
+        playerParticipates: Boolean,
+    ): List<LeaderStats> = buildList {
+        if (playerParticipates) {
+            add(
+                LeaderStats(
+                    state.player.sword,
+                    state.player.bow,
+                    state.player.riding,
+                    state.player.leadership,
+                    state.player.tactics,
+                    100,
+                )
+            )
         }
-        val score = power * (1 + (commander?.sword ?: state.player.sword)/180.0 +
-            (commander?.leadership ?: state.player.leadership)/350.0 +
-            (commander?.tactics ?: state.player.tactics)/350.0) *
-            (0.7 + (commander?.loyalty ?: 100)/333.0) / (type.spec().difficulty * 20.0)
-        val hint = when { score >= 1.6 -> "Sehr gute Aussichten"; score >= 1.0 -> "Gute Aussichten"; score >= 0.7 -> "Unsicherer Ausgang"; else -> "Hohes Verlustrisiko" }
-        return MissionEstimate("$hint · Schätzung, Zufall und Einheitenspezialisierung beeinflussen den Ausgang", 0..type.spec().difficulty*6, 10..maxOf(10,type.spec().difficulty*3/4))
+        commanderIds.distinct().forEach { id ->
+            state.commanders.firstOrNull { it.id == id }?.let { commander ->
+                add(
+                    LeaderStats(
+                        commander.sword,
+                        commander.bow,
+                        if (id == COMPANION_COMMANDER_ID) state.companion.riding
+                        else (commander.leadership + commander.tactics) / 2,
+                        commander.leadership,
+                        commander.tactics,
+                        commander.loyalty,
+                    )
+                )
+            }
+        }
     }
 
-    fun duration(state: GameState, type: MissionType, commanderId: Long?): Int {
+    private fun average(values: List<Int>, fallback: Int): Int =
+        if (values.isEmpty()) fallback else values.sum() / values.size
+
+    fun estimate(
+        state: GameState,
+        type: MissionType,
+        units: List<UnitAllocation>,
+        commanderId: Long?,
+    ): MissionEstimate =
+        estimate(
+            state,
+            type,
+            units,
+            listOfNotNull(commanderId),
+            playerParticipates = commanderId == null,
+        )
+
+    fun estimate(
+        state: GameState,
+        type: MissionType,
+        units: List<UnitAllocation>,
+        commanderIds: List<Long>,
+        playerParticipates: Boolean,
+    ): MissionEstimate {
+        val selected = ArmyEngine.normalize(units)
+        val leaders =
+            participantStats(state, commanderIds, playerParticipates).ifEmpty {
+                listOf(
+                    LeaderStats(
+                        state.player.sword,
+                        state.player.bow,
+                        state.player.riding,
+                        state.player.leadership,
+                        state.player.tactics,
+                        100,
+                    )
+                )
+            }
+        val power =
+            selected.sumOf { u ->
+                val pool = state.armyPools.find { it.type == u.type }
+                if (pool == null || pool.soldiers == 0) 0.0
+                else pool.power.toDouble() * u.amount / pool.soldiers
+            }
+        val sword = average(leaders.map { it.sword }, state.player.sword)
+        val leadership = average(leaders.map { it.leadership }, state.player.leadership)
+        val tactics = average(leaders.map { it.tactics }, state.player.tactics)
+        val loyalty = average(leaders.map { it.loyalty }, 100)
+        val coordination = 1.0 + (leaders.size - 1).coerceAtLeast(0) * 0.06
+        val score =
+            power *
+                (1 + sword / 180.0 + leadership / 350.0 + tactics / 350.0) *
+                (0.7 + loyalty / 333.0) *
+                coordination / (type.spec().difficulty * 20.0)
+        val hint =
+            when {
+                score >= 1.6 -> "Sehr gute Aussichten"
+                score >= 1.0 -> "Gute Aussichten"
+                score >= 0.7 -> "Unsicherer Ausgang"
+                else -> "Hohes Verlustrisiko"
+            }
+        return MissionEstimate(
+            "${hint} · ${leaders.size} Führungsperson${if (leaders.size == 1) "" else "en"} · Schätzung, Zufall und Einheitenspezialisierung beeinflussen den Ausgang",
+            0..type.spec().difficulty * 6,
+            10..maxOf(10, type.spec().difficulty * 3 / 4),
+        )
+    }
+
+    fun duration(state: GameState, type: MissionType, commanderId: Long?): Int =
+        duration(
+            state,
+            type,
+            listOfNotNull(commanderId),
+            playerParticipates = commanderId == null,
+        )
+
+    fun duration(
+        state: GameState,
+        type: MissionType,
+        commanderIds: List<Long>,
+        playerParticipates: Boolean,
+    ): Int {
         val riding =
-            if (commanderId == COMPANION_COMMANDER_ID) state.companion.riding
-            else state.player.riding
+            participantStats(state, commanderIds, playerParticipates)
+                .maxOfOrNull { it.riding } ?: state.player.riding
         return (type.spec().days -
                 if (riding >= 75 && type in listOf(MissionType.ESCORT, MissionType.SCOUT)) 1 else 0)
             .coerceAtLeast(1)
     }
 
-    fun available(state: GameState, commanderId: Long?, type: UnitType): Int {
+    fun available(state: GameState, commanderId: Long?, type: UnitType): Int =
+        available(state, listOfNotNull(commanderId), type)
+
+    fun available(state: GameState, commanderIds: List<Long>, type: UnitType): Int {
+        val leaders = commanderIds.distinct()
         if (
             state.battleSession?.isActive == true ||
-                (commanderId != null && state.commanderAway(commanderId))
-        )
-            return 0
-        return state.directCommand(type) + (commanderId?.let { state.assignedTo(it, type) } ?: 0)
+                leaders.any { state.commanderAway(it) }
+        ) return 0
+        return (
+            state.directCommand(type).toLong() +
+                leaders.sumOf { state.assignedTo(it, type).toLong() }
+            ).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
 
     fun start(
@@ -44,14 +160,42 @@ object MissionEngine {
         commanderId: Long?,
         units: List<UnitAllocation>,
         regionId: String? = null,
+    ): GameEngine.ActionResult =
+        start(
+            state,
+            type,
+            listOfNotNull(commanderId),
+            playerParticipates = commanderId == null,
+            units = units,
+            regionId = regionId,
+        )
+
+    fun start(
+        state: GameState,
+        type: MissionType,
+        commanderIds: List<Long>,
+        playerParticipates: Boolean,
+        units: List<UnitAllocation>,
+        regionId: String? = null,
     ): GameEngine.ActionResult {
         if (state.battleSession?.isActive == true)
             return GameEngine.ActionResult(state, "Die Schlacht muss zuerst entschieden werden.")
-        if (
-            commanderId != null &&
-                (state.commanders.none { it.id == commanderId } || state.commanderAway(commanderId))
-        )
-            return GameEngine.ActionResult(state, "Kommandant ist nicht verfügbar.")
+
+        val leaders = commanderIds.distinct()
+        val leaderCount = leaders.size + if (playerParticipates) 1 else 0
+        if (leaderCount !in 1..3)
+            return GameEngine.ActionResult(state, "Wähle eine bis drei Führungspersonen für die Mission.")
+        if (playerParticipates && state.playerAwayOnMission)
+            return GameEngine.ActionResult(state, "Du bist bereits persönlich auf einer Mission unterwegs.")
+        val unavailable =
+            leaders.firstOrNull { id ->
+                state.commanders.none { it.id == id } ||
+                    state.commanderAway(id) ||
+                    state.war.unavailableCommander(id)
+            }
+        if (unavailable != null)
+            return GameEngine.ActionResult(state, "Mindestens eine ausgewählte Führungsperson ist nicht verfügbar.")
+
         if (units.any { it.amount < 0 } || units.sumOf { it.amount.toLong() } > Int.MAX_VALUE)
             return GameEngine.ActionResult(state, "Ungültige Truppenauswahl.")
         val selected = ArmyEngine.normalize(units)
@@ -62,32 +206,40 @@ object MissionEngine {
                 "Mindestens ${type.spec().minimum} Soldaten benötigt.",
             )
         selected.forEach {
-            if (it.amount > available(state, commanderId, it.type))
+            val available = available(state, leaders, it.type)
+            if (it.amount > available)
                 return GameEngine.ActionResult(
                     state,
-                    "${it.type.label}: nur ${available(state, commanderId, it.type)} verfügbar.",
+                    "${it.type.label}: nur $available verfügbar.",
                 )
         }
+
         if (regionId != null && state.regions.none { it.id == regionId && it.mission == type })
             return GameEngine.ActionResult(state, "Diese Region bietet die Mission nicht an.")
         val worldState = WorldEngine.initialize(state)
         val target = regionId ?: "keep"
         val path = WorldEngine.route(worldState.world, "keep", target)
         if (!WorldEngine.routeAllowed(worldState, PLAYER_FACTION, path))
-            return GameEngine.ActionResult(state, "Kein zugänglicher Weg: Militärzugang oder Kriegserklärung nötig.")
+            return GameEngine.ActionResult(
+                state,
+                "Kein zugänglicher Weg: Militärzugang oder Kriegserklärung nötig.",
+            )
         val previewArmy = WorldArmy("preview", PLAYER_FACTION, type.label, selected, "keep")
         val travel = WorldEngine.travelDays(worldState, previewArmy, path)
-        val operationDays = duration(state, type, commanderId)
+        val operationDays = duration(state, type, leaders, playerParticipates)
         val days = operationDays + travel * 2
         val supply = maxOf(total.toLong() * days * 2, previewArmy.dailyFood.toLong() * days)
 
         if (supply > state.resources.food)
             return GameEngine.ActionResult(state, "Versorgung benötigt $supply Nahrung.")
+
         val mission =
             ActiveMission(
                 id = nextId(state),
                 missionType = type,
-                commanderId = commanderId,
+                commanderId = leaders.firstOrNull(),
+                commanderIds = leaders,
+                playerParticipates = playerParticipates,
                 units = selected,
                 startDay = state.day,
                 remainingDays = days,
@@ -103,10 +255,17 @@ object MissionEngine {
                         state.armyPools.first { it.type == u.type }.copy(soldiers = u.amount)
                     },
             )
-        val launched = worldState.copy(
+
+        val leaderNames = buildList {
+            if (playerParticipates) add(state.player.name)
+            leaders.mapNotNullTo(this) { id -> state.commanders.firstOrNull { it.id == id }?.name }
+        }.joinToString(", ")
+
+        val launched =
+            worldState.copy(
                 resources = state.resources.copy(food = state.resources.food - supply.toInt()),
-                commanderAssignments =
-                    state.commanderAssignments.filterNot { it.commanderId == commanderId },
+                // Permanent allocations from the Army page remain untouched. Mission allocations
+                // exist only inside ActiveMission and vanish automatically on return.
                 activeMissions =
                     (state.activeMissions + mission)
                         .filter { it.status.isAway }
@@ -116,13 +275,13 @@ object MissionEngine {
                             ChronicleEntry(
                                 state.day,
                                 "Mission gestartet",
-                                "${type.label}: $total Soldaten sind $days Tage unterwegs; $supply Nahrung eingelagert.",
+                                "${type.label}: $total Soldaten und $leaderNames sind $days Tage unterwegs; $supply Nahrung eingelagert.",
                             ))
                         .takeLast(2000),
             )
         return GameEngine.ActionResult(
             WorldEngine.attachMission(launched, mission),
-            "Mission gestartet. Rückkehr voraussichtlich an Tag ${state.day + days}; Wetter und Routenwahl beeinflussen die Reise.",
+            "Mission gestartet mit $leaderCount Führungsperson${if (leaderCount == 1) "" else "en"}. Rückkehr voraussichtlich an Tag ${state.day + days}.",
         )
     }
 
