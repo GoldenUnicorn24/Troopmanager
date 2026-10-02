@@ -454,7 +454,13 @@ object MissionEngine {
                 (1 + skill / 180.0 + leadership / 350.0 + tactics / 350.0) *
                 (0.7 + loyalty / 333.0) *
                 coordination *
-                roll.coerceIn(0.1, 2.0) / (mission.missionType.spec().difficulty * 20.0 * mission.riskFactor)
+                roll.coerceIn(0.1, 2.0) /
+                    (
+                        mission.missionType.spec().difficulty *
+                            20.0 *
+                            mission.riskFactor *
+                            DifficultyEngine.missionDifficultyFactor(state)
+                    )
         val outcome =
             when {
                 score >= 1.6 -> MissionOutcome.GREAT_SUCCESS
@@ -480,6 +486,8 @@ object MissionEngine {
         // Mission casualties now distinguish fatal losses from soldiers who can recover.
         val hospital = WarEngine.effectiveLevel(state, BuildingType.HOSPITAL).coerceAtMost(6)
         val healing = CharacterEngine.bonuses(state).healing.coerceAtLeast(0)
+        val fieldMedicine = ResearchTech.FIELD_MEDICINE in state.research.completed
+        val medicineAvailable = state.militaryStock.medicine
         val baseWoundedPercent =
             when (outcome) {
                 MissionOutcome.GREAT_SUCCESS -> 60
@@ -488,7 +496,14 @@ object MissionEngine {
                 MissionOutcome.FAILED -> 45
                 MissionOutcome.CATASTROPHIC -> 35
             }
-        val woundedPercent = (baseWoundedPercent + hospital * 5 + healing * 2).coerceIn(25, 80)
+        val woundedPercent =
+            (
+                baseWoundedPercent +
+                    hospital * 5 +
+                    healing * 2 +
+                    if (fieldMedicine) 6 else 0 +
+                    if (medicineAvailable > 0) 4 else 0
+            ).coerceIn(25, 85)
         val woundedLosses =
             losses.mapNotNull { casualty ->
                 val amount =
@@ -537,7 +552,27 @@ object MissionEngine {
                     WorldEngine.route(state.world, worldArmy.regionId, "keep"),
                 ).coerceAtLeast(1)
             else 0
-        val treatmentDays = (8 - hospital - healing / 3).coerceAtLeast(2)
+        val hospitalCapacity = 60 + hospital * 180 + healing * 20
+        val existingPatients = state.war.wounded.sumOf { it.soldiers }
+        val overflow =
+            (existingPatients + woundedCount - hospitalCapacity).coerceAtLeast(0)
+        val overloadDays =
+            if (overflow == 0) 0
+            else kotlin.math.ceil(overflow.toDouble() / hospitalCapacity.coerceAtLeast(1))
+                .toInt()
+                .coerceAtMost(5)
+        val medicineNeeded = kotlin.math.ceil(woundedCount / 4.0).toInt()
+        val medicineUsed = minOf(medicineAvailable, medicineNeeded)
+        val medicineCoverage = medicineNeeded == 0 || medicineUsed >= medicineNeeded
+        val treatmentDays =
+            (
+                8 -
+                    hospital -
+                    healing / 3 -
+                    if (fieldMedicine) 1 else 0 -
+                    if (medicineCoverage && woundedCount > 0) 1 else 0 +
+                    overloadDays
+            ).coerceAtLeast(2)
         val woundedRecoveryDay =
             if (woundedCount > 0) state.day + returnDays + treatmentDays else 0
         val survivors = mission.units.mapNotNull { u -> val n = u.amount - (losses.firstOrNull { it.type == u.type }?.amount ?: 0); if (n > 0) u.copy(amount = n) else null }
@@ -602,8 +637,69 @@ object MissionEngine {
                         quality.equipment,
                     )
             }
-            next = next.copy(population = population, war = next.war.copy(wounded = medical))
+            next =
+                next.copy(
+                    population = population,
+                    militaryStock =
+                        next.militaryStock.copy(
+                            medicine = (next.militaryStock.medicine - medicineUsed).coerceAtLeast(0)
+                        ),
+                    war = next.war.copy(wounded = medical),
+                )
         }
+
+        // Mission leaders face personal risk as well. This is deterministic for a mission id/day,
+        // so loading a save never rerolls the result.
+        val leaderRisk =
+            when (outcome) {
+                MissionOutcome.GREAT_SUCCESS -> 0.01
+                MissionOutcome.SUCCESS -> 0.02
+                MissionOutcome.PARTIAL -> 0.05
+                MissionOutcome.FAILED -> 0.10
+                MissionOutcome.CATASTROPHIC -> 0.18
+            }
+        var conditions = next.war.commanderConditions
+        mission.allCommanderIds.forEachIndexed { index, id ->
+            val riskRoll =
+                kotlin.math.abs((mission.id * 31L + state.day * 17L + id * 13L + index).hashCode() % 1000) /
+                    1000.0
+            if (riskRoll < leaderRisk && conditions.none { it.commanderId == id }) {
+                val captured =
+                    outcome == MissionOutcome.CATASTROPHIC &&
+                        ((mission.id + id + state.day) % 5L == 0L)
+                conditions =
+                    conditions +
+                        CommanderCondition(
+                            id,
+                            if (captured) CombatantStatus.CAPTURED else CombatantStatus.WOUNDED,
+                            if (captured) 0 else state.day + treatmentDays.coerceAtLeast(3),
+                        )
+            }
+        }
+        var playerCondition = next.war.playerCondition
+        var playerRecoveryDay = next.war.playerRecoveryDay
+        if (mission.playerParticipates && playerCondition == CombatantStatus.ACTIVE) {
+            val riskRoll =
+                kotlin.math.abs((mission.id * 19L + state.day * 23L).hashCode() % 1000) / 1000.0
+            if (riskRoll < leaderRisk) {
+                val captured =
+                    outcome == MissionOutcome.CATASTROPHIC &&
+                        ((mission.id + state.day) % 6L == 0L)
+                playerCondition =
+                    if (captured) CombatantStatus.CAPTURED else CombatantStatus.WOUNDED
+                playerRecoveryDay = if (captured) 0 else state.day + treatmentDays.coerceAtLeast(3)
+            }
+        }
+        next =
+            next.copy(
+                war =
+                    next.war.copy(
+                        commanderConditions = conditions,
+                        playerCondition = playerCondition,
+                        playerRecoveryDay = playerRecoveryDay,
+                    )
+            )
+
         if (needsReturn) next = WorldEngine.returnMission(next, mission.id)
         else {
             next = WorldEngine.completeMission(next, mission, emptyList())
