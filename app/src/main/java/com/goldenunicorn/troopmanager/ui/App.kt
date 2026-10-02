@@ -107,7 +107,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.6 · Lebendige Reiche", color = PaleGold)
+            Text("v0.61 · Drei Bauplätze & Expeditionsführung", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
@@ -139,6 +139,16 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var species by remember { mutableStateOf(Species.HALF_ELF) }
     var ironman by remember { mutableStateOf(false) }
     var portrait by remember { mutableStateOf<String?>(null) }
+    // v0.61 keeps roughly the old total starting power while letting the player shape it.
+    var sword by remember { mutableStateOf(30) }
+    var bow by remember { mutableStateOf(30) }
+    var riding by remember { mutableStateOf(30) }
+    var leadership by remember { mutableStateOf(30) }
+    var tactics by remember { mutableStateOf(30) }
+    var diplomacy by remember { mutableStateOf(30) }
+    val remainingAttributePoints =
+        30 - ((sword - 30) + (bow - 30) + (riding - 30) + (leadership - 30) +
+            (tactics - 30) + (diplomacy - 30))
     val context = LocalContext.current
     val picker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -240,17 +250,97 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             }
         }
 
+        SectionTitle("Attribute · 30 Punkte selbst verteilen")
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+            Column(
+                Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    "Noch $remainingAttributePoints Punkte frei · jeder Wert startet bei 30.",
+                    color = if (remainingAttributePoints == 0) Gold else Mist,
+                    fontSize = 12.sp,
+                )
+                AttributeAllocatorRow("Schwert", sword, remainingAttributePoints) { sword = it }
+                AttributeAllocatorRow("Bogen", bow, remainingAttributePoints) { bow = it }
+                AttributeAllocatorRow("Reiten", riding, remainingAttributePoints) { riding = it }
+                AttributeAllocatorRow("Führung", leadership, remainingAttributePoints) { leadership = it }
+                AttributeAllocatorRow("Taktik", tactics, remainingAttributePoints) { tactics = it }
+                AttributeAllocatorRow("Diplomatie", diplomacy, remainingAttributePoints) { diplomacy = it }
+                Text(
+                    "Zusätzlich erhältst du beim Start 30 frei nutzbare Fertigkeitspunkte für die sechs Entwicklungswege.",
+                    color = PaleGold,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Switch(ironman, { ironman = it }); Text("Ironman · ein fortlaufender Spielstand", color = Mist)
         }
         Spacer(Modifier.height(18.dp))
-        GoldButton(
-            "Reich gründen",
-            { onCreated(GameEngine.newGame(name, age.toIntOrNull() ?: 23, species, portrait).let { it.copy(settings = it.settings.copy(ironman = ironman)) }) },
-            Modifier.fillMaxWidth(),
-        )
+        Button(
+            onClick = {
+                onCreated(
+                    GameEngine.newGame(
+                        name,
+                        age.toIntOrNull() ?: 23,
+                        species,
+                        portrait,
+                        GameEngine.StartingAttributes(
+                            sword = sword,
+                            bow = bow,
+                            riding = riding,
+                            leadership = leadership,
+                            tactics = tactics,
+                            diplomacy = diplomacy,
+                        ),
+                    ).let { it.copy(settings = it.settings.copy(ironman = ironman)) }
+                )
+            },
+            enabled = remainingAttributePoints == 0,
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
+        ) {
+            Text(
+                if (remainingAttributePoints == 0) "REICH GRÜNDEN"
+                else "NOCH $remainingAttributePoints ATTRIBUTSPUNKTE VERTEILEN",
+                fontWeight = FontWeight.Bold,
+            )
+        }
         TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Zurück")
+        }
+    }
+}
+
+@Composable
+private fun AttributeAllocatorRow(
+    label: String,
+    value: Int,
+    remaining: Int,
+    onValue: (Int) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(label, color = Color.White, modifier = Modifier.weight(1f))
+        TextButton(onClick = { if (value > 30) onValue(value - 1) }, enabled = value > 30) {
+            Text("−")
+        }
+        Text(
+            value.toString(),
+            color = PaleGold,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(34.dp),
+        )
+        TextButton(
+            onClick = { if (remaining > 0 && value < 100) onValue(value + 1) },
+            enabled = remaining > 0 && value < 100,
+        ) {
+            Text("+")
         }
     }
 }
