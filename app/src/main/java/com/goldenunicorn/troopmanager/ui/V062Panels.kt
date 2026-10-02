@@ -156,7 +156,7 @@ internal fun ResearchPanel(
 
         SectionTitle("Forschungszweige")
         ResearchBranch.entries.forEach { branch ->
-            Text(branch.name.replace('_', ' '), color = Gold, fontWeight = FontWeight.Bold)
+            Text(branch.label, color = Gold, fontWeight = FontWeight.Bold)
             ResearchTech.entries.filter { it.branch == branch }.forEach { tech ->
                 val complete = tech in state.research.completed
                 val requirements = ResearchEngine.requirementsMet(state, tech)
