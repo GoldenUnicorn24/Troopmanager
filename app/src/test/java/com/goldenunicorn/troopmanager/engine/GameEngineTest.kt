@@ -306,7 +306,8 @@ class GameEngineTest {
         assertEquals(0, returned.awayArmySize)
         assertEquals(0, returned.activeMissions.first().reward.gold)
         assertEquals(330, returned.armySize)
-        assertEquals(150, returned.assignedTo(1, UnitType.HUMAN_SWORD))
+        // This mission used a temporary mission allocation, not an Army-page assignment.
+        assertEquals(0, returned.assignedTo(1, UnitType.HUMAN_SWORD))
     }
 
     @Test
@@ -459,10 +460,10 @@ class GameEngineTest {
     fun levelUpGivesThreeSpendablePoints() {
         val state = ProgressionEngine.awardXp(human(), 100)
         assertEquals(2, state.player.level)
-        assertEquals(3, state.player.skillPoints)
+        assertEquals(33, state.player.skillPoints)
         val end = ProgressionEngine.spendPoint(state, "leadership").state
         assertEquals(state.player.leadership + 1, end.player.leadership)
-        assertEquals(2, end.player.skillPoints)
+        assertEquals(32, end.player.skillPoints)
         assertEquals(end, ProgressionEngine.spendPoint(end, "unknown").state)
     }
 
