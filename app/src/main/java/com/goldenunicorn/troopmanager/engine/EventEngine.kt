@@ -424,12 +424,53 @@ object EventEngine {
     fun choices(event: RealmEvent): List<String> =
         definitions.find { it.event.key == event.key }?.options?.map { it.label } ?: emptyList()
 
-    fun day(state: GameState): GameState =
-        if (state.pendingRealmEvent != null || state.day % 3 != 0) state
-        else
-            state.copy(
-                pendingRealmEvent = definitions[(state.day / 3 - 1) % definitions.size].event
-            )
+    private fun eventWeight(state: GameState, definition: Definition): Int {
+        val key = definition.event.key
+        val founding =
+            state.foundingCultures.ifEmpty {
+                Culture.entries.filter { ArmyEngine.population(state.population, it) > 0 }.toSet()
+            }
+        return when (key) {
+            "drought" -> if (state.resources.food < 2500) 5 else 1
+            "harvest", "grain" -> if (state.resources.food < 4500) 4 else 2
+            "sickness" -> if (state.society.disease >= 35 || state.realm.level(BuildingType.HOSPITAL) == 0) 4 else 1
+            "bandits" -> if (state.society.crime >= 35 || state.city.security < 45) 4 else 2
+            "rebellion" -> if (state.city.taxLevel == TaxLevel.HIGH || state.city.satisfaction < 40) 5 else 1
+            "festival" -> if (state.city.satisfaction >= 60 && state.resources.food > 1500) 4 else 1
+            "scout", "military_council", "monster_tracks" ->
+                if (state.realm.threat >= 55 || state.invasion != null) 5 else 2
+            "refugees", "pilgrims" ->
+                if (state.population.total < state.city.housingCapacity * 8 / 10) 3 else 1
+            "wood_envoy", "elves" ->
+                if (Culture.WOOD_ELF !in founding && ArmyEngine.population(state.population, Culture.WOOD_ELF) == 0) 4 else 1
+            "gold_envoy" ->
+                if (Culture.GOLD_ELF !in founding && ArmyEngine.population(state.population, Culture.GOLD_ELF) == 0) 4 else 1
+            "wall_officer" ->
+                if (Culture.WALL !in founding && ArmyEngine.population(state.population, Culture.WALL) == 0) 4 else 1
+            "caravan", "merchant", "embassy" ->
+                if (state.realm.level(BuildingType.MARKET) >= 2 || state.realm.level(BuildingType.EMBASSY) >= 1) 3 else 1
+            "ore", "iron_tools", "smith" ->
+                if (state.resources.iron < 1000 || state.realm.level(BuildingType.ARSENAL) > 0) 3 else 1
+            else -> 2
+        }
+    }
+
+    fun day(state: GameState): GameState {
+        if (state.pendingRealmEvent != null || state.day % 3 != 0) return state
+        val recentTitles = state.chronicle.takeLast(6).map { it.title }.toSet()
+        val weighted =
+            definitions.flatMap { definition ->
+                val repeatPenalty = if (definition.event.title in recentTitles) 0 else eventWeight(state, definition)
+                List(repeatPenalty.coerceAtLeast(0)) { definition }
+            }.ifEmpty { definitions }
+        val seed =
+            state.day.toLong() * 31L +
+                state.resources.gold.toLong() * 7L +
+                state.population.total.toLong() * 3L +
+                state.realm.threat
+        val index = kotlin.math.abs(seed % weighted.size).toInt()
+        return state.copy(pendingRealmEvent = weighted[index].event)
+    }
 
     fun choose(state: GameState, choice: Int): GameEngine.ActionResult {
         val event =
