@@ -57,18 +57,9 @@ enum class BattleDecision(val label: String) {
     UNDERMINE("Tunnel vorantreiben"),
 }
 
-/** A consumer can react to a newly persisted minute; no audio files are required. */
 @Serializable
 enum class BattleSoundCue {
-    HORN,
-    SWORDS,
-    ARROWS,
-    MONSTERS,
-    WALL_BREAK,
-    ARTILLERY,
-    HORSES,
-    FIRE,
-    GATE,
+    HORN, SWORDS, ARROWS, MONSTERS, WALL_BREAK, ARTILLERY, HORSES, FIRE, GATE,
 }
 
 @Serializable
@@ -91,6 +82,7 @@ data class BattleContingent(
     val commanderWounded: Boolean = false,
     val commanderRescued: Boolean = false,
     val routed: Boolean = false,
+    val displayName: String? = null,
 )
 
 @Serializable
@@ -134,14 +126,12 @@ data class BattleSession(
     val pendingEvent: BattleEvent? = null,
     val devices: List<SiegeDevice> = emptyList(),
     val wallIntegrity: Int = 100,
-    val log: List<BattleLogEntry> =
-        listOf(BattleLogEntry(0, "Die Truppen nehmen ihre Aufstellung ein.")),
+    val log: List<BattleLogEntry> = listOf(BattleLogEntry(0, "Die Truppen nehmen ihre Aufstellung ein.")),
     val lastSounds: List<BattleSoundCue> = listOf(BattleSoundCue.HORN),
     val lootGold: Int = 0,
     val lootFood: Int = 0,
     val xpReward: Int = 0,
     val renownReward: Int = 0,
-    /** Average equipment points worn by surviving deployed troops, not the whole pool. */
     val equipmentDamage: Int = 0,
     val commanderEvents: List<String> = emptyList(),
     val orderedRetreat: Boolean = false,
@@ -169,29 +159,13 @@ data class BattleSession(
     val enemyFortification: Int = 0,
     val deployedMorale: Int? = null,
     val enemyExperience: Int = 0,
-    /** Fraction of the desired arrow load available when the battle started. */
     val rangedSupplyFactor: Double = 1.0,
 ) {
-    val isActive: Boolean
-        get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT
-
-    val ownRemaining: Int
-        get() = contingents.sumOf { it.soldiers }
-
-    val fightingRemaining: Int
-        get() = contingents.filterNot { it.routed }.sumOf { it.soldiers }
-
-    val enemyRemaining: Int
-        get() = fronts.sumOf { it.enemySoldiers }
-
-    val morale: Int
-        get() =
-            if (ownRemaining == 0) 0
-            else (contingents.sumOf { it.soldiers.toLong() * it.morale } / ownRemaining).toInt()
-
-    fun fighting(section: BattleSection): Int =
-        contingents.filter { it.section == section && !it.routed }.sumOf { it.soldiers }
-
-    fun soldiers(section: BattleSection): Int =
-        contingents.filter { it.section == section }.sumOf { it.soldiers }
+    val isActive: Boolean get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT
+    val ownRemaining: Int get() = contingents.sumOf { it.soldiers }
+    val fightingRemaining: Int get() = contingents.filterNot { it.routed }.sumOf { it.soldiers }
+    val enemyRemaining: Int get() = fronts.sumOf { it.enemySoldiers }
+    val morale: Int get() = if (ownRemaining == 0) 0 else (contingents.sumOf { it.soldiers.toLong() * it.morale } / ownRemaining).toInt()
+    fun fighting(section: BattleSection): Int = contingents.filter { it.section == section && !it.routed }.sumOf { it.soldiers }
+    fun soldiers(section: BattleSection): Int = contingents.filter { it.section == section }.sumOf { it.soldiers }
 }
