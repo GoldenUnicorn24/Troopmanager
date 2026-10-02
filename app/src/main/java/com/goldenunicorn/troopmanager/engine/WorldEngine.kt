@@ -702,15 +702,43 @@ object WorldEngine {
     private fun changeOwnership(state: GameState, regionId: String, ownerId: String): GameState {
         val place = state.world.place(regionId) ?: return state
         if (place.ownerId == ownerId) return state
-        val wasOwned = place.ownerId == PLAYER_FACTION
+        val previousOwnerId = place.ownerId
+        val wasOwned = previousOwnerId == PLAYER_FACTION
         val becomesOwned = ownerId == PLAYER_FACTION
         val oldRegion = state.regions.firstOrNull { it.id == regionId }
-        val regions = if (oldRegion != null) state.regions.map { if (it.id == regionId) it.copy(owned = becomesOwned) else it }
-            else if (becomesOwned) state.regions + WorldRegion(regionId, place.name, RegionType.OWN, null, true) else state.regions
+        val regions =
+            if (oldRegion != null)
+                state.regions.map {
+                    if (it.id == regionId) it.copy(owned = becomesOwned) else it
+                }
+            else if (becomesOwned)
+                state.regions + WorldRegion(regionId, place.name, RegionType.OWN, null, true)
+            else state.regions
         val delta = (if (becomesOwned) 1 else 0) - (if (wasOwned) 1 else 0)
-        return state.copy(regions = regions,
-            realm = state.realm.copy(territory = (state.realm.territory.toLong() + delta).coerceIn(1, Int.MAX_VALUE.toLong()).toInt()),
-            world = state.world.copy(places = state.world.places.map { if (it.id == regionId) it.copy(ownerId = ownerId) else it }))
+        val changed =
+            state.copy(
+                regions = regions,
+                realm =
+                    state.realm.copy(
+                        territory =
+                            (state.realm.territory.toLong() + delta)
+                                .coerceIn(1, Int.MAX_VALUE.toLong())
+                                .toInt()
+                    ),
+                world =
+                    state.world.copy(
+                        places =
+                            state.world.places.map {
+                                if (it.id == regionId) it.copy(ownerId = ownerId) else it
+                            }
+                    ),
+            )
+        return OccupationEngine.onOwnershipChanged(
+            changed,
+            regionId,
+            previousOwnerId,
+            ownerId,
+        )
     }
 
     private fun updateNemesis(state: GameState, id: String?, won: Boolean, player: Boolean): GameState = state.copy(world = state.world.copy(enemyCommanders = state.world.enemyCommanders.map { c ->
