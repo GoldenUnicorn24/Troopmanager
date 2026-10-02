@@ -396,7 +396,20 @@ object MissionEngine {
                         .takeLast(2000)
             )
         }
-        val commander = state.commanders.find { it.id == mission.commanderId }
+        val leaders =
+            participantStats(state, mission.allCommanderIds, mission.playerParticipates).ifEmpty {
+                // Legacy saves with no explicit commander represented the player's personal command.
+                listOf(
+                    LeaderStats(
+                        state.player.sword,
+                        state.player.bow,
+                        state.player.riding,
+                        state.player.leadership,
+                        state.player.tactics,
+                        100,
+                    )
+                )
+            }
         var power = 0.0
         mission.units.forEach { u ->
             val p =
@@ -421,22 +434,26 @@ object MissionEngine {
             power += p.power.toDouble() * u.amount / p.soldiers * specialization
         }
         val skill =
-            when (mission.missionType) {
-                MissionType.HUNT,
-                MissionType.SCOUT -> commander?.bow ?: state.player.bow
-                MissionType.ESCORT ->
-                    if (mission.commanderId == COMPANION_COMMANDER_ID) state.companion.riding
-                    else state.player.riding
-                MissionType.RELIEF -> commander?.leadership ?: state.player.leadership
-                else -> commander?.sword ?: state.player.sword
-            }
-        val leadership = commander?.leadership ?: state.player.leadership
-        val tactics = commander?.tactics ?: state.player.tactics
-        val loyalty = commander?.loyalty ?: 100
+            average(
+                leaders.map { leader ->
+                    when (mission.missionType) {
+                        MissionType.HUNT, MissionType.SCOUT -> leader.bow
+                        MissionType.ESCORT -> leader.riding
+                        MissionType.RELIEF -> leader.leadership
+                        else -> leader.sword
+                    }
+                },
+                state.player.sword,
+            )
+        val leadership = average(leaders.map { it.leadership }, state.player.leadership)
+        val tactics = average(leaders.map { it.tactics }, state.player.tactics)
+        val loyalty = average(leaders.map { it.loyalty }, 100)
+        val coordination = 1.0 + (leaders.size - 1).coerceAtLeast(0) * 0.06
         val score =
             power *
                 (1 + skill / 180.0 + leadership / 350.0 + tactics / 350.0) *
                 (0.7 + loyalty / 333.0) *
+                coordination *
                 roll.coerceIn(0.1, 2.0) / (mission.missionType.spec().difficulty * 20.0 * mission.riskFactor)
         val outcome =
             when {
@@ -501,9 +518,15 @@ object MissionEngine {
                 activeMissions =
                     state.activeMissions.map { if (it.id == mission.id) completed else it }
             )
-        next = next.copy(commanders = next.commanders.map { c ->
-            if (c.id == mission.commanderId) c.copy(missionsCompleted = c.missionsCompleted + 1,
-                victories = c.victories + if (success) 1 else 0, casualties = c.casualties + lost) else c
+        val participantCommanderIds = mission.allCommanderIds.toSet()
+        next = next.copy(commanders = next.commanders.map { commander ->
+            if (commander.id in participantCommanderIds)
+                commander.copy(
+                    missionsCompleted = commander.missionsCompleted + 1,
+                    victories = commander.victories + if (success) 1 else 0,
+                    casualties = commander.casualties + lost,
+                )
+            else commander
         })
         if (worldArmy != null) next = next.copy(world = next.world.copy(armies = next.world.armies.map { if (it.id == worldArmy.id) it.copy(units = survivors) else it }))
         next = ArmyEngine.applyLosses(next, losses)
@@ -578,7 +601,7 @@ object MissionEngine {
                         )
                 )
         }
-        if (mission.commanderId == COMPANION_COMMANDER_ID)
+        if (COMPANION_COMMANDER_ID in participantCommanderIds)
             next =
                 next.copy(
                     companion =
@@ -586,32 +609,20 @@ object MissionEngine {
                             trust = (next.companion.trust + if (success) 3 else -2).coerceIn(0, 100)
                         )
                 )
-        if (mission.commanderId != null) next = CharacterEngine.recordMission(next, mission.commanderId, success, mission.missionType.label)
+        mission.allCommanderIds.forEach { id ->
+            next = CharacterEngine.recordMission(next, id, success, mission.missionType.label)
+        }
         next = RelationshipEngine.onEvent(next, if (success) "mission" else "wounded")
         return ProgressionEngine.update(ProgressionEngine.awardXp(next, maxOf(10, base / 4)))
     }
 
+    /**
+     * Mission staffing is temporary in v0.61. Permanent assignments are owned exclusively by the
+     * Army page, so returning from a mission must never create or replace a CommanderAssignment.
+     */
     private fun restoreCommand(
         state: GameState,
         mission: ActiveMission,
         losses: List<UnitAllocation>,
-    ): GameState {
-        val id = mission.commanderId ?: return state
-        val units =
-            mission.units
-                .map { u ->
-                    UnitAllocation(
-                        u.type,
-                        u.amount - (losses.find { it.type == u.type }?.amount ?: 0),
-                    )
-                }
-                .filter { it.amount > 0 }
-        return ArmyEngine.clampAssignments(
-            state.copy(
-                commanderAssignments =
-                    state.commanderAssignments.filterNot { it.commanderId == id } +
-                        CommanderAssignment(id, units)
-            )
-        )
-    }
+    ): GameState = ArmyEngine.clampAssignments(state)
 }
