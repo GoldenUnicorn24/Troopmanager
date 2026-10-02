@@ -81,9 +81,13 @@ object WorldEngine {
         val size = if (army.total > 10000) 0.65 else if (army.total > 2000) 0.85 else 1.0
         val doctrine =
             if (army.factionId == PLAYER_FACTION) DoctrineEngine.marchFactor(state) else 1.0
+        val origin =
+            if (army.factionId == PLAYER_FACTION)
+                OriginEngine.forestMarchFactor(state, target.terrain)
+            else 1.0
         return (30 * terrain * (0.7 + (road?.quality ?: 20) / 200.0) *
             state.world.weather.season.marchFactor * weather.marchFactor * size * army.marchPolicy.speed *
-            (0.8 + army.morale / 400.0) * (0.9 + leadership / 500.0) * doctrine)
+            (0.8 + army.morale / 400.0) * (0.9 + leadership / 500.0) * doctrine * origin)
             .toInt()
             .coerceAtLeast(3)
     }
@@ -156,11 +160,13 @@ object WorldEngine {
         val intel = base.world.knowledgeFor(PLAYER_FACTION)
         if (base.world.place(regionId) == null || (regionId !in intel.exploredRegions && base.world.roads.none { it.connects(regionId) && it.other(regionId) in intel.exploredRegions }))
             return result(state, "Kundschafter erreichen nur bekannte Orte und ihre Nachbarn.")
-        if (base.resources.gold < 75 || base.resources.food < 100) return result(state, "Aufklärung kostet 75 Gold und 100 Nahrung.")
+        val scoutGold = kotlin.math.ceil(75 * OriginEngine.scoutingCostFactor(base)).toInt()
+        if (base.resources.gold < scoutGold || base.resources.food < 100)
+            return result(state, "Aufklärung kostet $scoutGold Gold und 100 Nahrung.")
         val updated = intel.copy(exploredRegions = (intel.exploredRegions + regionId).distinct(), visibleRegions = (intel.visibleRegions + regionId).distinct(),
             observations = intel.observations.filterNot { o -> base.world.armies.any { it.id == o.armyId && it.regionId == regionId } } +
                 base.world.armies.filter { it.regionId == regionId && it.status != WorldArmyStatus.DESTROYED }.map { observation(it, base.day, true) })
-        return result(base.copy(resources = base.resources.copy(gold = base.resources.gold - 75, food = base.resources.food - 100),
+        return result(base.copy(resources = base.resources.copy(gold = base.resources.gold - scoutGold, food = base.resources.food - 100),
             world = base.world.copy(knowledge = base.world.knowledge.filterNot { it.factionId == PLAYER_FACTION } + updated)), "Kundschafterbericht von ${base.world.place(regionId)?.name}: genaue Stärken an Tag ${base.day}.")
     }
 
