@@ -102,6 +102,53 @@ class V061FeaturesTest {
     }
 
     @Test
+    fun armyOverviewShowsOnlySelectedStartingCultures() {
+        val state =
+            GameEngine.newGame(
+                "Leon",
+                23,
+                Species.HALF_ELF,
+                null,
+                startingCultures = setOf(Culture.HUMAN, Culture.GOLD_ELF),
+            )
+
+        assertEquals(
+            listOf(Culture.HUMAN, Culture.GOLD_ELF),
+            ArmyEngine.visibleCultures(state),
+        )
+        assertTrue(
+            state.armyPools.all {
+                it.type.culture == Culture.HUMAN || it.type.culture == Culture.GOLD_ELF
+            }
+        )
+    }
+
+    @Test
+    fun newlyUnlockedCultureAppearsAutomaticallyInArmyOverview() {
+        val state =
+            GameEngine.newGame(
+                "Leon",
+                23,
+                Species.HALF_ELF,
+                null,
+                startingCultures = setOf(Culture.HUMAN, Culture.GOLD_ELF),
+            )
+        val immigrated =
+            state.copy(
+                population =
+                    state.population.copy(
+                        woodElf = 120,
+                        woodElfRecruits = 20,
+                    )
+            )
+
+        assertEquals(
+            listOf(Culture.HUMAN, Culture.WOOD_ELF, Culture.GOLD_ELF),
+            ArmyEngine.visibleCultures(immigrated),
+        )
+    }
+
+    @Test
     fun missionSupportsPlayerPlusTwoCommandersAndKeepsPermanentArmyAssignment() {
         var state = GameEngine.newGame("Leon", 23, Species.HUMAN, null)
         state =
