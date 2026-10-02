@@ -187,7 +187,23 @@ object BattleEngine {
         val feignedPerk = CharacterEngine.hasPerk(state, PlayerPerk.WARFARE_FEIGNED_RETREAT)
         val rallyPerk = CharacterEngine.hasPerk(state, PlayerPerk.WARFARE_RALLY)
         val cp = (20 + state.player.leadership / 10).coerceAtMost(35)
-        val combatResources = if (tactic == Tactic.FORTIFY) state.resources.copy(food = (state.resources.food.toLong() + state.war.siegeFoodStored).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) else state.resources
+        val combatResources =
+            if (tactic == Tactic.FORTIFY)
+                state.resources.copy(
+                    food =
+                        (state.resources.food.toLong() + state.war.siegeFoodStored)
+                            .coerceAtMost(Int.MAX_VALUE.toLong())
+                            .toInt()
+                )
+            else state.resources
+        val rangedSoldiers =
+            contingents.filter { it.type.ranged >= 8 }.sumOf { it.soldiers.toLong() }
+        val desiredArrows =
+            (rangedSoldiers * 4L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val arrowsLoaded = minOf(state.militaryStock.arrows, desiredArrows)
+        val rangedSupplyFactor =
+            if (desiredArrows == 0) 1.0
+            else (arrowsLoaded.toDouble() / desiredArrows).coerceIn(0.35, 1.0)
         var session =
             BattleSession(
                 enemy,
@@ -211,10 +227,61 @@ object BattleEngine {
                 commandPoints = cp, maxCommandPoints = cp,
                 heroPerk = heroPerk, reservePerk = reservePerk, feignedRetreatPerk = feignedPerk, rallyPerk = rallyPerk,
                 moraleBonus = CharacterEngine.bonuses(state).morale, healingBonus = CharacterEngine.bonuses(state).healing,
-                rangedWeather = rangedWeather.coerceIn(0.25, 1.5), cavalryWeather = cavalryWeather.coerceIn(0.25, 1.5), seasonPenalty = seasonPenalty.coerceIn(0.5, 1.5),
+                rangedWeather = rangedWeather.coerceIn(0.25, 1.5),
+                cavalryWeather = cavalryWeather.coerceIn(0.25, 1.5),
+                seasonPenalty = seasonPenalty.coerceIn(0.5, 1.5),
+                rangedSupplyFactor = rangedSupplyFactor,
             )
-        session = session.copy(replayStart = BattleReplayStart(state.player, state.commanders, state.realm, combatResources, state.armyPools, state.population, state.commanderAssignments, session.contingents, session.fronts, session.devices, state.day, state.war.equipment, heroPerk, reservePerk, feignedPerk, rallyPerk, session.moraleBonus, session.seasonPenalty, session.rangedWeather, session.cavalryWeather, session.healingBonus, state.war.buildingDamage, state.war.gateReinforcement, state.war.eliteUnits, state.settings.permadeath, session.enemyFortification, session.location, session.deployedMorale, session.enemyExperience))
-        val next = state.copy(battleSession = session, resources = combatResources, war = if (tactic == Tactic.FORTIFY) state.war.copy(siegeFoodStored = 0) else state.war)
+        session =
+            session.copy(
+                replayStart =
+                    BattleReplayStart(
+                        state.player,
+                        state.commanders,
+                        state.realm,
+                        combatResources,
+                        state.armyPools,
+                        state.population,
+                        state.commanderAssignments,
+                        session.contingents,
+                        session.fronts,
+                        session.devices,
+                        state.day,
+                        state.war.equipment,
+                        heroPerk,
+                        reservePerk,
+                        feignedPerk,
+                        rallyPerk,
+                        session.moraleBonus,
+                        session.seasonPenalty,
+                        session.rangedWeather,
+                        session.cavalryWeather,
+                        session.healingBonus,
+                        state.war.buildingDamage,
+                        state.war.gateReinforcement,
+                        state.war.eliteUnits,
+                        state.settings.permadeath,
+                        session.enemyFortification,
+                        session.location,
+                        session.deployedMorale,
+                        session.enemyExperience,
+                        state.doctrine,
+                        session.rangedSupplyFactor,
+                    )
+            )
+        val next =
+            state.copy(
+                battleSession = session,
+                resources = combatResources,
+                militaryStock =
+                    state.militaryStock.copy(
+                        arrows = (state.militaryStock.arrows - arrowsLoaded).coerceAtLeast(0)
+                    ),
+                war =
+                    if (tactic == Tactic.FORTIFY)
+                        state.war.copy(siegeFoodStored = 0)
+                    else state.war,
+            )
         if (session.ownStart == 0)
             return GameEngine.ActionResult(
                 finish(next, session, false),
@@ -696,7 +763,61 @@ object BattleEngine {
     fun replay(record: BattleRecord, exchanges: Int = record.inputs.size): BattleSession? {
         val context = record.replay ?: return null
         val cp = (20 + context.player.leadership / 10).coerceAtMost(35)
-        var replayState = GameState(player = context.player, day = context.day, commanders = context.commanders, realm = context.realm, resources = context.resources, armyPools = context.armyPools, population = context.population, commanderAssignments = context.assignments, settings = GameSettings(permadeath = context.permadeath), war = WarState(equipment = context.equipment, buildingDamage = context.buildingDamage, gateReinforcement = context.gateReinforcement, eliteUnits = context.eliteUnits), battleSession = BattleSession(record.enemy, record.tactic, record.seed, record.ownStart, record.enemyStart, context.initialContingents, context.initialFronts, devices = context.devices, wallIntegrity = context.realm.wallIntegrity, terrain = record.terrain, participation = record.participation, replayStart = context, commandPoints = cp, maxCommandPoints = cp, heroPerk = context.heroPerk, reservePerk = context.reservePerk, feignedRetreatPerk = context.feignedRetreatPerk, rallyPerk = context.rallyPerk, moraleBonus = context.moraleBonus, rangedWeather = context.rangedWeather, cavalryWeather = context.cavalryWeather, seasonPenalty = context.seasonPenalty, healingBonus = context.healingBonus, enemyFactionName = record.enemyFactionName, enemyUnits = record.enemyUnits, location = context.location, enemyFactionId = record.enemyFactionId, enemyArmyName = record.enemyArmyName, enemyFortification = context.enemyFortification, deployedMorale = context.deployedMorale, enemyExperience = context.enemyExperience))
+        var replayState =
+            GameState(
+                player = context.player,
+                day = context.day,
+                commanders = context.commanders,
+                realm = context.realm,
+                resources = context.resources,
+                armyPools = context.armyPools,
+                population = context.population,
+                commanderAssignments = context.assignments,
+                settings = GameSettings(permadeath = context.permadeath),
+                doctrine = context.doctrine,
+                war =
+                    WarState(
+                        equipment = context.equipment,
+                        buildingDamage = context.buildingDamage,
+                        gateReinforcement = context.gateReinforcement,
+                        eliteUnits = context.eliteUnits,
+                    ),
+                battleSession =
+                    BattleSession(
+                        record.enemy,
+                        record.tactic,
+                        record.seed,
+                        record.ownStart,
+                        record.enemyStart,
+                        context.initialContingents,
+                        context.initialFronts,
+                        devices = context.devices,
+                        wallIntegrity = context.realm.wallIntegrity,
+                        terrain = record.terrain,
+                        participation = record.participation,
+                        replayStart = context,
+                        commandPoints = cp,
+                        maxCommandPoints = cp,
+                        heroPerk = context.heroPerk,
+                        reservePerk = context.reservePerk,
+                        feignedRetreatPerk = context.feignedRetreatPerk,
+                        rallyPerk = context.rallyPerk,
+                        moraleBonus = context.moraleBonus,
+                        rangedWeather = context.rangedWeather,
+                        cavalryWeather = context.cavalryWeather,
+                        seasonPenalty = context.seasonPenalty,
+                        healingBonus = context.healingBonus,
+                        enemyFactionName = record.enemyFactionName,
+                        enemyUnits = record.enemyUnits,
+                        location = context.location,
+                        enemyFactionId = record.enemyFactionId,
+                        enemyArmyName = record.enemyArmyName,
+                        enemyFortification = context.enemyFortification,
+                        deployedMorale = context.deployedMorale,
+                        enemyExperience = context.enemyExperience,
+                        rangedSupplyFactor = context.rangedSupplyFactor,
+                    ),
+            )
         if (record.ownStart == 0) return finish(replayState, replayState.battleSession!!, false).battleSession
         record.inputs.take(exchanges.coerceIn(0, record.inputs.size)).forEach { input ->
             val current = replayState.battleSession ?: return null
@@ -756,7 +877,18 @@ object BattleEngine {
             (if (c.type == UnitType.KNIGHT) session?.cavalryWeather ?: 1.0 else 1.0) *
             (session?.seasonPenalty ?: 1.0) *
             (if (session?.participation == BattleParticipation.PERSONAL && c.commanderId == null) if (session.heroPerk) 1.22 else 1.10 else 1.0) *
-            (if (state.war.eliteUnits.any { it.type == c.type && "Unbeugsam" in it.traits }) 1.05 else 1.0)
+            (if (state.war.eliteUnits.any { it.type == c.type && "Unbeugsam" in it.traits }) 1.05 else 1.0) *
+            DoctrineEngine.equipmentPowerFactor(state) *
+            (if (phase == BattlePhase.RANGED && c.type.ranged >= 8)
+                DoctrineEngine.rangedPowerFactor(state) * (session?.rangedSupplyFactor ?: 1.0)
+             else 1.0) *
+            (if (state.doctrine == MilitaryDoctrine.FOREST_WARFARE && terrain == BattleTerrain.FOREST)
+                1.12 else 1.0) *
+            (if (
+                state.doctrine == MilitaryDoctrine.DISCIPLINED_LINE &&
+                    c.type != UnitType.KNIGHT &&
+                    phase != BattlePhase.RANGED
+            ) 1.05 else 1.0)
     }
 
     private fun tacticBonus(tactic: Tactic, phase: BattlePhase, section: BattleSection): Double =
