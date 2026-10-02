@@ -12,3 +12,9 @@ app/build
 .kotlin/
 __pycache__/
 *.pyc
+
+# Update signing material. Never commit the keystore or passwords.
+*.jks
+*.keystore
+signing.properties
+keystore.properties
