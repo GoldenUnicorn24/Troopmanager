@@ -72,20 +72,29 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
                 Text("Lazarett Stufe $hospitalLevel", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Text(
                     if (hospitalLevel > 0)
-                        "Höhere Stufen retten mehr Verwundete und verkürzen die Behandlungszeit."
+                        "Höhere Stufen retten mehr Verwundete und verkürzen die Behandlung. Bei Überbelegung verlängert sich die Genesung."
                     else
-                        "Noch nicht gebaut. Errichten unter Stadt → Bauen → Lazarett. Verwundete können trotzdem versorgt werden, erholen sich aber langsamer.",
+                        "Noch nicht gebaut. Errichten unter Stadt → Bauen → Lazarett. Verwundete können trotzdem versorgt werden, aber deutlich langsamer.",
                     color = Mist,
                     fontSize = 12.sp,
                 )
                 ArmyMetrics(
                     listOf(
                         "Verwundet" to woundedTotal,
+                        "Kapazität" to WarEngine.hospitalCapacity(state),
+                        "Heilmittel" to state.militaryStock.medicine,
                         "Nächste Rückkehr" to (nextRecovery ?: 0),
                         "Eigene Gefangene" to ownCaptives,
                         "Gefallen · letzte 10 Missionen" to recentMissionDead,
                     )
                 )
+                if (woundedTotal > WarEngine.hospitalCapacity(state))
+                    Text(
+                        "ÜBERBELEGT · ${woundedTotal - WarEngine.hospitalCapacity(state)} Patienten über regulärer Kapazität.",
+                        color = Danger,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                    )
             }
         }
         if (state.war.wounded.isEmpty()) {
@@ -138,10 +147,17 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
         }
 
         SectionTitle("Arsenal & besondere Verbände")
-        Text("Arsenal ${WarEngine.effectiveLevel(state, BuildingType.ARSENAL)}: produziert aus Holz/Eisen; Ausrüstung repariert zuerst Heimattruppen.", color = Mist, fontSize = 12.sp)
+        Text(
+            "Arsenal ${WarEngine.effectiveLevel(state, BuildingType.ARSENAL)}: Militärgüter werden unter Arsenal & Logistik aus echten Rohstoffen produziert. Reparaturen verbrauchen passende Waffen und Rüstungen.",
+            color = Mist,
+            fontSize = 12.sp,
+        )
         state.armyPools.forEach { pool ->
             val batch = state.war.equipment.firstOrNull { it.type == pool.type }
-            CompactCard(pool.type.label, "${batch?.quality?.label ?: EquipmentQuality.NORMAL.label} · ${pool.equipment} % Zustand · ${batch?.stock ?: 0} auf Lager")
+            CompactCard(
+                pool.type.label,
+                "${batch?.quality?.label ?: EquipmentQuality.NORMAL.label} · ${pool.equipment} % Zustand",
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { apply(WarEngine.upgradeEquipment(state, pool.type)) }) { Text("Qualität verbessern") }
                 if (pool.equipment < 50) TextButton(onClick = { apply(WarEngine.improviseEquipment(state, pool.type)) }) { Text("Notrüstung aus Holz") }
