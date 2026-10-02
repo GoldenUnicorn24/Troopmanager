@@ -13,8 +13,8 @@ android {
         applicationId = "com.goldenunicorn.troopmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.66.0"
+        versionCode = 23
+        versionName = "0.68.0"
     }
 
     buildFeatures {
