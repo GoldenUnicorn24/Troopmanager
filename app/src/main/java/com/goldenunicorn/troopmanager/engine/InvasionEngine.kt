@@ -37,12 +37,15 @@ object InvasionEngine {
                     next.realm.territory >= 3 || next.victories >= 3 -> EnemyType.URUK
                     else -> EnemyType.ORC
                 }
+            val rawStrength =
+                250L +
+                    next.realm.territory * 100L +
+                    next.victories * 80L +
+                    if (next.completedRealm) next.armySize / 2 else 0
             val strength =
-                (250L +
-                        next.realm.territory * 100L +
-                        next.victories * 80L +
-                        if (next.completedRealm) next.armySize / 2 else 0)
-                    .coerceAtMost(Int.MAX_VALUE.toLong())
+                (rawStrength * DifficultyEngine.invasionStrengthFactor(next))
+                    .toLong()
+                    .coerceIn(1, Int.MAX_VALUE.toLong())
                     .toInt()
             val delay = 6 + if (next.realm.scoutingDays > 0) 2 else 0
             val devices =
