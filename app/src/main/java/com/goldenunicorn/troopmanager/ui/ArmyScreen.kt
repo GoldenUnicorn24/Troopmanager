@@ -80,8 +80,10 @@ internal fun ArmyScreen(
                         ArmyMetrics(
                             listOf(
                                 "Gesamt" to state.armySize,
-                                "Zuhause" to state.homeArmySize,
+                                "Einsatzbereit zuhause" to state.homeArmySize,
                                 "Auf Mission" to state.awayArmySize,
+                                "Verwundet" to state.war.wounded.sumOf { it.soldiers },
+                                "In Ausbildung" to state.trainingQueue.sumOf { it.amount },
                                 "Zugewiesen" to UnitType.entries.sumOf { state.assigned(it) },
                             )
                         )
