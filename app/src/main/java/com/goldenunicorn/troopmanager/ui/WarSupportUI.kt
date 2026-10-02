@@ -58,26 +58,86 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
             }
         }, confirmButton = { TextButton(onClick = { replayRecord = null; replayPlaying = false }) { Text("Schließen") } })
     }
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        SectionTitle("Kriegsführung und Versorgung")
-        Text("Lazarett: ${state.war.wounded.sumOf { it.soldiers }} Verwundete · ${state.war.captives.filter { it.own }.sumOf { it.soldiers }} eigene Gefangene", color = PaleGold)
-        state.war.wounded.forEach { Text("${it.type.label}: ${it.soldiers} · Rückkehr Tag ${it.recoveryDay}", color = Mist, fontSize = 12.sp) }
-        Text("Persönlicher Zustand: ${state.war.playerCondition.label}", color = Mist)
-        state.war.commanderConditions.forEach { condition -> Text("${state.commanders.firstOrNull { it.id == condition.commanderId }?.name ?: "Kommandant"}: ${condition.status.label}${if (condition.status in listOf(CombatantStatus.WOUNDED, CombatantStatus.UNCONSCIOUS)) " bis Tag ${condition.untilDay}" else ""}", color = Danger, fontSize = 12.sp) }
-        state.war.commanderConditions.filter { it.status == CombatantStatus.CAPTURED }.forEach { condition ->
-            OutlinedButton(onClick = { apply(WarEngine.ransomCommander(state, condition.commanderId)) }) { Text("${state.commanders.firstOrNull { it.id == condition.commanderId }?.name ?: "Kommandant"} auslösen · 500 Gold") }
+    val hospitalLevel = WarEngine.effectiveLevel(state, BuildingType.HOSPITAL)
+    val woundedTotal = state.war.wounded.sumOf { it.soldiers }
+    val nextRecovery = state.war.wounded.minOfOrNull { it.recoveryDay }
+    val ownCaptives = state.war.captives.filter { it.own }.sumOf { it.soldiers }
+    val recentMissionDead =
+        state.activeMissions.filterNot { it.status.isAway }.takeLast(10).sumOf { it.reportedDead }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SectionTitle("Lazarett")
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Lazarett Stufe $hospitalLevel", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(
+                    if (hospitalLevel > 0)
+                        "Höhere Stufen retten mehr Verwundete und verkürzen die Behandlungszeit."
+                    else
+                        "Noch nicht gebaut. Errichten unter Stadt → Bauen → Lazarett. Verwundete können trotzdem versorgt werden, erholen sich aber langsamer.",
+                    color = Mist,
+                    fontSize = 12.sp,
+                )
+                ArmyMetrics(
+                    listOf(
+                        "Verwundet" to woundedTotal,
+                        "Nächste Rückkehr" to (nextRecovery ?: 0),
+                        "Eigene Gefangene" to ownCaptives,
+                        "Gefallen · letzte 10 Missionen" to recentMissionDead,
+                    )
+                )
+            }
         }
-        if (state.war.playerCondition == CombatantStatus.CAPTURED) OutlinedButton(onClick = { apply(WarEngine.ransomCommander(state, null)) }) { Text("Eigene Freilassung verhandeln · 1.000 Gold") }
-        Text("Belagerungsdepot ${state.war.siegeFoodStored} Nahrung · Torverstärkung ${state.war.gateReinforcement} · ${if (state.war.civiliansEvacuated) "Zivilisten geschützt" else "Evakuierung offen"}", color = Mist, fontSize = 12.sp)
+        if (state.war.wounded.isEmpty()) {
+            EmptyCard("Aktuell keine Verwundeten. Neue Verwundete aus Schlachten und Missionen erscheinen hier automatisch.")
+        } else {
+            state.war.wounded.sortedBy { it.recoveryDay }.forEach { cohort ->
+                val days = (cohort.recoveryDay - state.day).coerceAtLeast(0)
+                CompactCard(
+                    "${cohort.type.label} · ${cohort.soldiers} Verwundete",
+                    "Einsatzbereit ab Tag ${cohort.recoveryDay} · noch $days Tag${if (days == 1) "" else "e"} · Erfahrung ${cohort.experience} %",
+                )
+            }
+        }
+
+        SectionTitle("Führung & Einsatzfähigkeit")
+        Text("Dein Zustand: ${state.war.playerCondition.label}", color = if (state.war.playerCondition == CombatantStatus.ACTIVE) Success else Danger)
+        if (state.war.commanderConditions.isEmpty())
+            Text("Alle verfügbaren Kommandanten sind einsatzfähig.", color = Mist, fontSize = 12.sp)
+        state.war.commanderConditions.forEach { condition ->
+            val name = state.commanders.firstOrNull { it.id == condition.commanderId }?.name ?: "Kommandant"
+            CompactCard(
+                name,
+                condition.status.label + if (condition.status in listOf(CombatantStatus.WOUNDED, CombatantStatus.UNCONSCIOUS)) " · Rückkehr Tag ${condition.untilDay}" else "",
+            )
+        }
+        state.war.commanderConditions.filter { it.status == CombatantStatus.CAPTURED }.forEach { condition ->
+            OutlinedButton(onClick = { apply(WarEngine.ransomCommander(state, condition.commanderId)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("${state.commanders.firstOrNull { it.id == condition.commanderId }?.name ?: "Kommandant"} auslösen · 500 Gold")
+            }
+        }
+        if (state.war.playerCondition == CombatantStatus.CAPTURED)
+            OutlinedButton(onClick = { apply(WarEngine.ransomCommander(state, null)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("Eigene Freilassung verhandeln · 1.000 Gold")
+            }
+
+        SectionTitle("Belagerung & Versorgung")
+        CompactCard(
+            "Festungsvorräte",
+            "Belagerungsdepot ${state.war.siegeFoodStored} Nahrung · Torverstärkung ${state.war.gateReinforcement} · ${if (state.war.civiliansEvacuated) "Zivilisten geschützt" else "Evakuierung offen"}",
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TextButton(onClick = { apply(WarEngine.prepareSiege(state, "food")) }) { Text("Nahrung lagern") }
             TextButton(onClick = { apply(WarEngine.prepareSiege(state, "gate")) }) { Text("Tor verstärken") }
         }
         TextButton(onClick = { apply(WarEngine.prepareSiege(state, "evacuate")) }) { Text("Zivilisten evakuieren · 100 Gold / 200 Nahrung") }
         state.war.buildingDamage.filterValues { it > 0 }.forEach { (type, damage) ->
-            OutlinedButton(onClick = { apply(WarEngine.repairBuilding(state, type)) }, modifier = Modifier.fillMaxWidth()) { Text("${type.label}: $damage % Schaden · Reparatur ${damage * 3} Gold / ${damage * 2} Holz / ${damage * 2} Stein") }
+            OutlinedButton(onClick = { apply(WarEngine.repairBuilding(state, type)) }, modifier = Modifier.fillMaxWidth()) {
+                Text("${type.label}: $damage % Schaden · Reparatur ${damage * 3} Gold / ${damage * 2} Holz / ${damage * 2} Stein")
+            }
         }
-        SectionTitle("Arsenal und besondere Verbände")
+
+        SectionTitle("Arsenal & besondere Verbände")
         Text("Arsenal ${WarEngine.effectiveLevel(state, BuildingType.ARSENAL)}: produziert aus Holz/Eisen; Ausrüstung repariert zuerst Heimattruppen.", color = Mist, fontSize = 12.sp)
         state.armyPools.forEach { pool ->
             val batch = state.war.equipment.firstOrNull { it.type == pool.type }
