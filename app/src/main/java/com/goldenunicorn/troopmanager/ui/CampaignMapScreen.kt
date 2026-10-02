@@ -27,6 +27,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.engine.OriginEngine
+import com.goldenunicorn.troopmanager.engine.OccupationEngine
 import com.goldenunicorn.troopmanager.engine.WorldEngine
 import com.goldenunicorn.troopmanager.model.*
 
@@ -180,6 +181,33 @@ internal fun CampaignMapScreen(
                     }
                     val depots = world.depots.filter { it.regionId == region.id && it.factionId == PLAYER_FACTION }
                     depots.forEach { depot -> Text("Versorgungslager: ${depot.food} / ${depot.capacity} Nahrung", color = Success, fontSize = 12.sp) }
+                    state.occupations.firstOrNull { it.regionId == region.id }?.let { occupation ->
+                        val garrison =
+                            world.armies.filter {
+                                it.factionId == PLAYER_FACTION &&
+                                    it.regionId == region.id &&
+                                    it.status != WorldArmyStatus.DESTROYED
+                            }.sumOf { it.total }
+                        HorizontalDivider(color = Gold.copy(alpha = .35f))
+                        Text("BESATZUNGSVERWALTUNG", color = Gold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text(
+                            "Unruhe ${occupation.unrest}% · Garnison $garrison · ${occupation.policy.label}",
+                            color = if (occupation.unrest >= 70) Danger else if (occupation.unrest <= 25) Success else Mist,
+                            fontSize = 12.sp,
+                        )
+                        Text(occupation.policy.description, color = Mist, fontSize = 11.sp)
+                        OccupationPolicy.entries.forEach { policy ->
+                            if (policy != occupation.policy)
+                                OutlinedButton(
+                                    onClick = {
+                                        val result = OccupationEngine.setPolicy(state, region.id, policy)
+                                        onState(result.state)
+                                        onNotice(result.message)
+                                    },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                                ) { Text(policy.label) }
+                        }
+                    }
                     val scoutGold =
                         kotlin.math.ceil(75 * OriginEngine.scoutingCostFactor(state)).toInt()
                     OutlinedButton(
