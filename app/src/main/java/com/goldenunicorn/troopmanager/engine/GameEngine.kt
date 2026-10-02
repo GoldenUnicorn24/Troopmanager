@@ -173,14 +173,16 @@ object GameEngine {
 
     private fun preferredCommanderCulture(species: Species, cultures: Set<Culture>): Culture =
         when (species) {
-            Species.HUMAN -> if (Culture.HUMAN in cultures) Culture.HUMAN else cultures.first()
+            Species.HUMAN -> if (Culture.HUMAN in cultures) Culture.HUMAN else Culture.entries.first { it in cultures }
             Species.ELF ->
                 when {
                     Culture.WOOD_ELF in cultures -> Culture.WOOD_ELF
                     Culture.GOLD_ELF in cultures -> Culture.GOLD_ELF
-                    else -> cultures.first()
+                    else -> Culture.entries.first { it in cultures }
                 }
-            Species.HALF_ELF -> if (Culture.HUMAN in cultures) Culture.HUMAN else cultures.first()
+            Species.HALF_ELF ->
+                if (Culture.HUMAN in cultures) Culture.HUMAN
+                else Culture.entries.first { it in cultures }
         }
 
     private fun startingCommander(culture: Culture): Commander =
