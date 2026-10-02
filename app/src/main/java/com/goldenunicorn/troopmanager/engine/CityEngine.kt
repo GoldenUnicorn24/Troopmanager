@@ -4,11 +4,8 @@ import com.goldenunicorn.troopmanager.model.*
 
 /** City actions use campaign days; existing buildings are never converted to projects. */
 object CityEngine {
-    fun constructionSlots(state: GameState): Int =
-        (1 +
-                (if (state.realm.level(BuildingType.PALACE) >= 3) 1 else 0) +
-                (if (state.realm.level(BuildingType.ACADEMY) >= 2) 1 else 0))
-            .coerceAtMost(3)
+    /** v0.61: every realm starts with three parallel construction slots. */
+    fun constructionSlots(state: GameState): Int = 3
 
     fun buildingDays(state: GameState, type: BuildingType): Int {
         val target = state.realm.level(type) + 1
