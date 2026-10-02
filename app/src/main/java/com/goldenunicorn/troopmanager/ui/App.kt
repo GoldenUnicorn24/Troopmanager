@@ -107,7 +107,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.61 · Drei Bauplätze & Expeditionsführung", color = PaleGold)
+            Text("v0.61.1 · Freier Startaufbau", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
@@ -137,6 +137,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var name by remember { mutableStateOf("Leon") }
     var age by remember { mutableStateOf("23") }
     var species by remember { mutableStateOf(Species.HALF_ELF) }
+    var startingCultures by remember(species) { mutableStateOf<Set<Culture>>(emptySet()) }
     var ironman by remember { mutableStateOf(false) }
     var portrait by remember { mutableStateOf<String?>(null) }
     // v0.61 keeps roughly the old total starting power while letting the player shape it.
@@ -147,7 +148,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var tactics by remember { mutableStateOf(30) }
     var diplomacy by remember { mutableStateOf(30) }
     val remainingAttributePoints =
-        30 - ((sword - 30) + (bow - 30) + (riding - 30) + (leadership - 30) +
+        100 - ((sword - 30) + (bow - 30) + (riding - 30) + (leadership - 30) +
             (tactics - 30) + (diplomacy - 30))
     val context = LocalContext.current
     val picker =
@@ -250,7 +251,61 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             }
         }
 
-        SectionTitle("Attribute · 30 Punkte selbst verteilen")
+        SectionTitle("Startarmeen auswählen")
+        Text(
+            "Wähle mindestens eine Kultur. Deine Rasse bestimmt deinen Charakter – die Startarmee kannst du frei zusammenstellen.",
+            color = Mist,
+            fontSize = 12.sp,
+        )
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
+            Column(
+                Modifier.fillMaxWidth().padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Culture.entries.forEach { culture ->
+                    val selected = culture in startingCultures
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            startingCultures =
+                                if (selected) startingCultures - culture
+                                else startingCultures + culture
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = selected,
+                            onCheckedChange = { checked ->
+                                startingCultures =
+                                    if (checked) startingCultures + culture
+                                    else startingCultures - culture
+                            },
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(culture.label, color = if (selected) PaleGold else Color.White, fontWeight = FontWeight.Bold)
+                            Text(
+                                when (culture) {
+                                    Culture.HUMAN -> "Schwertkämpfer · Bogenschützen · Schwere Ritter"
+                                    Culture.WOOD_ELF -> "Waldläufer · Waldklingen"
+                                    Culture.GOLD_ELF -> "Goldene Speerwache · Goldene Bogengarde"
+                                    Culture.WALL -> "Kranich-, Adler-, Tiger-, Bären-, Hirschkorps · Drachenartillerie"
+                                },
+                                color = Mist,
+                                fontSize = 11.sp,
+                            )
+                        }
+                    }
+                }
+                Text(
+                    "Kein Zahlen-Nachteil: immer 2.000 Bevölkerung · 160 Rekruten · 400 Startsoldaten insgesamt. Die Werte werden gleichmäßig auf deine Auswahl verteilt.",
+                    color = Gold,
+                    fontSize = 12.sp,
+                )
+                if (startingCultures.isEmpty())
+                    Text("Mindestens eine Startkultur auswählen.", color = Danger, fontSize = 12.sp)
+            }
+        }
+
+        SectionTitle("Attribute · 100 Punkte selbst verteilen")
         Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
             Column(
                 Modifier.fillMaxWidth().padding(14.dp),
@@ -295,16 +350,20 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                             tactics = tactics,
                             diplomacy = diplomacy,
                         ),
+                        startingCultures = startingCultures,
                     ).let { it.copy(settings = it.settings.copy(ironman = ironman)) }
                 )
             },
-            enabled = remainingAttributePoints == 0,
+            enabled = remainingAttributePoints == 0 && startingCultures.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
         ) {
             Text(
-                if (remainingAttributePoints == 0) "REICH GRÜNDEN"
-                else "NOCH $remainingAttributePoints ATTRIBUTSPUNKTE VERTEILEN",
+                when {
+                    startingCultures.isEmpty() -> "STARTKULTUR AUSWÄHLEN"
+                    remainingAttributePoints == 0 -> "REICH GRÜNDEN"
+                    else -> "NOCH $remainingAttributePoints ATTRIBUTSPUNKTE VERTEILEN"
+                },
                 fontWeight = FontWeight.Bold,
             )
         }
