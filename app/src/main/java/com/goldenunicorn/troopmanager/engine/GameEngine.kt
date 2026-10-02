@@ -232,6 +232,7 @@ object GameEngine {
         next = ResearchEngine.tick(next)
         next = MilitaryEconomyEngine.tick(next)
         next = WorldEngine.tick(next)
+        next = OccupationEngine.tick(next)
         next = MissionEngine.tick(next)
         next = WarEngine.tick(next)
         next = RelationshipEngine.day(next)
