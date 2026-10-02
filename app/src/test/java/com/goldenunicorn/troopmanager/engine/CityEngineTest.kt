@@ -17,7 +17,11 @@ class CityEngineTest {
         assertEquals(initial.realm.level(BuildingType.QUARRY), started.realm.level(BuildingType.QUARRY))
         assertEquals(300, EconomyEngine.production(started).gross.stone)
         assertEquals(started, CityEngine.startConstruction(started, BuildingType.QUARRY).state)
-        assertEquals(started, CityEngine.startConstruction(started, BuildingType.FARM).state)
+        val parallel = CityEngine.startConstruction(started, BuildingType.FARM).state
+        assertEquals(2, parallel.city.constructionQueue.size)
+        val threeSlots = CityEngine.startConstruction(parallel, BuildingType.SAWMILL).state
+        assertEquals(3, threeSlots.city.constructionQueue.size)
+        assertEquals(threeSlots, CityEngine.startConstruction(threeSlots, BuildingType.MARKET).state)
         val finished = CityEngine.tick(started)
         assertEquals(2, finished.realm.level(BuildingType.QUARRY))
         assertEquals(400, EconomyEngine.production(finished).gross.stone)
