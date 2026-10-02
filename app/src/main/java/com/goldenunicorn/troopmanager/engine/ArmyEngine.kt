@@ -166,6 +166,7 @@ object ArmyEngine {
             (population(state.population, culture) -
                     state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers } -
                     state.trainingQueue.filter { it.type.culture == culture }.sumOf { it.amount } -
+                    state.frontier.designs.filter { it.culture == culture }.sumOf { it.trainingAmount } -
                     state.war.wounded.filter { it.type.culture == culture }.sumOf { it.soldiers } -
                     state.war.captives.filter { it.own && it.type?.culture == culture }.sumOf { it.soldiers })
                 .coerceAtLeast(0),

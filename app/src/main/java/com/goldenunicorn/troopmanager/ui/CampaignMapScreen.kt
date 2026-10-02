@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
@@ -85,10 +86,24 @@ internal fun CampaignMapScreen(
             current.y + ((next?.y ?: current.y) - current.y) * progress,
             true, false,
         )
-    } + reports.mapNotNull { observation ->
+    } + reports.filterNot { observation ->
+        state.frontier.hordes.any { it.discovered && it.worldArmyId == observation.armyId }
+    }.mapNotNull { observation ->
         markers.firstOrNull { it.id == observation.regionId }?.let {
             CampaignArmyMarker(it.x, it.y, false, observation.day < state.day)
         }
+    }
+    val knownHordes = state.frontier.hordes.filter { it.discovered }
+    val frontierMarkers = knownHordes.mapNotNull { horde ->
+        val region = markers.firstOrNull { it.id == horde.regionId } ?: return@mapNotNull null
+        CampaignFrontierMarker(region.x, region.y, horde.kind == HordeKind.TAO_TEI, horde.name)
+    }
+    val aidRoutes = state.frontier.reinforcements.mapNotNull { aid ->
+        val origin = markers.firstOrNull { it.id == aid.originRegionId } ?: return@mapNotNull null
+        val home = markers.firstOrNull { it.id == "keep" } ?: markers.firstOrNull { it.owned } ?: return@mapNotNull null
+        val progress = if (aid.departureDay > 0 && aid.arrivalDay > aid.departureDay)
+            ((state.day - aid.departureDay).toFloat() / (aid.arrivalDay - aid.departureDay)).coerceIn(0f, 1f) else null
+        CampaignAidRoute(origin.x, origin.y, home.x, home.y, aid.people.label, progress)
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
@@ -122,8 +137,23 @@ internal fun CampaignMapScreen(
             CampaignMapScene(
                 markers,
                 world.roads.map { it.from to it.to },
-                armyMarkers, state.presentation.heraldry, selectedRegion?.id,
+                armyMarkers, frontierMarkers, aidRoutes, state.presentation.heraldry, selectedRegion?.id,
             ) { selectedRegionId = it }
+        }
+        if (knownHordes.isNotEmpty() || state.frontier.reinforcements.isNotEmpty()) item {
+            CampaignPanel {
+                Text("FRONTIER & VERBÜNDETE", color = PaleGold, fontWeight = FontWeight.Bold)
+                knownHordes.forEach { horde ->
+                    val estimate = if (horde.estimateMinimum > 0 && horde.estimateMaximum > 0)
+                        "${horde.estimateMinimum}–${horde.estimateMaximum} Gegner geschätzt" else "Stärke noch unklar"
+                    Text("${horde.name} · $estimate · Ankunft in ${horde.daysToArrival} Tagen", color = Danger, fontSize = 12.sp)
+                    if (horde.kind.hostileToAll) Text("Tao Tei bedrohen auch fremde Reiche.", color = Mist, fontSize = 11.sp)
+                }
+                state.frontier.reinforcements.forEach { aid ->
+                    Text("${aid.amount} ${aid.type.label} aus ${aid.origin} · unterwegs, noch ${aid.daysRemaining} Tage", color = Gold, fontSize = 12.sp)
+                }
+                Text("Rote Rauten: entdeckte Horden · goldene Routen: Hilfe vom Verbündeten zur Heimat", color = Mist, fontSize = 11.sp)
+            }
         }
         item { SectionTitle("Orte auswählen") }
         items(markers, key = { "region_${it.id}" }) { marker ->
@@ -563,19 +593,27 @@ private data class CampaignArmyMarker(
     val stale: Boolean,
 )
 
+private data class CampaignFrontierMarker(val x: Float, val y: Float, val taoTei: Boolean, val name: String)
+private data class CampaignAidRoute(val originX: Float, val originY: Float, val targetX: Float, val targetY: Float, val name: String, val progress: Float?)
+
 /** Each map marker has its own accessible touch target; the region list repeats every target. */
 @Composable
 private fun CampaignMapScene(
     regions: List<CampaignRegionMarker>,
     roads: List<Pair<String, String>>,
     armies: List<CampaignArmyMarker>,
+    frontier: List<CampaignFrontierMarker>,
+    aidRoutes: List<CampaignAidRoute>,
     playerHeraldry: Heraldry,
     selectedRegionId: String?,
     onSelect: (String) -> Unit,
 ) {
     BoxWithConstraints(
         Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(18.dp))
-            .background(Panel),
+            .background(Panel).semantics {
+                contentDescription = "Kampagnenkarte. " + frontier.joinToString { "${it.name}, entdeckte Horde" } +
+                    aidRoutes.joinToString(prefix = ". ") { "Hilfsroute von ${it.name} zur Heimat" }
+            },
     ) {
         AsyncImage(
             model = "file:///android_asset/world_map.webp",
@@ -623,6 +661,36 @@ private fun CampaignMapScene(
                 }
                 drawLine(color, position, position + Offset(0f, 18.dp.toPx()), 2.dp.toPx())
                 drawPath(flag, color.copy(alpha = if (army.stale) .55f else 1f))
+            }
+            aidRoutes.forEach { route ->
+                val origin = point(route.originX, route.originY)
+                val target = point(route.targetX, route.targetY)
+                drawLine(Gold.copy(alpha = .85f), origin, target, 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(8.dp.toPx(), 5.dp.toPx())))
+                drawCircle(Gold, 4.dp.toPx(), origin + Offset(-24.dp.toPx(), -20.dp.toPx()))
+                val source = if (route.progress != null) origin + (target - origin) * route.progress else origin
+                val diamond = Path().apply {
+                    moveTo(source.x, source.y - 6.dp.toPx())
+                    lineTo(source.x + 6.dp.toPx(), source.y)
+                    lineTo(source.x, source.y + 6.dp.toPx())
+                    lineTo(source.x - 6.dp.toPx(), source.y)
+                    close()
+                }
+                drawPath(diamond, Gold)
+            }
+            frontier.forEach { marker ->
+                val position = point(marker.x, marker.y) + Offset(22.dp.toPx(), -25.dp.toPx())
+                val color = if (marker.taoTei) Color(0xFFB16CCA) else Danger
+                val banner = Path().apply {
+                    moveTo(position.x, position.y - 10.dp.toPx())
+                    lineTo(position.x + 7.dp.toPx(), position.y)
+                    lineTo(position.x, position.y + 10.dp.toPx())
+                    lineTo(position.x - 7.dp.toPx(), position.y)
+                    close()
+                }
+                drawPath(banner, color)
+                drawCircle(Ink, 2.dp.toPx(), position)
+                drawLine(color, position + Offset(-3.dp.toPx(), -8.dp.toPx()), position + Offset(-7.dp.toPx(), -12.dp.toPx()), 2.dp.toPx())
+                drawLine(color, position + Offset(3.dp.toPx(), -8.dp.toPx()), position + Offset(7.dp.toPx(), -12.dp.toPx()), 2.dp.toPx())
             }
             drawRect(Gold.copy(alpha = .35f), style = Stroke(1.dp.toPx()))
         }

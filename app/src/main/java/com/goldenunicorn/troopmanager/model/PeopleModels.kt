@@ -83,7 +83,15 @@ enum class PlayerPerk(val branch: SkillBranch, val label: String, val descriptio
 enum class SocialKind(val label: String) { FRIENDSHIP("Freundschaft"), RIVALRY("Rivalität"), ROMANCE("Romanze"), MARRIAGE("Partnerschaft") }
 
 @Serializable
-data class NpcSocialLink(val firstId: Long, val secondId: Long, val kind: SocialKind, val sinceDay: Int, val strength: Int = 25)
+data class NpcSocialLink(
+    val firstId: Long, val secondId: Long, val kind: SocialKind, val sinceDay: Int, val strength: Int = 25,
+    val cause: String = "",
+    val lastChangedDay: Int = sinceDay,
+    val previousStrength: Int = strength,
+    /** IDs remain sorted for old saves; sourceId gives a directed relationship its direction. */
+    val directed: Boolean = false,
+    val sourceId: Long = firstId,
+)
 
 @Serializable
 data class LegendEntry(val id: String, val commanderId: Long?, val name: String, val day: Int, val deed: String, val moraleBonus: Int = 2)
@@ -117,8 +125,18 @@ data class FamilyMember(
     val adopted: Boolean = false,
     val diplomacy: Int = 30,
     val leadership: Int = 30,
+    val traits: Set<ChildTrait> = emptySet(),
+    val stewardship: Int = 25,
+    val medicine: Int = 20,
+    val tactics: Int = 25,
+    val mentorId: String = "teacher",
+    val mentorBond: Int = 50,
+    val educationPath: EducationPath? = null,
+    val lastEducationDay: Int = -1,
+    val educationLog: List<FamilyDevelopmentEntry> = emptyList(),
+    val adultCommanderId: Long? = null,
 ) {
-    fun age(day: Int): Int = (initialAge + ((day - bornDay).coerceAtLeast(0) / 365)).coerceAtMost(150)
+    fun age(day: Int): Int = (initialAge + ((minOf(day, deathDay ?: day) - bornDay).coerceAtLeast(0) / 365)).coerceAtMost(150)
 }
 
 @Serializable
@@ -135,4 +153,17 @@ data class DynastyState(
     val successionCount: Int = 0,
     val lastAgingDay: Int = 0,
     val activeSinceDay: Int? = null,
+    val plannedChildName: String = "",
+    val pendingFamilyEvent: FamilyEducationEvent? = null,
+    val familyEventHistory: List<FamilyEventOutcome> = emptyList(),
+    val familyEventCooldowns: Map<String, Int> = emptyMap(),
+    val lastFamilyEventDay: Int = -30,
+    val legitimacyCauses: List<LegitimacyCause> = emptyList(),
+    val observedVictories: Int = -1,
+    val lastLegitimacyReviewDay: Int = -30,
+    val regencyReason: String = "",
+    val regencyForMemberId: String? = null,
+    val regencyConflict: String? = null,
+    val lastRegencyReviewDay: Int = -30,
+    val companionFamilyOpinion: String = "",
 )

@@ -319,6 +319,10 @@ object SaveCodec {
         CharacterEngine.validate(state)
         WarEngine.validate(state)
         DiplomacyEngine.validate(state)
+        FrontierEngine.validate(state)
+        CoRulerEngine.validate(state)
+        DynastyEngine.validate(state)
+        V065StateValidation.validate(state)
         require(state.city.housingCapacity >= 0 && ResourceKind.entries.all { it.value(state.city.storageCapacity) >= 0 }) {
             "Ungültige Stadt- oder Lagerkapazität."
         }

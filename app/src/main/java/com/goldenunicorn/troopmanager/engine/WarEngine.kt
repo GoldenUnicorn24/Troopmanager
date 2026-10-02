@@ -7,10 +7,10 @@ import kotlin.random.Random
 /** War logistics own aggregate quantities; wounded and captives never remain in an army pool. */
 object WarEngine {
     private fun sum(a: Int, b: Int) = (a.toLong() + b).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
-    fun afterCombatLosses(before: GameState, after: GameState): GameState = after.copy(war = after.war.copy(eliteUnits = after.war.eliteUnits.map { elite ->
+    fun afterCombatLosses(before: GameState, after: GameState): GameState = FrontierEngine.afterTroopLosses(before, after.copy(war = after.war.copy(eliteUnits = after.war.eliteUnits.map { elite ->
         val original = before.soldiers(elite.type)
         elite.copy(soldiers = if (original == 0) 0 else (elite.soldiers.toLong() * after.soldiers(elite.type) / original).toInt())
-    }))
+    })))
 
     fun effectiveLevel(state: GameState, type: BuildingType): Int =
         (state.realm.level(type).toLong() * (100 - (state.war.buildingDamage[type] ?: 0).coerceIn(0, 100)) / 100).toInt()

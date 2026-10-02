@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,14 +37,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.goldenunicorn.troopmanager.audio.GameSoundscape
-
-private enum class Screen(val label: String, val icon: String) {
-    REALM("Reich", "♜"),
-    CITY("Stadt", "⌂"),
-    ARMY("Armee", "⚔"),
-    WORLD("Welt", "◉"),
-    COURT("Hof", "♛"),
-}
 
 @Composable
 fun RealmGameApp(saves: SaveRepository) {
@@ -107,7 +100,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.62 · Reichstiefe & Militärlogistik", color = PaleGold)
+            Text("v0.65 · Herrscherpaar & lebendige Grenze", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
@@ -414,11 +407,11 @@ private fun GameShell(
     onAdvanceDay: () -> Unit,
     controller: GameViewModel,
 ) {
-    var screen by rememberSaveable { mutableStateOf(Screen.CITY) }
+    var screen by rememberSaveable { mutableStateOf(GameDestination.COMMAND) }
     var worldPage by rememberSaveable { mutableStateOf(0) }
     var showMore by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = showMore || screen != Screen.CITY) {
-        if (showMore) showMore = false else screen = Screen.CITY
+    BackHandler(enabled = showMore || screen != GameDestination.COMMAND) {
+        if (showMore) showMore = false else screen = GameDestination.COMMAND
     }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
     Scaffold(
@@ -438,7 +431,7 @@ private fun GameShell(
                     TextButton(
                         onClick = {
                             showMore = false
-                            screen = Screen.COURT
+                            screen = GameDestination.CHARACTER
                         }
                     ) {
                         Text("${state.player.skillPoints} Skillpunkte")
@@ -449,36 +442,13 @@ private fun GameShell(
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = Color(0xFF0E1419)) {
-                Screen.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = tab == screen,
-                        onClick = {
-                            showMore = false
-                            screen = tab
-                        },
-                        icon = {
-                            Icon(
-                                when (tab) {
-                                    Screen.REALM -> Icons.Outlined.Castle
-                                    Screen.CITY -> Icons.Outlined.LocationCity
-                                    Screen.ARMY -> Icons.Outlined.Shield
-                                    Screen.WORLD -> Icons.Outlined.Public
-                                    Screen.COURT -> Icons.Outlined.Person
-                                },
-                                contentDescription = tab.label,
-                            )
-                        },
-                        label = { Text(tab.label, fontSize = 10.sp) },
-                        colors =
-                            NavigationBarItemDefaults.colors(
-                                selectedIconColor = Ink,
-                                selectedTextColor = PaleGold,
-                                indicatorColor = Gold,
-                                unselectedIconColor = Mist,
-                                unselectedTextColor = Mist,
-                            ),
-                    )
+            Row(Modifier.fillMaxWidth().navigationBarsPadding().background(Panel)
+                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(GameDestination.COMMAND, GameDestination.CITY, GameDestination.MILITARY, GameDestination.WORLD,
+                    GameDestination.COURT, GameDestination.RULERS, GameDestination.FAMILY, GameDestination.CHARACTER).forEach { tab ->
+                    FilterChip(screen == tab || (screen == GameDestination.DECISIONS && tab == GameDestination.COMMAND),
+                        { showMore = false; screen = tab }, label = { Text(tab.label) })
                 }
             }
         },
@@ -487,30 +457,21 @@ private fun GameShell(
             if (showMore) {
                 MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller)
             } else if (
-                state.battleSession != null && screen != Screen.CITY && screen != Screen.COURT
+                state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
             ) {
                 LiveBattleScreen(
                     state,
                     { next ->
-                        if (next.battleSession == null) screen = Screen.WORLD
+                        if (next.battleSession == null) screen = GameDestination.WORLD
                         onState(next)
                     },
                     onNotice,
                 )
             } else
                 when (screen) {
-                    Screen.REALM ->
-                        RealmDashboard(
-                            state,
-                            onState,
-                            onNotice,
-                            { screen = Screen.CITY },
-                            { screen = Screen.WORLD },
-                            { screen = Screen.ARMY },
-                            { screen = Screen.COURT },
-                            onAdvanceDay,
-                        )
-                    Screen.CITY ->
+                    GameDestination.COMMAND -> CommandCenterScreen(state, onState, onNotice, { screen = it }, onAdvanceDay)
+                    GameDestination.DECISIONS -> CommandCenterScreen(state, onState, onNotice, { screen = it }, onAdvanceDay, initialPage = 1)
+                    GameDestination.CITY ->
                         CityScreen(
                             state,
                             onState,
@@ -519,20 +480,33 @@ private fun GameShell(
                             onNavigate = { type ->
                                 worldPage = if (type == BuildingType.EMBASSY) 2 else 0
                                 screen = when (type) {
-                                BuildingType.BARRACKS, BuildingType.STABLES, BuildingType.ARSENAL, BuildingType.HOSPITAL -> Screen.ARMY
-                                BuildingType.PALACE, BuildingType.ACADEMY -> Screen.COURT
-                                BuildingType.EMBASSY, BuildingType.WALL, BuildingType.TOWER -> Screen.WORLD
-                                else -> Screen.CITY
+                                BuildingType.BARRACKS, BuildingType.STABLES, BuildingType.ARSENAL, BuildingType.HOSPITAL -> GameDestination.MILITARY
+                                BuildingType.PALACE -> GameDestination.PALACE
+                                BuildingType.ACADEMY -> GameDestination.RESEARCH
+                                BuildingType.EMBASSY -> GameDestination.WORLD
+                                BuildingType.WALL, BuildingType.TOWER -> GameDestination.FRONTIER
+                                else -> GameDestination.CITY
                             } },
                         )
-                    Screen.ARMY -> ArmyHubScreen(state, onState, onNotice)
-                    Screen.WORLD -> WorldHubScreen(state, onState, onNotice, worldPage)
-                    Screen.COURT -> CourtHubScreen(state, onState, onNotice)
+                    GameDestination.MILITARY -> ArmyHubScreen(state, onState, onNotice)
+                    GameDestination.WORLD -> WorldHubScreen(state, onState, onNotice, worldPage)
+                    GameDestination.COURT -> CourtHubScreen(state, onState, onNotice)
+                    GameDestination.RULERS -> RulerPairScreen(state, onState, onNotice, { screen = GameDestination.COUNCIL })
+                    GameDestination.FAMILY -> FamilyScreen(state, onState, onNotice)
+                    GameDestination.CHARACTER -> CharacterHubScreen(state, onState, onNotice)
+                    GameDestination.FRONTIER -> ArmyHubScreen(state, onState, onNotice, 5)
+                    GameDestination.HOSPITAL -> ArmyHubScreen(state, onState, onNotice, 3)
+                    GameDestination.MISSIONS -> ArmyHubScreen(state, onState, onNotice, 2)
+                    GameDestination.COUNCIL -> CouncilScreen(state, onState, onNotice)
+                    GameDestination.PALACE -> PalaceHubScreen(state) { screen = it }
+                    GameDestination.JOURNAL -> QuestJournalScreen(state) { screen = it }
+                    GameDestination.CHRONICLE -> ChronicleScreen(state)
+                    GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
                 }
         }
     }
 
-    GameSoundscape(state, if (!showMore && state.battleSession != null && screen != Screen.CITY && screen != Screen.COURT) "battle" else screen.name.lowercase())
+    GameSoundscape(state, if (!showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT) "battle" else screen.name.lowercase())
 
     if (showTutorial) {
         TutorialDialog(

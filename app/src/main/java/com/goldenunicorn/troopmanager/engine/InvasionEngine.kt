@@ -33,8 +33,9 @@ object InvasionEngine {
         if (threat >= 90 && next.invasion == null) {
             val enemy =
                 when {
-                    next.victories >= 6 || next.completedRealm -> EnemyType.TAO_TEI
-                    next.realm.territory >= 3 || next.victories >= 3 -> EnemyType.URUK
+                    next.day < 25 -> EnemyType.ORC
+                    next.day >= 60 && (next.victories >= 6 || next.completedRealm || next.day >= 90) -> EnemyType.TAO_TEI
+                    next.realm.territory >= 3 || next.victories >= 3 || next.day >= 45 -> EnemyType.URUK
                     else -> EnemyType.ORC
                 }
             val rawStrength =

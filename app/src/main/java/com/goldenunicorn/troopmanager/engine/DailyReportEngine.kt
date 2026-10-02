@@ -3,6 +3,14 @@ package com.goldenunicorn.troopmanager.engine
 import com.goldenunicorn.troopmanager.model.*
 
 object DailyReportEngine {
+    fun recordAction(before: GameState, after: GameState): GameState {
+        if (before.day != after.day) return after
+        val reports = build(before, after).entries.filter { it.important }
+        if (reports.isEmpty()) return after
+        return after.copy(dailyReport = after.dailyReport.copy(day = after.day,
+            entries = (reports + after.dailyReport.entries).distinct().take(32)))
+    }
+
     fun build(before: GameState, after: GameState): DailyReport {
         val rows = mutableListOf<DailyReportEntry>()
 
@@ -11,8 +19,9 @@ object DailyReportEngine {
             title: String,
             detail: String,
             important: Boolean = false,
+            destination: GameDestination? = null,
         ) {
-            rows += DailyReportEntry(category, title, detail, important)
+            rows += DailyReportEntry(category, title, detail, important, destination)
         }
 
         val gold = after.resources.gold - before.resources.gold
@@ -101,8 +110,9 @@ object DailyReportEngine {
             add(
                 ReportCategory.WARNING,
                 "Invasion angekündigt",
-                "Ankunft Tag ${after.invasion.arrivalDay} · Stärke ${after.invasion.strength}.",
+                "Ankunft Tag ${after.invasion.arrivalDay} · ${after.invasionStrengthEstimate()}.",
                 true,
+                GameDestination.FRONTIER,
             )
 
         if (after.commanderEvents.pending != null && before.commanderEvents.pending == null)
@@ -170,6 +180,34 @@ object DailyReportEngine {
             )
         }
 
+        after.relationship.pendingEvent?.takeIf { it.key != before.relationship.pendingEvent?.key }?.let {
+            add(ReportCategory.RULERS, "${after.companion.name} möchte sprechen", it.title, true, GameDestination.RULERS)
+        }
+        after.coRuler.decisions.filter { it.day == after.day && it !in before.coRuler.decisions }.forEach {
+            add(ReportCategory.RULERS, "${it.actor}: ${it.title}", "${it.choice} · ${it.reason}${if (it.goldSpent > 0) " · ${it.goldSpent} Gold" else ""}",
+                true, GameDestination.COUNCIL)
+        }
+        if (after.companion.met) {
+            val presence = PresenceEngine.presence(after)
+            val previous = PresenceEngine.presence(before)
+            if (presence.player != previous.player || presence.companion != previous.companion)
+                add(ReportCategory.RULERS, "Aufenthalt & Regierung",
+                    "${after.player.name}: ${presence.player.location.label} · ${after.companion.name}: ${presence.companion.location.label} · ${after.coRuler.actingRuler} führt die Regierung (${after.coRuler.regencyEfficiency} %).", true, GameDestination.RULERS)
+        }
+        after.dynasty.members.filter { member -> before.dynasty.members.none { it.id == member.id } && member.parents.isNotEmpty() }.forEach {
+            add(ReportCategory.FAMILY, "Familienzuwachs", "${it.name} gehört nun zur Familie.", true, GameDestination.FAMILY)
+        }
+        after.frontier.hordes.filter { horde -> horde.discovered && before.frontier.hordes.none { it.id == horde.id && it.discovered } }.forEach {
+            add(ReportCategory.FRONTIER, "Grenzbericht: ${it.name}", "${it.estimatedStrengthLabel} · Ankunft in ${it.daysToArrival} Tagen.", true, GameDestination.FRONTIER)
+        }
+        if (after.frontier.patrol == null && before.frontier.patrol != null)
+            add(ReportCategory.FRONTIER, "Patrouille zurück", "Die Grenztruppen sind wieder in der Festung verfügbar.", true, GameDestination.FRONTIER)
+        before.frontier.reinforcements.filter { aid -> after.frontier.reinforcements.none { it.id == aid.id } }.forEach {
+            add(ReportCategory.FRONTIER, "Verbündete angekommen", "${it.amount} ${it.type.label} aus ${it.origin} sind nun einsatzbereit.", true, GameDestination.FRONTIER)
+        }
+        after.frontier.weapons.filter { weapon -> weapon.count > (before.frontier.weapons.firstOrNull { it.type == weapon.type }?.count ?: 0) }.forEach {
+            add(ReportCategory.FRONTIER, "Mauerwaffe einsatzbereit", "${it.type.label} am ${it.section.label} · ${it.ammunition} Ladungen", true, GameDestination.FRONTIER)
+        }
         if (rows.isEmpty())
             add(
                 ReportCategory.ECONOMY,
@@ -177,7 +215,11 @@ object DailyReportEngine {
                 "Keine besonderen Meldungen. Wirtschaft und Verwaltung arbeiten planmäßig.",
             )
 
-        return DailyReport(after.day, rows.take(16))
+        val trends = mapOf("gold" to gold, "food" to food, "population" to after.population.total - before.population.total,
+            "satisfaction" to after.city.satisfaction - before.city.satisfaction,
+            "security" to after.city.security - before.city.security,
+            "conflict" to after.relationship.conflict - before.relationship.conflict)
+        return DailyReport(after.day, rows.sortedByDescending { it.important }.take(32), trends)
     }
 
     private fun signed(value: Int): String =

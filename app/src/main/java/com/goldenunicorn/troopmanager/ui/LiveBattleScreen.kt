@@ -21,11 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.BattleEngine
+import com.goldenunicorn.troopmanager.engine.FrontierEngine
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
 internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val session = state.battleSession ?: return
+    val homeFortified = FrontierEngine.isHomeFortifiedBattle(state, session)
+    val wallWeapons = if (homeFortified) state.frontier.weapons.filter { it.count > 0 } else emptyList()
     var commandSection by remember { mutableStateOf(BattleSection.CENTER) }
     var showSetup by remember { mutableStateOf(false) }
     if (showSetup) BattleSetupDialog(state, { showSetup = false }, onState, onNotice)
@@ -63,7 +66,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
             if (state.world.encounter == null) GoldButton("Truppenzahlen vor Kampfbeginn anpassen", { showSetup = true }, Modifier.fillMaxWidth())
             else Text("Die Expedition stellt nur ihre anwesenden Soldaten auf; Verstärkung muss zuerst zum Schlachtort marschieren.", color = Mist, fontSize = 12.sp)
         }
-        if (session.tactic == Tactic.FORTIFY) item {
+        if (homeFortified) item {
             Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
                 Column {
                     CityScene(state, Modifier.fillMaxWidth().height(220.dp), season = state.city.season, defenseMode = true, wallIntegrity = session.wallIntegrity)
@@ -71,7 +74,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                 }
             }
         }
-        item { SessionBattleField(session, state.settings.animations, state.settings.battleSpeed) }
+        item { SessionBattleField(session, state.settings.animations, state.settings.battleSpeed, wallWeapons) }
         if (session.isActive && session.pendingEvent == null) item {
             SelectionMenu("Befehlsabschnitt", commandSection.label, BattleSection.entries.filterNot { it == BattleSection.RESERVE }, { it.label }) { commandSection = it }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -171,7 +174,7 @@ private fun BattleStrength(label: String, current: Int, initial: Int, color: Col
 
 /** Aggregate formations stay tied to persisted positions and casualties; pulse only animates the current exchange. */
 @Composable
-internal fun SessionBattleField(session: BattleSession, animations: Boolean, battleSpeed: Float) {
+internal fun SessionBattleField(session: BattleSession, animations: Boolean, battleSpeed: Float, wallWeapons: List<WallWeaponStock> = emptyList()) {
     val visualGroups = remember(session) { BattleEngine.visualGroups(session) }
     val transition = rememberInfiniteTransition(label = "battle-exchange")
     val animated by transition.animateFloat(0f, 1f, infiniteRepeatable(tween((1500 / battleSpeed.coerceIn(0.5f, 3f)).toInt()), RepeatMode.Restart), label = "battle-motion")
@@ -265,6 +268,24 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                     repeat(14) { n -> drawRect(wallColor, Offset(n * w / 14f, h * 0.81f), Size(w / 22f, h * 0.03f)) }
                     if (session.wallIntegrity < 60) repeat(3) { n -> drawLine(Color(0xFF29261F), Offset(w * (n + 1) / 4f, h * 0.82f), Offset(w * (n + 1) / 4f + 7.dp.toPx(), h * 0.89f), 3.dp.toPx()) }
                     drawRect(if (session.wallIntegrity == 0) Color(0xFF15160F) else Color(0xFF594732), Offset(w * 0.45f, h * 0.82f), Size(w * 0.10f, h * 0.07f))
+                    wallWeapons.groupBy { it.section }.forEach { (section, stocks) ->
+                        val sectionIndex = when (section) { BattleSection.LEFT -> 0; BattleSection.RIGHT -> 2; else -> 1 }
+                        stocks.forEachIndexed { index, weapon ->
+                            val position = Offset(w * (sectionIndex + (index + 1f) / (stocks.size + 1f)) / 3f, h * .80f)
+                            val ready = weapon.integrity > 0 && weapon.ammunition > 0 && weapon.reloadRounds == 0
+                            val color = if (weapon.integrity <= 0) Danger else if (!ready) Mist else PaleGold
+                            drawWallWeapon(weapon.type, position, 9.dp.toPx(), color)
+                            if (ready && session.isActive && session.minute > 0 && session.phase == BattlePhase.RANGED) {
+                                val target = position + Offset(0f, -h * .35f * pulse)
+                                if (weapon.type == WallWeaponType.BLACK_POWDER)
+                                    drawCircle(Color(0xFFBCB4A0).copy(alpha = (1f - pulse) * .6f), (3 + pulse * 12).dp.toPx(), position + Offset(0f, -12.dp.toPx()))
+                                else if (weapon.type == WallWeaponType.CRANE_WINCH) {
+                                    drawLine(Blue, position + Offset(0f, -20.dp.toPx()), position + Offset(8.dp.toPx(), 13.dp.toPx() + pulse * 12.dp.toPx()), 1.dp.toPx())
+                                    drawCircle(Gold, 2.dp.toPx(), position + Offset(8.dp.toPx(), 13.dp.toPx() + pulse * 12.dp.toPx()))
+                                } else drawLine(if (weapon.type == WallWeaponType.FIRE_OIL) Danger else PaleGold, target, target + Offset(0f, -7.dp.toPx()), 2.dp.toPx())
+                            }
+                        }
+                    }
                     session.devices.forEachIndexed { n, device ->
                         val siegeX = w * (n + 1f) / (session.devices.size + 1f)
                         val height = if (device == SiegeDevice.TOWER) 24.dp.toPx() else 12.dp.toPx()
@@ -278,7 +299,44 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                 }
             }
             Text("■ Heer · ● Gegner · ◆ Kavallerie · Blau: Reserve · Orange: Artillerie", color = Mist, fontSize = 11.sp)
+            wallWeapons.forEach { weapon ->
+                Text("${weapon.type.label} ×${weapon.count} · ${weapon.section.label} · ${weapon.ammunition} Ladungen · Zustand ${weapon.integrity}%" +
+                    if (weapon.reloadRounds > 0) " · Nachladen ${weapon.reloadRounds} Austausch" else if (weapon.ammunition == 0) " · Munition erschöpft" else "",
+                    color = if (weapon.integrity <= 0 || weapon.ammunition == 0) Danger else Gold, fontSize = 11.sp)
+            }
             Text("${visualGroups.size} sichtbare Gruppen · ${visualGroups.minOfOrNull { it.soldiers } ?: 0}–${visualGroups.maxOfOrNull { it.soldiers } ?: 0} Soldaten je Gruppe · weiße Markierung: persönliche Teilnahme.", color = Mist, fontSize = 11.sp)
+        }
+    }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawWallWeapon(type: WallWeaponType, position: Offset, radius: Float, color: Color) {
+    val x = position.x
+    val y = position.y
+    drawRect(Color(0xFF594735), position + Offset(-radius * .7f, -radius * .3f), Size(radius * 1.4f, radius * .6f))
+    when (type) {
+        WallWeaponType.BALLISTA, WallWeaponType.REPEATER -> {
+            drawLine(color, Offset(x, y + radius * .3f), Offset(x, y - radius * 1.5f), radius * .25f)
+            drawLine(color, Offset(x - radius, y - radius * .5f), Offset(x + radius, y - radius * .5f), radius * .25f)
+            drawLine(color, Offset(x - radius, y - radius * .5f), Offset(x, y - radius), radius * .12f)
+            drawLine(color, Offset(x + radius, y - radius * .5f), Offset(x, y - radius), radius * .12f)
+            if (type == WallWeaponType.REPEATER) drawRect(Blue, Offset(x - radius * .3f, y - radius * 1.1f), Size(radius * .6f, radius * .5f))
+        }
+        WallWeaponType.BLACK_POWDER -> {
+            drawLine(color, Offset(x, y), Offset(x, y - radius * 1.5f), radius * .6f)
+            drawCircle(Ink, radius * .23f, Offset(x, y - radius * 1.5f))
+            drawCircle(color, radius * .25f, Offset(x - radius * .5f, y + radius * .25f))
+            drawCircle(color, radius * .25f, Offset(x + radius * .5f, y + radius * .25f))
+        }
+        WallWeaponType.FIRE_OIL -> {
+            drawOval(color, Offset(x - radius * .65f, y - radius * .7f), Size(radius * 1.3f, radius * .65f))
+            drawLine(Danger, Offset(x, y - radius), Offset(x + radius * .3f, y - radius * 1.7f), radius * .3f)
+            drawLine(Gold, Offset(x + radius * .3f, y - radius * 1.7f), Offset(x + radius * .4f, y - radius * 1.1f), radius * .2f)
+        }
+        WallWeaponType.CRANE_WINCH -> {
+            drawLine(Blue, Offset(x - radius * .6f, y), Offset(x - radius * .6f, y - radius * 2f), radius * .25f)
+            drawLine(Blue, Offset(x - radius * .6f, y - radius * 2f), Offset(x + radius, y - radius * 2f), radius * .25f)
+            drawLine(color, Offset(x + radius * .6f, y - radius * 2f), Offset(x + radius * .6f, y + radius * .8f), radius * .12f)
+            drawCircle(Gold, radius * .22f, Offset(x + radius * .6f, y + radius * .8f))
         }
     }
 }

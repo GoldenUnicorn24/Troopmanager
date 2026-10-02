@@ -237,6 +237,10 @@ data class GameState(
     val war: WarState = WarState(),
     val court: CourtState = CourtState(),
     val dynasty: DynastyState = DynastyState(),
+    val frontier: FrontierState = FrontierState(),
+    val coRuler: CoRulerState = CoRulerState(),
+    val presence: PresenceState = PresenceState(),
+    val journal: QuestJournalState = QuestJournalState(),
     val diplomacy: DiplomacyState = DiplomacyState(),
     val espionage: EspionageState = EspionageState(),
     val society: SocietyState = SocietyState(),
@@ -284,13 +288,13 @@ data class GameState(
 
     val awayArmySize: Int
         get() = activeMissions.filter { it.status.isAway }.sumOf { it.total } +
-            world.playerFieldArmies.sumOf { it.total }
+            world.playerFieldArmies.sumOf { it.total } + (frontier.patrol?.soldiers ?: 0)
 
     val homeArmySize: Int
         get() = (armySize - awayArmySize).coerceAtLeast(0)
 
     val trainingSize: Int
-        get() = trainingQueue.sumOf { it.amount }
+        get() = trainingQueue.sumOf { it.amount } + frontier.designs.sumOf { it.trainingAmount }
 
     val civilianPopulation: Int
         get() = (population.total.toLong() - armySize - trainingSize -
@@ -312,7 +316,8 @@ data class GameState(
         activeMissions
             .filter { it.status.isAway }
             .sumOf { m -> m.units.filter { it.type == type }.sumOf { it.amount } } +
-            world.playerFieldArmies.sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } }
+            world.playerFieldArmies.sumOf { a -> a.units.filter { it.type == type }.sumOf { it.amount } } +
+            (frontier.patrol?.units?.filter { it.type == type }?.sumOf { it.amount } ?: 0)
 
     fun homeSoldiers(type: UnitType): Int = (soldiers(type) - away(type)).coerceAtLeast(0)
 

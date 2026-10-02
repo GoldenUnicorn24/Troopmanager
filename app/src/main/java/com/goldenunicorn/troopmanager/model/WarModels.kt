@@ -98,6 +98,8 @@ data class BattleReplayStart(
     val enemyExperience: Int = 0,
     val doctrine: MilitaryDoctrine = MilitaryDoctrine.BALANCED,
     val rangedSupplyFactor: Double = 1.0,
+    val frontier: FrontierState = FrontierState(),
+    val companion: CompanionProfile = CompanionProfile(),
 )
 
 @Serializable
