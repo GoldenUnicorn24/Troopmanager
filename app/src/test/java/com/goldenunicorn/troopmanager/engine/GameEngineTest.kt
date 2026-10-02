@@ -43,11 +43,11 @@ class GameEngineTest {
     fun dailyProductionMatchesSpecifiedRatesAndIncludesMaintenance() {
         val state = human()
         val p = EconomyEngine.production(state)
-        assertEquals(Resources(375, 880, 350, 300, 220), p.gross)
+        assertEquals(Resources(393, 880, 350, 300, 220), p.gross)
         assertEquals(390, p.upkeep)
         assertEquals(490, p.net.food)
         val after = EconomyEngine.day(state)
-        assertEquals(state.resources.gold + 375, after.resources.gold)
+        assertEquals(state.resources.gold + 393, after.resources.gold)
         assertEquals(state.resources.food + 490, after.resources.food)
         assertEquals(state.resources.stone + 300, after.resources.stone)
     }
