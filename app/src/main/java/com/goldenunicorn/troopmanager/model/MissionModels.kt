@@ -37,10 +37,6 @@ data class ActiveMission(
     val id: Long,
     val missionType: MissionType,
     val commanderId: Long?,
-    /** All NPC commanders temporarily attached to this mission. commanderId remains the legacy/primary leader. */
-    val commanderIds: List<Long> = emptyList(),
-    /** The ruler can personally accompany the mission and counts as one of at most three leaders. */
-    val playerParticipates: Boolean = false,
     val units: List<UnitAllocation>,
     val startDay: Int,
     val remainingDays: Int,
@@ -61,6 +57,10 @@ data class ActiveMission(
     val riskFactor: Double = 1.0,
     val originalTotal: Int = 0,
     val lastTickDay: Int = 0,
+    /** All NPC commanders temporarily attached to this mission. commanderId remains the legacy/primary leader. */
+    val commanderIds: List<Long> = emptyList(),
+    /** The ruler can personally accompany the mission and counts as one of at most three leaders. */
+    val playerParticipates: Boolean = false,
 
 ) {
     val total: Int
