@@ -55,7 +55,7 @@ internal fun PeopleCourtScreen(state: GameState, onState: (GameState) -> Unit, o
         }
         SectionTitle("Sechs Entwicklungswege")
         CourtDomainCard {
-            Text("${state.player.skillPoints} freie Fertigkeitspunkte · Erweiterte Wege öffnen sich mit der Charakterstufe.", color = Mist, fontSize = 12.sp)
+            Text("${state.player.skillPoints} freie Fertigkeitspunkte · Deine Startpunkte bleiben sofort frei auf alle Entwicklungswege verteilbar.", color = Mist, fontSize = 12.sp)
             SkillBranch.entries.forEach { branch ->
                 TextButton(onClick = { expandedBranch = if (expandedBranch == branch) null else branch }, modifier = Modifier.fillMaxWidth()) {
                     Text("${branch.label} · ${state.court.perks.count { it.branch == branch }} gelernt", color = Gold)
