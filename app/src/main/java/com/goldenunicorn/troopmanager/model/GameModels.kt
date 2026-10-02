@@ -249,6 +249,7 @@ data class GameState(
     val research: ResearchState = ResearchState(),
     val dailyReport: DailyReport = DailyReport(),
     val commanderEvents: CommanderEventState = CommanderEventState(),
+    val occupations: List<OccupiedRegion> = emptyList(),
     val armyPools: List<ArmyUnitPool> = emptyList(),
     val trainingQueue: List<TrainingOrder> = emptyList(),
     val commanders: List<Commander> = emptyList(),
