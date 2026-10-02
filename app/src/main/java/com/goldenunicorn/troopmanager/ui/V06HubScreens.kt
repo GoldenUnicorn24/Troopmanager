@@ -44,7 +44,7 @@ internal fun CourtHubScreen(state: GameState, onState: (GameState) -> Unit, onNo
 internal fun ArmyHubScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var page by remember { mutableStateOf(0) }
     Column(Modifier.fillMaxSize()) {
-        HubTabs(listOf("Armee", "Versorgung & Veteranen"), page) { page = it }
+        HubTabs(listOf("Armee", "Lazarett & Versorgung"), page) { page = it }
         ContextTutorialCard(state, "army", onState)
         Box(Modifier.weight(1f)) {
             if (page == 0) ArmyScreen(state, onState, onNotice) else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
