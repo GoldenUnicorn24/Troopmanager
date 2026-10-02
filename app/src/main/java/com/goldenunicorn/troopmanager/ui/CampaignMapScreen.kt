@@ -26,6 +26,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.engine.MissionEngine
+import com.goldenunicorn.troopmanager.engine.OriginEngine
 import com.goldenunicorn.troopmanager.engine.WorldEngine
 import com.goldenunicorn.troopmanager.model.*
 
@@ -179,14 +180,18 @@ internal fun CampaignMapScreen(
                     }
                     val depots = world.depots.filter { it.regionId == region.id && it.factionId == PLAYER_FACTION }
                     depots.forEach { depot -> Text("Versorgungslager: ${depot.food} / ${depot.capacity} Nahrung", color = Success, fontSize = 12.sp) }
+                    val scoutGold =
+                        kotlin.math.ceil(75 * OriginEngine.scoutingCostFactor(state)).toInt()
                     OutlinedButton(
                         onClick = {
                             val result = WorldEngine.scout(state, region.id)
                             onState(result.state); onNotice(result.message)
                         }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        enabled = state.battleSession?.isActive != true && state.resources.gold >= 75 && state.resources.food >= 100 &&
+                        enabled = state.battleSession?.isActive != true &&
+                            state.resources.gold >= scoutGold &&
+                            state.resources.food >= 100 &&
                             (region.id in knowledge.exploredRegions || world.roads.any { it.connects(region.id) && it.other(region.id) in knowledge.exploredRegions }),
-                    ) { Text("Kundschafter · 75 Gold / 100 Nahrung") }
+                    ) { Text("Kundschafter · $scoutGold Gold / 100 Nahrung") }
                     Button(
                         enabled = state.homeArmySize >= 30 && state.battleSession?.isActive != true && region.id != "keep" && region.id in knowledge.exploredRegions,
                         onClick = { dispatchDestinationId = region.id },
