@@ -1,11 +1,14 @@
 package com.goldenunicorn.troopmanager.model
 
+import kotlinx.serialization.Serializable
+
 /** Typed extension points; future research is deliberately separate from character skill points. */
-enum class ResearchBranch {
-    AGRICULTURE,
-    ENGINEERING,
-    LOGISTICS,
-    DIPLOMACY,
+@Serializable
+enum class ResearchBranch(val label: String) {
+    AGRICULTURE("Landwirtschaft"),
+    ENGINEERING("Ingenieurswesen"),
+    LOGISTICS("Logistik"),
+    DIPLOMACY("Staatskunst"),
 }
 
 data class ResearchDefinition(
@@ -48,6 +51,7 @@ object SilentGameAudio : GameAudio {
     override fun play(cue: SoundCue) = Unit
 }
 
+@Serializable
 enum class CommanderEventKind {
     RIVALRY,
     FRIENDSHIP,
@@ -57,6 +61,7 @@ enum class CommanderEventKind {
     DISAGREEMENT,
 }
 
+@Serializable
 data class CommanderDevelopmentEvent(
     val kind: CommanderEventKind,
     val commanderId: Long,
