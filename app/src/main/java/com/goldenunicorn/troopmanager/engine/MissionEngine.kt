@@ -476,6 +476,36 @@ object MissionEngine {
                 UnitAllocation(it.type, (it.amount * lossRate).toInt().coerceIn(0, it.amount))
             }
         val lost = losses.sumOf { it.amount }
+
+        // Mission casualties now distinguish fatal losses from soldiers who can recover.
+        val hospital = WarEngine.effectiveLevel(state, BuildingType.HOSPITAL).coerceAtMost(6)
+        val healing = CharacterEngine.bonuses(state).healing.coerceAtLeast(0)
+        val baseWoundedPercent =
+            when (outcome) {
+                MissionOutcome.GREAT_SUCCESS -> 60
+                MissionOutcome.SUCCESS -> 55
+                MissionOutcome.PARTIAL -> 50
+                MissionOutcome.FAILED -> 45
+                MissionOutcome.CATASTROPHIC -> 35
+            }
+        val woundedPercent = (baseWoundedPercent + hospital * 5 + healing * 2).coerceIn(25, 80)
+        val woundedLosses =
+            losses.mapNotNull { casualty ->
+                val amount =
+                    ((casualty.amount.toLong() * woundedPercent + 50) / 100)
+                        .toInt()
+                        .coerceIn(0, casualty.amount)
+                if (amount > 0) UnitAllocation(casualty.type, amount) else null
+            }
+        val deadLosses =
+            losses.mapNotNull { casualty ->
+                val woundedForType =
+                    woundedLosses.firstOrNull { it.type == casualty.type }?.amount ?: 0
+                val amount = (casualty.amount - woundedForType).coerceAtLeast(0)
+                if (amount > 0) UnitAllocation(casualty.type, amount) else null
+            }
+        val woundedCount = woundedLosses.sumOf { it.amount }
+        val deadCount = deadLosses.sumOf { it.amount }
         val success = outcome <= MissionOutcome.PARTIAL
         val rewardScale =
             when (outcome) {
@@ -499,6 +529,17 @@ object MissionEngine {
         val fame = base / (if (mission.missionType == MissionType.HUNT) 5 else 10)
         val worldArmy = state.world.armies.firstOrNull { it.missionId == mission.id }
         val needsReturn = mission.regionId != null && worldArmy != null && worldArmy.regionId != "keep"
+        val returnDays =
+            if (needsReturn)
+                WorldEngine.travelDays(
+                    state,
+                    worldArmy!!,
+                    WorldEngine.route(state.world, worldArmy.regionId, "keep"),
+                ).coerceAtLeast(1)
+            else 0
+        val treatmentDays = (8 - hospital - healing / 3).coerceAtLeast(2)
+        val woundedRecoveryDay =
+            if (woundedCount > 0) state.day + returnDays + treatmentDays else 0
         val survivors = mission.units.mapNotNull { u -> val n = u.amount - (losses.firstOrNull { it.type == u.type }?.amount ?: 0); if (n > 0) u.copy(amount = n) else null }
         val completed =
             mission.copy(
@@ -506,9 +547,12 @@ object MissionEngine {
                 phase = if (needsReturn) MissionPhase.RETURNING else MissionPhase.DONE,
                 units = if (needsReturn) survivors else mission.units,
                 quality = if (needsReturn) mission.quality.mapNotNull { p -> survivors.firstOrNull { it.type == p.type }?.let { p.copy(soldiers = it.amount) } } else mission.quality,
-                remainingDays = if (needsReturn) WorldEngine.travelDays(state, worldArmy!!, WorldEngine.route(state.world, worldArmy.regionId, "keep")).coerceAtLeast(1) else 0,
+                remainingDays = returnDays,
                 outcome = outcome,
                 losses = mission.losses + lost,
+                dead = mission.dead + deadCount,
+                wounded = mission.wounded + woundedCount,
+                woundedRecoveryDay = maxOf(mission.woundedRecoveryDay, woundedRecoveryDay),
                 reward = reward,
                 renownReward = fame,
                 xpReward = maxOf(10, base / 4),
@@ -530,6 +574,36 @@ object MissionEngine {
         })
         if (worldArmy != null) next = next.copy(world = next.world.copy(armies = next.world.armies.map { if (it.id == worldArmy.id) it.copy(units = survivors) else it }))
         next = ArmyEngine.applyLosses(next, losses)
+
+        // Wounded are removed from active duty but remain part of the living population and move
+        // into the medical roster until their recovery day.
+        if (woundedCount > 0) {
+            var population = next.population
+            val medical = next.war.wounded.toMutableList()
+            woundedLosses.forEach { injury ->
+                population = ArmyEngine.adjustPopulation(population, injury.type.culture, injury.amount)
+                val quality =
+                    mission.quality.firstOrNull { it.type == injury.type }
+                        ?: ArmyUnitPool(injury.type, injury.amount)
+                val previous =
+                    medical.firstOrNull {
+                        it.type == injury.type && it.recoveryDay == woundedRecoveryDay
+                    }
+                medical.removeAll {
+                    it.type == injury.type && it.recoveryDay == woundedRecoveryDay
+                }
+                medical +=
+                    WoundedCohort(
+                        previous?.id ?: "mission_" + mission.id + "_wounded_" + injury.type.name,
+                        injury.type,
+                        (previous?.soldiers ?: 0) + injury.amount,
+                        woundedRecoveryDay,
+                        quality.experience,
+                        quality.equipment,
+                    )
+            }
+            next = next.copy(population = population, war = next.war.copy(wounded = medical))
+        }
         if (needsReturn) next = WorldEngine.returnMission(next, mission.id)
         else {
             next = WorldEngine.completeMission(next, mission, emptyList())
@@ -580,7 +654,7 @@ object MissionEngine {
                             ChronicleEntry(
                                 next.day,
                                 "${mission.missionType.label}: ${outcome.label}",
-                                "${mission.total - lost} überleben, $lost Verluste. ${if (needsReturn) "Der Rückmarsch beginnt." else "Das Heer ist wieder verfügbar."} +${reward.gold} Gold, +$fame Ruhm.",
+                                "${mission.units.sumOf { it.amount } - lost} einsatzbereit, $woundedCount verwundet, $deadCount gefallen. ${if (needsReturn) "Der Rückmarsch beginnt." else "Das Heer ist wieder verfügbar."} +${reward.gold} Gold, +$fame Ruhm.",
                             ))
                         .takeLast(2000),
             )
