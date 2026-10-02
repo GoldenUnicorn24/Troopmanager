@@ -238,11 +238,11 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                     Text(
                         when (option) {
                             Species.HUMAN ->
-                                "330 Soldaten, viele Rekruten und schwere Ritter. Andere Kulturen kommen durch Bündnisse und Einwanderung."
+                                "Menschliche Herkunft. Bestimmt deinen Charakter, nicht mehr die Zusammensetzung deiner Startarmee."
                             Species.ELF ->
-                                "Kleine Bevölkerung, starke Wald- und Goldelben. Menschenbündnisse folgen später."
+                                "Elbische Herkunft. Deine Startkulturen und Einheiten wählst du im nächsten Schritt frei."
                             Species.HALF_ELF ->
-                                "Menschen, Waldelben, Goldelben und Mauerlegionen können sofort gemeinsam dienen."
+                                "Halbelbische Herkunft. Besonders flexible Rolle; die Startarmee bleibt vollständig frei wählbar."
                         },
                         color = Mist,
                         fontSize = 13.sp,
