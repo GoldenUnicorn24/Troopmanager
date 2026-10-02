@@ -28,43 +28,55 @@ object GameEngine {
         species: Species,
         portraitUri: String?,
         startingAttributes: StartingAttributes? = null,
+        startingCultures: Set<Culture>? = null,
     ): GameState {
+        require(startingCultures == null || startingCultures.isNotEmpty()) {
+            "Mindestens eine Startkultur muss gewählt werden."
+        }
+
+        // Calls without an explicit culture selection retain the established legacy setup for
+        // save/tests/API compatibility. The character-creation UI always passes an explicit set
+        // and therefore uses the v0.61.1 fair-start budget below.
+        val balancedStart = startingCultures?.let(::balancedStartingForces)
         val population =
-            when (species) {
-                Species.HUMAN -> Population(1500, 0, 0, 0, 120, 0, 0, 0)
-                Species.ELF -> Population(0, 900, 350, 0, 0, 100, 35, 0)
-                Species.HALF_ELF -> Population()
-            }
+            balancedStart?.first
+                ?: when (species) {
+                    Species.HUMAN -> Population(1500, 0, 0, 0, 120, 0, 0, 0)
+                    Species.ELF -> Population(0, 900, 350, 0, 0, 100, 35, 0)
+                    Species.HALF_ELF -> Population()
+                }
         val units =
-            when (species) {
-                Species.HUMAN ->
-                    listOf(
-                        UnitAllocation(UnitType.HUMAN_SWORD, 180),
-                        UnitAllocation(UnitType.HUMAN_ARCHER, 120),
-                        UnitAllocation(UnitType.KNIGHT, 30),
-                    )
-                Species.ELF ->
-                    listOf(
-                        UnitAllocation(UnitType.WOOD_RANGER, 120),
-                        UnitAllocation(UnitType.WOOD_BLADE, 100),
-                        UnitAllocation(UnitType.GOLD_SPEAR, 40),
-                        UnitAllocation(UnitType.GOLD_ARCHER, 30),
-                    )
-                Species.HALF_ELF ->
-                    listOf(
-                        UnitAllocation(UnitType.HUMAN_SWORD, 100),
-                        UnitAllocation(UnitType.HUMAN_ARCHER, 80),
-                        UnitAllocation(UnitType.WOOD_RANGER, 60),
-                        UnitAllocation(UnitType.WOOD_BLADE, 40),
-                        UnitAllocation(UnitType.GOLD_SPEAR, 20),
-                        UnitAllocation(UnitType.GOLD_ARCHER, 10),
-                        UnitAllocation(UnitType.CRANE_GUARD, 40),
-                        UnitAllocation(UnitType.EAGLE_CORPS, 30),
-                    )
-            }
-        val commander =
-            if (species == Species.ELF) Commander(1, "Caelen", Culture.WOOD_ELF, "wood_elf")
-            else Commander(1, "Marcus", Culture.HUMAN, "knight")
+            balancedStart?.second
+                ?: when (species) {
+                    Species.HUMAN ->
+                        listOf(
+                            UnitAllocation(UnitType.HUMAN_SWORD, 180),
+                            UnitAllocation(UnitType.HUMAN_ARCHER, 120),
+                            UnitAllocation(UnitType.KNIGHT, 30),
+                        )
+                    Species.ELF ->
+                        listOf(
+                            UnitAllocation(UnitType.WOOD_RANGER, 120),
+                            UnitAllocation(UnitType.WOOD_BLADE, 100),
+                            UnitAllocation(UnitType.GOLD_SPEAR, 40),
+                            UnitAllocation(UnitType.GOLD_ARCHER, 30),
+                        )
+                    Species.HALF_ELF ->
+                        listOf(
+                            UnitAllocation(UnitType.HUMAN_SWORD, 100),
+                            UnitAllocation(UnitType.HUMAN_ARCHER, 80),
+                            UnitAllocation(UnitType.WOOD_RANGER, 60),
+                            UnitAllocation(UnitType.WOOD_BLADE, 40),
+                            UnitAllocation(UnitType.GOLD_SPEAR, 20),
+                            UnitAllocation(UnitType.GOLD_ARCHER, 10),
+                            UnitAllocation(UnitType.CRANE_GUARD, 40),
+                            UnitAllocation(UnitType.EAGLE_CORPS, 30),
+                        )
+                }
+        val commanderCulture =
+            startingCultures?.let { preferredCommanderCulture(species, it) }
+                ?: if (species == Species.ELF) Culture.WOOD_ELF else Culture.HUMAN
+        val commander = startingCommander(commanderCulture)
         val state = GameState(
             player =
                 CharacterProfile(
@@ -86,6 +98,98 @@ object GameEngine {
         )
         return DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state)))
     }
+
+    private fun balancedStartingForces(cultures: Set<Culture>): Pair<Population, List<UnitAllocation>> {
+        val ordered = Culture.entries.filter { it in cultures }
+        require(ordered.isNotEmpty())
+
+        fun share(total: Int, index: Int): Int =
+            total / ordered.size + if (index < total % ordered.size) 1 else 0
+
+        val populationByCulture =
+            ordered.mapIndexed { index, culture -> culture to share(2000, index) }.toMap()
+        val recruitsByCulture =
+            ordered.mapIndexed { index, culture -> culture to share(160, index) }.toMap()
+
+        fun split(total: Int, weightedTypes: List<Pair<UnitType, Int>>): List<UnitAllocation> {
+            val weightSum = weightedTypes.sumOf { it.second }
+            var used = 0
+            return weightedTypes.mapIndexed { index, (type, weight) ->
+                val amount =
+                    if (index == weightedTypes.lastIndex) total - used
+                    else (total.toLong() * weight / weightSum).toInt()
+                used += amount
+                UnitAllocation(type, amount)
+            }.filter { it.amount > 0 }
+        }
+
+        val units =
+            ordered.flatMapIndexed { index, culture ->
+                val soldiers = share(400, index)
+                val mix =
+                    when (culture) {
+                        Culture.HUMAN ->
+                            listOf(
+                                UnitType.HUMAN_SWORD to 55,
+                                UnitType.HUMAN_ARCHER to 35,
+                                UnitType.KNIGHT to 10,
+                            )
+                        Culture.WOOD_ELF ->
+                            listOf(
+                                UnitType.WOOD_RANGER to 55,
+                                UnitType.WOOD_BLADE to 45,
+                            )
+                        Culture.GOLD_ELF ->
+                            listOf(
+                                UnitType.GOLD_SPEAR to 55,
+                                UnitType.GOLD_ARCHER to 45,
+                            )
+                        Culture.WALL ->
+                            listOf(
+                                UnitType.CRANE_GUARD to 25,
+                                UnitType.EAGLE_CORPS to 20,
+                                UnitType.TIGER_CORPS to 20,
+                                UnitType.BEAR_CORPS to 15,
+                                UnitType.DEER_CORPS to 10,
+                                UnitType.DRAGON_ARTILLERY to 10,
+                            )
+                    }
+                split(soldiers, mix)
+            }
+
+        val population =
+            Population(
+                human = populationByCulture[Culture.HUMAN] ?: 0,
+                woodElf = populationByCulture[Culture.WOOD_ELF] ?: 0,
+                goldElf = populationByCulture[Culture.GOLD_ELF] ?: 0,
+                wall = populationByCulture[Culture.WALL] ?: 0,
+                humanRecruits = recruitsByCulture[Culture.HUMAN] ?: 0,
+                woodElfRecruits = recruitsByCulture[Culture.WOOD_ELF] ?: 0,
+                goldElfRecruits = recruitsByCulture[Culture.GOLD_ELF] ?: 0,
+                wallRecruits = recruitsByCulture[Culture.WALL] ?: 0,
+            )
+        return population to units
+    }
+
+    private fun preferredCommanderCulture(species: Species, cultures: Set<Culture>): Culture =
+        when (species) {
+            Species.HUMAN -> if (Culture.HUMAN in cultures) Culture.HUMAN else cultures.first()
+            Species.ELF ->
+                when {
+                    Culture.WOOD_ELF in cultures -> Culture.WOOD_ELF
+                    Culture.GOLD_ELF in cultures -> Culture.GOLD_ELF
+                    else -> cultures.first()
+                }
+            Species.HALF_ELF -> if (Culture.HUMAN in cultures) Culture.HUMAN else cultures.first()
+        }
+
+    private fun startingCommander(culture: Culture): Commander =
+        when (culture) {
+            Culture.HUMAN -> Commander(1, "Marcus", culture, "knight")
+            Culture.WOOD_ELF -> Commander(1, "Caelen", culture, "wood_elf")
+            Culture.GOLD_ELF -> Commander(1, "Aelor", culture, "gold_elf")
+            Culture.WALL -> Commander(1, "Wei Jian", culture, "wall_guard")
+        }
 
     fun isUnitUnlocked(state: GameState, type: UnitType): Boolean =
         ArmyEngine.population(state.population, type.culture) > 0
