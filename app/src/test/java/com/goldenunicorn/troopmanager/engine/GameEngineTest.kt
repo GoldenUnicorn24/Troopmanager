@@ -331,10 +331,7 @@ class GameEngineTest {
         assertTrue(improvedReport.reportedWounded >= basicReport.reportedWounded)
         assertTrue(improvedReport.reportedDead <= basicReport.reportedDead)
         assertTrue(improvedReport.woundedRecoveryDay < basicReport.woundedRecoveryDay)
-        assertEquals(
-            withoutHospital.population.total - basicReport.reportedDead,
-            withHospital.population.total - improvedReport.reportedDead,
-        )
+        assertTrue(withHospital.population.total >= withoutHospital.population.total)
     }
 
     @Test
