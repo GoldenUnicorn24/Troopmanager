@@ -462,22 +462,26 @@ object GameEngine {
             state.commanders.find { it.id == id }
                 ?: return ActionResult(state, "Kommandant nicht gefunden.")
         if (id == COMPANION_COMMANDER_ID) return RelationshipEngine.action(state, "train")
-        if (state.resources.gold < 120) return ActionResult(state, "Training benötigt 120 Gold.")
+        val professionalCorps = ResearchTech.OFFICER_CORPS in state.research.completed
+        val trainingCost = if (professionalCorps) 100 else 120
+        if (state.resources.gold < trainingCost)
+            return ActionResult(state, "Training benötigt $trainingCost Gold.")
         val academyBonus = state.realm.level(BuildingType.ACADEMY).coerceAtMost(3)
+        val researchBonus = if (professionalCorps) 2 else 0
         val updated =
             c.copy(
                 level = c.level + 1,
                 sword = (c.sword + 1).coerceAtMost(100),
                 bow = (c.bow + 1).coerceAtMost(100),
-                leadership = (c.leadership + 2 + academyBonus).coerceAtMost(100),
-                tactics = (c.tactics + 2 + academyBonus).coerceAtMost(100),
+                leadership = (c.leadership + 2 + academyBonus + researchBonus).coerceAtMost(100),
+                tactics = (c.tactics + 2 + academyBonus + researchBonus).coerceAtMost(100),
                 siege = (c.siege + 1).coerceAtMost(100),
                 loyalty = (c.loyalty + 1).coerceAtMost(100),
                 rank = if (c.level >= 8) "Marschall" else if (c.level >= 4) "General" else c.rank,
             )
         return ActionResult(
             state.copy(
-                resources = state.resources.copy(gold = state.resources.gold - 120),
+                resources = state.resources.copy(gold = state.resources.gold - trainingCost),
                 commanders = state.commanders.map { if (it.id == id) updated else it },
             ),
             "${c.name} hat trainiert.",
