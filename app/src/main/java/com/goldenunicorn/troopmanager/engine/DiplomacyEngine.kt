@@ -100,7 +100,8 @@ object DiplomacyEngine {
         }
         val gift = ((value(proposal.offered) - value(proposal.requested)) / 25).coerceIn(-100, 100).toInt()
         return r.relation / 3 + r.trust / 3 + r.respect / 5 + r.fear / 10 + temperament +
-            state.player.diplomacy / 4 + ambassador + armyPressure + gift - burden
+            state.player.diplomacy / 4 + OriginEngine.diplomacyBonus(state) +
+            ambassador + armyPressure + gift - burden
     }
 
     fun propose(state: GameState, targetFactionId: String, kind: TreatyKind,
