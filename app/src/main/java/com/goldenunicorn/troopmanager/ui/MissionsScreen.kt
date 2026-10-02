@@ -153,7 +153,7 @@ private fun MissionCard(
                     color = if (mission.status == MissionStatus.FAILED) Danger else Success,
                 )
                 Text(
-                    "${mission.total - mission.losses} zurückgekehrt · ${mission.losses} Verluste",
+                    "${mission.readyReturned} einsatzbereit · ${mission.reportedWounded} verwundet · ${mission.reportedDead} gefallen",
                     color = Mist,
                     fontSize = 12.sp,
                 )
@@ -385,7 +385,33 @@ private fun MissionResultScreen(state: GameState, mission: ActiveMission, onDism
                     }
                 }
             }
-            item { StatGrid(listOf("Eingesetzt" to "${mission.total}", "Heimgekehrt" to "${(mission.total - mission.losses).coerceAtLeast(0)}", "Gefallen" to "${mission.losses}", "Spieler-XP" to "${mission.xpReward}")) }
+            item {
+                StatGrid(
+                    listOf(
+                        "Eingesetzt" to "${mission.deployedTotal}",
+                        "Einsatzbereit" to "${mission.readyReturned}",
+                        "Verwundet" to "${mission.reportedWounded}",
+                        "Gefallen" to "${mission.reportedDead}",
+                        "Spieler-XP" to "${mission.xpReward}",
+                    )
+                )
+            }
+            if (mission.reportedWounded > 0) {
+                item {
+                    Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Lazarett", color = PaleGold, fontWeight = FontWeight.Bold)
+                            Text(
+                                "${mission.reportedWounded} Verwundete werden behandelt" +
+                                    if (mission.woundedRecoveryDay > 0) " · voraussichtlich einsatzbereit ab Tag ${mission.woundedRecoveryDay}" else "",
+                                color = Mist,
+                                fontSize = 12.sp,
+                            )
+                            Text("Einsehbar unter Armee → Lazarett & Versorgung.", color = Gold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
             item { SectionTitle("Beute & Ruhm") }
             item { StatGrid(listOf("Gold" to "${mission.reward.gold}", "Nahrung" to "${mission.reward.food}", "Holz" to "${mission.reward.wood}", "Stein" to "${mission.reward.stone}", "Eisen" to "${mission.reward.iron}", "Ruhm" to "${mission.renownReward}")) }
             item { SectionTitle("Eingesetzte Einheiten") }
@@ -400,7 +426,8 @@ private fun MissionResultScreen(state: GameState, mission: ActiveMission, onDism
                     mission.status == MissionStatus.RETURNING || mission.outcome == null -> "Die Mission wurde zurückgerufen. Die Truppen haben die Festung erreicht."
                     mission.missionType == MissionType.RELIEF && mission.reward.gold > 0 -> "Die Hilfsmission hat Bewohner unterstützt und den Einfluss deines Reiches gestärkt."
                     mission.missionType == MissionType.SCOUT && mission.status == MissionStatus.COMPLETE -> "Erkundungsberichte geben deiner Festung zusätzliche Vorwarnzeit."
-                    mission.losses > 0 -> "Die Rückkehrer berichten von schweren Gefechten. Verluste sind bereits aus dem Truppenpool entfernt."
+                    mission.reportedWounded > 0 -> "Verwundete sind vorübergehend nicht einsatzbereit und kehren nach ihrer Behandlung automatisch ins Heer zurück."
+                    mission.reportedDead > 0 -> "Die Rückkehrer berichten von schweren Gefechten. Gefallene sind dauerhafte Verluste."
                     else -> "Die Truppen stehen der Festung wieder zur Verfügung. Beute und Erfahrung sind bereits verbucht."
                 }
                 EmptyCard(event)
