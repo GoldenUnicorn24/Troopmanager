@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.ArmyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.MilitaryEconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
@@ -373,13 +374,18 @@ private fun ArmyUnitCard(
                     fontSize = 13.sp,
                 )
                 Text(
-                    "${GameEngine.trainingDays(state, type)} Tage · ${type.goldCost} Gold / ${type.ironCost} Eisen je Rekrut",
+                    "${GameEngine.trainingDays(state, type)} Tage · ${type.goldCost} Gold je Rekrut",
                     color = Gold,
                     fontSize = 13.sp,
                 )
+                Text(
+                    "Militärgüter je Soldat: ${MilitaryEconomyEngine.requirementText(type, 1)}",
+                    color = Mist,
+                    fontSize = 12.sp,
+                )
                 if (!unlocked)
                     Text(
-                        "Noch gesperrt – baue dein Reich weiter aus.",
+                        "Noch gesperrt – diese Kultur braucht eine ausreichende Bevölkerungsbasis im Reich.",
                         color = Mist,
                         fontSize = 13.sp,
                     )
