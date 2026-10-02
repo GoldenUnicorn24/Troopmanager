@@ -98,9 +98,8 @@ object CharacterEngine {
         if (state.battleSession?.isActive == true) return GameEngine.ActionResult(state, "Fertigkeiten nach der Schlacht verteilen.")
         if (hasPerk(state, perk)) return GameEngine.ActionResult(state, "Fertigkeit bereits gelernt.")
         if (state.player.skillPoints < perk.cost) return GameEngine.ActionResult(state, "${perk.cost} Fertigkeitspunkte benötigt.")
-        val sameBranch = state.court.perks.count { it.branch == perk.branch }
-        val requiredLevel = if (sameBranch == 0) 1 else 3 + sameBranch * 2
-        if (state.player.level < requiredLevel) return GameEngine.ActionResult(state, "Weitere Wege in diesem Zweig öffnen sich ab Stufe $requiredLevel.")
+        // v0.61: starting skill points are a true character-build budget and can be spent
+        // immediately instead of being blocked behind character-level gates.
         val next = state.copy(player = state.player.copy(skillPoints = state.player.skillPoints - perk.cost), court = state.court.copy(perks = state.court.perks + perk))
         return GameEngine.ActionResult(chronicle(next, "Neuer Entwicklungsweg", "${perk.label}: ${perk.description}"), "${perk.label} gelernt.")
     }
