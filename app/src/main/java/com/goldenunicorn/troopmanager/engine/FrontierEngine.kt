@@ -77,7 +77,7 @@ object FrontierEngine {
         if (grown.none { !it.id.startsWith("invasion-") } && next.day in 4..18 && next.day % 4 == 0) {
             val small = 24 + next.day
             grown += HordeBanner(
-                "raid-${next.day}",
+                "scout-raid-${next.day}",
                 HordeKind.ORC,
                 "Kleine Orkschar",
                 small,
