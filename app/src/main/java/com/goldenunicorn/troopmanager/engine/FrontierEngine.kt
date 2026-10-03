@@ -399,6 +399,15 @@ object FrontierEngine {
             next = next.copy(frontier = next.frontier.copy(bond = bond.copy(stage = bondStage(bond))))
             next = RelationshipEngine.remember(next, "frontier_shared_battle", "Ihr standet gemeinsam in der Schlacht und kennt nun die Stärken und Grenzen des anderen besser.", 3, setOf("frontier", "bond"))
         }
+        next = next.copy(frontier = next.frontier.copy(designs = next.frontier.designs.map { design ->
+            val deployed = battle.contingents.filter { it.designId == design.id && it.startSoldiers > 0 }
+            if (deployed.isEmpty()) design else design.copy(
+                battles = design.battles + 1,
+                victories = design.victories + if (battle.status == BattleStatus.VICTORY) 1 else 0,
+                losses = (design.losses.toLong() + deployed.sumOf { (it.startSoldiers - it.soldiers).coerceAtLeast(0) })
+                    .coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            )
+        }))
         val campId = next.frontier.pendingCampAssaultId
         if (campId != null) {
             if (battle.status == BattleStatus.VICTORY) {
@@ -661,6 +670,18 @@ object FrontierEngine {
         )
         return result(log(next, "Tageslohn", "Das konkrete Tagesziel ist erfüllt. Der Abendbericht bringt $gold Gold."), "Tagesziel erfüllt: $gold Gold.")
     }
+    fun assignCaptain(state: GameState, designId: Long, commanderId: Long?): GameEngine.ActionResult {
+        val design = state.frontier.designs.firstOrNull { it.id == designId } ?: return result(state, "Regiment nicht gefunden.")
+        if (commanderId != null && state.commanders.none { it.id == commanderId }) return result(state, "Hauptmann nicht gefunden.")
+        if (commanderId != null && state.frontier.designs.any { it.id != designId && it.captainId == commanderId })
+            return result(state, "Dieser Hauptmann führt bereits ein anderes eigenes Regiment.")
+        val next = state.copy(frontier = state.frontier.copy(designs = state.frontier.designs.map {
+            if (it.id == designId) it.copy(captainId = commanderId) else it
+        }))
+        val name = commanderId?.let { id -> state.commanders.firstOrNull { it.id == id }?.name }
+        return result(next, if (name == null) "${design.name} steht wieder unter direktem Kommando." else "$name übernimmt ${design.name}.")
+    }
+
     fun deleteDesign(state: GameState, id: Long): GameEngine.ActionResult {
         val design = state.frontier.designs.firstOrNull { it.id == id } ?: return result(state, "Entwurf nicht gefunden.")
         if (design.trainingAmount > 0) return result(state, "${design.name} wird noch ausgebildet.")
@@ -691,7 +712,11 @@ object FrontierEngine {
         val base = (type.attack + type.defense + type.ranged).coerceAtLeast(1)
         state.frontier.designs.filter { canonicalDesign(it).unitType == type }.forEach { original ->
             val d = canonicalDesign(original); val n = minOf(left, d.soldiers); left -= n
-            weighted += n * (d.powerEach.toDouble() / base).coerceIn(.6, 1.4)
+            val veteran = 1.0 + d.veteranLevel * 0.025
+            val captain = d.captainId?.let { id -> state.commanders.firstOrNull { it.id == id } }?.let {
+                1.0 + (it.leadership + it.tactics).coerceAtMost(200) / 2000.0
+            } ?: 1.0
+            weighted += n * (d.powerEach.toDouble() / base * veteran * captain).coerceIn(.6, 1.55)
         }
         return ((weighted + left) / total).coerceIn(.6, 1.4)
     }
