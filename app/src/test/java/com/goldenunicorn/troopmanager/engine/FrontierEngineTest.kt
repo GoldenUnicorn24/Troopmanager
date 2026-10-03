@@ -180,7 +180,7 @@ class FrontierEngineTest {
 
     @Test
     fun customEquipmentIsBoundedAndTrainingCreatesOneRealPool() {
-        val original = state(40)
+        val original = state(40).copy(frontier = FrontierState(hordes = listOf(HordeBanner("training-guard", HordeKind.ORC, "Fernes Lager", 20, "Fernland", 99, jointWith = "Übung"))))
         val designed = FrontierEngine.designUnit(original, "Grenzgarde", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.PLATE, true).state
         val design = designed.frontier.designs.single()
         assertEquals(original.armySize, designed.armySize)
@@ -207,7 +207,10 @@ class FrontierEngineTest {
 
     @Test
     fun twoDesignsCanTrainConcurrentlyUsingExactlyTheirAvailableRecruits() {
-        val original = state(40)
+        val original = state(40).copy(
+            militaryStock = state(40).militaryStock.copy(swords = 1000, spears = 1000, armor = 1000, shields = 1000),
+            frontier = FrontierState(hordes = listOf(HordeBanner("training-guard-2", HordeKind.ORC, "Fernes Lager", 20, "Fernland", 99, jointWith = "Übung"))),
+        )
         var designed = FrontierEngine.designUnit(original, "Garde eins", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.MAIL, true).state
         designed = FrontierEngine.designUnit(designed, "Garde zwei", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SPEAR, CustomArmor.MAIL, true).state
         val first = FrontierEngine.trainCustomUnit(designed, designed.frontier.designs[0].id, 20).state
