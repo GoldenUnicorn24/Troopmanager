@@ -105,6 +105,13 @@ internal fun CampaignMapScreen(
             ((state.day - aid.departureDay).toFloat() / (aid.arrivalDay - aid.departureDay)).coerceIn(0f, 1f) else null
         CampaignAidRoute(origin.x, origin.y, home.x, home.y, aid.people.label, progress)
     }
+    val convoyRoutes = world.convoys.filter { it.factionId == PLAYER_FACTION && !it.complete && !it.lost }.mapNotNull { convoy ->
+        val current = markers.firstOrNull { it.id == convoy.regionId } ?: return@mapNotNull null
+        val nextId = convoy.route.getOrNull(convoy.routeIndex + 1)
+            ?: world.armies.firstOrNull { it.id == convoy.destinationArmyId }?.regionId
+        val next = markers.firstOrNull { it.id == nextId } ?: current
+        CampaignConvoyRoute(current.x, current.y, next.x, next.y, convoy.food, convoy.id)
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -137,7 +144,7 @@ internal fun CampaignMapScreen(
             CampaignMapScene(
                 markers,
                 world.roads.map { it.from to it.to },
-                armyMarkers, frontierMarkers, aidRoutes, state.presentation.heraldry, selectedRegion?.id,
+                armyMarkers, frontierMarkers, aidRoutes, convoyRoutes, state.presentation.heraldry, selectedRegion?.id,
             ) { selectedRegionId = it }
         }
         if (knownHordes.isNotEmpty() || state.frontier.reinforcements.isNotEmpty()) item {
@@ -300,13 +307,32 @@ internal fun CampaignMapScreen(
                 val age = (state.day - report.day).coerceAtLeast(0)
                 Text(report.name, color = PaleGold, fontWeight = FontWeight.Bold)
                 Text(world.faction(report.factionId)?.name ?: "Unbekannte Fraktion", color = Mist, fontSize = 12.sp)
+                val uncertainty = (age * 6).coerceAtMost(45)
+                val agedMin = (report.minimum * (100 - uncertainty) / 100).coerceAtLeast(0)
+                val agedMax = (report.maximum.toLong() * (100 + uncertainty) / 100).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                val confidence = when {
+                    report.exact && age == 0 -> "Gesichert"
+                    age <= 1 -> "Hoch"
+                    age <= 3 -> "Gut"
+                    age <= 7 -> "Unsicher"
+                    else -> "Veraltet"
+                }
                 Text(
-                    if (report.exact) "${report.minimum} Soldaten (gesichert am Berichtstag)"
-                    else "${report.minimum}–${report.maximum} Soldaten (Schätzung)",
-                    color = if (age > 0) Mist else Danger,
+                    if (age == 0 && report.exact) "${report.minimum} Soldaten (gesichert)"
+                    else "$agedMin–$agedMax mögliche Stärke · Vertrauen: $confidence",
+                    color = if (age == 0) Danger else Mist,
                 )
                 Text("${placeName(report.regionId)} · Bericht von Tag ${report.day}", color = Mist, fontSize = 12.sp)
-                Text(if (age == 0) "Aktuelle Beobachtung" else "$age Tage alt · Stärke und Position können sich geändert haben", color = if (age == 0) Success else Gold, fontSize = 12.sp)
+                Text(
+                    when {
+                        age == 0 -> "Aktuelle Beobachtung"
+                        age >= 5 && world.faction(report.factionId)?.personality in setOf(FactionPersonality.CUNNING, FactionPersonality.PARANOID) ->
+                            "$age Tage alt · mögliche Täuschung oder veraltete Marschrichtung"
+                        else -> "$age Tage alt · Unsicherheit wächst täglich; Stärke und Position können sich geändert haben"
+                    },
+                    color = if (age == 0) Success else Gold,
+                    fontSize = 12.sp,
+                )
                 ownArmies.filter { it.missionId == null && it.regionId == report.regionId && it.status.isAway && age == 0 }.forEach { army ->
                     OutlinedButton(
                         onClick = {
@@ -595,6 +621,7 @@ private data class CampaignArmyMarker(
 
 private data class CampaignFrontierMarker(val x: Float, val y: Float, val taoTei: Boolean, val name: String)
 private data class CampaignAidRoute(val originX: Float, val originY: Float, val targetX: Float, val targetY: Float, val name: String, val progress: Float?)
+private data class CampaignConvoyRoute(val x: Float, val y: Float, val targetX: Float, val targetY: Float, val food: Int, val id: String)
 
 /** Each map marker has its own accessible touch target; the region list repeats every target. */
 @Composable
@@ -604,6 +631,7 @@ private fun CampaignMapScene(
     armies: List<CampaignArmyMarker>,
     frontier: List<CampaignFrontierMarker>,
     aidRoutes: List<CampaignAidRoute>,
+    convoys: List<CampaignConvoyRoute>,
     playerHeraldry: Heraldry,
     selectedRegionId: String?,
     onSelect: (String) -> Unit,
@@ -612,7 +640,8 @@ private fun CampaignMapScene(
         Modifier.fillMaxWidth().height(340.dp).clip(RoundedCornerShape(18.dp))
             .background(Panel).semantics {
                 contentDescription = "Kampagnenkarte. " + frontier.joinToString { "${it.name}, entdeckte Horde" } +
-                    aidRoutes.joinToString(prefix = ". ") { "Hilfsroute von ${it.name} zur Heimat" }
+                    aidRoutes.joinToString(prefix = ". ") { "Hilfsroute von ${it.name} zur Heimat" } +
+                    convoys.joinToString(prefix = ". ") { "Nachschubkonvoi mit ${it.food} Nahrung" }
             },
     ) {
         AsyncImage(
@@ -677,6 +706,26 @@ private fun CampaignMapScene(
                 }
                 drawPath(diamond, Gold)
             }
+            convoys.forEach { convoy ->
+                val start = point(convoy.x, convoy.y)
+                val end = point(convoy.targetX, convoy.targetY)
+                drawLine(
+                    Blue.copy(alpha = .9f),
+                    start,
+                    end,
+                    2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())),
+                )
+                val cart = start + (end - start) * .45f
+                drawRoundRect(
+                    Blue,
+                    topLeft = cart - Offset(6.dp.toPx(), 4.dp.toPx()),
+                    size = Size(12.dp.toPx(), 8.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()),
+                )
+                drawCircle(Ink, 2.dp.toPx(), cart + Offset(-3.dp.toPx(), 5.dp.toPx()))
+                drawCircle(Ink, 2.dp.toPx(), cart + Offset(3.dp.toPx(), 5.dp.toPx()))
+            }
             frontier.forEach { marker ->
                 val position = point(marker.x, marker.y) + Offset(22.dp.toPx(), -25.dp.toPx())
                 val color = if (marker.taoTei) Color(0xFFB16CCA) else Danger
@@ -716,7 +765,7 @@ private fun CampaignMapScene(
             color = Ink.copy(alpha = .88f),
         ) {
             Text(
-                "Banner: eigenes Heer · Grün: eigenes Gebiet · Rot: fremdes Heer · Grau: alter Bericht",
+                "Banner: eigenes Heer · Blau gestrichelt: Nachschub · Gold: Verbündetenhilfe · Rot: Feind · Grau: alter Bericht",
                 color = Mist, fontSize = 10.sp, modifier = Modifier.padding(10.dp),
             )
         }
