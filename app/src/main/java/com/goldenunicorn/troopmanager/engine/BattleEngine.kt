@@ -168,13 +168,13 @@ object BattleEngine {
                 "Mindestens ein Kontingent muss eine Front halten.",
             )
         val wallVolley = if (tactic == Tactic.FORTIFY) state.frontier.weapons.filter { it.count > 0 && it.ammunition > 0 }.sumOf { it.type.defense * it.count } else 0
-        val strength =
-            ((enemyStrength
-                ?: (when (enemy) {
-                    EnemyType.ORC -> 220
-                    EnemyType.URUK -> 380
-                    EnemyType.TAO_TEI -> 480
-                } + state.realm.territory * 35 + state.victories * 55)) - wallVolley).coerceAtLeast(40)
+        val baseStrength =
+            enemyStrength ?: (when (enemy) {
+                EnemyType.ORC -> 220
+                EnemyType.URUK -> 380
+                EnemyType.TAO_TEI -> 480
+            } + state.realm.territory * 35 + state.victories * 55)
+        val strength = (baseStrength - wallVolley).coerceAtLeast(if (enemyStrength != null) 1 else 40)
         if (enemyUnits.isNotEmpty() && (enemyUnits.any { it.amount <= 0 } || enemyUnits.map { it.type }.distinct().size != enemyUnits.size || enemyUnits.sumOf { it.amount.toLong() } != strength.toLong()))
             return GameEngine.ActionResult(state, "Die gegnerische Truppenliste muss der Startstärke entsprechen.")
         val devices =
