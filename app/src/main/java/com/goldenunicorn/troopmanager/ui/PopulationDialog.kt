@@ -48,7 +48,19 @@ fun PopulationDialog(state: GameState, onState: (GameState) -> Unit, onNotice: (
                     Text("${culture.label} · ${values[0]}", color = Color.White, fontWeight = FontWeight.SemiBold)
                     Text("${values[1]} Männer, ${values[2]} Frauen, ${values[3]} Kinder", color = Mist, fontSize = 12.sp)
                     Text("Nottruppe ${values[4]} · Rekruten ${values[6]} · im Heer ${values[5]}", color = Gold, fontSize = 12.sp)
-                    Text("Förderung $favor / 5", color = PaleGold, fontSize = 12.sp)
+                    val standing = FrontierEngine.cultureStanding(state, culture)
+                    val integration = FrontierEngine.cultureIntegration(state, culture)
+                    Text("Förderung $favor / 5 · Loyalität $standing/100 · Integration $integration/100", color = PaleGold, fontSize = 12.sp)
+                    LinearProgressIndicator(
+                        progress = { standing / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (standing < 35) Danger else Gold,
+                    )
+                    LinearProgressIndicator(
+                        progress = { integration / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (integration < 35) Danger else Success,
+                    )
                     LinearProgressIndicator(
                         progress = { values[0] / state.population.total.coerceAtLeast(1).toFloat() },
                         modifier = Modifier.fillMaxWidth(),
