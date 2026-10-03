@@ -99,6 +99,8 @@ data class CouncilEffects(
     val taxLevel: TaxLevel? = null, val priority: WorkerPriority? = null,
     val wallRepair: Int = 0, val healingDays: Int = 0, val fieldSupply: Int = 0,
     val diplomaticRelation: Int = 0, val companionRespect: Int = 0,
+    val cultureStanding: Int = 0, val cultureIntegration: Int = 0,
+    val cultureTarget: Culture? = null,
 )
 
 data class CouncilOption(
