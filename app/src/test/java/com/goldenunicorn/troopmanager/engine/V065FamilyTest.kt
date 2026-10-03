@@ -202,4 +202,24 @@ class V065FamilyTest {
         assertTrue(reviewed.chronicle.any { it.title == "Nachfolge belastet das Reich" })
     }
 
+    @Test fun adultFamilyMemberCanCreateARealDynasticTreaty() {
+        var state = DynastyEngine.adoptHeir(family(), "Mira").state
+        val child = state.dynasty.members.first { it.name == "Mira" }
+        state = state.copy(dynasty = state.dynasty.copy(members = state.dynasty.members.map {
+            if (it.id == child.id) it.copy(initialAge = 20) else it
+        }))
+        state = WorldEngine.initialize(state)
+        state = DiplomacyEngine.initialize(state)
+        val target = state.world.factions.first { it.id !in setOf(PLAYER_FACTION, NEUTRAL_FACTION) }
+        state = DiplomacyEngine.changeRelation(state, PLAYER_FACTION, target.id, 80, 50, "Vorbereitung dynastischer Gespräche.")
+        val goldBefore = state.resources.gold
+        val allied = DynastyEngine.arrangeDynasticAlliance(state, child.id, target.id).state
+        assertTrue(DiplomacyEngine.hasTreaty(allied, PLAYER_FACTION, target.id, TreatyKind.DYNASTIC_ALLIANCE))
+        assertEquals(goldBefore - 250, allied.resources.gold)
+        assertEquals(target.id, allied.dynasty.dynasticAlliances.single().factionId)
+        assertEquals(child.id, allied.dynasty.dynasticAlliances.single().memberId)
+        assertTrue(allied.dynasty.members.first { it.id == child.id }.diplomacy >= child.diplomacy + 3)
+        assertEquals(allied, SaveCodec.decode(SaveCodec.encode(allied)))
+    }
+
 }
