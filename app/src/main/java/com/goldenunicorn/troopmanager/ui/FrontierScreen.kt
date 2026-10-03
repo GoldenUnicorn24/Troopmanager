@@ -58,7 +58,7 @@ internal fun FrontierScreen(
         ) {
             PageTitle("FRONTIER & MAUER", "Die Grenze deines Reiches")
             TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
-                listOf("Lage", "Verbündete", "Mauer", "Designs").forEachIndexed { index, label ->
+                listOf("Lage", "Verbündete", "Mauer", "Designs", "Posten").forEachIndexed { index, label ->
                     Tab(
                         selected = tab == index,
                         onClick = { tab = index },
@@ -79,6 +79,20 @@ internal fun FrontierScreen(
             when (tab) {
                 0 -> {
                     item { FrontierMap(state, !inBattle, ::apply) }
+                    state.frontier.pendingChoiceEvent?.let { event ->
+                        item {
+                            FrontierCard {
+                                Text(event.title, color = PaleGold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text(event.text, color = Mist, fontSize = 13.sp)
+                                FrontierAction(event.firstLabel, !inBattle, primary = true) {
+                                    apply(FrontierEngine.resolveChoiceEvent(state, true))
+                                }
+                                FrontierAction(event.secondLabel, !inBattle) {
+                                    apply(FrontierEngine.resolveChoiceEvent(state, false))
+                                }
+                            }
+                        }
+                    }
                     item { SectionTitle("Grenzlage") }
                     val visibleHordes = state.frontier.hordes.filter { it.discovered }.sortedBy { it.daysToArrival }
                     if (visibleHordes.isEmpty()) item {
@@ -140,6 +154,47 @@ internal fun FrontierScreen(
                         CustomDesignCard(state, design, expandedDesign == design.id, !inBattle, {
                             expandedDesign = if (expandedDesign == design.id) null else design.id
                         }, ::apply)
+                    }
+                }
+                else -> {
+                    item {
+                        FrontierCard {
+                            Text("Außenposten", color = PaleGold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("Maximal drei Posten. Wachtürme geben frühere Warnung, Versorgungsposten senken Patrouillenbedarf, Grenzforts bremsen das Wachstum feindlicher Lager.", color = Mist, fontSize = 13.sp)
+                        }
+                    }
+                    BorderOutpostType.entries.forEach { type ->
+                        item {
+                            FrontierCard {
+                                Text(type.label, color = PaleGold, fontWeight = FontWeight.Bold)
+                                Text("${type.gold} Gold · ${type.wood} Holz · ${type.stone} Stein", color = Gold, fontSize = 12.sp)
+                                Text(
+                                    when (type) {
+                                        BorderOutpostType.WATCHTOWER -> "Mehr Vorwarnzeit für neu entdeckte Horden."
+                                        BorderOutpostType.SUPPLY -> "Je Stufe 10 % weniger Nahrung für Grenzpatrouillen."
+                                        BorderOutpostType.FORTIFIED -> "Stärkerer Grenzdruck: feindliche Lager wachsen langsamer."
+                                    },
+                                    color = Mist,
+                                    fontSize = 12.sp,
+                                )
+                                FrontierAction("Errichten", !inBattle, primary = true) {
+                                    apply(FrontierEngine.buildOutpost(state, type))
+                                }
+                            }
+                        }
+                    }
+                    if (state.frontier.outposts.isNotEmpty()) item { SectionTitle("Bestehende Posten") }
+                    items(state.frontier.outposts, key = { "outpost_${it.id}" }) { outpost ->
+                        FrontierCard {
+                            Text(outpost.name, color = PaleGold, fontWeight = FontWeight.Bold)
+                            Text("${outpost.type.label} · Stufe ${outpost.level}/3 · Zustand ${outpost.integrity} %", color = Mist, fontSize = 12.sp)
+                            if (outpost.level < 3) FrontierAction("Ausbauen", !inBattle) {
+                                apply(FrontierEngine.upgradeOutpost(state, outpost.id))
+                            }
+                            if (outpost.integrity < 100) FrontierAction("Reparieren", !inBattle) {
+                                apply(FrontierEngine.repairOutpost(state, outpost.id))
+                            }
+                        }
                     }
                 }
             }
