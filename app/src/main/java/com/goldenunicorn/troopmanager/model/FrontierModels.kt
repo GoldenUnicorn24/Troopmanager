@@ -143,11 +143,45 @@ data class CustomUnitDesign(
     val colorHex: String = "#D6B66B",
     /** Trained soldiers are a named subset of this real army pool, never a second army. */
     val unitType: UnitType = UnitType.HUMAN_SWORD,
+    val victories: Int = 0,
+    val battleLosses: Int = 0,
+    val veteranLevel: Int = 0,
+    val epithet: String? = null,
+    val captainId: Long? = null,
+    val bannerStyle: String = "Standarte",
 ) {
     val goldCost: Int get() = (6 + attack + defense + ranged / 2).coerceIn(8, 40)
     val trainingDays: Int get() = (5 + (attack + defense + ranged) / 4).coerceIn(4, 24)
     val powerEach: Int get() = attack + defense + ranged
     val foodEach: Int get() = if (role == CustomUnitRole.CAVALRY || role == CustomUnitRole.SIEGE) 3 else if (culture == Culture.GOLD_ELF) 2 else 1
+}
+
+@Serializable
+data class FrontierDecisionChoice(
+    val id: String,
+    val label: String,
+    val detail: String,
+)
+
+@Serializable
+data class FrontierDecision(
+    val id: String,
+    val title: String,
+    val text: String,
+    val choices: List<FrontierDecisionChoice>,
+)
+
+@Serializable
+data class FrontierOutpost(
+    val id: Long,
+    val regionId: String,
+    val name: String,
+    val level: Int = 1,
+    val integrity: Int = 100,
+    val stores: Int = 0,
+) {
+    val scoutBonus: Int get() = level * 6
+    val growthSuppression: Int get() = level * 2
 }
 
 @Serializable
@@ -178,6 +212,11 @@ data class FrontierState(
     val dailyGoalKey: String = "",
     val dailyGoalClaimed: Boolean = false,
     val lastStoryDay: Int = 0,
+    val pendingDecision: FrontierDecision? = null,
+    val cultureStanding: Map<Culture, Int> = emptyMap(),
+    val cultureIntegration: Map<Culture, Int> = emptyMap(),
+    val outposts: List<FrontierOutpost> = emptyList(),
+    val nextOutpostId: Long = 1,
 )
 
 /** Campaign forecasts reveal only what scouts have reported, including for legacy invasions. */
