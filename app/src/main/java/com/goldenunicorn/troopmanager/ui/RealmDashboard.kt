@@ -41,6 +41,62 @@ internal fun RealmDashboard(
         }
         item { EconomyStrip(state) }
         item {
+            val production = EconomyEngine.production(state)
+            val foodDeficit = (production.upkeep - production.gross.food).coerceAtLeast(0)
+            val foodDays = if (foodDeficit == 0) "stabil" else "${state.resources.food / foodDeficit.coerceAtLeast(1)} T."
+            val nearest = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+            val presentCultures = Culture.entries.filter { state.population.count(it) > 0 }
+            val weakest = presentCultures.minByOrNull {
+                FrontierEngine.cultureStanding(state, it) + FrontierEngine.cultureIntegration(state, it)
+            }
+            Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("REICHSLAGE", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(
+                        "${state.realm.settlementName} · ${state.world.weather.season.label} · Mauer ${state.realm.wallIntegrity}%",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (state.relationship.romanceStage == RomanceStage.CO_RULERS) {
+                        Text(
+                            "${state.player.name} & ${state.companion.name} · gemeinsames Ressort: ${state.coRuler.portfolio.label}",
+                            color = Gold,
+                            fontSize = 12.sp,
+                        )
+                    } else {
+                        Text("${state.player.name} · ${state.title}", color = Gold, fontSize = 12.sp)
+                    }
+                    StatGrid(
+                        listOf(
+                            "Einwohner" to "${state.population.total}",
+                            "Garnison" to "${state.homeArmySize}",
+                            "Nahrung" to foodDays,
+                            "Sicherheit" to "${state.city.security}%",
+                        )
+                    )
+                    nearest?.let {
+                        Text("⚠ ${it.name} · ${it.estimatedStrengthLabel} · noch ${it.daysToArrival} Tage", color = Danger, fontSize = 12.sp)
+                    } ?: Text("Grenze: keine unmittelbar entdeckte Horde", color = Success, fontSize = 12.sp)
+                    weakest?.let { culture ->
+                        val standing = FrontierEngine.cultureStanding(state, culture)
+                        val integration = FrontierEngine.cultureIntegration(state, culture)
+                        Text(
+                            "Völkerlage: ${culture.label} am schwächsten eingebunden · Loyalität $standing · Integration $integration",
+                            color = if (standing < 35 || integration < 35) Danger else Mist,
+                            fontSize = 11.sp,
+                        )
+                    }
+                    if (state.dynasty.successionTension > 0) {
+                        Text(
+                            "Nachfolge: ${state.dynasty.successionTension}/100 · ${state.dynasty.successionConcern.ifBlank { "weitere Klärung nötig" }}",
+                            color = if (state.dynasty.successionTension >= 60) Danger else Gold,
+                            fontSize = 11.sp,
+                        )
+                    }
+                }
+            }
+        }
+        item {
             StatGrid(
                 listOf(
                     "Verwundet" to state.war.wounded.sumOf { it.soldiers }.toString(),
