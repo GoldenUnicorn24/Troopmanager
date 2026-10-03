@@ -175,6 +175,7 @@ data class FrontierState(
     val lastTickDay: Int = 0,
     val hordePressureKeys: Set<String> = emptySet(),
     val dailyGoal: String = "",
+    val dailyGoalKey: String = "",
     val dailyGoalClaimed: Boolean = false,
     val lastStoryDay: Int = 0,
 )
