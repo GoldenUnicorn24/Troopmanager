@@ -24,6 +24,10 @@ object CoRulerEngine {
             vararg options: CouncilOption, court: Boolean = false) = CouncilCase(id,
                 if (court) CouncilCaseKind.COURT_CONFLICT else CouncilCaseKind.GOVERNMENT,
                 portfolio, title, situation, options.toList())
+        val presentCultures = Culture.entries.filter { state.population.count(it) > 0 }
+        val weakestCulture = presentCultures.minByOrNull {
+            FrontierEngine.cultureStanding(state, it) + FrontierEngine.cultureIntegration(state, it)
+        } ?: Culture.HUMAN
         return listOf(
             entry("grain", CoRulerPortfolio.ECONOMY, "Vorräte für die nächste Woche",
                 "${state.resources.food} Nahrung; Hunger ${state.society.hunger}. Händler bieten eine begrenzte Lieferung an.",
@@ -145,19 +149,14 @@ object CoRulerEngine {
                 option("schedule", "Geschützte Zeit und Vertretung planen", "50 Gold; Respekt +2, Loyalität +1.",gold(50),effects=CouncilEffects(companionRespect=2,loyalty=1),action=DelegatedAction.COURT_MEDIATION),
                 option("share", "Audienzen auf Amtsträger verteilen", "Sicherheit +2, Respekt +1.",effects=CouncilEffects(security=2,companionRespect=1)),
                 option("explain", "Heutige Frist gemeinsam erklären", "Respekt +1; die Familie erhält eine verbindliche Begründung.",effects=CouncilEffects(companionRespect=1)),court=true),
-            run {
-                val present = Culture.entries.filter { state.population.count(it) > 0 }
-                val target = present.minByOrNull {
-                    FrontierEngine.cultureStanding(state, it) + FrontierEngine.cultureIntegration(state, it)
-                } ?: Culture.HUMAN
-                entry("culture_compact", CoRulerPortfolio.INTERIOR, "Stimmen von ${target.label}",
-                    "Loyalität ${FrontierEngine.cultureStanding(state, target)}/100 · Integration ${FrontierEngine.cultureIntegration(state, target)}/100. Vertreter verlangen sichtbare Mitsprache.",
-                    option("hearing", "Öffentliche Anhörung", "80 Gold; Loyalität +6, Integration +2, Kulturspannung −3.",gold(80),
-                        effects=CouncilEffects(culturalTension=-3,cultureStanding=6,cultureIntegration=2,cultureTarget=target),action=DelegatedAction.COURT_MEDIATION),
-                    option("offices", "Gemeinsame Ämter öffnen", "120 Gold; Loyalität +3, Integration +6, politische Loyalität +1.",gold(120),
-                        effects=CouncilEffects(loyalty=1,cultureStanding=3,cultureIntegration=6,cultureTarget=target),action=DelegatedAction.CIVIL_ADMINISTRATION),
-                    option("law", "Gleiche Regeln schriftlich bestätigen", "Sicherheit +2, Integration +3.",effects=CouncilEffects(security=2,cultureIntegration=3,cultureTarget=target))),
-            },
+            entry("culture_compact", CoRulerPortfolio.INTERIOR, "Stimmen von ${weakestCulture.label}",
+                "Loyalität ${FrontierEngine.cultureStanding(state, weakestCulture)}/100 · Integration ${FrontierEngine.cultureIntegration(state, weakestCulture)}/100. Vertreter verlangen sichtbare Mitsprache.",
+                option("hearing", "Öffentliche Anhörung", "80 Gold; Loyalität +6, Integration +2, Kulturspannung −3.", gold(80),
+                    effects = CouncilEffects(culturalTension = -3, cultureStanding = 6, cultureIntegration = 2, cultureTarget = weakestCulture), action = DelegatedAction.COURT_MEDIATION),
+                option("offices", "Gemeinsame Ämter öffnen", "120 Gold; Loyalität +3, Integration +6, politische Loyalität +1.", gold(120),
+                    effects = CouncilEffects(loyalty = 1, cultureStanding = 3, cultureIntegration = 6, cultureTarget = weakestCulture), action = DelegatedAction.CIVIL_ADMINISTRATION),
+                option("law", "Gleiche Regeln schriftlich bestätigen", "Sicherheit +2, Integration +3.",
+                    effects = CouncilEffects(security = 2, cultureIntegration = 3, cultureTarget = weakestCulture))),
         )
     }
 
