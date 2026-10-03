@@ -173,6 +173,16 @@ object DynastyEngine {
                 court = state.court.copy(characters = state.court.characters.map { it.copy(lastAgedDay = it.lastAgedDay + paused) }))
         }
         var next = initialize(state)
+        next = next.copy(dynasty = next.dynasty.copy(
+            dynasticAlliances = next.dynasty.dynasticAlliances.filter { alliance ->
+                alliance.expiresDay > next.day &&
+                    next.diplomacy.treaties.any { treaty ->
+                        treaty.kind == TreatyKind.DYNASTIC_ALLIANCE &&
+                            treaty.expiresDay > next.day &&
+                            treaty.connects(PLAYER_FACTION, alliance.factionId)
+                    }
+            },
+        ))
         // Adult children remain the same people in the family and in military/court APIs.
         next = next.copy(dynasty = next.dynasty.copy(members = next.dynasty.members.map { member ->
             val dead = member.adultCommanderId?.let { id -> next.war.commanderConditions.any { it.commanderId == id && it.status == CombatantStatus.DEAD } ||
@@ -507,6 +517,81 @@ object DynastyEngine {
     fun regentCandidates(state: GameState): List<Commander> = state.commanders.filter { c -> c.loyalty >= 40 && c.id != state.dynasty.members.firstOrNull { it.id == state.dynasty.rulerId }?.adultCommanderId &&
         state.court.characters.any { it.commanderId == c.id && it.alive && it.age >= 18 } && !state.commanderAway(c.id) && !state.war.unavailableCommander(c.id) }
 
+    fun dynasticAllianceTargets(state: GameState, memberId: String): List<WorldFaction> {
+        val base = DiplomacyEngine.initialize(WorldEngine.initialize(initialize(state)))
+        val member = base.dynasty.members.firstOrNull { it.id == memberId && it.alive } ?: return emptyList()
+        if (member.id in setOf(base.dynasty.rulerId, "companion") || member.age(base.day) < 18) return emptyList()
+        val active = base.dynasty.dynasticAlliances.filter { it.expiresDay > base.day }.map { it.memberId to it.factionId }.toSet()
+        if (active.any { it.first == memberId }) return emptyList()
+        return base.world.factions.filter { faction ->
+            faction.id !in setOf(PLAYER_FACTION, NEUTRAL_FACTION) &&
+                !DiplomacyEngine.atWar(base, PLAYER_FACTION, faction.id) &&
+                !DiplomacyEngine.hasTreaty(base, PLAYER_FACTION, faction.id, TreatyKind.DYNASTIC_ALLIANCE) &&
+                (memberId to faction.id) !in active
+        }.filter { faction ->
+            val relation = DiplomacyEngine.relation(base, PLAYER_FACTION, faction.id)
+            relation.relation >= 20 && relation.trust >= 35
+        }.sortedByDescending { faction ->
+            val relation = DiplomacyEngine.relation(base, PLAYER_FACTION, faction.id)
+            relation.relation + relation.trust + relation.respect
+        }
+    }
+
+    fun arrangeDynasticAlliance(state: GameState, memberId: String, factionId: String): GameEngine.ActionResult {
+        var base = DiplomacyEngine.initialize(WorldEngine.initialize(initialize(state)))
+        if (!base.settings.dynasty) return GameEngine.ActionResult(state, "Dynastie ist ausgeschaltet.")
+        val member = base.dynasty.members.firstOrNull { it.id == memberId && it.alive }
+            ?: return GameEngine.ActionResult(state, "Familienmitglied nicht verfügbar.")
+        if (member.id in setOf(base.dynasty.rulerId, "companion") || member.age(base.day) < 18)
+            return GameEngine.ActionResult(state, "Dynastische Verbindungen stehen nur erwachsenen Angehörigen außerhalb des amtierenden Herrscherpaars offen.")
+        val target = dynasticAllianceTargets(base, memberId).firstOrNull { it.id == factionId }
+            ?: return GameEngine.ActionResult(state, "Dieses Reich ist für eine dynastische Verbindung derzeit nicht bereit.")
+        if (base.resources.gold < 250) return GameEngine.ActionResult(state, "Gesandtschaft, Reise und Zeremonie benötigen 250 Gold.")
+
+        val treaty = Treaty(
+            id = "treaty_${base.diplomacy.nextId}",
+            kind = TreatyKind.DYNASTIC_ALLIANCE,
+            firstFactionId = PLAYER_FACTION,
+            secondFactionId = target.id,
+            signedDay = base.day,
+            expiresDay = base.day + 720,
+        )
+        val record = DynasticAllianceRecord(
+            memberId = member.id,
+            factionId = target.id,
+            signedDay = base.day,
+            expiresDay = treaty.expiresDay,
+            description = "${member.name} übernimmt freiwillig eine dynastische Verbindung mit ${target.name}; sie stärkt den politischen Austausch, ohne die Person aus deiner Familie zu entfernen.",
+        )
+        val updatedMember = member.copy(
+            diplomacy = (member.diplomacy + 3).coerceAtMost(100),
+            educationLog = (member.educationLog + FamilyDevelopmentEntry(base.day, record.description)).takeLast(60),
+        )
+        base = base.copy(
+            resources = base.resources.copy(gold = base.resources.gold - 250),
+            dynasty = base.dynasty.copy(
+                members = base.dynasty.members.map { if (it.id == member.id) updatedMember else it },
+                dynasticAlliances = (base.dynasty.dynasticAlliances.filter { it.expiresDay > base.day } + record).takeLast(20),
+                successionTension = (base.dynasty.successionTension - if (member.id != base.dynasty.heirId) 6 else 0).coerceAtLeast(0),
+            ),
+            diplomacy = base.diplomacy.copy(
+                treaties = base.diplomacy.treaties + treaty,
+                nextId = base.diplomacy.nextId + 1,
+            ),
+        )
+        base = DiplomacyEngine.changeRelation(
+            base,
+            PLAYER_FACTION,
+            target.id,
+            10,
+            8,
+            "Dynastische Verbindung über ${member.name}.",
+        )
+        base = legitimacy(base, "Dynastisches Bündnis mit ${target.name}", 2)
+        base = chronicle(base, "Dynastisches Bündnis", record.description)
+        return GameEngine.ActionResult(base, "${member.name}: dynastische Verbindung mit ${target.name} bis Tag ${treaty.expiresDay}.")
+    }
+
     fun selectRegent(state: GameState, commanderId: Long): GameEngine.ActionResult {
         if (!state.settings.dynasty) return GameEngine.ActionResult(state, "Dynastie ist ausgeschaltet.")
         val ward = state.dynasty.members.firstOrNull { it.id == state.dynasty.rulerId && it.age(state.day) < 18 }
@@ -632,6 +717,13 @@ object DynastyEngine {
         }
         dynasty.regencyForMemberId?.let { id -> require(dynasty.members.any { it.id == id }) { "Regentschaft ohne Familienmitglied." } }
         require(dynasty.successionTension in 0..100 && dynasty.lastSuccessionReviewDay <= state.day) { "Ungültiger Nachfolgestatus." }
+        require(dynasty.dynasticAlliances.size <= 20 &&
+            dynasty.dynasticAlliances.map { it.memberId }.distinct().size == dynasty.dynasticAlliances.size &&
+            dynasty.dynasticAlliances.all { alliance ->
+                dynasty.members.any { it.id == alliance.memberId && it.alive && it.age(state.day) >= 18 } &&
+                    state.world.faction(alliance.factionId) != null &&
+                    alliance.signedDay in 1..state.day && alliance.expiresDay > alliance.signedDay
+            }) { "Ungültige dynastische Verbindung." }
         state.court.socialLinks.filter { it.directed }.forEach { link -> require(link.sourceId == link.firstId || link.sourceId == link.secondId) { "Ungültige Richtung einer Hofbeziehung." } }
     }
 
