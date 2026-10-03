@@ -101,7 +101,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.74 · Festung, Grenze, Tageslohn", color = PaleGold)
+            Text("v${com.goldenunicorn.troopmanager.BuildConfig.VERSION_NAME} · lebendige Grenze & Reich", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
