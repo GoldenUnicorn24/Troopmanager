@@ -143,7 +143,20 @@ data class CustomUnitDesign(
     val colorHex: String = "#D6B66B",
     /** Trained soldiers are a named subset of this real army pool, never a second army. */
     val unitType: UnitType = UnitType.HUMAN_SWORD,
+    val captainId: Long? = null,
+    val battles: Int = 0,
+    val victories: Int = 0,
+    val losses: Int = 0,
 ) {
+    val veteranLevel: Int get() = ((battles + victories * 2) / 3).coerceIn(0, 5)
+    val veteranTitle: String get() = when (veteranLevel) {
+        0 -> "Neu aufgestellt"
+        1 -> "Erprobt"
+        2 -> "Veteranen"
+        3 -> "Elite"
+        4 -> "Garde"
+        else -> "Legenden"
+    }
     val goldCost: Int get() = (6 + attack + defense + ranged / 2).coerceIn(8, 40)
     val trainingDays: Int get() = (5 + (attack + defense + ranged) / 4).coerceIn(4, 24)
     val powerEach: Int get() = attack + defense + ranged
