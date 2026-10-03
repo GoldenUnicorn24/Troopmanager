@@ -913,7 +913,14 @@ object FrontierEngine {
         require(f.lastTickDay in 0..state.day && f.lastRaidDay in 0..state.day && f.nextDesignId > 0 && f.nextReinforcementId > 0) { "Ungültige Frontier-Zeit oder Kennung." }
         require(f.allies.map { it.people }.distinct().size == f.allies.size && f.allies.all { it.trust in 0..100 && it.stock in 0..300 && it.requestsWithoutReturn >= 0 && it.contributions >= 0 }) { "Ungültige Bündniswerte." }
         require(f.weapons.map { it.type }.distinct().size == f.weapons.size && f.weapons.all { it.count in 0..1000 && it.daysRemaining in 0..it.type.days && it.ammunition in 0..(it.count * ammunitionCapacity(it.type)) && it.integrity in 0..100 && it.reloadRounds in 0..2 && it.section != BattleSection.RESERVE }) { "Ungültige Mauerwaffen." }
-        require(f.hordes.map { it.id }.distinct().size == f.hordes.size && f.hordes.all { it.soldiers > 0 && it.daysToArrival >= 0 && it.estimateMinimum >= 0 && it.estimateMaximum >= it.estimateMinimum }) { "Ungültige Hordenmeldung." }
+        val invalidHordes = f.hordes.filter {
+            it.soldiers <= 0 || it.daysToArrival < 0 || it.estimateMinimum < 0 || it.estimateMaximum < it.estimateMinimum
+        }
+        require(f.hordes.map { it.id }.distinct().size == f.hordes.size && invalidHordes.isEmpty()) {
+            "Ungültige Hordenmeldung: " + invalidHordes.joinToString { h ->
+                "${h.id}[soldiers=${h.soldiers},days=${h.daysToArrival},estimate=${h.estimateMinimum}..${h.estimateMaximum}]"
+            }
+        }
         f.patrol?.let { p ->
             require(p.soldiers in 1..500 && p.daysLeft in 1..12 && p.units.all { it.amount > 0 } && p.units.map { it.type }.distinct().size == p.units.size) { "Ungültige Grenzpatrouille." }
             // Empty allocations are accepted only for the additive v0.63 legacy model.
@@ -923,7 +930,20 @@ object FrontierEngine {
         UnitType.entries.forEach { type -> require(state.away(type) <= state.soldiers(type)) { "Gemeinsame Reservierungen übersteigen den Truppenbestand." } }
         require(state.awayArmySize <= state.armySize) { "Reservierte Armee übersteigt den Truppenbestand." }
         require(f.reinforcements.map { it.id }.distinct().size == f.reinforcements.size && f.reinforcements.all { it.id > 0 && it.amount in 1..300 && it.daysRemaining >= 0 && it.departureDay in 0..state.day && it.arrivalDay >= it.departureDay && it.type == allyType(it.people) }) { "Ungültige verbündete Reise." }
-        require(f.designs.size <= 20 && f.designs.map { it.id }.distinct().size == f.designs.size && f.designs.all { it.id > 0 && it.name.isNotBlank() && it.name.length <= 40 && it.attack in 0..30 && it.defense in 0..30 && it.ranged in 0..30 && it.soldiers >= 0 && it.trainingDaysLeft in 0..24 && it.trainingAmount in 0..1000 && (it.trainingAmount > 0) == (it.trainingDaysLeft > 0) }) { "Ungültige eigene Ausbildung." }
+        require(f.designs.size <= 20 && f.designs.map { it.id }.distinct().size == f.designs.size && f.designs.all {
+            it.id > 0 && it.name.isNotBlank() && it.name.length <= 40 &&
+                it.attack in 0..30 && it.defense in 0..30 && it.ranged in 0..30 &&
+                it.soldiers >= 0 && it.trainingDaysLeft in 0..24 && it.trainingAmount in 0..1000 &&
+                (it.trainingAmount > 0) == (it.trainingDaysLeft > 0) &&
+                it.battles >= 0 && it.victories in 0..it.battles && it.losses >= 0 &&
+                (it.captainId == null || state.commanders.any { commander -> commander.id == it.captainId })
+        }) { "Ungültige eigene Ausbildung oder Regimentshistorie." }
+        require(f.designs.mapNotNull { it.captainId }.distinct().size == f.designs.mapNotNull { it.captainId }.size) {
+            "Ein Hauptmann kann nur ein eigenes Regiment führen."
+        }
+        require(f.outposts.size <= 3 && f.nextOutpostId > 0 && f.outposts.map { it.id }.distinct().size == f.outposts.size &&
+            f.outposts.all { it.id > 0 && it.level in 1..3 && it.integrity in 0..100 }) { "Ungültiger Grenzposten." }
+        require(f.pendingCampRewardGold >= 0) { "Ungültige Lagersturm-Beute." }
         UnitType.entries.forEach { type -> require(f.designs.filter { canonicalDesign(it).unitType == type }.sumOf { it.soldiers.toLong() } <= state.soldiers(type)) { "Eigene Designs sind größer als ihr regulärer Truppenpool." } }
         Culture.entries.forEach { culture ->
             val reserved = state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers.toLong() } +
