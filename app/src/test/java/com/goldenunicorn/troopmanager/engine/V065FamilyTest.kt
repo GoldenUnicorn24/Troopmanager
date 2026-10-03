@@ -168,4 +168,38 @@ class V065FamilyTest {
         assertEquals(31, link.lastChangedDay)
         assertFalse(link.directed)
     }
+    @Test fun changingHeirCreatesTensionThatCanBeResolvedPolitically() {
+        var state = DynastyEngine.adoptHeir(family(), "Mira").state
+        state = DynastyEngine.adoptHeir(state, "Elian").state
+        val first = state.dynasty.members.first { it.name == "Mira" }
+        val second = state.dynasty.members.first { it.name == "Elian" }
+        state = state.copy(dynasty = state.dynasty.copy(members = state.dynasty.members.map {
+            if (it.id == first.id) it.copy(traits = it.traits + ChildTrait.AMBITIOUS) else it
+        }))
+        val changed = DynastyEngine.selectHeir(state, second.id).state
+        assertEquals(second.id, changed.dynasty.heirId)
+        assertTrue(changed.dynasty.successionTension >= 30)
+        assertTrue(changed.dynasty.successionConcern.contains("Mira"))
+        val goldBefore = changed.resources.gold
+        val settled = DynastyEngine.addressSuccession(changed, "council").state
+        assertTrue(settled.dynasty.successionTension < changed.dynasty.successionTension)
+        assertEquals(goldBefore - 120, settled.resources.gold)
+        assertTrue(settled.dynasty.legitimacy >= changed.dynasty.legitimacy)
+    }
+
+    @Test fun unresolvedHighSuccessionTensionHasMonthlyRealmConsequences() {
+        val initial = family().copy(dynasty = family().dynasty.copy(
+            successionTension = 70,
+            successionConcern = "Der Hof ist gespalten.",
+            lastSuccessionReviewDay = 10,
+        ))
+        val satisfaction = initial.city.satisfaction
+        val legitimacy = initial.dynasty.legitimacy
+        val reviewed = DynastyEngine.tick(initial.copy(day = 40))
+        assertTrue(reviewed.city.satisfaction < satisfaction)
+        assertTrue(reviewed.dynasty.legitimacy < legitimacy)
+        assertTrue(reviewed.dynasty.successionTension < 70)
+        assertTrue(reviewed.chronicle.any { it.title == "Nachfolge belastet das Reich" })
+    }
+
 }
