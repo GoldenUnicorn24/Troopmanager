@@ -439,8 +439,11 @@ private fun GameShell(
                     ) {
                         Text("${state.player.skillPoints} Skillpunkte")
                     }
+                IconButton(onClick = { showTutorial = true }) {
+                    Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Gold)
+                }
                 IconButton(onClick = { showMore = !showMore }) {
-                    Icon(Icons.Outlined.HelpOutline, "Hilfe und Menü", tint = Gold)
+                    Icon(Icons.Outlined.MoreVert, "Menü", tint = Gold)
                 }
             }
             ResourceStrip(state.resources, EconomyEngine.production(state).net)
