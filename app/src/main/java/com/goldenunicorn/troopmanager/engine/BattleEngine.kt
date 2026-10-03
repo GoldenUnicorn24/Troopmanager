@@ -96,7 +96,10 @@ object BattleEngine {
             return GameEngine.ActionResult(state, "Ein Kommandant kann nur einen Abschnitt führen.")
         chosen.forEach { deployment ->
             val id = deployment.commanderId
-            if (id != null && (state.commanders.none { it.id == id } || state.commanderAway(id))) {
+            if (id != null && state.commanders.none { it.id == id }) {
+                return GameEngine.ActionResult(state, "Dieser Kommandant existiert nicht.")
+            }
+            if (id != null && fieldArmy == null && state.commanderAway(id)) {
                 return GameEngine.ActionResult(
                     state,
                     "Dieser Kommandant ist nicht in der Festung verfügbar.",
@@ -111,27 +114,29 @@ object BattleEngine {
                     "Truppenmengen müssen positiv und je Kontingent eindeutig sein.",
                 )
             }
-            if (id != null && deployment.units.any { it.amount > state.assignedTo(id, it.type) }) {
+            if (fieldArmy == null && id != null && deployment.units.any { it.amount > state.assignedTo(id, it.type) }) {
                 return GameEngine.ActionResult(
                     state,
                     "Ein Kommandant kann nur seine zugewiesenen Truppen einsetzen.",
                 )
             }
         }
-        UnitType.entries.forEach { type ->
-            val total =
-                chosen.sumOf { d ->
-                    d.units.filter { it.type == type }.sumOf { it.amount.toLong() }
+        if (fieldArmy == null) {
+            UnitType.entries.forEach { type ->
+                val total =
+                    chosen.sumOf { d ->
+                        d.units.filter { it.type == type }.sumOf { it.amount.toLong() }
+                    }
+                val direct =
+                    chosen
+                        .filter { it.commanderId == null }
+                        .sumOf { d -> d.units.filter { it.type == type }.sumOf { it.amount.toLong() } }
+                if (total > state.homeSoldiers(type) || direct > state.directCommand(type)) {
+                    return GameEngine.ActionResult(
+                        state,
+                        "${type.label}: Truppen sind unterwegs, bereits zugewiesen oder mehrfach aufgestellt.",
+                    )
                 }
-            val direct =
-                chosen
-                    .filter { it.commanderId == null }
-                    .sumOf { d -> d.units.filter { it.type == type }.sumOf { it.amount.toLong() } }
-            if (total > state.homeSoldiers(type) || direct > state.directCommand(type)) {
-                return GameEngine.ActionResult(
-                    state,
-                    "${type.label}: Truppen sind unterwegs, bereits zugewiesen oder mehrfach aufgestellt.",
-                )
             }
         }
         val contingents =
