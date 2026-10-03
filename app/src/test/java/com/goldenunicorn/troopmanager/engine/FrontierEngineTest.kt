@@ -382,7 +382,7 @@ class FrontierEngineTest {
     fun frontierStoryPresentationsRotateWithoutChangingDecisionIds() {
         val titles = mutableSetOf<String>()
         val ids = mutableSetOf<String>()
-        listOf(30, 60, 90, 120, 150, 180).forEach { day ->
+        listOf(30, 40, 50, 60, 70, 80).forEach { day ->
             val sentinel = HordeBanner("story-sentinel-$day", HordeKind.ORC, "Fernes Lager", 1, "Fernland", 1000, jointWith = "test")
             val original = state(day).copy(
                 frontier = FrontierState(hordes = listOf(sentinel), lastTickDay = day - 1, lastRaidDay = day, lastStoryDay = day - 4),
