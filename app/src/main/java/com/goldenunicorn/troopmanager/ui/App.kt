@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
+import com.goldenunicorn.troopmanager.BuildConfig
 import com.goldenunicorn.troopmanager.data.SaveRepository
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
@@ -101,7 +102,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.74 · Festung, Grenze, Tageslohn", color = PaleGold)
+            Text("v${BuildConfig.VERSION_NAME} · Festung, Grenze, Tageslohn", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
@@ -440,22 +441,37 @@ private fun GameShell(
                         Text("${state.player.skillPoints} Skillpunkte")
                     }
                 IconButton(onClick = { showMore = !showMore }) {
-                    Icon(Icons.Outlined.HelpOutline, "Hilfe und Menü", tint = Gold)
+                    Icon(Icons.Outlined.MoreVert, "Mehr und Einstellungen", tint = Gold)
                 }
             }
             ResourceStrip(state.resources, EconomyEngine.production(state).net)
             }
         },
         bottomBar = {
-            val short = mapOf(GameDestination.COMMAND to "Hof", GameDestination.CITY to "Stadt", GameDestination.MILITARY to "Heer",
-                GameDestination.FRONTIER to "Grenze", GameDestination.WORLD to "Welt", GameDestination.RULERS to "Paar", GameDestination.FAMILY to "Haus")
-            Row(Modifier.fillMaxWidth().background(Panel).navigationBarsPadding()
-                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(GameDestination.COMMAND, GameDestination.CITY, GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.WORLD,
-                    GameDestination.RULERS, GameDestination.FAMILY).forEach { tab ->
-                    FilterChip(screen == tab || (screen == GameDestination.DECISIONS && tab == GameDestination.COMMAND),
-                        { showMore = false; screen = tab }, label = { Text(short[tab] ?: tab.label, maxLines = 1) })
+            val primaryTabs = listOf(
+                GameDestination.COMMAND to "Hof",
+                GameDestination.CITY to "Stadt",
+                GameDestination.MILITARY to "Heer",
+                GameDestination.FRONTIER to "Grenze",
+                GameDestination.WORLD to "Welt",
+            )
+            NavigationBar(containerColor = Panel, modifier = Modifier.navigationBarsPadding()) {
+                primaryTabs.forEach { (tab, label) ->
+                    NavigationBarItem(
+                        selected = screen == tab || (screen == GameDestination.DECISIONS && tab == GameDestination.COMMAND),
+                        onClick = { showMore = false; screen = tab },
+                        icon = {
+                            val icon = when (tab) {
+                                GameDestination.COMMAND -> Icons.Outlined.Home
+                                GameDestination.CITY -> Icons.Outlined.LocationCity
+                                GameDestination.MILITARY -> Icons.Outlined.Shield
+                                GameDestination.FRONTIER -> Icons.Outlined.Explore
+                                else -> Icons.Outlined.Public
+                            }
+                            Icon(icon, null)
+                        },
+                        label = { Text(label, maxLines = 1) },
+                    )
                 }
             }
         },
@@ -502,7 +518,7 @@ private fun GameShell(
                     GameDestination.RULERS -> RulerPairScreen(state, onState, onNotice, { screen = GameDestination.COUNCIL })
                     GameDestination.FAMILY -> FamilyScreen(state, onState, onNotice)
                     GameDestination.CHARACTER -> CharacterHubScreen(state, onState, onNotice)
-                    GameDestination.FRONTIER -> ArmyHubScreen(state, onState, onNotice, 5)
+                    GameDestination.FRONTIER -> FrontierScreen(state, onState, onNotice)
                     GameDestination.HOSPITAL -> ArmyHubScreen(state, onState, onNotice, 3)
                     GameDestination.MISSIONS -> ArmyHubScreen(state, onState, onNotice, 2)
                     GameDestination.COUNCIL -> CouncilScreen(state, onState, onNotice)
