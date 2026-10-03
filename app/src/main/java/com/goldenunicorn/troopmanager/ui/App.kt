@@ -546,7 +546,7 @@ private fun GameShell(
                     GameDestination.RULERS -> RulerPairScreen(state, onState, onNotice, { screen = GameDestination.COUNCIL })
                     GameDestination.FAMILY -> FamilyScreen(state, onState, onNotice)
                     GameDestination.CHARACTER -> CharacterHubScreen(state, onState, onNotice)
-                    GameDestination.FRONTIER -> ArmyHubScreen(state, onState, onNotice, 5)
+                    GameDestination.FRONTIER -> FrontierScreen(state, onState, onNotice)
                     GameDestination.HOSPITAL -> ArmyHubScreen(state, onState, onNotice, 3)
                     GameDestination.MISSIONS -> ArmyHubScreen(state, onState, onNotice, 2)
                     GameDestination.COUNCIL -> CouncilScreen(state, onState, onNotice)
