@@ -59,14 +59,22 @@ object FrontierEngine {
         if (next.day > 20 && next.day % 9 == 0 && grown.none { it.jointWith != null }) {
             grown += HordeBanner("joint-${next.day}", HordeKind.URUK, "Orks und Uruks", 80 + next.day, "Schwarzes Vorland", 5, jointWith = "Orks", discovered = true, estimateMinimum = 70, estimateMaximum = 140)
         }
+        // Persist growth/spawns before deriving goals or processing arrivals.
+        next = next.copy(frontier = next.frontier.copy(hordes = grown))
         val nearest = next.frontier.hordes.minByOrNull { it.daysToArrival }
-        val goal = when {
-            next.homeArmySize == 0 && next.invasion != null -> "Keine Soldaten an der Mauer. Die Nottruppe greift nur, wenn die Belagerung da ist."
-            nearest != null && nearest.daysToArrival <= 3 -> "${nearest.name} in ${nearest.daysToArrival} Tagen. Patrouille schicken oder an der Mauer erwarten."
-            next.frontier.patrol == null -> "Schick eine Patrouille an die Grenze."
-            next.trainingSize == 0 && next.homeArmySize < 80 -> "Bildet mindestens einen Trupp aus."
-            next.resources.food < 200 -> "Sichert Nahrung, der Hof darf nicht leer laufen."
-            else -> "Prüft Völker, Mauer und den Abendbericht."
+        val (goalKey, goal) = when {
+            next.homeArmySize == 0 && next.invasion != null ->
+                "defense" to "Keine Soldaten an der Mauer. Stelle vor der Ankunft wieder eine Garnison auf."
+            nearest != null && nearest.daysToArrival <= 3 ->
+                "threat" to "${nearest.name} in ${nearest.daysToArrival} Tagen. Schicke eine Patrouille oder halte mindestens 40 Soldaten an der Mauer."
+            next.frontier.patrol == null ->
+                "patrol" to "Schick eine Patrouille an die Grenze."
+            next.trainingSize == 0 && next.homeArmySize < 80 ->
+                "training" to "Bilde mindestens einen Trupp aus."
+            next.resources.food < 200 ->
+                "food" to "Sichere mindestens 200 Nahrung im Lager."
+            else ->
+                "garrison" to "Halte mindestens 40 einsatzbereite Soldaten an der Mauer."
         }
         if (next.day - next.frontier.lastStoryDay >= 3) {
             next = when (next.day % 4) {
@@ -77,11 +85,20 @@ object FrontierEngine {
             }
             next = next.copy(frontier = next.frontier.copy(lastStoryDay = next.day))
         }
-        next = next.copy(frontier = next.frontier.copy(hordes = next.frontier.hordes, dailyGoal = goal, dailyGoalClaimed = false))
+        next = next.copy(frontier = next.frontier.copy(dailyGoal = goal, dailyGoalKey = goalKey, dailyGoalClaimed = false))
         if (next.day % 5 == 0 && next.resources.food > 300) {
             val room = 8 + next.realm.level(BuildingType.FARM) * 2
-            next = next.copy(population = next.population.copy(human = next.population.human + room, humanRecruits = next.population.humanRecruits + room / 2))
-            next = log(next, "Zuzug", "$room Menschen kommen, weil Hof und Speicher tragen. Hunger stoppt den Zuzug.")
+            val cultures = Culture.entries.filter { next.population.count(it) > 0 }
+            val incomingCulture = cultures.maxWithOrNull(
+                compareBy<Culture> { next.culturePatronage[it] ?: 0 }
+                    .thenBy { next.population.count(it) }
+            )
+            if (incomingCulture != null) {
+                var pop = ArmyEngine.adjustPopulation(next.population, incomingCulture, room)
+                pop = ArmyEngine.adjustRecruits(pop, incomingCulture, room / 2)
+                next = next.copy(population = pop)
+                next = log(next, "Zuzug", "$room ${incomingCulture.label} kommen, weil Hof und Speicher tragen. Förderung und bestehende Bevölkerung bestimmen, wer zuzieht.")
+            }
         }
 
         var patrol = next.frontier.patrol?.let { p ->
@@ -473,21 +490,27 @@ object FrontierEngine {
     }
     fun huntHorde(state: GameState, hordeId: String): GameEngine.ActionResult {
         val horde = state.frontier.hordes.firstOrNull { it.id == hordeId && it.discovered } ?: return result(state, "Dieses Banner ist nicht in Sicht.")
-        val hunters = state.frontier.designs.filter { it.soldiers >= 10 }.maxByOrNull { it.soldiers } 
-        val pool = hunters?.soldiers ?: state.homeArmySize
+        val hunters = state.frontier.designs.filter { it.soldiers >= 10 && state.homeSoldiers(it.unitType) >= 10 }.maxByOrNull { it.soldiers }
+        val pool = hunters?.let { minOf(it.soldiers, state.homeSoldiers(it.unitType)) } ?: state.homeArmySize
         if (pool < 10) return result(state, "Für eine Jagd brauchst du mindestens 10 Soldaten zuhause.")
         if (horde.kind == HordeKind.TAO_TEI && horde.daysToArrival > 2) return result(state, "Tao Tei sind noch zu weit. Warte, bis sie die Mauer erreichen, oder schick eine Patrouille.")
         val sent = minOf(40, pool)
-        val killed = (sent * 2 / 3).coerceAtLeast(8)
-        val ownLoss = (sent / 8).coerceAtLeast(1)
-        val designs = if (hunters == null) state.frontier.designs else state.frontier.designs.map {
-            if (it.id == hunters.id) it.copy(soldiers = (it.soldiers - ownLoss).coerceAtLeast(0)) else it
+        val killed = minOf(horde.soldiers, (sent * 2 / 3).coerceAtLeast(8))
+        val ownLoss = (sent / 8).coerceAtLeast(1).coerceAtMost(sent)
+        val losses = if (hunters != null) listOf(UnitAllocation(hunters.unitType, ownLoss)) else {
+            var left = ownLoss
+            UnitType.entries.mapNotNull { type ->
+                val n = minOf(left, state.homeSoldiers(type))
+                left -= n
+                if (n > 0) UnitAllocation(type, n) else null
+            }
         }
-        val hordes = state.frontier.hordes.map {
+        val afterLosses = afterTroopLosses(state, ArmyEngine.applyLosses(state, losses))
+        val hordes = afterLosses.frontier.hordes.map {
             if (it.id != horde.id) it else it.copy(soldiers = (it.soldiers - killed).coerceAtLeast(0), daysToArrival = (it.daysToArrival + 1).coerceAtMost(12))
         }.filter { it.soldiers > 0 }
-        val next = state.copy(frontier = state.frontier.copy(designs = designs, hordes = hordes))
-        return result(log(next, "Jagd", "${hunters?.name ?: "Die Wache"} stellt ${horde.name}. $killed Feinde fallen, $ownLoss eigene."), "${horde.kind.label} gejagt. $killed fallen, $ownLoss eigene.")
+        val next = afterLosses.copy(frontier = afterLosses.frontier.copy(hordes = hordes))
+        return result(log(next, "Jagd", "${hunters?.name ?: "Die Wache"} stellt ${horde.name}. $killed Feinde fallen, $ownLoss eigene werden wirklich aus dem Heer abgezogen."), "${horde.kind.label} gejagt. $killed Feinde, $ownLoss eigene Verluste.")
     }
 
     fun assaultCamp(state: GameState, hordeId: String): GameEngine.ActionResult {
@@ -496,15 +519,28 @@ object FrontierEngine {
         if (state.homeArmySize < 20) return result(state, "Ein Sturm braucht mindestens 20 Soldaten zuhause.")
         if (state.resources.wood < 40) return result(state, "Der Sturm braucht 40 Holz für Leitern und Belagerung.")
         val enemy = when (horde.kind) { HordeKind.ORC -> EnemyType.ORC; HordeKind.URUK -> EnemyType.URUK; HordeKind.TAO_TEI -> EnemyType.TAO_TEI }
+        val paid = state.copy(resources = state.resources.copy(wood = state.resources.wood - 40))
         if (state.homeArmySize * 2 < horde.soldiers) {
             val loss = (state.homeArmySize / 10).coerceAtLeast(1)
-            val beaten = state.copy(resources = state.resources.copy(wood = state.resources.wood - 40))
-            return result(log(beaten, "Sturm gescheitert", "${horde.name} ist zu stark. Ihr verliert das Holz und zieht euch mit Verlusten zurück."), "Sturm gescheitert. Das Lager steht noch.")
+            var left = loss
+            val losses = UnitType.entries.mapNotNull { type ->
+                val n = minOf(left, state.homeSoldiers(type))
+                left -= n
+                if (n > 0) UnitAllocation(type, n) else null
+            }
+            val beaten = afterTroopLosses(state, ArmyEngine.applyLosses(paid, losses))
+            return result(
+                log(beaten, "Sturm gescheitert", "${horde.name} ist zu stark. $loss echte Soldaten gehen beim Rückzug verloren; das Lager bleibt bestehen."),
+                "Sturm gescheitert. $loss Soldaten verloren, das Lager steht noch.",
+            )
         }
-        val delayed = state.frontier.hordes.map { if (it.id == horde.id) it else it.copy(daysToArrival = it.daysToArrival + 2) }
-        val cleared = state.copy(resources = state.resources.copy(wood = state.resources.wood - 40, gold = state.resources.gold + 80), frontier = state.frontier.copy(hordes = delayed.filterNot { it.id == horde.id }))
-        val battle = BattleEngine.start(cleared, enemy, Tactic.AGGRESSIVE, enemyStrength = horde.soldiers.coerceIn(40, 800), location = horde.name, enemyArmyName = horde.name, enemyFortification = 25, enemyFactionName = horde.kind.label)
-        return if (battle.state.battleSession == null) battle else result(log(battle.state, "Lagersturm", "Du greifst ${horde.name} an. Andere Banner brauchen zwei Tage länger. 80 Gold Beute, wenn ihr besteht."), "Sturm auf ${horde.name}. Andere Banner verzögern sich.")
+        val delayed = paid.frontier.hordes.map { if (it.id == horde.id) it else it.copy(daysToArrival = it.daysToArrival + 2) }
+        val prepared = paid.copy(frontier = paid.frontier.copy(hordes = delayed))
+        val battle = BattleEngine.start(prepared, enemy, Tactic.AGGRESSIVE, enemyStrength = horde.soldiers.coerceAtLeast(1), location = horde.name, enemyArmyName = horde.name, enemyFortification = 25, enemyFactionName = horde.kind.label)
+        return if (battle.state.battleSession == null) battle else result(
+            log(battle.state, "Lagersturm", "Du greifst ${horde.name} an. Andere Banner brauchen zwei Tage länger. Das Lager und 80 Gold Beute werden erst nach einem Sieg verbucht."),
+            "Sturm auf ${horde.name}. Beute erst nach Sieg.",
+        )
     }
 
 
@@ -561,11 +597,19 @@ object FrontierEngine {
     }
     fun claimDailyGoal(state: GameState): GameEngine.ActionResult {
         if (state.frontier.dailyGoalClaimed) return result(state, "Der Tageslohn ist schon genommen.")
-        val done = state.frontier.patrol != null || state.trainingSize > 0 || state.homeArmySize >= 40
-        if (!done) return result(state, state.frontier.dailyGoal.ifBlank { "Noch nichts für den Tag getan." })
+        val done = when (state.frontier.dailyGoalKey) {
+            "defense" -> state.homeArmySize > 0
+            "threat" -> state.frontier.patrol != null || state.homeArmySize >= 40
+            "patrol" -> state.frontier.patrol != null
+            "training" -> state.trainingSize > 0
+            "food" -> state.resources.food >= 200
+            "garrison" -> state.homeArmySize >= 40
+            else -> false
+        }
+        if (!done) return result(state, state.frontier.dailyGoal.ifBlank { "Das Tagesziel ist noch nicht erfüllt." })
         val gold = 40 + state.realm.level(BuildingType.MARKET) * 5
         val next = state.copy(resources = state.resources.copy(gold = state.resources.gold + gold), frontier = state.frontier.copy(dailyGoalClaimed = true))
-        return result(log(next, "Tageslohn", "Der Abendbericht bringt $gold Gold. Patrouille oder Ausbildung haben den Tag getragen."), "Tageslohn: $gold Gold.")
+        return result(log(next, "Tageslohn", "Das konkrete Tagesziel wurde erfüllt. Der Abendbericht bringt $gold Gold."), "Tagesziel erfüllt: $gold Gold.")
     }
     fun deleteDesign(state: GameState, id: Long): GameEngine.ActionResult {
         val design = state.frontier.designs.firstOrNull { it.id == id } ?: return result(state, "Entwurf nicht gefunden.")
