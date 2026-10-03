@@ -17,6 +17,13 @@ Stand vom 3. Oktober 2026. Entwicklungsbranch: `codex/v0.82-overhaul`. APK-Metad
 - Frontier-Karte nutzt Weltkoordinaten und die echten Horde-/Verbündeten-Artworks.
 - CI baut und prüft 0.82; die Menüversion kommt direkt aus BuildConfig.
 - Regressionstests decken die neuen Grenz-, Kultur-, Hauptmann-, Tagesziel- und Außenpostenpfade ab.
+- Grenzereignisse besitzen 60 deterministische Präsentationsvarianten; Entscheidungen bleiben save-stabil und haben echte Ressourcen-/Gesellschaftsfolgen.
+- Völkerloyalität und Integration wirken wöchentlich auf Zufriedenheit, politische Loyalität, Kulturspannung, Sicherheit und Rekrutierung und sind in den gemeinsamen Herrscherrat integriert.
+- Nachfolgewechsel können echte dynastische Spannungen auslösen. Familiengespräch, öffentliche Erklärung oder großer Nachfolgerat lösen sie unterschiedlich; ungeklärte Konflikte belasten monatlich Legitimität und Stadt.
+- Erwachsene Familienmitglieder können bei ausreichender Beziehung und Vertrauen konkrete 720-Tage-Dynastiebündnisse mit fremden Reichen eingehen; Vertrag, Chronik und Familienprofil bleiben verknüpft.
+- Nachschubkonvois sind auf der Weltkarte sichtbar und bleiben physische, abfangbare Routen. Alte Feindmeldungen bekommen mit jedem Tag größere Unsicherheit und weisen bei passenden Gegnerpersönlichkeiten auf mögliche Täuschung hin.
+- Reichsübersicht bündelt Herrscherpaar, Versorgung, Garnison, Grenzbedrohung, schwächste Kultur und Nachfolgestatus.
+- Stadtviertel reagieren sichtbar auf die dominante Bevölkerungsgruppe; Hunger, Jahreszeit, Belagerung und Gebäudeschäden bleiben ebenfalls unmittelbar sichtbar.
 
 ## Weiterbauen
 
