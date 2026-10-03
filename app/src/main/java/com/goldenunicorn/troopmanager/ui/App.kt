@@ -465,7 +465,7 @@ private fun GameShell(
                                 GameDestination.COMMAND -> Icons.Outlined.Home
                                 GameDestination.CITY -> Icons.Outlined.LocationCity
                                 GameDestination.MILITARY -> Icons.Outlined.Shield
-                                GameDestination.FRONTIER -> Icons.Outlined.Explore
+                                GameDestination.FRONTIER -> Icons.Outlined.Place
                                 else -> Icons.Outlined.Public
                             }
                             Icon(icon, null)
