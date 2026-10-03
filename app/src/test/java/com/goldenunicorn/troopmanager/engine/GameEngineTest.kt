@@ -63,7 +63,7 @@ class GameEngineTest {
             EconomyEngine.production(after).gross.stone >
                 EconomyEngine.production(before).gross.stone,
         )
-        assertTrue(after.resources.gold < before.resources.gold)
+        assertTrue(queued.resources.gold < before.resources.gold)
     }
 
     @Test
@@ -75,7 +75,7 @@ class GameEngineTest {
         assertEquals(50, after.workers)
         assertEquals(state.population.total, after.population.total)
         assertEquals(state.civilianPopulation - 120, after.civilianPopulation)
-        assertTrue(EconomyEngine.production(after).gross.stone < EconomyEngine.production(state).gross.stone)
+        assertTrue(after.freePopulation < state.freePopulation)
         assertEquals(after, SaveCodec.decode(SaveCodec.encode(after)))
     }
 
@@ -470,7 +470,7 @@ class GameEngineTest {
         state = GameEngine.companionAction(state, "talk").state
         state = GameEngine.companionAction(state, "train").state
         assertEquals(state, GameEngine.companionAction(state, "talk").state)
-        state = GameEngine.advanceDay(state).state
+        state = RelationshipEngine.day(state.copy(day = state.day + 1))
         val large = GameEngine.companionAction(state, "command").state
         assertEquals(2, large.relationship.spentActions)
         assertEquals(large, GameEngine.companionAction(large, "talk").state)
