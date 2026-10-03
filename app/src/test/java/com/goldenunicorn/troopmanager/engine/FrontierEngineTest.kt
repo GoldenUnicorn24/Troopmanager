@@ -255,4 +255,72 @@ class FrontierEngineTest {
         val travelling = PresenceEngine.travel(state(), together = true).state
         assertFalse(FrontierEngine.canTrainWithCompanion(travelling))
     }
+    @Test
+    fun frontierTickPersistsHordeGrowth() {
+        val original = state(day = 10).copy(
+            frontier = FrontierState(
+                hordes = listOf(HordeBanner("grow", HordeKind.ORC, "Wachsendes Lager", 30, "Vorland", 4)),
+            ),
+        )
+        val advanced = FrontierEngine.tick(original)
+        val horde = advanced.frontier.hordes.first { it.id == "grow" }
+        assertEquals(34, horde.soldiers)
+        assertEquals(3, horde.daysToArrival)
+    }
+
+    @Test
+    fun failedCampAssaultConsumesWoodAndAppliesRealLosses() {
+        val original = state().copy(
+            frontier = FrontierState(
+                hordes = listOf(HordeBanner("camp", HordeKind.ORC, "Großes Lager", 300, "Vorland", 5)),
+            ),
+        )
+        val wood = original.resources.wood
+        val result = FrontierEngine.assaultCamp(original, "camp").state
+        assertEquals(wood - 40, result.resources.wood)
+        assertTrue(result.armySize < original.armySize)
+        assertTrue(result.frontier.hordes.any { it.id == "camp" })
+    }
+
+    @Test
+    fun campRewardAndRemovalWaitForActualVictory() {
+        val original = state().copy(
+            frontier = FrontierState(
+                hordes = listOf(HordeBanner("camp", HordeKind.ORC, "Kleines Lager", 40, "Vorland", 5)),
+            ),
+        )
+        val gold = original.resources.gold
+        val started = FrontierEngine.assaultCamp(original, "camp").state
+        assertEquals(gold, started.resources.gold)
+        assertTrue(started.frontier.hordes.any { it.id == "camp" })
+        val battle = started.battleSession!!.copy(status = BattleStatus.VICTORY)
+        val finished = FrontierEngine.afterBattle(started, battle)
+        assertEquals(gold + 80, finished.resources.gold)
+        assertTrue(finished.frontier.hordes.none { it.id == "camp" })
+        assertEquals(null, finished.frontier.pendingCampAssaultId)
+    }
+
+    @Test
+    fun huntHordeAppliesLossesToRealArmyPool() {
+        val original = state().copy(
+            frontier = FrontierState(
+                hordes = listOf(HordeBanner("hunt", HordeKind.ORC, "Jagdgruppe", 60, "Vorland", 2)),
+            ),
+        )
+        val result = FrontierEngine.huntHorde(original, "hunt").state
+        assertTrue(result.armySize < original.armySize)
+        assertTrue(result.frontier.hordes.first { it.id == "hunt" }.soldiers < 60)
+    }
+
+    @Test
+    fun dailyGoalChecksItsOwnCondition() {
+        val patrolGoal = state().copy(frontier = FrontierState(dailyGoal = "Patrouille", dailyGoalKey = "patrol"))
+        val denied = FrontierEngine.claimDailyGoal(patrolGoal)
+        assertEquals(patrolGoal.resources.gold, denied.state.resources.gold)
+        val dispatched = FrontierEngine.sendPatrol(patrolGoal, 20, 2).state
+        val rewarded = FrontierEngine.claimDailyGoal(dispatched)
+        assertTrue(rewarded.state.resources.gold > dispatched.resources.gold)
+        assertTrue(rewarded.state.frontier.dailyGoalClaimed)
+    }
+
 }
