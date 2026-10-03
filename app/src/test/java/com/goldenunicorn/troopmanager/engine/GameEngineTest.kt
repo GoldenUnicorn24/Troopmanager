@@ -75,7 +75,7 @@ class GameEngineTest {
         assertEquals(50, after.workers)
         assertEquals(state.population.total, after.population.total)
         assertEquals(state.civilianPopulation - 120, after.civilianPopulation)
-        assertTrue(after.freePopulation < state.freePopulation)
+        assertEquals(after.civilianPopulation, after.workers)
         assertEquals(after, SaveCodec.decode(SaveCodec.encode(after)))
     }
 
