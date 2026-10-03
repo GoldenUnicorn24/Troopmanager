@@ -147,7 +147,7 @@ class GovernanceEngineTest {
             coRuler = base.coRuler.copy(pendingCaseIds = listOf("culture_compact"), agendaDay = 0),
         )
         val case = CoRulerEngine.councilCases(prepared).first { it.id == "culture_compact" }
-        assertTrue(case.situation.contains("Menschen"))
+        assertTrue(case.title.contains("Menschen"))
         val decided = CoRulerEngine.decide(prepared, "culture_compact", "hearing").state
         assertEquals(26, FrontierEngine.cultureStanding(decided, Culture.HUMAN))
         assertEquals(32, FrontierEngine.cultureIntegration(decided, Culture.HUMAN))
