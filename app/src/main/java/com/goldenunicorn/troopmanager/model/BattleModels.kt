@@ -174,6 +174,26 @@ data class BattleSession(
     /** Fraction of the desired arrow load available when the battle started. */
     val rangedSupplyFactor: Double = 1.0,
 ) {
+    val tacticalStageLabel: String
+        get() = if (tactic != Tactic.FORTIFY) phase.label else when {
+            status == BattleStatus.PURSUIT -> "Flucht / Verfolgung"
+            phase == BattlePhase.FORMATION || phase == BattlePhase.RANGED -> "Anmarsch & Fernkampf"
+            phase == BattlePhase.CONTACT && devices.isNotEmpty() -> "Belagerungsgeräte"
+            wallIntegrity > 55 && phase in setOf(BattlePhase.CONTACT, BattlePhase.MAIN) -> "Sturm auf die Mauer"
+            wallIntegrity > 0 && phase in setOf(BattlePhase.MAIN, BattlePhase.RESERVES, BattlePhase.CRITICAL) -> "Mauerbruch & Tor"
+            else -> "Innenhof & Entscheidung"
+        }
+
+    val tacticalStageIndex: Int
+        get() = if (tactic != Tactic.FORTIFY) phase.ordinal.coerceAtMost(6) else when (tacticalStageLabel) {
+            "Anmarsch & Fernkampf" -> 1
+            "Belagerungsgeräte" -> 2
+            "Sturm auf die Mauer" -> 3
+            "Mauerbruch & Tor" -> 4
+            "Innenhof & Entscheidung" -> 5
+            else -> 6
+        }
+
     val isActive: Boolean
         get() = status == BattleStatus.ACTIVE || status == BattleStatus.PURSUIT
 
