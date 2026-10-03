@@ -599,7 +599,18 @@ object FrontierEngine {
             role = role, weapon = weapon, armor = armor, shield = shield, colorHex = colorHex, unitType = type)
     }
     private fun canonicalDesign(d: CustomUnitDesign): CustomUnitDesign = customUnitPreview(d.name, d.culture, d.role, d.weapon, d.armor, d.shield, d.colorHex, d.portraitUri)
-        .copy(id = d.id, soldiers = d.soldiers.coerceAtLeast(0), trainingDaysLeft = d.trainingDaysLeft.coerceAtLeast(0), trainingAmount = d.trainingAmount.coerceAtLeast(0))
+        .copy(
+            id = d.id,
+            soldiers = d.soldiers.coerceAtLeast(0),
+            trainingDaysLeft = d.trainingDaysLeft.coerceAtLeast(0),
+            trainingAmount = d.trainingAmount.coerceAtLeast(0),
+            victories = d.victories.coerceAtLeast(0),
+            battleLosses = d.battleLosses.coerceAtLeast(0),
+            veteranLevel = d.veteranLevel.coerceIn(0, 5),
+            epithet = d.epithet,
+            captainId = d.captainId,
+            bannerStyle = d.bannerStyle,
+        )
     fun designUnit(state: GameState, name: String, culture: Culture, role: CustomUnitRole, weapon: CustomWeapon, armor: CustomArmor, shield: Boolean,
         colorHex: String = "#D6B66B", portraitUri: String? = null): GameEngine.ActionResult {
         if (!customUnitsUnlocked(state)) return result(state, "Eigene Regimenter erst, wenn die Feste steht: Tag 40, drei Siege oder Kaserne Stufe 4.")
@@ -702,8 +713,14 @@ object FrontierEngine {
 
 
     fun nottruppe(state: GameState, culture: Culture): Int {
-        val total = state.population.count(culture)
-        val adults = total - total * 28 / 100
+        val committed =
+            state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers } +
+                state.trainingQueue.filter { it.type.culture == culture }.sumOf { it.amount } +
+                state.frontier.designs.filter { it.culture == culture }.sumOf { it.trainingAmount } +
+                state.war.wounded.filter { it.type.culture == culture }.sumOf { it.soldiers } +
+                state.war.captives.filter { it.own && it.type?.culture == culture }.sumOf { it.soldiers }
+        val civilians = (state.population.count(culture) - committed).coerceAtLeast(0)
+        val adults = civilians - civilians * 28 / 100
         val men = adults * 49 / 100
         val women = adults - men
         return men * 62 / 100 + women * 18 / 100
@@ -900,7 +917,25 @@ object FrontierEngine {
         UnitType.entries.forEach { type -> require(state.away(type) <= state.soldiers(type)) { "Gemeinsame Reservierungen übersteigen den Truppenbestand." } }
         require(state.awayArmySize <= state.armySize) { "Reservierte Armee übersteigt den Truppenbestand." }
         require(f.reinforcements.map { it.id }.distinct().size == f.reinforcements.size && f.reinforcements.all { it.id > 0 && it.amount in 1..300 && it.daysRemaining >= 0 && it.departureDay in 0..state.day && it.arrivalDay >= it.departureDay && it.type == allyType(it.people) }) { "Ungültige verbündete Reise." }
-        require(f.designs.size <= 20 && f.designs.map { it.id }.distinct().size == f.designs.size && f.designs.all { it.id > 0 && it.name.isNotBlank() && it.name.length <= 40 && it.attack in 0..30 && it.defense in 0..30 && it.ranged in 0..30 && it.soldiers >= 0 && it.trainingDaysLeft in 0..24 && it.trainingAmount in 0..1000 && (it.trainingAmount > 0) == (it.trainingDaysLeft > 0) }) { "Ungültige eigene Ausbildung." }
+        require(f.designs.size <= 20 && f.designs.map { it.id }.distinct().size == f.designs.size && f.designs.all {
+            it.id > 0 && it.name.isNotBlank() && it.name.length <= 40 &&
+                it.attack in 0..30 && it.defense in 0..30 && it.ranged in 0..30 &&
+                it.soldiers >= 0 && it.trainingDaysLeft in 0..24 && it.trainingAmount in 0..1000 &&
+                (it.trainingAmount > 0) == (it.trainingDaysLeft > 0) &&
+                it.victories >= 0 && it.battleLosses >= 0 && it.veteranLevel in 0..5 &&
+                (it.captainId == null || state.commanders.any { commander -> commander.id == it.captainId })
+        }) { "Ungültige eigene Ausbildung oder Regimentshistorie." }
+        require(f.designs.mapNotNull { it.captainId }.distinct().size == f.designs.mapNotNull { it.captainId }.size) { "Ein Hauptmann führt mehrere eigene Regimenter." }
+        require(f.cultureStanding.values.all { it in 0..100 } && f.cultureIntegration.values.all { it in 0..100 }) { "Ungültige Völkerwerte." }
+        require(f.outposts.map { it.id }.distinct().size == f.outposts.size && f.outposts.map { it.regionId }.distinct().size == f.outposts.size &&
+            f.outposts.all { it.id > 0 && it.level in 1..3 && it.integrity in 0..100 && it.stores in 0..1000 && state.world.place(it.regionId) != null }) {
+            "Ungültige Außenposten."
+        }
+        require(f.nextOutpostId > 0) { "Ungültige Außenposten-Kennung." }
+        f.pendingDecision?.let { event ->
+            require(event.id.isNotBlank() && event.title.isNotBlank() && event.choices.size >= 2 &&
+                event.choices.map { it.id }.distinct().size == event.choices.size) { "Ungültige Grenzentscheidung." }
+        }
         UnitType.entries.forEach { type -> require(f.designs.filter { canonicalDesign(it).unitType == type }.sumOf { it.soldiers.toLong() } <= state.soldiers(type)) { "Eigene Designs sind größer als ihr regulärer Truppenpool." } }
         Culture.entries.forEach { culture ->
             val reserved = state.armyPools.filter { it.type.culture == culture }.sumOf { it.soldiers.toLong() } +
