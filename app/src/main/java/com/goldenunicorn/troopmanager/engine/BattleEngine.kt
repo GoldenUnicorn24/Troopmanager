@@ -172,14 +172,16 @@ object BattleEngine {
                 state,
                 "Mindestens ein Kontingent muss eine Front halten.",
             )
-        val wallVolley = if (tactic == Tactic.FORTIFY) state.frontier.weapons.filter { it.count > 0 && it.ammunition > 0 }.sumOf { it.type.defense * it.count } else 0
+        // Keep the real enemy headcount intact at battle start. Wall weapons are resolved
+        // during battle exchanges by FrontierEngine.fireWallWeapons(), where ammunition and wear
+        // are consumed. Pre-subtracting them here both double-counted damage and broke exact field armies.
         val strength =
-            ((enemyStrength
+            (enemyStrength
                 ?: (when (enemy) {
                     EnemyType.ORC -> 220
                     EnemyType.URUK -> 380
                     EnemyType.TAO_TEI -> 480
-                } + state.realm.territory * 35 + state.victories * 55)) - wallVolley).coerceAtLeast(40)
+                } + state.realm.territory * 35 + state.victories * 55)).coerceAtLeast(1)
         if (enemyUnits.isNotEmpty() && (enemyUnits.any { it.amount <= 0 } || enemyUnits.map { it.type }.distinct().size != enemyUnits.size || enemyUnits.sumOf { it.amount.toLong() } != strength.toLong()))
             return GameEngine.ActionResult(state, "Die gegnerische Truppenliste muss der Startstärke entsprechen.")
         val devices =
