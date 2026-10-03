@@ -373,6 +373,23 @@ object FrontierEngine {
     }
     fun afterBattle(state: GameState, battle: BattleSession): GameState {
         var next = state
+        val assaultedCamp = battle.enemyArmyName?.let { name ->
+            next.frontier.hordes.firstOrNull { it.name == name && !it.id.startsWith("invasion-") }
+        }
+        if (assaultedCamp != null) {
+            next = if (battle.status == BattleStatus.VICTORY) {
+                log(
+                    next.copy(
+                        resources = next.resources.copy(gold = next.resources.gold + 80),
+                        frontier = next.frontier.copy(hordes = next.frontier.hordes.filterNot { it.id == assaultedCamp.id }),
+                    ),
+                    "Lager vernichtet",
+                    "${assaultedCamp.name} fällt erst nach dem gewonnenen Gefecht. 80 Gold Beute werden gesichert.",
+                )
+            } else {
+                log(next, "Lager hält stand", "${assaultedCamp.name} bleibt nach der Niederlage bestehen.")
+            }
+        }
         state.frontier.emergencyUsed.filter { it.startsWith("levy-raised:") }.forEach { key ->
             val parts = key.split(":")
             val culture = runCatching { Culture.valueOf(parts[1]) }.getOrNull() ?: return@forEach
