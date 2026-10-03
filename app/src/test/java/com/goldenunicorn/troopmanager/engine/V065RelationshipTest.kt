@@ -93,7 +93,7 @@ class V065RelationshipTest {
         val invitation = RelationshipEngine.action(initial, "intimacy").state
         assertNotNull(invitation.relationship.pendingEvent)
         val busy = invitation.copy(relationship = invitation.relationship.copy(spentActions = 2, actionDay = invitation.day))
-        val declined = RelationshipEngine.choose(busy, 2).state
+        val declined = RelationshipEngine.choose(busy, 5).state
         assertNull(declined.relationship.pendingEvent)
         assertEquals(busy.companion, declined.companion)
         assertEquals(busy.relationship.spentActions, declined.relationship.spentActions)
