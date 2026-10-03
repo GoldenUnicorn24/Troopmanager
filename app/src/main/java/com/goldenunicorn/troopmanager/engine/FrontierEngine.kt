@@ -209,6 +209,7 @@ object FrontierEngine {
         val army = state.world.armies.firstOrNull { it.id == invasion.worldArmyId }
         val kind = when (invasion.enemy) { EnemyType.ORC -> HordeKind.ORC; EnemyType.URUK -> HordeKind.URUK; EnemyType.TAO_TEI -> HordeKind.TAO_TEI }
         val total = army?.total ?: invasion.strength
+        if (total <= 0) return state.copy(frontier = state.frontier.copy(hordes = raids))
         val uncertainty = if (state.frontier.patrol != null || state.realm.scoutingDays > 0) .1 else .25
         val combined = state.day >= 45 && kind != HordeKind.TAO_TEI
         val banner = HordeBanner("invasion-${invasion.announcedDay}-${army?.id.orEmpty()}", kind,
