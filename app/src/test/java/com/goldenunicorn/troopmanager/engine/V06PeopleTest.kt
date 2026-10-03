@@ -72,14 +72,14 @@ class V06PeopleTest {
             partner.copy(settings = partner.settings.copy(romance = RomanceMode.OFF)),
             partner.copy(settings = partner.settings.copy(romance = RomanceMode.ROMANCE)),
             partner.copy(relationship = partner.relationship.copy(romanceStage = RomanceStage.ROMANCE)),
-            partner.copy(relationship = partner.relationship.copy(consent = partner.relationship.consent.copy(intimacyAllowed = false))),
+            partner.copy(relationship = partner.relationship.copy(consent = partner.relationship.consent.copy(romanceAllowed = false))),
             partner.copy(relationship = partner.relationship.copy(conflict = 50)),
             partner.copy(war = partner.war.copy(commanderConditions = listOf(CommanderCondition(COMPANION_COMMANDER_ID, CombatantStatus.CAPTURED)))),
         ).forEach { blocked -> assertNull(RelationshipEngine.action(blocked, "intimacy").state.relationship.pendingEvent) }
         val invited = RelationshipEngine.action(partner, "intimacy").state
         assertTrue(invited.relationship.pendingEvent!!.adultsOnly)
         assertTrue(invited.relationship.pendingEvent!!.consentRequired)
-        assertEquals("FADE_TO_BLACK", invited.relationship.pendingEvent!!.presentation)
+        assertEquals("EXPLICIT", invited.relationship.pendingEvent!!.presentation)
         val stale = RelationshipEngine.choose(invited.copy(day = invited.day + 1), 0).state
         assertNull(stale.relationship.pendingEvent)
         assertEquals(0, stale.relationship.intimacy)
@@ -92,15 +92,15 @@ class V06PeopleTest {
         assertEquals(partner.companion.affection, completed.companion.affection)
         assertNull(completed.relationship.intimacyConsentDay)
         assertEquals(1, completed.relationship.memories.count { it.type == "private_evening" })
-        assertTrue(completed.relationship.memories.last().tags.contains("FADE_TO_BLACK"))
-        assertNull(RelationshipEngine.action(completed.copy(day = partner.day + 3), "intimacy").state.relationship.pendingEvent)
-        assertNotNull(RelationshipEngine.action(completed.copy(day = partner.day + 7), "intimacy").state.relationship.pendingEvent)
+        assertTrue(completed.relationship.memories.last().tags.contains("EXPLICIT"))
+        assertNull(RelationshipEngine.action(completed.copy(day = partner.day + 1), "intimacy").state.relationship.pendingEvent)
+        assertNotNull(RelationshipEngine.action(completed.copy(day = partner.day + 2), "intimacy").state.relationship.pendingEvent)
     }
 
     @Test fun decliningIntimacyDoesNotPunishTheRelationship() {
         val partner = partners()
         val invited = RelationshipEngine.action(partner, "intimacy").state
-        val declined = RelationshipEngine.choose(invited, 2).state
+        val declined = RelationshipEngine.choose(invited, 5).state
         assertEquals(partner.companion.trust, declined.companion.trust)
         assertEquals(partner.companion.affection, declined.companion.affection)
         assertEquals(partner.relationship.commitment, declined.relationship.commitment)
