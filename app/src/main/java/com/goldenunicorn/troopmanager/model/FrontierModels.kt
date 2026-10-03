@@ -178,6 +178,8 @@ data class FrontierState(
     val dailyGoalKey: String = "",
     val dailyGoalClaimed: Boolean = false,
     val lastStoryDay: Int = 0,
+    val pendingCampAssaultId: String? = null,
+    val pendingCampRewardGold: Int = 0,
 )
 
 /** Campaign forecasts reveal only what scouts have reported, including for legacy invasions. */
