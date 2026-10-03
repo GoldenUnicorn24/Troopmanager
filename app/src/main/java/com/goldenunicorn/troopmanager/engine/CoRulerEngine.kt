@@ -145,6 +145,19 @@ object CoRulerEngine {
                 option("schedule", "Geschützte Zeit und Vertretung planen", "50 Gold; Respekt +2, Loyalität +1.",gold(50),effects=CouncilEffects(companionRespect=2,loyalty=1),action=DelegatedAction.COURT_MEDIATION),
                 option("share", "Audienzen auf Amtsträger verteilen", "Sicherheit +2, Respekt +1.",effects=CouncilEffects(security=2,companionRespect=1)),
                 option("explain", "Heutige Frist gemeinsam erklären", "Respekt +1; die Familie erhält eine verbindliche Begründung.",effects=CouncilEffects(companionRespect=1)),court=true),
+            run {
+                val present = Culture.entries.filter { state.population.count(it) > 0 }
+                val target = present.minByOrNull {
+                    FrontierEngine.cultureStanding(state, it) + FrontierEngine.cultureIntegration(state, it)
+                } ?: Culture.HUMAN
+                entry("culture_compact", CoRulerPortfolio.INTERIOR, "Stimmen von ${target.label}",
+                    "Loyalität ${FrontierEngine.cultureStanding(state, target)}/100 · Integration ${FrontierEngine.cultureIntegration(state, target)}/100. Vertreter verlangen sichtbare Mitsprache.",
+                    option("hearing", "Öffentliche Anhörung", "80 Gold; Loyalität +6, Integration +2, Kulturspannung −3.",gold(80),
+                        effects=CouncilEffects(culturalTension=-3,cultureStanding=6,cultureIntegration=2,cultureTarget=target),action=DelegatedAction.COURT_MEDIATION),
+                    option("offices", "Gemeinsame Ämter öffnen", "120 Gold; Loyalität +3, Integration +6, politische Loyalität +1.",gold(120),
+                        effects=CouncilEffects(loyalty=1,cultureStanding=3,cultureIntegration=6,cultureTarget=target),action=DelegatedAction.CIVIL_ADMINISTRATION),
+                    option("law", "Gleiche Regeln schriftlich bestätigen", "Sicherheit +2, Integration +3.",effects=CouncilEffects(security=2,cultureIntegration=3,cultureTarget=target))),
+            },
         )
     }
 
@@ -160,6 +173,9 @@ object CoRulerEngine {
         "family_council" -> state.dynasty.members.any { it.alive }
         "loyalty_doubt" -> state.commanders.any { it.loyalty < 65 }
         "refugees" -> state.society.lastMigration > 0 || state.society.culturalTension > 15
+        "culture_compact" -> Culture.entries.filter { state.population.count(it) > 0 }.any {
+            FrontierEngine.cultureStanding(state,it) < 65 || FrontierEngine.cultureIntegration(state,it) < 60
+        } || state.society.culturalTension > 10
         "exhaustion" -> state.society.warExhaustion > 0
         else -> true
     }
@@ -173,6 +189,11 @@ object CoRulerEngine {
         "exhaustion" -> state.society.warExhaustion
         "loyalty_doubt" -> 100 - (state.commanders.minOfOrNull { it.loyalty } ?: 100)
         "cultural_seating", "refugees" -> state.society.culturalTension
+        "culture_compact" -> {
+            val present = Culture.entries.filter { state.population.count(it) > 0 }
+            val weakest = present.minOfOrNull { FrontierEngine.cultureStanding(state,it) + FrontierEngine.cultureIntegration(state,it) } ?: 100
+            (140 - weakest + state.society.culturalTension).coerceIn(0,100)
+        }
         "tax" -> 100 - state.city.satisfaction
         "recognition" -> 100 - state.companion.respect
         else -> 15
@@ -205,6 +226,7 @@ object CoRulerEngine {
             e.security * (if (state.realm.threat > 35 || state.city.security < 45) 4 else 1) + e.prosperity + e.morale + e.loyalty * 2 -
             e.culturalTension * 2 - e.occupationUnrest - e.warExhaustion * 2 + e.wallRepair * (if (state.realm.wallIntegrity < 80) 3 else 1) +
             e.healingDays * (if (state.war.wounded.isNotEmpty()) 15 else 0) + e.diplomaticRelation * 2 +
+            e.cultureStanding * 2 + e.cultureIntegration * 2 +
             e.fieldSupply / (if ((state.world.playerFieldArmies.minOfOrNull { it.supplyDays } ?: 9) < 3) 20 else 100) +
             option.reward.food / (if (state.resources.food < 1200) 20 else 100)
         score -= option.cost.gold / (if (state.resources.gold < 1000) 15 else 80)
@@ -235,7 +257,7 @@ object CoRulerEngine {
                     CompanionPriority.SUPPLY -> option.reward.food / 40 + e.fieldSupply / 40 + if (e.priority == WorkerPriority.FOOD) 4 else 0
                     CompanionPriority.DEFENSE -> e.security * 2 + e.wallRepair
                     CompanionPriority.DIPLOMACY -> e.diplomaticRelation * 2
-                    CompanionPriority.INTEGRATION -> -e.culturalTension - e.occupationUnrest
+                    CompanionPriority.INTEGRATION -> -e.culturalTension - e.occupationUnrest + e.cultureStanding * 3 + e.cultureIntegration * 4
                     CompanionPriority.TRADE -> e.prosperity * 2
                     CompanionPriority.FAMILY -> -e.warExhaustion + e.companionRespect
                     CompanionPriority.RECOGNITION -> e.companionRespect * 3 + e.loyalty
@@ -372,6 +394,18 @@ object CoRulerEngine {
         if(e.diplomaticRelation!=0) diplomaticTarget(next)?.let { target ->
             next=DiplomacyEngine.changeRelation(next,PLAYER_FACTION,target.id,scaled(e.diplomaticRelation),2,
                 "$actor: ${case.title} – ${choice.label}")
+        }
+        if (e.cultureStanding != 0 || e.cultureIntegration != 0) {
+            val targets = e.cultureTarget?.let { listOf(it) } ?: Culture.entries.filter { next.population.count(it) > 0 }
+            var standing = next.frontier.cultureStanding
+            var integration = next.frontier.cultureIntegration
+            targets.forEach { culture ->
+                if (next.population.count(culture) > 0) {
+                    standing = standing + (culture to ((standing[culture] ?: 50) + scaled(e.cultureStanding)).coerceIn(0,100))
+                    integration = integration + (culture to ((integration[culture] ?: 50) + scaled(e.cultureIntegration)).coerceIn(0,100))
+                }
+            }
+            next = next.copy(frontier = next.frontier.copy(cultureStanding = standing, cultureIntegration = integration))
         }
         val joint=isCoRuler(state)&&!autonomous
         next=next.copy(chronicle=(next.chronicle+ChronicleEntry(state.day,
