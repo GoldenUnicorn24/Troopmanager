@@ -58,7 +58,7 @@ internal fun FrontierScreen(
         ) {
             PageTitle("FRONTIER & MAUER", "Die Grenze deines Reiches")
             TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
-                listOf("Lage", "Verbündete", "Mauer", "Designs").forEachIndexed { index, label ->
+                listOf("Lage", "Verbündete", "Mauer", "Regimenter", "Posten").forEachIndexed { index, label ->
                     Tab(
                         selected = tab == index,
                         onClick = { tab = index },
@@ -78,6 +78,20 @@ internal fun FrontierScreen(
             }
             when (tab) {
                 0 -> {
+                    state.frontier.pendingDecision?.let { decision ->
+                        item {
+                            FrontierCard {
+                                Text("ENTSCHEIDUNG · ${decision.title}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(decision.text, color = Color.White)
+                                decision.choices.forEach { choice ->
+                                    FrontierAction(choice.label, !inBattle, primary = true) {
+                                        apply(FrontierEngine.resolveFrontierDecision(state, choice.id))
+                                    }
+                                    Text(choice.detail, color = Mist, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
                     item { FrontierMap(state, !inBattle, ::apply) }
                     item { SectionTitle("Grenzlage") }
                     val visibleHordes = state.frontier.hordes.filter { it.discovered }.sortedBy { it.daysToArrival }
@@ -140,6 +154,35 @@ internal fun FrontierScreen(
                         CustomDesignCard(state, design, expandedDesign == design.id, !inBattle, {
                             expandedDesign = if (expandedDesign == design.id) null else design.id
                         }, ::apply)
+                    }
+                }
+                4 -> {
+                    item {
+                        FrontierCard {
+                            Text("Außenposten", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("Wachtürme verbessern Aufklärung und bremsen das Wachstum feindlicher Lager in derselben Region. Ausbau bis Stufe 3.", color = Mist, fontSize = 12.sp)
+                            Text("Baukosten: 300 Gold · 180 Holz · 80 Stein", color = Gold, fontSize = 12.sp)
+                        }
+                    }
+                    if (state.frontier.outposts.isEmpty()) item { EmptyCard("Noch keine Außenposten. Erobere oder erkunde Grenzorte und sichere wichtige Wege.") }
+                    items(state.frontier.outposts, key = { "post_${it.id}" }) { post ->
+                        val place = state.world.place(post.regionId)
+                        FrontierCard {
+                            Text(post.name, color = PaleGold, fontWeight = FontWeight.Bold)
+                            Text("${place?.name ?: post.regionId} · Stufe ${post.level} · Zustand ${post.integrity} %", color = Mist)
+                            Text("Aufklärung +${post.scoutBonus} · Lagerwachstum −${post.growthSuppression}/Tag · Depot ${post.stores}/1000 Nahrung", color = Gold, fontSize = 12.sp)
+                            if (post.level < 3) FrontierAction("Ausbauen", !inBattle) { apply(FrontierEngine.upgradeOutpost(state, post.id)) }
+                            FrontierAction("100 Nahrung einlagern", !inBattle && state.resources.food >= 100) { apply(FrontierEngine.stockOutpost(state, post.id)) }
+                        }
+                    }
+                    val buildable = state.world.places.filter { it.id != "keep" && it.ownerId in setOf(PLAYER_FACTION, NEUTRAL_FACTION) && state.frontier.outposts.none { p -> p.regionId == it.id } }.take(8)
+                    if (buildable.isNotEmpty()) item { SectionTitle("Neue Wacht errichten") }
+                    items(buildable, key = { "build_${it.id}" }) { place ->
+                        FrontierCard {
+                            Text(place.name, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("${place.terrain.label} · ${if (place.ownerId == PLAYER_FACTION) "eigenes Gebiet" else "neutrales Grenzland"}", color = Mist, fontSize = 12.sp)
+                            FrontierAction("Außenposten errichten", !inBattle, primary = true) { apply(FrontierEngine.buildOutpost(state, place.id)) }
+                        }
                     }
                 }
             }
@@ -480,6 +523,18 @@ private fun CustomDesignCard(
         if (expanded) {
             Text("${design.weapon.label} · ${design.armor.label}${if (design.shield) " · Schild" else ""}", color = Mist, fontSize = 13.sp)
             DesignPreviewStats(design)
+            Text("Veteranenstufe ${design.veteranLevel}/5 · ${design.victories} Siege · ${design.battleLosses} Gefallene", color = Gold, fontSize = 12.sp)
+            design.epithet?.let { Text("Beiname: $it", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+            val captain = design.captainId?.let { id -> state.commanders.firstOrNull { it.id == id } }
+            Text("Führung: ${captain?.let { "${it.name} · ${it.trait}" } ?: "direktes Kommando"}", color = Mist, fontSize = 12.sp)
+            state.commanders.filter { cmd -> state.frontier.designs.none { it.id != design.id && it.captainId == cmd.id } }.forEach { cmd ->
+                FrontierAction("Hauptmann ${cmd.name} zuweisen", actionsEnabled && design.captainId != cmd.id) {
+                    apply(FrontierEngine.assignCaptainToDesign(state, design.id, cmd.id))
+                }
+            }
+            if (design.captainId != null) FrontierAction("Hauptmann abziehen", actionsEnabled) {
+                apply(FrontierEngine.assignCaptainToDesign(state, design.id, null))
+            }
             Text("Soldaten gehören zum regulären Pool ${design.unitType.label}.", color = Mist, fontSize = 12.sp)
             Text("$available Rekruten verfügbar", color = PaleGold, fontSize = 13.sp)
             listOf(10, 25, 50).forEach { amount ->
