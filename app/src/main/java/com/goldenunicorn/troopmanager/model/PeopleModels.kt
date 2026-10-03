@@ -166,4 +166,7 @@ data class DynastyState(
     val regencyConflict: String? = null,
     val lastRegencyReviewDay: Int = -30,
     val companionFamilyOpinion: String = "",
+    val successionTension: Int = 0,
+    val successionConcern: String = "",
+    val lastSuccessionReviewDay: Int = -30,
 )
