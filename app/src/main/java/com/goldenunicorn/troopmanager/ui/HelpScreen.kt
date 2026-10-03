@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.model.GameState
+import com.goldenunicorn.troopmanager.model.GameDestination
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
@@ -23,8 +24,9 @@ internal fun MoreScreen(
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
     controller: GameViewModel,
+    onNavigate: (GameDestination) -> Unit,
 ) {
-    var page by remember { mutableStateOf("help") }
+    var page by remember { mutableStateOf("areas") }
     var chronicleCategory by remember { mutableStateOf(ChronicleCategory.ALL) }
 
     LazyColumn(
@@ -34,19 +36,38 @@ internal fun MoreScreen(
     ) {
         item { PageTitle("MEHR", "Hilfe, Chronik und Spielstand") }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("help" to "Hilfe", "chronicle" to "Chronik", "settings" to "Optionen", "save" to "Spielstand").forEach { entry ->
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("areas" to "Bereiche", "help" to "Hilfe", "chronicle" to "Chronik", "settings" to "Optionen", "save" to "Spielstand").forEach { entry ->
                     FilterChip(
                         selected = page == entry.first,
                         onClick = { page = entry.first },
                         label = { Text(entry.second) },
-                        modifier = Modifier.weight(1f)
                     )
                 }
             }
         }
 
         when (page) {
+            "areas" -> {
+                item { HelpCard("Reichsbereiche", "Seltener benötigte Bereiche liegen hier statt dauerhaft in der Hauptnavigation. Warnungen oben führen direkt zu dringenden Orten.") }
+                items(
+                    listOf(
+                        "Grenze & Mauer" to GameDestination.FRONTIER,
+                        "Hof & Ämter" to GameDestination.COURT,
+                        "Herrscherpaar" to GameDestination.RULERS,
+                        "Familie & Dynastie" to GameDestination.FAMILY,
+                        "Charakter & Fertigkeiten" to GameDestination.CHARACTER,
+                        "Forschung" to GameDestination.RESEARCH,
+                        "Rat" to GameDestination.COUNCIL,
+                        "Palast" to GameDestination.PALACE,
+                    )
+                ) { (label, destination) ->
+                    OutlinedButton(onClick = { onNavigate(destination) }, modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) {
+                        Text(label, modifier = Modifier.weight(1f))
+                        Text("Öffnen", color = Gold)
+                    }
+                }
+            }
             "settings" -> { item { SettingsPanel(state, onState) } }
             "help" -> {
                 items(listOf(
