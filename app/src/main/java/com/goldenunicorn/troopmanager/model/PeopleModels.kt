@@ -140,6 +140,15 @@ data class FamilyMember(
 }
 
 @Serializable
+data class DynasticAllianceRecord(
+    val memberId: String,
+    val factionId: String,
+    val signedDay: Int,
+    val expiresDay: Int,
+    val description: String,
+)
+
+@Serializable
 data class DynastyState(
     val members: List<FamilyMember> = emptyList(),
     val rulerId: String = "player",
@@ -169,4 +178,5 @@ data class DynastyState(
     val successionTension: Int = 0,
     val successionConcern: String = "",
     val lastSuccessionReviewDay: Int = -30,
+    val dynasticAlliances: List<DynasticAllianceRecord> = emptyList(),
 )
