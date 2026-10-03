@@ -34,14 +34,7 @@ internal fun CourtHubScreen(state: GameState, onState: (GameState) -> Unit, onNo
         ContextTutorialCard(state, "court", onState)
         Box(Modifier.weight(1f)) {
             when (page) {
-                0 ->
-                    Column(
-                        Modifier.fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp)
-                    ) {
-                        PeopleCourtScreen(state, onState, onNotice)
-                    }
+                0 -> PeopleCourtScreen(state, onState, onNotice)
                 1 -> CourtNetworkScreen(state, onState, onNotice)
                 else -> CouncilScreen(state, onState, onNotice)
             }
