@@ -208,6 +208,7 @@ class FrontierEngineTest {
     @Test
     fun twoDesignsCanTrainConcurrentlyUsingExactlyTheirAvailableRecruits() {
         val original = state(40).copy(
+            population = state(40).population.copy(humanRecruits = 50),
             militaryStock = state(40).militaryStock.copy(swords = 1000, spears = 1000, armor = 1000, shields = 1000),
             frontier = FrontierState(hordes = listOf(HordeBanner("training-guard-2", HordeKind.ORC, "Fernes Lager", 20, "Fernland", 99, jointWith = "Übung"))),
         )
@@ -216,8 +217,8 @@ class FrontierEngineTest {
         val first = FrontierEngine.trainCustomUnit(designed, designed.frontier.designs[0].id, 20).state
         val second = FrontierEngine.trainCustomUnit(first, first.frontier.designs[1].id, 20).state
         assertEquals(40, second.frontier.designs.sumOf { it.trainingAmount })
-        assertEquals(original.population.humanRecruits - 40, second.population.humanRecruits)
-        assertEquals(2, ArmyEngine.recruitable(second, Culture.HUMAN))
+        assertEquals(original.population.humanRecruits - 44, second.population.humanRecruits)
+        assertEquals(6, ArmyEngine.recruitable(second, Culture.HUMAN))
     }
 
     @Test
