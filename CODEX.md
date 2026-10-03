@@ -1,21 +1,30 @@
-# Realm of the Last Wall 0.81.0
+# Realm of the Last Wall 0.82.0
 
-Stand vom 3. Oktober 2026. Signierte APK: versionCode 37, versionName 0.81.0, Paket com.goldenunicorn.troopmanager. Updatefähig über den v061-Signaturschlüssel.
+Stand vom 3. Oktober 2026. Entwicklungsbranch: `codex/v0.82-overhaul`. APK-Metadaten: versionCode 38, versionName 0.82.0, Paket `com.goldenunicorn.troopmanager`.
 
-## Spielstand
+## v0.82 Overhaul
 
-- Tagesertrag oben unter der Statuszeile. Reiter: Hof, Stadt, Heer, Grenze, Welt, Paar, Haus.
-- Tagesziel mit Abendlohn. Alle drei Tage Karawane, Goldelben-Bote, kleines Lager oder Deserteure.
-- Grenze: Lager wachsen, frühe Orkscharen, ab Tag 20 gemeinsame Ork/Uruk-Banner. Sturm kostet 40 Holz, scheitert bei weniger als der halben Lagerstärke, sonst 80 Gold und andere Banner +2 Tage.
-- Nottruppe nur bei angekommener Belagerung ohne Soldaten an der Mauer. Danach gehen die Leute zurück in die Stadt.
-- Völker: Förderung bis Stufe 5. Ab Stufe 3 wachsen ungeförderte Völker nur noch mit 40 Prozent. Nottruppe-Zahl je Volk.
-- Eigene Regimenter ab Tag 40, drei Siegen oder Kaserne 4. Hauptmann für 600 Gold ab Kaserne 4, bis zu drei.
-- Haus und Hofämter scrollbar. Goldelben-Rekruten höher, gedeckelt durch ihre Bevölkerung.
-- Romanze ab Partnerschaft: Nacht mit Auswahl Bett, Zuber, langsam, hart. Eigenes Szenenbild. Galerie.
+- 0.81-Grenzfehler behoben: Lagerwachstum/Spawns persistieren, echte Verluste bei Jagd und gescheitertem Sturm, keine vorzeitige Lagerbeute, keine 800er-Gegnerkappung.
+- Tagesziele besitzen echte Zielbedingungen statt eines allgemeinen Garnisons-Checks.
+- Zuzug respektiert vorhandene/geförderte Kulturen; reine Elbenreiche erhalten nicht automatisch menschliche Bevölkerung.
+- Grenzereignisse sind Entscheidungen mit mindestens zwei Optionen und tatsächlichen Folgen.
+- Völker besitzen sichtbare Loyalität und Integration; starke Förderung erzeugt politische Reaktionen.
+- Eigene Regimenter sammeln Siege, Verluste, Veteranenstufe und Beinamen und können Hauptleuten zugeordnet werden.
+- Hauptleute werden aus drei Kandidaten mit Kultur, Führung, Taktik, Loyalität, Eigenschaft und unterschiedlichem Handgeld gewählt.
+- Außenposten können an geeigneten Grenzorten gebaut, ausgebaut und versorgt werden. Sie verbessern Aufklärung und hemmen lokales Lagerwachstum.
+- Frontier ist ein eigener Hauptbereich; die permanente Navigation ist auf Reich, Stadt, Heer, Welt und Mehr reduziert.
+- Zentrale Warnleiste führt zu Grenzbedrohung, Lazarett oder Nahrungsproblem.
+- Frontier-Karte nutzt Weltkoordinaten und die echten Horde-/Verbündeten-Artworks.
+- CI baut und prüft 0.82; die Menüversion kommt direkt aus BuildConfig.
+- Regressionstests decken die neuen Grenz-, Kultur-, Hauptmann-, Tagesziel- und Außenpostenpfade ab.
+
+## Weiterbauen
+
+Codex soll auf `codex/v0.82-overhaul` weiterbauen. `main` und ältere `codex/v0.xx`-Branches sind nicht der aktuelle Entwicklungsstand.
 
 ## Dateien in diesem Branch
 
-Die folgenden Quellen sind der lokale 0.81-Stand und ersetzen die älteren Fassungen:
+Die folgenden Quellen sind der lokale 0.82-Stand und ersetzen die älteren Fassungen:
 
 - app/src/main/java/com/goldenunicorn/troopmanager/engine/FrontierEngine.kt
 - app/src/main/java/com/goldenunicorn/troopmanager/engine/EconomyEngine.kt
@@ -31,4 +40,4 @@ Die folgenden Quellen sind der lokale 0.81-Stand und ersetzen die älteren Fassu
 - app/src/main/java/com/goldenunicorn/troopmanager/ui/FrontierScreen.kt
 - app/build.gradle.kts
 
-Codex soll auf codex/v0.81 weiterbauen, nicht auf main.
+Codex soll auf codex/v0.82 weiterbauen, nicht auf main.
