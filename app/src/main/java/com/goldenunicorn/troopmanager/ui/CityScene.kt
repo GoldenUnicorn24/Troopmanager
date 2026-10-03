@@ -184,6 +184,7 @@ internal fun CityScene(
                     contentDescription =
                         "${state.realm.settlementName}, ${visualTime.label}, ${season.label}. " +
                             "${activity.citizens} Bewohnergruppen, ${activity.merchants} Händler, ${activity.wagons} Wagen, ${activity.soldiers} Wachgruppen. " +
+                            "Stadtbild geprägt von ${Culture.entries.maxByOrNull { state.population.count(it) }?.label ?: "Menschen"}. " +
                             (if (activity.hungry) "Nahrungsmangel: leere Straßen. " else "") +
                             (if (defenseMode) "Belagerung: Rauch und Mauerschäden. " else "") +
                             "${palaceView.title}: ${if (palaceView.playerPresent) state.player.name + " anwesend" else state.player.name + " abwesend"}, " +
@@ -283,22 +284,56 @@ internal fun CityScene(
                 val houses =
                     (10 + state.population.total / 130 + state.realm.settlementTier.ordinal * 5)
                         .coerceIn(10, 58)
+                val dominantCulture = Culture.entries.maxByOrNull { state.population.count(it) } ?: Culture.HUMAN
+                val dominantShare = state.population.count(dominantCulture).toFloat() / state.population.total.coerceAtLeast(1)
+                val culturalStone = when (dominantCulture) {
+                    Culture.GOLD_ELF -> Color(0xFFD1C49A)
+                    Culture.WOOD_ELF -> Color(0xFF788268)
+                    Culture.WALL -> Color(0xFF7C8794)
+                    Culture.HUMAN -> Color(0xFF9A8E70)
+                }
+                val culturalRoof = when (dominantCulture) {
+                    Culture.GOLD_ELF -> Color(0xFF9B7A35)
+                    Culture.WOOD_ELF -> Color(0xFF3E5942)
+                    Culture.WALL -> Color(0xFF354E66)
+                    Culture.HUMAN -> Color(0xFF5E473B)
+                }
                 repeat(houses) { i ->
                     val row = i / 8
                     val col = i % 8
                     val x = 360f + col * 42f + row * 21f
                     val y = 435f + row * 44f + (col % 2) * 12f
+                    val culturalHeight = when {
+                        dominantShare < .35f -> 0f
+                        dominantCulture == Culture.GOLD_ELF -> 10f
+                        dominantCulture == Culture.WOOD_ELF -> 4f
+                        dominantCulture == Culture.WALL -> 7f
+                        else -> 2f
+                    }
                     drawArchitecture(
                         x,
                         y,
                         22f,
                         14f,
-                        if (state.population.total > 4500) 25f else 18f,
-                        Color(0xFF9A8E70),
-                        Color(0xFF5E473B),
+                        (if (state.population.total > 4500) 25f else 18f) + culturalHeight,
+                        if (dominantShare >= .35f) culturalStone else Color(0xFF9A8E70),
+                        if (dominantShare >= .35f) culturalRoof else Color(0xFF5E473B),
                         night,
                         i % 3,
                     )
+                    if (dominantShare >= .45f && i % 7 == 0) {
+                        drawFlag(
+                            x + 8f,
+                            y - 38f - culturalHeight,
+                            when (dominantCulture) {
+                                Culture.GOLD_ELF -> Gold
+                                Culture.WOOD_ELF -> Color(0xFF6E8C63)
+                                Culture.WALL -> Blue
+                                Culture.HUMAN -> Color(0xFF8A6651)
+                            },
+                            phase,
+                        )
+                    }
                 }
                 citySites
                     .sortedBy { it.y }
