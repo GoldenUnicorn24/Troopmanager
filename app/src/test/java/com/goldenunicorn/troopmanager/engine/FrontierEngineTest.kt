@@ -335,7 +335,7 @@ class FrontierEngineTest {
             ),
         )
         val advanced = FrontierEngine.tick(original)
-        val spawned = advanced.frontier.hordes.first { it.id == "raid-8" }
+        val spawned = advanced.frontier.hordes.first { it.id == "scout-raid-8" }
         assertTrue(spawned.daysToArrival >= 4)
     }
 
