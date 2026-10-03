@@ -342,39 +342,82 @@ private fun WallWeaponCard(
 private fun FrontierMap(state: GameState, actionsEnabled: Boolean, apply: (GameEngine.ActionResult) -> Unit) {
     var picked by remember { mutableStateOf<String?>(null) }
     val horde = state.frontier.hordes.firstOrNull { it.id == picked }
-    Box(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp))) {
+    val visible = state.frontier.hordes.filter { it.discovered }.sortedBy { it.daysToArrival }
+    Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(18.dp))) {
         AsyncImage("file:///android_asset/world_map.webp", null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x22000000), Color(0xCC070A0D)))))
-        Text("Feste", color = PaleGold, fontWeight = FontWeight.Black, modifier = Modifier.align(Alignment.Center))
-        state.frontier.patrol?.let {
-            Text("Patrouille ${it.soldiers}", color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomStart).padding(8.dp))
+        Surface(color = Color(0xD010161B), shape = RoundedCornerShape(10.dp), modifier = Modifier.align(Alignment.Center)) {
+            Text("DEINE FESTE", color = PaleGold, fontWeight = FontWeight.Black, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp))
         }
-        state.frontier.hordes.filter { it.discovered }.forEach { banner ->
-            val align = when (banner.kind) {
-                HordeKind.ORC -> Alignment.CenterStart
-                HordeKind.URUK -> Alignment.TopEnd
-                HordeKind.TAO_TEI -> Alignment.BottomEnd
-            }
-            Surface(color = Color(0xCC121920), shape = RoundedCornerShape(12.dp), modifier = Modifier.align(align).padding(8.dp).clickable { picked = banner.id }) {
+        state.frontier.patrol?.let {
+            Text("Patrouille · ${it.soldiers}", color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomStart).padding(8.dp))
+        }
+        visible.take(6).forEachIndexed { index, banner ->
+            val align = listOf(
+                Alignment.CenterStart, Alignment.TopEnd, Alignment.BottomEnd,
+                Alignment.TopStart, Alignment.CenterEnd, Alignment.BottomCenter,
+            )[index % 6]
+            Surface(
+                color = Color(0xDD121920),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (banner.daysToArrival <= 2) Danger else Gold.copy(alpha = .55f)),
+                modifier = Modifier.align(align).padding(8.dp).clickable { picked = banner.id },
+            ) {
                 Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    AsyncImage(when (banner.kind) {
-                        HordeKind.ORC -> "file:///android_asset/category_human.webp"
-                        HordeKind.URUK -> "file:///android_asset/category_wall.webp"
-                        HordeKind.TAO_TEI -> "file:///android_asset/menu_cover.webp"
-                    }, null, Modifier.height(36.dp).width(36.dp), contentScale = ContentScale.Crop)
-                    Text("${banner.kind.label} · ${banner.daysToArrival} T.", color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
+                    AsyncImage(
+                        when (banner.kind) {
+                            HordeKind.ORC -> "file:///android_asset/frontier/horde_orc.webp"
+                            HordeKind.URUK -> "file:///android_asset/frontier/horde_uruk.webp"
+                            HordeKind.TAO_TEI -> "file:///android_asset/frontier/horde_taotei.webp"
+                        },
+                        null,
+                        Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Column(Modifier.padding(start = 6.dp)) {
+                        Text(banner.kind.label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("${banner.daysToArrival} T. · ${banner.estimateMinimum}–${banner.estimateMaximum}", color = if (banner.daysToArrival <= 2) Danger else Gold, fontSize = 10.sp)
+                    }
                 }
             }
         }
     }
-    Text("Tipp ein Banner an. Lager wachsen, wenn du sie lässt. Sturm kostet 40 Holz. Mauerwaffen feuern, wenn du befestigst.", color = Mist, fontSize = 12.sp)
-    if (horde != null) AlertDialog(
-        onDismissRequest = { picked = null },
-        title = { Text(horde.name) },
-        text = { Text("${horde.kind.label} · noch ${horde.daysToArrival} Tage · ${horde.estimateMinimum}–${horde.estimateMaximum}. Orks und Uruks können zusammen marschieren. Tao Tei sind Feinde aller.") },
-        confirmButton = { TextButton(onClick = { apply(FrontierEngine.assaultCamp(state, horde.id)); picked = null }, enabled = actionsEnabled) { Text("Lager stürmen") } },
-        dismissButton = { TextButton(onClick = { apply(FrontierEngine.huntHorde(state, horde.id)); picked = null }, enabled = actionsEnabled) { Text("Nur jagen") } },
-    )
+    if (visible.size > 6) Text("+${visible.size - 6} weitere Banner in der Grenzliste", color = Mist, fontSize = 11.sp)
+    Text("Banner antippen: Risiko, Kosten und Einsatzoptionen. Lager wachsen weiter, wenn du sie lässt.", color = Mist, fontSize = 12.sp)
+    if (horde != null) {
+        val ratio = state.homeArmySize.toDouble() / horde.soldiers.coerceAtLeast(1)
+        val risk = when {
+            ratio >= 1.5 -> "niedriger"
+            ratio >= 1.0 -> "mittlerer"
+            ratio >= 0.5 -> "hoher"
+            else -> "extremer"
+        }
+        AlertDialog(
+            onDismissRequest = { picked = null },
+            title = { Text(horde.name) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("${horde.kind.label} · Ankunft in ${horde.daysToArrival} Tagen")
+                    Text("Schätzung: ${horde.estimateMinimum}–${horde.estimateMaximum} · aktuell ${horde.soldiers} simulierte Gegner")
+                    Text("Eigene Heimatstärke: ${state.homeArmySize} · $risk Risikobereich", color = if (ratio < 1.0) Danger else Gold)
+                    Text("Lagersturm: 40 Holz. 80 Gold Beute nur bei Sieg. Andere Banner werden bei begonnenem Sturm um zwei Tage verzögert.", fontSize = 12.sp)
+                    Text("Jagd: maximal 40 freie Soldaten. Verursacht auf beiden Seiten echte Verluste.", fontSize = 12.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { apply(FrontierEngine.assaultCamp(state, horde.id)); picked = null },
+                    enabled = actionsEnabled && state.resources.wood >= 40 && state.homeArmySize >= 20,
+                ) { Text("Lager stürmen") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { apply(FrontierEngine.huntHorde(state, horde.id)); picked = null },
+                    enabled = actionsEnabled && FrontierEngine.availablePatrolSoldiers(state) >= 10,
+                ) { Text("Nur jagen") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -419,14 +462,25 @@ private fun CustomDesignCard(
             Column(Modifier.weight(1f)) {
                 Text(design.name, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text("${design.culture.label} · ${design.role.label}", color = Mist, fontSize = 12.sp)
-                Text("${design.soldiers} ausgebildet · ${if (expanded) "Weniger ↑" else "Details ↓"}", color = Gold, fontSize = 12.sp)
+                Text("${design.soldiers} ausgebildet · ${design.veteranTitle} · ${if (expanded) "Weniger ↑" else "Details ↓"}", color = Gold, fontSize = 12.sp)
             }
         }
         if (design.trainingAmount > 0) Text("${design.trainingAmount} in Ausbildung · noch ${design.trainingDaysLeft} Tage", color = Blue, fontSize = 13.sp)
         if (expanded) {
             Text("${design.weapon.label} · ${design.armor.label}${if (design.shield) " · Schild" else ""}", color = Mist, fontSize = 13.sp)
             DesignPreviewStats(design)
-            Text("Soldaten gehören zum regulären Pool ${design.unitType.label}.", color = Mist, fontSize = 12.sp)
+            Text("Dienstakte: ${design.battles} Schlachten · ${design.victories} Siege · ${design.losses} Verluste · Veteranenstufe ${design.veteranLevel}/5", color = Gold, fontSize = 12.sp)
+            val captain = design.captainId?.let { id -> state.commanders.firstOrNull { it.id == id } }
+            Text("Regimentshauptmann: ${captain?.name ?: "direktes Kommando"}", color = PaleGold, fontSize = 12.sp)
+            state.commanders.forEach { commander ->
+                if (commander.id != design.captainId) FrontierAction("Hauptmann zuweisen · ${commander.name}", actionsEnabled) {
+                    apply(FrontierEngine.assignCaptain(state, design.id, commander.id))
+                }
+            }
+            if (design.captainId != null) FrontierAction("Hauptmann lösen", actionsEnabled) {
+                apply(FrontierEngine.assignCaptain(state, design.id, null))
+            }
+            Text("Soldaten gehören zum regulären Pool ${design.unitType.label}; Dienstakte und Hauptmann verändern ihre effektive Kampfkraft.", color = Mist, fontSize = 12.sp)
             Text("$available Rekruten verfügbar", color = PaleGold, fontSize = 13.sp)
             listOf(10, 25, 50).forEach { amount ->
                 FrontierAction("$amount ausbilden · ${amount * design.goldCost} Gold", actionsEnabled && design.trainingAmount == 0 && available >= amount, primary = true) {
