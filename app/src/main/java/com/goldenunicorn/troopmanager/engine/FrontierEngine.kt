@@ -146,9 +146,13 @@ object FrontierEngine {
                 null
             } else it.copy(daysLeft = it.daysLeft - 1)
         }
-        if (next.day in 5..24 && next.day - next.frontier.lastRaidDay >= 8 && next.battleSession?.isActive != true) {
+        if (next.day in 5..24 &&
+            next.day - next.frontier.lastRaidDay >= 8 &&
+            next.battleSession?.isActive != true &&
+            remainingHordes.none { !it.id.startsWith("invasion-") }
+        ) {
             val amount = (30 + next.day * 2).coerceAtMost(78)
-            val id = "raid-${next.day}"
+            val id = "border-raid-${next.day}"
             remainingHordes += HordeBanner(id, HordeKind.ORC, "Orküberfall aus dem Aschenforst", amount,
                 "Aschenforst", 4, regionId = next.world.places.firstOrNull { it.ownerId == "ash_covenant" }?.id ?: "keep",
                 estimateMinimum = amount * 3 / 4, estimateMaximum = amount * 5 / 4)
