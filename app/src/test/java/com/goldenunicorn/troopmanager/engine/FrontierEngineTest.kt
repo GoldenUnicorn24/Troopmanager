@@ -180,7 +180,7 @@ class FrontierEngineTest {
 
     @Test
     fun customEquipmentIsBoundedAndTrainingCreatesOneRealPool() {
-        val original = state(25)
+        val original = state(40)
         val designed = FrontierEngine.designUnit(original, "Grenzgarde", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.PLATE, true).state
         val design = designed.frontier.designs.single()
         assertEquals(original.armySize, designed.armySize)
@@ -199,7 +199,7 @@ class FrontierEngineTest {
 
     @Test
     fun customDesignLossesAreProportionalToPoolRatherThanWholeAwayDesign() {
-        val original = state(25)
+        val original = state(40)
         val design = FrontierEngine.customUnitPreview("Garde", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.PLATE, true).copy(id = 1, soldiers = 100)
         val afterLosses = original.copy(armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 90)), frontier = FrontierState(designs = listOf(design)))
         assertEquals(90, FrontierEngine.afterTroopLosses(original, afterLosses).frontier.designs.single().soldiers)
@@ -207,7 +207,7 @@ class FrontierEngineTest {
 
     @Test
     fun twoDesignsCanTrainConcurrentlyUsingExactlyTheirAvailableRecruits() {
-        val original = state(25)
+        val original = state(40)
         var designed = FrontierEngine.designUnit(original, "Garde eins", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.MAIL, true).state
         designed = FrontierEngine.designUnit(designed, "Garde zwei", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SPEAR, CustomArmor.MAIL, true).state
         val first = FrontierEngine.trainCustomUnit(designed, designed.frontier.designs[0].id, 20).state
@@ -219,18 +219,18 @@ class FrontierEngineTest {
 
     @Test
     fun patrolLossesAlsoReduceNamedCustomSubsets() {
-        val original = state(25)
+        val original = state(40)
         val design = FrontierEngine.customUnitPreview("Garde", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.MAIL, true).copy(id = 1, soldiers = 100)
         val designed = original.copy(frontier = FrontierState(designs = listOf(design)))
         val patrol = FrontierEngine.sendPatrol(designed, 60, 5).state
         val raid = HordeBanner("raid", HordeKind.ORC, "Überfall", 30, "Grenzland", 1)
-        val after = FrontierEngine.tick(patrol.copy(day = 26, frontier = patrol.frontier.copy(hordes = listOf(raid))))
+        val after = FrontierEngine.tick(patrol.copy(day = 41, frontier = patrol.frontier.copy(hordes = listOf(raid))))
         assertEquals(after.armySize, after.frontier.designs.single().soldiers)
     }
 
     @Test
     fun simultaneousRaidsSeeUpdatedPatrolReservationsAfterLosses() {
-        val original = state(25).copy(armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 61)))
+        val original = state(40).copy(armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 61)))
         val patrol = FrontierEngine.sendPatrol(original, 60, 5).state
         val hordes = listOf(HordeBanner("small", HordeKind.ORC, "Überfall", 30, "Grenzland", 1),
             HordeBanner("large", HordeKind.URUK, "Horde", 200, "Grenzland", 1))
