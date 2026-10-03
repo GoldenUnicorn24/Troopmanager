@@ -160,33 +160,194 @@ object FrontierEngine {
             next = log(next, "Grenzspäher entdecken Orks", "Ein kleiner Orküberfall zieht zur Mauer. Schätzung ${amount * 3 / 4}–${amount * 5 / 4}; etwa vier Tage Vorwarnung.")
         }
         next = next.copy(frontier = next.frontier.copy(patrol = patrol, hordes = remainingHordes))
+        next = applyCultureClimate(next)
         return pressureOtherRealms(projectInvasion(next))
     }
 
     private fun frontierDecisionFor(state: GameState): FrontierDecision {
         fun choice(id: String, label: String, detail: String) = FrontierDecisionChoice(id, label, detail)
+        val variant = ((state.day / 3) + state.realm.territory + state.victories).mod(6)
+        fun pick(vararg values: String): String = values[variant % values.size]
         return when ((state.day + state.realm.territory * 3 + state.victories) % 10) {
-            0 -> FrontierDecision("caravan", "Karawane am Tor", "Eine Händlerkarawane bittet um Schutz und Durchlass.",
-                listOf(choice("toll", "Zoll verlangen", "+90 Gold, etwas weniger Zufriedenheit"), choice("escort", "Geleit stellen", "+40 Gold und Vertrauen bei Verbündeten")))
-            1 -> FrontierDecision("refugees", "Flüchtlinge aus dem Vorland", "Familien suchen Schutz hinter deiner Mauer.",
-                listOf(choice("accept", "Aufnehmen", "Kostet 120 Nahrung, erhöht Bevölkerung und Zufriedenheit"), choice("refuse", "Abweisen", "Spart Vorräte, erhöht Sicherheit, schadet Ansehen")))
-            2 -> FrontierDecision("envoy", "Bote der Goldelben", "Ein goldelbischer Gesandter bietet Freiwillige oder Handelskontakte an.",
-                listOf(choice("recruits", "Freiwillige aufnehmen", "Bis zu 6 Goldelben-Rekruten"), choice("trade", "Handelsbrief wählen", "+120 Gold")))
-            3 -> FrontierDecision("deserters", "Deserteure", "Bewaffnete Überläufer bieten Informationen, Vorräte oder ihren Dienst an.",
-                listOf(choice("enlist", "In die Rekrutenrolle", "+8 menschliche Rekruten, -2 Sicherheit"), choice("supplies", "Nur Vorräte nehmen", "+90 Nahrung")))
-            4 -> FrontierDecision("village", "Grenzdorf bittet um Schutz", "Ein Dorf am Rand deines Reiches meldet nächtliche Orkspäher.",
-                listOf(choice("fortify", "Palisaden finanzieren", "-120 Holz, +4 Sicherheit, feindliche Banner +1 Tag"), choice("watch", "Nur beobachten", "Bessere Stärke-Schätzung vorhandener Banner")))
-            5 -> FrontierDecision("scouts", "Verwundete Späher", "Eine erschöpfte Spähergruppe erreicht das Tor.",
-                listOf(choice("aid", "Versorgen", "-60 Nahrung, genauere Grenzberichte"), choice("debrief", "Sofort befragen", "Keine Kosten, +30 Gold aus geborgener Beute")))
-            6 -> FrontierDecision("merchants", "Waffenhändler", "Ein fahrender Händler bietet Eisen und Ersatzteile an.",
-                listOf(choice("buy", "Vorräte kaufen", "-150 Gold, +120 Eisen"), choice("decline", "Ablehnen", "Keine Änderung")))
-            7 -> FrontierDecision("festival", "Festtag der Grenzvölker", "Die Bevölkerung möchte trotz Krieg einen gemeinsamen Festtag begehen.",
-                listOf(choice("fund", "Großes Fest", "-120 Gold, +6 Zufriedenheit, +3 Integration"), choice("simple", "Kleines Fest", "+2 Zufriedenheit")))
-            8 -> FrontierDecision("ruins", "Ruinenfund", "Arbeiter stoßen nahe der Straße auf ein altes Depot.",
-                listOf(choice("explore", "Gründlich durchsuchen", "+140 Gold, +70 Eisen"), choice("secure", "Als Wachpunkt sichern", "+3 Sicherheit, +1 Ruhm")))
-            else -> FrontierDecision("oaths", "Stimmen der Völker", "Vertreter der Kulturen verlangen eine klare Linie für das gemeinsame Reich.",
-                listOf(choice("balance", "Ausgleich versprechen", "+4 Integration aller vorhandenen Völker"), choice("favored", "Bevorzugte Kultur bestätigen", "+6 Loyalität der aktuell geförderten Kultur, -2 bei den anderen")))
+            0 -> FrontierDecision(
+                "caravan",
+                pick("Karawane am Tor", "Händler aus dem Süden", "Salzkarawane im Regen", "Wagenzug vor der Mauer", "Kaufleute aus dem Hochland", "Nachtkarawane mit Eskorte"),
+                pick(
+                    "Eine Händlerkarawane bittet um Schutz und Durchlass.",
+                    "Zwölf Wagen warten vor dem Tor; ihre Führerin bietet Waren gegen sichere Passage.",
+                    "Eine Salzkarawane ist auf der Flucht vor Räubern und verlangt raschen Einlass.",
+                    "Ein Wagenzug bringt Tuch, Werkzeug und Gerüchte aus den Nachbarreichen.",
+                    "Hochlandhändler möchten einen festen Rastplatz innerhalb deiner Grenze.",
+                    "Fackeln erscheinen nach Sonnenuntergang: Kaufleute bitten um bewachte Passage bis zum Morgen.",
+                ),
+                listOf(choice("toll", "Zoll verlangen", "+90 Gold, etwas weniger Zufriedenheit"), choice("escort", "Geleit stellen", "+40 Gold und Vertrauen bei Verbündeten")),
+            )
+            1 -> FrontierDecision(
+                "refugees",
+                pick("Flüchtlinge aus dem Vorland", "Familien vor dem Nordtor", "Vertriebene Bauern", "Kinderwagen auf der Grenzstraße", "Dorf ohne Heimat", "Schutzsuchende aus dem Waldsaum"),
+                pick(
+                    "Familien suchen Schutz hinter deiner Mauer.",
+                    "Mehrere Familien erreichen erschöpft das Tor und bitten um Unterkunft.",
+                    "Bauern berichten von geplünderten Höfen und wollen ihre Kinder hinter die Mauer bringen.",
+                    "Ein langsamer Zug aus Wagen und Kindern blockiert die Grenzstraße.",
+                    "Die Bewohner eines zerstörten Dorfes bitten geschlossen um Aufnahme.",
+                    "Schutzsuchende lagern am Waldsaum und warten auf eine Entscheidung des Hofes.",
+                ),
+                listOf(choice("accept", "Aufnehmen", "Kostet 120 Nahrung, erhöht Bevölkerung und Zufriedenheit"), choice("refuse", "Abweisen", "Spart Vorräte, erhöht Sicherheit, schadet Ansehen")),
+            )
+            2 -> FrontierDecision(
+                "envoy",
+                pick("Bote der Goldelben", "Gesandter im goldenen Mantel", "Brief aus dem Elbenhain", "Goldelbische Offiziere", "Abordnung aus den Hallen", "Reiter der Goldelben"),
+                pick(
+                    "Ein goldelbischer Gesandter bietet Freiwillige oder Handelskontakte an.",
+                    "Ein Gesandter überbringt das Angebot, einige Freiwillige in deine Garnison zu entsenden.",
+                    "Ein versiegelter Brief bietet militärische Hilfe oder einen lukrativen Handelskontakt.",
+                    "Zwei goldelbische Offiziere prüfen, ob ihre Leute unter deinem Banner dienen sollen.",
+                    "Eine kleine Abordnung bringt Geschenke und fragt nach deiner Haltung zu gemeinsamer Verteidigung.",
+                    "Reiter der Goldelben erreichen die Mauer und warten auf eine formelle Antwort.",
+                ),
+                listOf(choice("recruits", "Freiwillige aufnehmen", "Bis zu 6 Goldelben-Rekruten"), choice("trade", "Handelsbrief wählen", "+120 Gold")),
+            )
+            3 -> FrontierDecision(
+                "deserters",
+                pick("Deserteure", "Überläufer am Fluss", "Bewaffnete Fremde", "Geflohene Söldner", "Männer ohne Banner", "Überläufer mit Kartenmaterial"),
+                pick(
+                    "Bewaffnete Überläufer bieten Informationen, Vorräte oder ihren Dienst an.",
+                    "Eine kleine Gruppe legt am Fluss die Waffen nieder und bittet um Aufnahme.",
+                    "Bewaffnete Fremde behaupten, einen feindlichen Hauptmann verlassen zu haben.",
+                    "Geflohene Söldner kennen Lagerwege und wollen für Schutz ihren Dienst anbieten.",
+                    "Männer ohne Banner erscheinen am Tor; niemand weiß, ob ihre Geschichte stimmt.",
+                    "Überläufer bringen grobe Karten von Wegen und Vorratslagern mit.",
+                ),
+                listOf(choice("enlist", "In die Rekrutenrolle", "+8 menschliche Rekruten, -2 Sicherheit"), choice("supplies", "Nur Vorräte nehmen", "+90 Nahrung")),
+            )
+            4 -> FrontierDecision(
+                "village",
+                pick("Grenzdorf bittet um Schutz", "Feuerzeichen im Dorf", "Bauern melden Späher", "Palisaden am Bach", "Hilferuf aus dem Vorland", "Wachturm ohne Besatzung"),
+                pick(
+                    "Ein Dorf am Rand deines Reiches meldet nächtliche Orkspäher.",
+                    "Ein Feuerzeichen aus einem Grenzdorf warnt vor Bewegungen zwischen den Feldern.",
+                    "Bauern berichten von Spuren und fremden Beobachtern an ihren Wegen.",
+                    "Das Dorf am Bach will hastig Palisaden errichten, hat aber zu wenig Holz.",
+                    "Ein Bote verlangt Schutz, bevor die Bewohner ihre Höfe verlassen.",
+                    "Ein alter Wachturm könnte wieder besetzt werden, doch die Bewohner brauchen Unterstützung.",
+                ),
+                listOf(choice("fortify", "Palisaden finanzieren", "-120 Holz, +4 Sicherheit, feindliche Banner +1 Tag"), choice("watch", "Nur beobachten", "Bessere Stärke-Schätzung vorhandener Banner")),
+            )
+            5 -> FrontierDecision(
+                "scouts",
+                pick("Verwundete Späher", "Späher kehren bei Nacht zurück", "Blutige Grenzmeldung", "Erschöpfte Kundschafter", "Ein Pferd ohne Reiter", "Spähertrupp aus dem Nebel"),
+                pick(
+                    "Eine erschöpfte Spähergruppe erreicht das Tor.",
+                    "Kurz vor Mitternacht kehren Späher mit Verletzungen und neuen Beobachtungen zurück.",
+                    "Ein Kundschafter bringt unter großen Mühen eine genaue Feindmeldung.",
+                    "Die Späher sind erschöpft, aber ihre Karten könnten deine Einschätzung stark verbessern.",
+                    "Ein reiterloses Pferd führt die Wache zu zwei verletzten Kundschaftern.",
+                    "Aus dichtem Nebel tritt ein Spähertrupp hervor und verlangt sofort den Hauptmann.",
+                ),
+                listOf(choice("aid", "Versorgen", "-60 Nahrung, genauere Grenzberichte"), choice("debrief", "Sofort befragen", "Keine Kosten, +30 Gold aus geborgener Beute")),
+            )
+            6 -> FrontierDecision(
+                "merchants",
+                pick("Waffenhändler", "Schmiede auf Reisen", "Eisenhändler am Markt", "Karren voller Ersatzteile", "Fahrende Rüstmeister", "Händler mit fremdem Stahl"),
+                pick(
+                    "Ein fahrender Händler bietet Eisen und Ersatzteile an.",
+                    "Reisende Schmiede bieten Werkzeug, Nägel und Waffenstahl zu hohem Preis.",
+                    "Ein Eisenhändler behauptet, nur heute genügend Material für deine Werkstätten zu besitzen.",
+                    "Mehrere Karren mit Ersatzteilen stehen unter schwerer Bewachung auf dem Markt.",
+                    "Fahrende Rüstmeister suchen einen festen Auftrag an deiner Mauer.",
+                    "Ein Händler zeigt ungewöhnlich guten Stahl aus einem entfernten Reich.",
+                ),
+                listOf(choice("buy", "Vorräte kaufen", "-150 Gold, +120 Eisen"), choice("decline", "Ablehnen", "Keine Änderung")),
+            )
+            7 -> FrontierDecision(
+                "festival",
+                pick("Festtag der Grenzvölker", "Gemeinsames Lichterfest", "Markttag aller Kulturen", "Abend der vier Banner", "Erntefest an der Mauer", "Musik im Innenhof"),
+                pick(
+                    "Die Bevölkerung möchte trotz Krieg einen gemeinsamen Festtag begehen.",
+                    "Menschen und Elben schlagen ein gemeinsames Lichterfest vor.",
+                    "Händler und Handwerker wollen einen Markttag organisieren, an dem alle Kulturen vertreten sind.",
+                    "Vier Banner sollen am Abend gemeinsam im Innenhof hängen.",
+                    "Trotz der unsicheren Grenze wünschen die Bauern ein Erntefest.",
+                    "Musiker verschiedener Viertel bitten darum, gemeinsam im Innenhof auftreten zu dürfen.",
+                ),
+                listOf(choice("fund", "Großes Fest", "-120 Gold, +6 Zufriedenheit, +3 Integration"), choice("simple", "Kleines Fest", "+2 Zufriedenheit")),
+            )
+            8 -> FrontierDecision(
+                "ruins",
+                pick("Ruinenfund", "Altes Depot unter der Straße", "Vergessener Keller", "Steintor im Hügel", "Verlassene Wachstation", "Kisten unter eingestürzten Mauern"),
+                pick(
+                    "Arbeiter stoßen nahe der Straße auf ein altes Depot.",
+                    "Beim Ausbessern der Straße wird ein versiegelter Lagerraum entdeckt.",
+                    "Unter einem verlassenen Hof liegt ein alter Keller mit militärischen Markierungen.",
+                    "Ein halb verschüttetes Steintor führt in einen unbekannten Hohlraum.",
+                    "Späher finden die Reste einer alten Wachstation mit verschlossenen Lagerräumen.",
+                    "Unter eingestürzten Mauern liegen noch unversehrte Kisten und Metallteile.",
+                ),
+                listOf(choice("explore", "Gründlich durchsuchen", "+140 Gold, +70 Eisen"), choice("secure", "Als Wachpunkt sichern", "+3 Sicherheit, +1 Ruhm")),
+            )
+            else -> FrontierDecision(
+                "oaths",
+                pick("Stimmen der Völker", "Rat der Kulturen", "Vier Delegationen im Hof", "Streit um Privilegien", "Gemeinsame Eide", "Wer gehört zum Reich?"),
+                pick(
+                    "Vertreter der Kulturen verlangen eine klare Linie für das gemeinsame Reich.",
+                    "Delegierte wollen wissen, ob alle Völker langfristig dieselben Rechte behalten.",
+                    "Vertreter mehrerer Kulturen erscheinen gleichzeitig und verlangen Gehör.",
+                    "Förderung und Ämter haben eine Debatte über Gleichbehandlung ausgelöst.",
+                    "Mehrere Gruppen bieten gemeinsame Eide an, verlangen dafür aber sichtbare Anerkennung.",
+                    "Eine öffentliche Debatte dreht sich darum, wer als vollwertiger Teil des Reiches gilt.",
+                ),
+                listOf(choice("balance", "Ausgleich versprechen", "+4 Integration aller vorhandenen Völker"), choice("favored", "Bevorzugte Kultur bestätigen", "+6 Loyalität der aktuell geförderten Kultur, -2 bei den anderen")),
+            )
         }
+    }
+
+    private fun applyCultureClimate(state: GameState): GameState {
+        if (state.day % 7 != 0) return state
+        val cultures = Culture.entries.filter { state.population.count(it) > 0 }
+        if (cultures.isEmpty()) return state
+        var next = state
+        val standing = cultures.associateWith { cultureStanding(state, it) }
+        val integration = cultures.associateWith { cultureIntegration(state, it) }
+        val low = cultures.filter { standing.getValue(it) <= 25 }
+        val strong = cultures.filter { standing.getValue(it) >= 75 && integration.getValue(it) >= 65 }
+        if (low.isNotEmpty()) {
+            var pop = next.population
+            low.forEach { culture ->
+                val refusals = minOf(2, pop.recruits(culture))
+                if (refusals > 0) pop = ArmyEngine.adjustRecruits(pop, culture, -refusals)
+            }
+            next = next.copy(
+                population = pop,
+                city = next.city.copy(satisfaction = (next.city.satisfaction - 2).coerceAtLeast(0)),
+                society = next.society.copy(
+                    culturalTension = (next.society.culturalTension + 4).coerceAtMost(100),
+                    politicalLoyalty = (next.society.politicalLoyalty - 2).coerceAtLeast(0),
+                ),
+            )
+            next = log(next, "Unruhe zwischen den Völkern", "${low.joinToString { it.label }} fühlen sich übergangen. Zufriedenheit und Loyalität sinken; einzelne Rekruten verweigern den Dienst.")
+        } else if (strong.size == cultures.size && cultures.size > 1) {
+            var pop = next.population
+            strong.forEach { culture -> pop = ArmyEngine.adjustRecruits(pop, culture, 1) }
+            next = next.copy(
+                population = pop,
+                city = next.city.copy(
+                    satisfaction = (next.city.satisfaction + 1).coerceAtMost(100),
+                    security = (next.city.security + 1).coerceAtMost(100),
+                ),
+                society = next.society.copy(
+                    culturalTension = (next.society.culturalTension - 3).coerceAtLeast(0),
+                    politicalLoyalty = (next.society.politicalLoyalty + 2).coerceAtMost(100),
+                ),
+            )
+            next = log(next, "Gemeinsames Reich", "Hohe Loyalität und Integration aller vertretenen Völker stärken Sicherheit und Rekrutierung.")
+        } else {
+            val avgIntegration = integration.values.average()
+            if (avgIntegration >= 70.0) {
+                next = next.copy(society = next.society.copy(culturalTension = (next.society.culturalTension - 1).coerceAtLeast(0)))
+            }
+        }
+        return next
     }
 
     fun resolveFrontierDecision(state: GameState, choiceId: String): GameEngine.ActionResult {
