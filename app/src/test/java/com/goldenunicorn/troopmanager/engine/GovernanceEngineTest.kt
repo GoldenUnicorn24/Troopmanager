@@ -136,4 +136,23 @@ class GovernanceEngineTest {
         assertTrue(restored.coRuler.decisions.isEmpty())
         assertEquals(PresenceLocation.PALACE,PresenceEngine.presence(restored).player.location)
     }
+    @Test fun cultureCouncilCaseChangesTheActualTargetCulture() {
+        val base = realm()
+        val prepared = base.copy(
+            resources = base.resources.copy(gold = 5000),
+            frontier = base.frontier.copy(
+                cultureStanding = mapOf(Culture.HUMAN to 20),
+                cultureIntegration = mapOf(Culture.HUMAN to 30),
+            ),
+            coRuler = base.coRuler.copy(pendingCaseIds = listOf("culture_compact"), agendaDay = 0),
+        )
+        val case = CoRulerEngine.councilCases(prepared).first { it.id == "culture_compact" }
+        assertTrue(case.situation.contains("Menschen"))
+        val decided = CoRulerEngine.decide(prepared, "culture_compact", "hearing").state
+        assertEquals(26, FrontierEngine.cultureStanding(decided, Culture.HUMAN))
+        assertEquals(32, FrontierEngine.cultureIntegration(decided, Culture.HUMAN))
+        assertEquals(prepared.resources.gold - 80, decided.resources.gold)
+        assertTrue(decided.coRuler.decisions.any { it.caseId == "culture_compact" })
+    }
+
 }
