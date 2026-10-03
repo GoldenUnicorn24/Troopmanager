@@ -82,6 +82,31 @@ data class BorderPatrol(
 )
 
 @Serializable
+enum class BorderOutpostType(val label: String, val gold: Int, val wood: Int, val stone: Int) {
+    WATCHTOWER("Wachturm", 260, 180, 120),
+    SUPPLY("Versorgungsposten", 320, 220, 80),
+    FORTIFIED("Grenzfort", 480, 260, 240),
+}
+
+@Serializable
+data class BorderOutpost(
+    val id: Long,
+    val type: BorderOutpostType,
+    val name: String,
+    val level: Int = 1,
+    val integrity: Int = 100,
+)
+
+@Serializable
+data class FrontierChoiceEvent(
+    val key: String,
+    val title: String,
+    val text: String,
+    val firstLabel: String,
+    val secondLabel: String,
+)
+
+@Serializable
 enum class WallWeaponType(
     val label: String,
     val filmRole: String,
@@ -193,6 +218,9 @@ data class FrontierState(
     val lastStoryDay: Int = 0,
     val pendingCampAssaultId: String? = null,
     val pendingCampRewardGold: Int = 0,
+    val outposts: List<BorderOutpost> = emptyList(),
+    val nextOutpostId: Long = 1,
+    val pendingChoiceEvent: FrontierChoiceEvent? = null,
 )
 
 /** Campaign forecasts reveal only what scouts have reported, including for legacy invasions. */
