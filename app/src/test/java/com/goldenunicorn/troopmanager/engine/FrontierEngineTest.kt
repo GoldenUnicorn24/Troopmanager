@@ -323,4 +323,51 @@ class FrontierEngineTest {
         assertTrue(rewarded.state.frontier.dailyGoalClaimed)
     }
 
+    @Test
+    fun watchtowerAddsWarningAndBorderControlSlowsGrowth() {
+        val original = state(day = 8).copy(
+            frontier = FrontierState(
+                outposts = listOf(BorderOutpost(1, BorderOutpostType.WATCHTOWER, "Nordwacht", level = 2)),
+            ),
+        )
+        val advanced = FrontierEngine.tick(original)
+        val spawned = advanced.frontier.hordes.first { it.id == "raid-8" }
+        assertTrue(spawned.daysToArrival >= 4)
+    }
+
+    @Test
+    fun supplyOutpostReducesPatrolFoodCost() {
+        val original = state()
+        val plain = FrontierEngine.sendPatrol(original, 20, 2).state
+        val suppliedState = original.copy(
+            frontier = original.frontier.copy(
+                outposts = listOf(BorderOutpost(1, BorderOutpostType.SUPPLY, "Versorgung", level = 2)),
+            ),
+        )
+        val supplied = FrontierEngine.sendPatrol(suppliedState, 20, 2).state
+        assertTrue(supplied.resources.food > plain.resources.food)
+    }
+
+    @Test
+    fun frontierChoiceEventWaitsForPlayerAndThenResolves() {
+        val original = state(day = 6).copy(frontier = FrontierState(lastStoryDay = 0))
+        val withEvent = FrontierEngine.tick(original)
+        assertTrue(withEvent.frontier.pendingChoiceEvent != null)
+        val resolved = FrontierEngine.resolveChoiceEvent(withEvent, true).state
+        assertEquals(null, resolved.frontier.pendingChoiceEvent)
+        assertTrue(resolved.chronicle.any { it.title.startsWith("Entscheidung:") })
+    }
+
+    @Test
+    fun captainOffersHaveDistinctProfilesAndSelectedOfferIsHired() {
+        val original = state().copy(
+            realm = state().realm.copy(buildings = state().realm.buildings + (BuildingType.BARRACKS to 4)),
+        )
+        val offers = FrontierEngine.captainOffers(original)
+        assertEquals(3, offers.size)
+        assertTrue(offers.map { it.name }.distinct().size == 3)
+        val hired = FrontierEngine.hireCaptain(original, 1).state
+        assertTrue(hired.commanders.any { it.name == offers[1].name && it.tactics == offers[1].tactics })
+    }
+
 }
