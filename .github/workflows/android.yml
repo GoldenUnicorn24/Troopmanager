@@ -32,7 +32,7 @@ jobs:
           gradle-version: "8.9"
 
       - name: Run unit tests
-        run: gradle :app:testDebugUnitTest --stacktrace
+        run: gradle :app:testDebugUnitTest --stacktrace --info
 
       - name: Android lint
         run: gradle :app:lintDebug --stacktrace
