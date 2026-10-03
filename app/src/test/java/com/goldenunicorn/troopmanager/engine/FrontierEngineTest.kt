@@ -180,7 +180,8 @@ class FrontierEngineTest {
 
     @Test
     fun customEquipmentIsBoundedAndTrainingCreatesOneRealPool() {
-        val original = state(40)
+        val sentinel = HordeBanner("test-sentinel", HordeKind.ORC, "Fernes Testlager", 1, "Fernland", 100, jointWith = "test")
+        val original = state(40).copy(frontier = FrontierState(hordes = listOf(sentinel), lastRaidDay = 40))
         val designed = FrontierEngine.designUnit(original, "Grenzgarde", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.PLATE, true).state
         val design = designed.frontier.designs.single()
         assertEquals(original.armySize, designed.armySize)
@@ -210,11 +211,12 @@ class FrontierEngineTest {
         val original = state(40)
         var designed = FrontierEngine.designUnit(original, "Garde eins", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SWORD, CustomArmor.MAIL, true).state
         designed = FrontierEngine.designUnit(designed, "Garde zwei", Culture.HUMAN, CustomUnitRole.INFANTRY, CustomWeapon.SPEAR, CustomArmor.MAIL, true).state
-        val first = FrontierEngine.trainCustomUnit(designed, designed.frontier.designs[0].id, 20).state
-        val second = FrontierEngine.trainCustomUnit(first, first.frontier.designs[1].id, 20).state
-        assertEquals(40, second.frontier.designs.sumOf { it.trainingAmount })
-        assertEquals(original.population.humanRecruits - 40, second.population.humanRecruits)
-        assertEquals(2, ArmyEngine.recruitable(second, Culture.HUMAN))
+        // Two designs consume two founding recruits each, leaving 38 of the original 42 for training.
+        val first = FrontierEngine.trainCustomUnit(designed, designed.frontier.designs[0].id, 19).state
+        val second = FrontierEngine.trainCustomUnit(first, first.frontier.designs[1].id, 19).state
+        assertEquals(38, second.frontier.designs.sumOf { it.trainingAmount })
+        assertEquals(0, second.population.humanRecruits)
+        assertEquals(0, ArmyEngine.recruitable(second, Culture.HUMAN))
     }
 
     @Test
