@@ -56,8 +56,27 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
     val urgent = tasks.filter { it.category in listOf(JournalCategory.OPEN, JournalCategory.PERSONAL) ||
         it.dueDay?.let { day -> day <= state.day + 3 } == true }
     val completed = state.dailyReport.entries.filter { it.important && it.title.contains("abgeschlossen") }
+    val nearestHorde = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+    val wounded = state.war.wounded.sumOf { it.soldiers }
+    val foodNet = EconomyEngine.production(state).net.food
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageTitle("KOMMANDOZENTRALE · TAG ${state.day}", state.realm.settlementName) }
+        if (nearestHorde != null || wounded > 0 || foodNet < 0) item {
+            CommandCard("Prioritäten", {
+                when {
+                    nearestHorde != null -> onNavigate(GameDestination.FRONTIER)
+                    wounded > 0 -> onNavigate(GameDestination.HOSPITAL)
+                    else -> onNavigate(GameDestination.CITY)
+                }
+            }) {
+                nearestHorde?.let {
+                    Text("⚠ ${it.name}: Ankunft in ${it.daysToArrival} Tagen · ${it.estimateMinimum}–${it.estimateMaximum} geschätzt", color = if (it.daysToArrival <= 2) Danger else Gold)
+                }
+                if (wounded > 0) Text("✚ $wounded Verwundete benötigen Versorgung", color = Danger)
+                if (foodNet < 0) Text("Nahrung $foodNet / Tag", color = Danger)
+                Text("Antippen öffnet den dringendsten Bereich.", color = Mist, fontSize = 11.sp)
+            }
+        }
         item {
             CommandCard("Tagesziel", { onNavigate(GameDestination.FRONTIER) }) {
                 Text(state.frontier.dailyGoal.ifBlank { "Prüft Hof, Ausbildung und Grenze." }, color = Color.White, fontSize = 14.sp)
@@ -67,10 +86,15 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
                     onState(result.state)
                     onNotice(result.message)
                 })
-                if (state.commanders.size < 3 && state.realm.level(BuildingType.BARRACKS) >= 4) SmallAction("Hauptmann verpflichten · 600 Gold") {
-                    val result = FrontierEngine.hireCaptain(state)
-                    onState(result.state)
-                    onNotice(result.message)
+                if (state.commanders.size < 3 && state.realm.level(BuildingType.BARRACKS) >= 4) {
+                    Text("Verfügbare Hauptleute", color = PaleGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    FrontierEngine.captainOffers(state).forEach { offer ->
+                        SmallAction("${offer.name} · F ${offer.leadership} / T ${offer.tactics} · ${offer.cost} Gold") {
+                            val result = FrontierEngine.hireCaptain(state, offer.index)
+                            onState(result.state)
+                            onNotice(result.message)
+                        }
+                    }
                 }
             }
         }
