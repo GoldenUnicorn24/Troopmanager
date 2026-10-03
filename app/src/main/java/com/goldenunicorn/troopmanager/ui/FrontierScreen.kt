@@ -132,7 +132,7 @@ internal fun FrontierScreen(
                             Text("Eigene Regimenter", color = PaleGold, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Text("Rolle und Ausrüstung bestimmen Stärke, Kosten und Ausbildungszeit.", color = Mist, fontSize = 13.sp)
                             FrontierAction("Einheit entwerfen", unlocked && !inBattle, primary = true) { editorOpen = true }
-                            if (!unlocked) Text("Freischaltung: Tag 25, zwei Siege, 40 Ruhm oder Kaserne Stufe 3.", color = Mist, fontSize = 12.sp)
+                            if (!unlocked) Text("Freischaltung: Tag 40, drei Siege oder Kaserne Stufe 4.", color = Mist, fontSize = 12.sp)
                         }
                     }
                     if (state.frontier.designs.isEmpty()) item { EmptyCard("Noch kein eigenes Einheitendesign gespeichert.") }
@@ -268,9 +268,9 @@ private fun AllyCard(
         Column(Modifier.fillMaxWidth().clickable(onClick = onExpand)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AsyncImage(when (pact.people) {
-                    AllyPeople.GOLD_ELVES -> "file:///android_asset/category_gold_elf.webp"
-                    AllyPeople.FREE_HOLDS -> "file:///android_asset/category_human.webp"
-                    AllyPeople.WALL_ENVOYS -> "file:///android_asset/category_wall.webp"
+                    AllyPeople.GOLD_ELVES -> "file:///android_asset/frontier/ally_gold.webp"
+                    AllyPeople.FREE_HOLDS -> "file:///android_asset/frontier/ally_holds.webp"
+                    AllyPeople.WALL_ENVOYS -> "file:///android_asset/frontier/ally_wall.webp"
                 }, null, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
                 Column {
                     Text(pact.people.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 17.sp)
