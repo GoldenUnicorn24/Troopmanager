@@ -49,7 +49,12 @@ object FrontierEngine {
         next = next.copy(frontier = next.frontier.copy(weapons = weapons, designs = designs))
         val grown = next.frontier.hordes.map { horde ->
             if (horde.id.startsWith("invasion-") || horde.daysToArrival <= 1) horde
-            else horde.copy(soldiers = horde.soldiers + if (horde.kind == HordeKind.TAO_TEI) 8 else 4)
+            else {
+                val outpost = next.frontier.outposts.firstOrNull { it.regionId == horde.regionId && it.integrity > 0 }
+                val baseGrowth = if (horde.kind == HordeKind.TAO_TEI) 8 else 4
+                val growth = (baseGrowth - (outpost?.growthSuppression ?: 0)).coerceAtLeast(0)
+                horde.copy(soldiers = horde.soldiers + growth)
+            }
         }.toMutableList()
         if (grown.none { !it.id.startsWith("invasion-") } && next.day in 4..18 && next.day % 4 == 0) {
             val small = 24 + next.day
@@ -76,14 +81,10 @@ object FrontierEngine {
             else ->
                 "garrison" to "Halte mindestens 40 einsatzbereite Soldaten an der Mauer."
         }
-        if (next.day - next.frontier.lastStoryDay >= 3) {
-            next = when (next.day % 4) {
-                0 -> log(next.copy(resources = next.resources.copy(gold = next.resources.gold + 60)), "Karawane", "Eine Karawane zahlt 60 Gold für sicheres Geleit.")
-                1 -> log(next.copy(population = ArmyEngine.adjustRecruits(next.population, Culture.GOLD_ELF, 4)), "Bote der Goldelben", "Ein Bote bringt vier Freiwillige, sofern Goldelben in der Stadt leben.")
-                2 -> next.copy(frontier = next.frontier.copy(hordes = next.frontier.hordes + HordeBanner("story-${next.day}", HordeKind.ORC, "Kleines Lager", 30 + next.day / 5, "Vorland", 4, discovered = true, estimateMinimum = 24, estimateMaximum = 40)))
-                else -> log(next.copy(resources = next.resources.copy(food = next.resources.food + 40)), "Deserteure", "Ein paar Überläufer bringen 40 Nahrung und Nachrichten vom Vorland.")
-            }
-            next = next.copy(frontier = next.frontier.copy(lastStoryDay = next.day))
+        if (next.day - next.frontier.lastStoryDay >= 3 && next.frontier.pendingDecision == null) {
+            val decision = frontierDecisionFor(next)
+            next = next.copy(frontier = next.frontier.copy(pendingDecision = decision, lastStoryDay = next.day))
+            next = log(next, decision.title, decision.text)
         }
         next = next.copy(frontier = next.frontier.copy(dailyGoal = goal, dailyGoalKey = goalKey, dailyGoalClaimed = false))
         if (next.day % 5 == 0 && next.resources.food > 300) {
@@ -112,7 +113,8 @@ object FrontierEngine {
         val remainingHordes = mutableListOf<HordeBanner>()
         next.frontier.hordes.filterNot { it.id.startsWith("invasion-") }.forEach { horde ->
             val moving = horde.copy(daysToArrival = (horde.daysToArrival - 1).coerceAtLeast(0))
-            val scout = if (patrol != null) .12 else .28
+            val outpost = next.frontier.outposts.firstOrNull { it.regionId == moving.regionId && it.integrity > 0 }
+            val scout = ((if (patrol != null) .12 else .28) - (outpost?.scoutBonus ?: 0) / 100.0).coerceAtLeast(.05)
             val observed = moving.copy(estimateMinimum = (moving.soldiers * (1 - scout)).toInt(), estimateMaximum = ceil(moving.soldiers * (1 + scout)).toInt())
             if (observed.daysToArrival > 0) remainingHordes += observed
             else if (patrol != null && observed.soldiers <= 100 && patrol!!.soldiers >= observed.soldiers * 3 / 2) {
@@ -155,6 +157,122 @@ object FrontierEngine {
         }
         next = next.copy(frontier = next.frontier.copy(patrol = patrol, hordes = remainingHordes))
         return pressureOtherRealms(projectInvasion(next))
+    }
+
+    private fun frontierDecisionFor(state: GameState): FrontierDecision {
+        fun choice(id: String, label: String, detail: String) = FrontierDecisionChoice(id, label, detail)
+        return when ((state.day + state.realm.territory * 3 + state.victories) % 10) {
+            0 -> FrontierDecision("caravan", "Karawane am Tor", "Eine Händlerkarawane bittet um Schutz und Durchlass.",
+                listOf(choice("toll", "Zoll verlangen", "+90 Gold, etwas weniger Zufriedenheit"), choice("escort", "Geleit stellen", "+40 Gold und Vertrauen bei Verbündeten")))
+            1 -> FrontierDecision("refugees", "Flüchtlinge aus dem Vorland", "Familien suchen Schutz hinter deiner Mauer.",
+                listOf(choice("accept", "Aufnehmen", "Kostet 120 Nahrung, erhöht Bevölkerung und Zufriedenheit"), choice("refuse", "Abweisen", "Spart Vorräte, erhöht Sicherheit, schadet Ansehen")))
+            2 -> FrontierDecision("envoy", "Bote der Goldelben", "Ein goldelbischer Gesandter bietet Freiwillige oder Handelskontakte an.",
+                listOf(choice("recruits", "Freiwillige aufnehmen", "Bis zu 6 Goldelben-Rekruten"), choice("trade", "Handelsbrief wählen", "+120 Gold")))
+            3 -> FrontierDecision("deserters", "Deserteure", "Bewaffnete Überläufer bieten Informationen, Vorräte oder ihren Dienst an.",
+                listOf(choice("enlist", "In die Rekrutenrolle", "+8 menschliche Rekruten, -2 Sicherheit"), choice("supplies", "Nur Vorräte nehmen", "+90 Nahrung")))
+            4 -> FrontierDecision("village", "Grenzdorf bittet um Schutz", "Ein Dorf am Rand deines Reiches meldet nächtliche Orkspäher.",
+                listOf(choice("fortify", "Palisaden finanzieren", "-120 Holz, +4 Sicherheit, feindliche Banner +1 Tag"), choice("watch", "Nur beobachten", "Bessere Stärke-Schätzung vorhandener Banner")))
+            5 -> FrontierDecision("scouts", "Verwundete Späher", "Eine erschöpfte Spähergruppe erreicht das Tor.",
+                listOf(choice("aid", "Versorgen", "-60 Nahrung, genauere Grenzberichte"), choice("debrief", "Sofort befragen", "Keine Kosten, +30 Gold aus geborgener Beute")))
+            6 -> FrontierDecision("merchants", "Waffenhändler", "Ein fahrender Händler bietet Eisen und Ersatzteile an.",
+                listOf(choice("buy", "Vorräte kaufen", "-150 Gold, +120 Eisen"), choice("decline", "Ablehnen", "Keine Änderung")))
+            7 -> FrontierDecision("festival", "Festtag der Grenzvölker", "Die Bevölkerung möchte trotz Krieg einen gemeinsamen Festtag begehen.",
+                listOf(choice("fund", "Großes Fest", "-120 Gold, +6 Zufriedenheit, +3 Integration"), choice("simple", "Kleines Fest", "+2 Zufriedenheit")))
+            8 -> FrontierDecision("ruins", "Ruinenfund", "Arbeiter stoßen nahe der Straße auf ein altes Depot.",
+                listOf(choice("explore", "Gründlich durchsuchen", "+140 Gold, +70 Eisen"), choice("secure", "Als Wachpunkt sichern", "+3 Sicherheit, +1 Ruhm")))
+            else -> FrontierDecision("oaths", "Stimmen der Völker", "Vertreter der Kulturen verlangen eine klare Linie für das gemeinsame Reich.",
+                listOf(choice("balance", "Ausgleich versprechen", "+4 Integration aller vorhandenen Völker"), choice("favored", "Bevorzugte Kultur bestätigen", "+6 Loyalität der aktuell geförderten Kultur, -2 bei den anderen")))
+        }
+    }
+
+    fun resolveFrontierDecision(state: GameState, choiceId: String): GameEngine.ActionResult {
+        val event = state.frontier.pendingDecision ?: return result(state, "Keine Grenzentscheidung offen.")
+        if (event.choices.none { it.id == choiceId }) return result(state, "Diese Antwort gehört nicht zur offenen Entscheidung.")
+        var next = state
+        fun standing(culture: Culture, delta: Int) {
+            val current = next.frontier.cultureStanding[culture] ?: 50
+            next = next.copy(frontier = next.frontier.copy(cultureStanding = next.frontier.cultureStanding + (culture to (current + delta).coerceIn(0, 100))))
+        }
+        fun integrate(culture: Culture, delta: Int) {
+            val current = next.frontier.cultureIntegration[culture] ?: 50
+            next = next.copy(frontier = next.frontier.copy(cultureIntegration = next.frontier.cultureIntegration + (culture to (current + delta).coerceIn(0, 100))))
+        }
+        when ("${event.id}:$choiceId") {
+            "caravan:toll" -> next = next.copy(resources = next.resources.copy(gold = next.resources.gold + 90), city = next.city.copy(satisfaction = (next.city.satisfaction - 2).coerceAtLeast(0)))
+            "caravan:escort" -> next = next.copy(resources = next.resources.copy(gold = next.resources.gold + 40), frontier = next.frontier.copy(allies = next.frontier.allies.map { it.copy(trust = (it.trust + 3).coerceAtMost(100)) }))
+            "refugees:accept" -> if (next.resources.food >= 120) {
+                val culture = Culture.entries.filter { next.population.count(it) > 0 }.maxByOrNull { next.frontier.cultureIntegration[it] ?: 50 } ?: Culture.HUMAN
+                next = next.copy(resources = next.resources.copy(food = next.resources.food - 120), population = ArmyEngine.adjustPopulation(next.population, culture, 12), city = next.city.copy(satisfaction = (next.city.satisfaction + 3).coerceAtMost(100)))
+                integrate(culture, 3)
+            } else return result(state, "Für die Aufnahme fehlen 120 Nahrung.")
+            "refugees:refuse" -> {
+                next = next.copy(city = next.city.copy(security = (next.city.security + 2).coerceAtMost(100)))
+                Culture.entries.filter { next.population.count(it) > 0 }.forEach { standing(it, -2) }
+            }
+            "envoy:recruits" -> {
+                if (next.population.count(Culture.GOLD_ELF) <= 0) return result(state, "Ohne Goldelben im Reich kann der Bote keine Rekruten eintragen.")
+                next = next.copy(population = ArmyEngine.adjustRecruits(next.population, Culture.GOLD_ELF, 6))
+                standing(Culture.GOLD_ELF, 3)
+            }
+            "envoy:trade" -> next = next.copy(resources = next.resources.copy(gold = next.resources.gold + 120))
+            "deserters:enlist" -> next = next.copy(population = ArmyEngine.adjustRecruits(next.population, Culture.HUMAN, 8), city = next.city.copy(security = (next.city.security - 2).coerceAtLeast(0)))
+            "deserters:supplies" -> next = next.copy(resources = next.resources.copy(food = next.resources.food + 90))
+            "village:fortify" -> if (next.resources.wood >= 120) next = next.copy(resources = next.resources.copy(wood = next.resources.wood - 120), city = next.city.copy(security = (next.city.security + 4).coerceAtMost(100)), frontier = next.frontier.copy(hordes = next.frontier.hordes.map { it.copy(daysToArrival = (it.daysToArrival + 1).coerceAtMost(30)) })) else return result(state, "Für Palisaden fehlen 120 Holz.")
+            "village:watch" -> next = next.copy(frontier = next.frontier.copy(hordes = next.frontier.hordes.map { h -> h.copy(estimateMinimum = (h.soldiers * .92).toInt(), estimateMaximum = ceil(h.soldiers * 1.08).toInt()) }))
+            "scouts:aid" -> if (next.resources.food >= 60) next = next.copy(resources = next.resources.copy(food = next.resources.food - 60), frontier = next.frontier.copy(hordes = next.frontier.hordes.map { h -> h.copy(estimateMinimum = (h.soldiers * .94).toInt(), estimateMaximum = ceil(h.soldiers * 1.06).toInt()) })) else return result(state, "Für die Späher fehlen 60 Nahrung.")
+            "scouts:debrief" -> next = next.copy(resources = next.resources.copy(gold = next.resources.gold + 30))
+            "merchants:buy" -> if (next.resources.gold >= 150) next = next.copy(resources = next.resources.copy(gold = next.resources.gold - 150, iron = next.resources.iron + 120)) else return result(state, "Für den Handel fehlen 150 Gold.")
+            "merchants:decline" -> Unit
+            "festival:fund" -> if (next.resources.gold >= 120) {
+                next = next.copy(resources = next.resources.copy(gold = next.resources.gold - 120), city = next.city.copy(satisfaction = (next.city.satisfaction + 6).coerceAtMost(100)))
+                Culture.entries.filter { next.population.count(it) > 0 }.forEach { integrate(it, 3) }
+            } else return result(state, "Für das Fest fehlen 120 Gold.")
+            "festival:simple" -> next = next.copy(city = next.city.copy(satisfaction = (next.city.satisfaction + 2).coerceAtMost(100)))
+            "ruins:explore" -> next = next.copy(resources = next.resources.copy(gold = next.resources.gold + 140, iron = next.resources.iron + 70))
+            "ruins:secure" -> next = next.copy(city = next.city.copy(security = (next.city.security + 3).coerceAtMost(100)), renown = next.renown + 1)
+            "oaths:balance" -> Culture.entries.filter { next.population.count(it) > 0 }.forEach { integrate(it, 4) }
+            "oaths:favored" -> {
+                val favored = next.culturePatronage.maxByOrNull { it.value }?.key ?: Culture.entries.maxByOrNull { next.population.count(it) } ?: Culture.HUMAN
+                Culture.entries.filter { next.population.count(it) > 0 }.forEach { standing(it, if (it == favored) 6 else -2) }
+            }
+        }
+        next = next.copy(frontier = next.frontier.copy(pendingDecision = null))
+        next = log(next, event.title, "Entscheidung: ${event.choices.first { it.id == choiceId }.label}.")
+        return result(next, "${event.title}: ${event.choices.first { it.id == choiceId }.label}")
+    }
+
+    fun buildOutpost(state: GameState, regionId: String): GameEngine.ActionResult {
+        val place = state.world.place(regionId) ?: return result(state, "Ort nicht gefunden.")
+        if (regionId == "keep") return result(state, "Die Grenzfeste selbst braucht keinen Außenposten.")
+        if (place.ownerId !in setOf(PLAYER_FACTION, NEUTRAL_FACTION)) return result(state, "In offen feindlichem Gebiet kann kein dauerhafter Außenposten entstehen.")
+        if (state.frontier.outposts.any { it.regionId == regionId }) return result(state, "An diesem Ort steht bereits ein Außenposten.")
+        if (state.resources.gold < 300 || state.resources.wood < 180 || state.resources.stone < 80) return result(state, "Außenposten benötigt 300 Gold, 180 Holz und 80 Stein.")
+        val post = FrontierOutpost(state.frontier.nextOutpostId, regionId, "Wacht ${place.name}")
+        val next = state.copy(
+            resources = state.resources.copy(gold = state.resources.gold - 300, wood = state.resources.wood - 180, stone = state.resources.stone - 80),
+            frontier = state.frontier.copy(outposts = state.frontier.outposts + post, nextOutpostId = state.frontier.nextOutpostId + 1),
+        )
+        return result(log(next, "Außenposten errichtet", "${post.name} verbessert Aufklärung und bremst den Aufbau feindlicher Lager in ${place.name}."), "${post.name} errichtet.")
+    }
+
+    fun upgradeOutpost(state: GameState, id: Long): GameEngine.ActionResult {
+        val post = state.frontier.outposts.firstOrNull { it.id == id } ?: return result(state, "Außenposten nicht gefunden.")
+        if (post.level >= 3) return result(state, "${post.name} ist bereits vollständig ausgebaut.")
+        val cost = 220 * post.level
+        if (state.resources.gold < cost || state.resources.wood < cost / 2 || state.resources.stone < cost / 3) return result(state, "Ausbau benötigt $cost Gold, ${cost / 2} Holz und ${cost / 3} Stein.")
+        val next = state.copy(
+            resources = state.resources.copy(gold = state.resources.gold - cost, wood = state.resources.wood - cost / 2, stone = state.resources.stone - cost / 3),
+            frontier = state.frontier.copy(outposts = state.frontier.outposts.map { if (it.id == id) it.copy(level = it.level + 1, integrity = 100) else it }),
+        )
+        return result(log(next, "Außenposten ausgebaut", "${post.name} erreicht Stufe ${post.level + 1}."), "${post.name} ausgebaut.")
+    }
+
+    fun stockOutpost(state: GameState, id: Long): GameEngine.ActionResult {
+        val post = state.frontier.outposts.firstOrNull { it.id == id } ?: return result(state, "Außenposten nicht gefunden.")
+        if (state.resources.food < 100) return result(state, "Für das Depot fehlen 100 Nahrung.")
+        val next = state.copy(resources = state.resources.copy(food = state.resources.food - 100),
+            frontier = state.frontier.copy(outposts = state.frontier.outposts.map { if (it.id == id) it.copy(stores = (it.stores + 100).coerceAtMost(1000)) else it }))
+        return result(next, "${post.name}: 100 Nahrung eingelagert.")
     }
 
     private fun projectInvasion(state: GameState): GameState {
@@ -419,6 +537,23 @@ object FrontierEngine {
             next = next.copy(frontier = next.frontier.copy(bond = bond.copy(stage = bondStage(bond))))
             next = RelationshipEngine.remember(next, "frontier_shared_battle", "Ihr standet gemeinsam in der Schlacht und kennt nun die Stärken und Grenzen des anderen besser.", 3, setOf("frontier", "bond"))
         }
+        val usedDesignIds = battle.contingents.mapNotNull { it.designId }.toSet()
+        if (usedDesignIds.isNotEmpty()) {
+            next = next.copy(frontier = next.frontier.copy(designs = next.frontier.designs.map { design ->
+                if (design.id !in usedDesignIds) design else {
+                    val losses = battle.contingents.filter { it.designId == design.id }.sumOf { (it.startSoldiers - it.soldiers).coerceAtLeast(0) }
+                    val wins = design.victories + if (battle.status == BattleStatus.VICTORY) 1 else 0
+                    val veteran = (wins / 2).coerceIn(0, 5)
+                    val epithet = when {
+                        wins >= 10 -> "Legenden der Grenze"
+                        wins >= 6 -> "Bannerbrecher"
+                        wins >= 3 -> "Mauererprobte"
+                        else -> design.epithet
+                    }
+                    design.copy(victories = wins, battleLosses = design.battleLosses + losses, veteranLevel = veteran, epithet = epithet)
+                }
+            }))
+        }
         return next
     }
 
@@ -598,19 +733,77 @@ object FrontierEngine {
         if (level >= 5) return result(state, "${culture.label} sind schon die bevorzugte Linie.")
         val cost = 500 + level * 250
         if (state.resources.gold < cost) return result(state, "Die Förderung kostet $cost Gold.")
-        val next = state.copy(resources = state.resources.copy(gold = state.resources.gold - cost), culturePatronage = state.culturePatronage + (culture to level + 1))
-        return result(log(next, "Volk gefördert", "${culture.label} auf Stufe ${level + 1}. Mehr Zuzug und mehr Rekruten, solange Wohnraum da ist."), "${culture.label} gefördert. Zuzug und Rekruten steigen.")
+        val newLevel = level + 1
+        var standing = state.frontier.cultureStanding
+        var integration = state.frontier.cultureIntegration
+        Culture.entries.filter { state.population.count(it) > 0 }.forEach { c ->
+            val oldStanding = standing[c] ?: 50
+            standing = standing + (c to (oldStanding + if (c == culture) 7 else if (newLevel >= 3) -3 else -1).coerceIn(0, 100))
+            val oldIntegration = integration[c] ?: 50
+            integration = integration + (c to (oldIntegration + if (c == culture) 3 else if (newLevel >= 3) -1 else 0).coerceIn(0, 100))
+        }
+        val next = state.copy(
+            resources = state.resources.copy(gold = state.resources.gold - cost),
+            culturePatronage = state.culturePatronage + (culture to newLevel),
+            frontier = state.frontier.copy(cultureStanding = standing, cultureIntegration = integration),
+        )
+        return result(log(next, "Volk gefördert", "${culture.label} auf Stufe $newLevel. Zuzug und Rekruten steigen; andere Völker reagieren auf starke Bevorzugung."), "${culture.label} gefördert. Loyalität und Integration wurden aktualisiert.")
     }
 
-    fun hireCaptain(state: GameState): GameEngine.ActionResult {
+    fun cultureStanding(state: GameState, culture: Culture): Int = state.frontier.cultureStanding[culture] ?: 50
+    fun cultureIntegration(state: GameState, culture: Culture): Int = state.frontier.cultureIntegration[culture] ?: 50
+
+
+    fun captainCandidates(state: GameState): List<Commander> {
+        if (state.commanders.size >= 3 || state.realm.level(BuildingType.BARRACKS) < 4) return emptyList()
+        val cultures = Culture.entries.filter { state.population.count(it) > 0 }.ifEmpty { listOf(Culture.HUMAN) }
+        val nextId = (state.commanders.maxOfOrNull { it.id } ?: 0) + 1
+        val names = mapOf(
+            Culture.HUMAN to listOf("Aren Falk", "Mira Stein", "Konrad Venn"),
+            Culture.WOOD_ELF to listOf("Laeriel", "Thalion", "Míraen"),
+            Culture.GOLD_ELF to listOf("Aureth", "Caladwen", "Therion"),
+            Culture.WALL to listOf("Lin Qiao", "Wei Ren", "Mei Jian"),
+        )
+        val traits = listOf("Diszipliniert", "Kühner Taktiker", "Beliebt bei den Truppen")
+        return (0..2).map { index ->
+            val culture = cultures[(state.day + index) % cultures.size]
+            val pool = names.getValue(culture)
+            Commander(
+                id = nextId,
+                name = pool[(state.day + index) % pool.size],
+                culture = culture,
+                portraitKey = "knight",
+                leadership = 44 + index * 5 + cultureStanding(state, culture) / 20,
+                tactics = 50 - index * 2 + state.victories.coerceAtMost(10),
+                loyalty = (62 + cultureStanding(state, culture) / 3).coerceAtMost(95),
+                trait = traits[index],
+                rank = "Hauptmann",
+            )
+        }
+    }
+
+    fun captainCost(index: Int): Int = 550 + index.coerceIn(0, 2) * 100
+
+    fun hireCaptain(state: GameState): GameEngine.ActionResult = hireCaptain(state, 0)
+
+    fun hireCaptain(state: GameState, candidateIndex: Int): GameEngine.ActionResult {
         if (state.commanders.size >= 3) return result(state, "Drei Hauptleute reichen für diese Feste.")
-        if (state.realm.level(BuildingType.BARRACKS) < 4) return result(state, "Ein zweiter Hauptmann braucht Kaserne Stufe 4.")
-        if (state.resources.gold < 600) return result(state, "Der Hauptmann kostet 600 Gold.")
-        val id = (state.commanders.maxOfOrNull { it.id } ?: 0) + 1
-        val culture = state.culturePatronage.maxByOrNull { it.value }?.key ?: Culture.HUMAN
-        val captain = Commander(id, "Hauptmann $id", culture, "knight", leadership = 46, tactics = 44, rank = "Hauptmann")
-        val next = state.copy(resources = state.resources.copy(gold = state.resources.gold - 600), commanders = state.commanders + captain)
-        return result(log(next, "Hauptmann", "${captain.name} aus den ${culture.label} übernimmt ein Regiment."), "Neuer Hauptmann verpflichtet.")
+        if (state.realm.level(BuildingType.BARRACKS) < 4) return result(state, "Ein Hauptmann braucht Kaserne Stufe 4.")
+        val candidates = captainCandidates(state)
+        val captain = candidates.getOrNull(candidateIndex) ?: return result(state, "Dieser Kandidat ist nicht mehr verfügbar.")
+        val cost = captainCost(candidateIndex)
+        if (state.resources.gold < cost) return result(state, "${captain.name} verlangt $cost Gold Handgeld.")
+        val next = state.copy(resources = state.resources.copy(gold = state.resources.gold - cost), commanders = state.commanders + captain)
+        return result(log(next, "Hauptmann verpflichtet", "${captain.name}, ${captain.culture.label}, ${captain.trait}: Führung ${captain.leadership}, Taktik ${captain.tactics}."), "${captain.name} wurde für $cost Gold verpflichtet.")
+    }
+
+    fun assignCaptainToDesign(state: GameState, designId: Long, commanderId: Long?): GameEngine.ActionResult {
+        val design = state.frontier.designs.firstOrNull { it.id == designId } ?: return result(state, "Regiment nicht gefunden.")
+        if (commanderId != null && state.commanders.none { it.id == commanderId }) return result(state, "Hauptmann nicht gefunden.")
+        if (commanderId != null && state.frontier.designs.any { it.id != designId && it.captainId == commanderId }) return result(state, "Dieser Hauptmann führt bereits ein eigenes Regiment.")
+        val next = state.copy(frontier = state.frontier.copy(designs = state.frontier.designs.map { if (it.id == designId) it.copy(captainId = commanderId) else it }))
+        val name = commanderId?.let { id -> state.commanders.first { it.id == id }.name } ?: "direktes Kommando"
+        return result(next, "${design.name}: Führung durch $name.")
     }
     fun claimDailyGoal(state: GameState): GameEngine.ActionResult {
         if (state.frontier.dailyGoalClaimed) return result(state, "Der Tageslohn ist schon genommen.")
