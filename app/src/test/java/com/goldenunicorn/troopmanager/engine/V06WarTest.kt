@@ -253,7 +253,9 @@ class V06WarTest {
         val deployments = listOf(BattleDeployment(1, BattleSection.CENTER, own.units))
         val partial = listOf(BattleDeployment(1, BattleSection.CENTER, listOf(UnitAllocation(UnitType.HUMAN_SWORD, 1499))))
         assertEquals(field, BattleEngine.start(field, EnemyType.ORC, Tactic.HOLD, partial, seed = 103, enemyStrength = 30).state)
-        val started = BattleEngine.start(field, EnemyType.ORC, Tactic.HOLD, deployments, seed = 103, enemyStrength = 30, enemyUnits = enemy.units).state
+        val startResult = BattleEngine.start(field, EnemyType.ORC, Tactic.HOLD, deployments, seed = 103, enemyStrength = 30, enemyUnits = enemy.units)
+        assertNotNull(startResult.message, startResult.state.battleSession)
+        val started = startResult.state
         assertEquals(0, started.battleSession!!.fronts.first { it.section == BattleSection.LEFT }.enemySoldiers)
         assertEquals(30, started.battleSession!!.fronts.first { it.section == BattleSection.CENTER }.enemySoldiers)
         val report = finished(started)
