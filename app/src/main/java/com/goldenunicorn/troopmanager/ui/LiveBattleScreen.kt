@@ -46,7 +46,15 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
         item {
             Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Minute ${session.minute} · ${session.phase.label}", color = PaleGold, fontWeight = FontWeight.Bold)
+                    Text("Minute ${session.minute} · ${session.tacticalStageLabel}", color = PaleGold, fontWeight = FontWeight.Bold)
+                    if (session.tactic == Tactic.FORTIFY) {
+                        LinearProgressIndicator(
+                            progress = { (session.tacticalStageIndex / 6f).coerceIn(0f, 1f) },
+                            modifier = Modifier.fillMaxWidth().height(7.dp),
+                            color = Gold,
+                        )
+                        Text("Anmarsch → Geräte → Mauersturm → Bruch/Tor → Innenhof → Entscheidung", color = Mist, fontSize = 10.sp)
+                    }
                     BattleStrength("Dein Heer", session.ownRemaining, session.ownStart, Gold)
                     BattleStrength("Gegner", session.enemyRemaining, session.enemyStart, Danger)
                     Text("Moral ${session.morale} % · ${MoraleState.from(session.morale).label} · ${session.soldiers(BattleSection.RESERVE)} in Reserve", color = Mist)
