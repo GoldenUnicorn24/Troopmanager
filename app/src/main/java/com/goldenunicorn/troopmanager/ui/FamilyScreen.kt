@@ -90,6 +90,29 @@ fun FamilyScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                 2 -> FamilyCard {
                     Text("Wer übernimmt die Regierung?", color = PaleGold, fontWeight = FontWeight.Bold)
                     Text(DynastyEngine.successionSummary(family), color = Mist)
+                    if (family.dynasty.successionTension > 0) {
+                        Text("Nachfolgespannung ${family.dynasty.successionTension}/100", color = if (family.dynasty.successionTension >= 60) Danger else Gold, fontWeight = FontWeight.Bold)
+                        LinearProgressIndicator(
+                            progress = { family.dynasty.successionTension / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = if (family.dynasty.successionTension >= 60) Danger else Gold,
+                        )
+                        Text(family.dynasty.successionConcern.ifBlank { "Teile von Familie und Hof erwarten weitere Klärung." }, color = Mist, fontSize = 12.sp)
+                        OutlinedButton(
+                            onClick = { apply(DynastyEngine.addressSuccession(state, "family")) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Als Familie beraten") }
+                        OutlinedButton(
+                            onClick = { apply(DynastyEngine.addressSuccession(state, "public")) },
+                            enabled = state.resources.gold >= 60,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Öffentlich erklären · 60 Gold") }
+                        Button(
+                            onClick = { apply(DynastyEngine.addressSuccession(state, "council")) },
+                            enabled = state.resources.gold >= 120,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Großen Nachfolgerat einberufen · 120 Gold") }
+                    }
                     family.dynasty.members.filter { it.alive && it.id != family.dynasty.rulerId && it.id != "companion" }.forEach { member ->
                         OutlinedButton(onClick = { apply(DynastyEngine.selectHeir(state, member.id)) }, enabled = member.id != family.dynasty.heirId) {
                             Text(if (member.id == family.dynasty.heirId) "${member.name} · bestimmter Erbe" else "${member.name} als Erbe bestimmen")
