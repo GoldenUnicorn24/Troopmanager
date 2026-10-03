@@ -67,10 +67,16 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
                     onState(result.state)
                     onNotice(result.message)
                 })
-                if (state.commanders.size < 3 && state.realm.level(BuildingType.BARRACKS) >= 4) SmallAction("Hauptmann verpflichten · 600 Gold") {
-                    val result = FrontierEngine.hireCaptain(state)
-                    onState(result.state)
-                    onNotice(result.message)
+                val candidates = FrontierEngine.captainCandidates(state)
+                if (candidates.isNotEmpty()) {
+                    Text("Hauptmann-Kandidaten", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    candidates.forEachIndexed { index, candidate ->
+                        SmallAction("${candidate.name} · ${candidate.culture.label} · F ${candidate.leadership} / T ${candidate.tactics} · ${candidate.trait} · ${FrontierEngine.captainCost(index)} Gold") {
+                            val result = FrontierEngine.hireCaptain(state, index)
+                            onState(result.state)
+                            onNotice(result.message)
+                        }
+                    }
                 }
             }
         }
