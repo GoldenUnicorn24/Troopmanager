@@ -358,4 +358,42 @@ class FrontierEngineTest {
         assertTrue(next.frontier.hordes.first { it.id == "post-test" }.soldiers <= 42)
     }
 
+    @Test
+    fun lowCultureStandingCreatesRealWeeklyConsequences() {
+        val sentinel = HordeBanner("culture-sentinel", HordeKind.ORC, "Fernes Lager", 1, "Fernland", 100, jointWith = "test")
+        val original = state(7).copy(
+            frontier = FrontierState(
+                hordes = listOf(sentinel),
+                lastTickDay = 6,
+                lastRaidDay = 7,
+                cultureStanding = mapOf(Culture.HUMAN to 20),
+                cultureIntegration = mapOf(Culture.HUMAN to 30),
+            ),
+        )
+        val satisfaction = original.city.satisfaction
+        val recruits = original.population.humanRecruits
+        val next = FrontierEngine.tick(original)
+        assertEquals(satisfaction - 2, next.city.satisfaction)
+        assertTrue(next.society.culturalTension > original.society.culturalTension)
+        assertTrue(next.population.humanRecruits < recruits)
+    }
+
+    @Test
+    fun frontierStoryPresentationsRotateWithoutChangingDecisionIds() {
+        val titles = mutableSetOf<String>()
+        val ids = mutableSetOf<String>()
+        listOf(30, 60, 90, 120, 150, 180).forEach { day ->
+            val sentinel = HordeBanner("story-sentinel-$day", HordeKind.ORC, "Fernes Lager", 1, "Fernland", 1000, jointWith = "test")
+            val original = state(day).copy(
+                frontier = FrontierState(hordes = listOf(sentinel), lastTickDay = day - 1, lastRaidDay = day, lastStoryDay = day - 4),
+            )
+            val next = FrontierEngine.tick(original)
+            val event = next.frontier.pendingDecision!!
+            titles += event.title
+            ids += event.id
+        }
+        assertEquals(1, ids.size)
+        assertTrue(titles.size >= 4)
+    }
+
 }
