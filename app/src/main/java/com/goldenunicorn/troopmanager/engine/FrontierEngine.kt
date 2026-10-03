@@ -47,17 +47,52 @@ object FrontierEngine {
             }
         }
         next = next.copy(frontier = next.frontier.copy(weapons = weapons, designs = designs))
+        val borderControl = next.frontier.outposts.filter { it.integrity > 0 }.sumOf {
+            when (it.type) {
+                BorderOutpostType.WATCHTOWER -> it.level
+                BorderOutpostType.FORTIFIED -> it.level * 2
+                BorderOutpostType.SUPPLY -> 0
+            }
+        }
+        val warningBonus = next.frontier.outposts
+            .filter { it.type == BorderOutpostType.WATCHTOWER && it.integrity > 0 }
+            .sumOf { it.level }
+            .coerceAtMost(4)
         val grown = next.frontier.hordes.map { horde ->
             if (horde.id.startsWith("invasion-") || horde.daysToArrival <= 1) horde
-            else horde.copy(soldiers = horde.soldiers + if (horde.kind == HordeKind.TAO_TEI) 8 else 4)
+            else {
+                val baseGrowth = if (horde.kind == HordeKind.TAO_TEI) 8 else 4
+                horde.copy(soldiers = horde.soldiers + (baseGrowth - borderControl).coerceAtLeast(1))
+            }
         }.toMutableList()
         if (grown.none { !it.id.startsWith("invasion-") } && next.day in 4..18 && next.day % 4 == 0) {
             val small = 24 + next.day
-            grown += HordeBanner("raid-${next.day}", HordeKind.ORC, "Kleine Orkschar", small, "Vorland", 3, discovered = true, estimateMinimum = small - 6, estimateMaximum = small + 8)
-            next = log(next, "Späher", "Eine kleine Orkschar ist im Vorland. Noch kein Sturm, aber sie wächst, wenn du sie lässt.")
+            grown += HordeBanner(
+                "raid-${next.day}",
+                HordeKind.ORC,
+                "Kleine Orkschar",
+                small,
+                "Vorland",
+                3 + warningBonus,
+                discovered = true,
+                estimateMinimum = small - 6,
+                estimateMaximum = small + 8,
+            )
+            next = log(next, "Späher", "Eine kleine Orkschar ist im Vorland. Wachtürme verschaffen zusätzliche Vorwarnzeit.")
         }
         if (next.day > 20 && next.day % 9 == 0 && grown.none { it.jointWith != null }) {
-            grown += HordeBanner("joint-${next.day}", HordeKind.URUK, "Orks und Uruks", 80 + next.day, "Schwarzes Vorland", 5, jointWith = "Orks", discovered = true, estimateMinimum = 70, estimateMaximum = 140)
+            grown += HordeBanner(
+                "joint-${next.day}",
+                HordeKind.URUK,
+                "Orks und Uruks",
+                80 + next.day,
+                "Schwarzes Vorland",
+                5 + warningBonus,
+                jointWith = "Orks",
+                discovered = true,
+                estimateMinimum = 70,
+                estimateMaximum = 140,
+            )
         }
         // Persist growth and newly spawned banners before any later logic reads the frontier.
         next = next.copy(frontier = next.frontier.copy(hordes = grown))
