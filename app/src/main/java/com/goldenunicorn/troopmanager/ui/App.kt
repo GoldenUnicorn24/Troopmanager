@@ -444,26 +444,70 @@ private fun GameShell(
                 }
             }
             ResourceStrip(state.resources, EconomyEngine.production(state).net)
+            val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+            val warningText = when {
+                nearestThreat != null -> "⚠ ${nearestThreat.name}: ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
+                state.war.wounded.isNotEmpty() -> "⚕ ${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
+                EconomyEngine.production(state).net.food < 0 -> "⚠ Nahrung ${EconomyEngine.production(state).net.food}/Tag"
+                else -> null
+            }
+            if (warningText != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        showMore = false
+                        screen = if (nearestThreat != null) GameDestination.FRONTIER else if (state.war.wounded.isNotEmpty()) GameDestination.HOSPITAL else GameDestination.CITY
+                    },
+                    color = Color(0xFF2A2020),
+                ) {
+                    Text(warningText, color = PaleGold, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp), maxLines = 1)
+                }
+            }
             }
         },
         bottomBar = {
-            val short = mapOf(GameDestination.COMMAND to "Hof", GameDestination.CITY to "Stadt", GameDestination.MILITARY to "Heer",
-                GameDestination.FRONTIER to "Grenze", GameDestination.WORLD to "Welt", GameDestination.RULERS to "Paar", GameDestination.FAMILY to "Haus")
-            Row(Modifier.fillMaxWidth().background(Panel).navigationBarsPadding()
-                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(GameDestination.COMMAND, GameDestination.CITY, GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.WORLD,
-                    GameDestination.RULERS, GameDestination.FAMILY).forEach { tab ->
-                    FilterChip(screen == tab || (screen == GameDestination.DECISIONS && tab == GameDestination.COMMAND),
-                        { showMore = false; screen = tab }, label = { Text(short[tab] ?: tab.label, maxLines = 1) })
-                }
+            val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
+            val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
+            NavigationBar(containerColor = Panel, modifier = Modifier.navigationBarsPadding()) {
+                NavigationBarItem(
+                    selected = !showMore && realmSelected,
+                    onClick = { showMore = false; screen = GameDestination.COMMAND },
+                    icon = { Icon(Icons.Outlined.Castle, null) },
+                    label = { Text("Reich") },
+                )
+                NavigationBarItem(
+                    selected = !showMore && screen == GameDestination.CITY,
+                    onClick = { showMore = false; screen = GameDestination.CITY },
+                    icon = { Icon(Icons.Outlined.LocationCity, null) },
+                    label = { Text("Stadt") },
+                )
+                NavigationBarItem(
+                    selected = !showMore && armySelected,
+                    onClick = { showMore = false; screen = GameDestination.MILITARY },
+                    icon = { Icon(Icons.Outlined.Shield, null) },
+                    label = { Text("Heer") },
+                )
+                NavigationBarItem(
+                    selected = !showMore && screen == GameDestination.WORLD,
+                    onClick = { showMore = false; screen = GameDestination.WORLD },
+                    icon = { Icon(Icons.Outlined.Public, null) },
+                    label = { Text("Welt") },
+                )
+                NavigationBarItem(
+                    selected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD)),
+                    onClick = { showMore = true },
+                    icon = { Icon(Icons.Outlined.HelpOutline, null) },
+                    label = { Text("Mehr") },
+                )
             }
         },
     ) { padding ->
         if (showCensus) PopulationDialog(state, onState, onNotice) { showCensus = false }
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (showMore) {
-                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller)
+                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination ->
+                    showMore = false
+                    screen = destination
+                }
             } else if (
                 state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
             ) {
