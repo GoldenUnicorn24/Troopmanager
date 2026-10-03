@@ -8,6 +8,8 @@ v0.82 builds on the ruling-pair/world simulation and focuses on correctness and 
 
 New persistent systems include player-facing frontier decisions, culture loyalty/integration, buildable outposts, captain candidates, and regiment legacy (wins, losses, veteran levels, epithets and captain assignment). The permanent navigation is reduced to five areas with contextual warning routing.
 
+The deeper v0.82 pass adds 60 deterministic frontier-event presentations, weekly culture consequences, culture cases in the co-ruler council, succession tension and resolution, family-linked dynastic alliance treaties, visible physical supply convoys, aging fog-of-war estimates, a consolidated realm situation card, and culture-shaped city districts.
+
 ## v0.65: the ruling pair and a living frontier
 
 Additive local-save models connect companion personality and thematic conflicts, contextual dialogue and personal arcs, optional joint government with bounded delegation, live presence, child education and mentors, the court network, the quest journal and annual chronicle chapters. Frontier now reserves real patrol troops, moves allied reinforcements over campaign days, equips delayed custom formations and uses ammunition-bearing wall weapons in deterministic siege exchanges and replay. Existing 100 creation attribute points and 30 immediately usable skill points remain.
