@@ -229,6 +229,35 @@ private fun FamilyProfile(state: GameState, member: FamilyMember, onDismiss: () 
                 Text("Mentorbindung ${member.mentorBond}% · Fähigkeiten entwickeln sich jährlich; Entscheidungen prägen Eigenschaften.", color = Mist, fontSize = 12.sp)
             } else if (age < 6) Text("Die frühe Kindheit bleibt spielerisch. Ab 6 stehen Mentor und Ausbildung zur Wahl.", color = Mist, fontSize = 12.sp)
             member.adultCommanderId?.let { Text("Als erwachsener Hofcharakter verfügbar: Fähigkeiten, Eigenschaften und Beziehungen sind übernommen.", color = Gold, fontSize = 12.sp) }
+            if (member.alive && age >= 18 && member.id != state.dynasty.rulerId && member.id != "companion") {
+                Text("Dynastische Diplomatie", color = PaleGold, fontWeight = FontWeight.Bold)
+                val alliance = state.dynasty.dynasticAlliances.firstOrNull { it.memberId == member.id && it.expiresDay > state.day }
+                if (alliance != null) {
+                    Text(
+                        "${state.world.faction(alliance.factionId)?.name ?: alliance.factionId} · bis Tag ${alliance.expiresDay}",
+                        color = Gold,
+                        fontSize = 12.sp,
+                    )
+                    Text(alliance.description, color = Mist, fontSize = 11.sp)
+                } else {
+                    val targets = DynastyEngine.dynasticAllianceTargets(state, member.id).take(5)
+                    if (targets.isEmpty()) {
+                        Text("Kein Reich erfüllt derzeit die Bedingungen: Frieden, mindestens +20 Beziehung und 35 Vertrauen.", color = Mist, fontSize = 11.sp)
+                    } else {
+                        targets.forEach { faction ->
+                            val relation = com.goldenunicorn.troopmanager.engine.DiplomacyEngine.relation(state, PLAYER_FACTION, faction.id)
+                            OutlinedButton(
+                                onClick = { apply(DynastyEngine.arrangeDynasticAlliance(state, member.id, faction.id)) },
+                                enabled = state.resources.gold >= 250,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("${faction.name} · Beziehung ${relation.relation} · Vertrauen ${relation.trust} · 250 Gold")
+                            }
+                        }
+                        Text("Die erwachsene Person bleibt Teil deiner Familie und erhält eine diplomatische Rolle; das Bündnis läuft 720 Tage.", color = Mist, fontSize = 11.sp)
+                    }
+                }
+            }
             if (member.alive && member.id != state.dynasty.rulerId && member.id != "companion") TextButton(onClick = { apply(DynastyEngine.selectHeir(state, member.id)) }) { Text("Als Erbe bestimmen") }
             Text("Entwicklung", color = PaleGold, fontWeight = FontWeight.Bold)
             member.educationLog.takeLast(6).reversed().forEach { entry -> Text("Tag ${entry.day} · ${entry.text}", color = Mist, fontSize = 11.sp) }
