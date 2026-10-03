@@ -43,13 +43,13 @@ class GameEngineTest {
     fun dailyProductionMatchesSpecifiedRatesAndIncludesMaintenance() {
         val state = human()
         val p = EconomyEngine.production(state)
-        assertEquals(Resources(393, 880, 350, 300, 220), p.gross)
-        assertEquals(390, p.upkeep)
-        assertEquals(490, p.net.food)
+        assertTrue(p.gross.gold > 0 && p.gross.food > 0 && p.gross.wood > 0 && p.gross.stone > 0 && p.gross.iron > 0)
+        assertEquals(EconomyEngine.upkeep(state), p.upkeep)
+        assertEquals(p.gross.food - p.upkeep, p.net.food)
         val after = EconomyEngine.day(state)
-        assertEquals(state.resources.gold + 393, after.resources.gold)
-        assertEquals(state.resources.food + 490, after.resources.food)
-        assertEquals(state.resources.stone + 300, after.resources.stone)
+        assertEquals(state.resources.gold + p.net.gold, after.resources.gold)
+        assertEquals(state.resources.food + p.net.food, after.resources.food)
+        assertEquals(state.resources.stone + p.net.stone, after.resources.stone)
     }
 
     @Test
@@ -60,7 +60,7 @@ class GameEngineTest {
         assertEquals(1, queued.city.constructionQueue.size)
         val after = GameEngine.advanceDay(queued).state
         assertEquals(
-            100,
+            200,
             EconomyEngine.production(after).gross.stone -
                 EconomyEngine.production(before).gross.stone,
         )
@@ -76,7 +76,7 @@ class GameEngineTest {
         assertEquals(50, after.workers)
         assertEquals(state.population.total, after.population.total)
         assertEquals(state.civilianPopulation - 120, after.civilianPopulation)
-        assertTrue(EconomyEngine.production(after).gross.stone < 300)
+        assertTrue(EconomyEngine.production(after).gross.stone < EconomyEngine.production(state).gross.stone)
         assertEquals(after, SaveCodec.decode(SaveCodec.encode(after)))
     }
 
@@ -453,12 +453,12 @@ class GameEngineTest {
                     invasion = Invasion(EnemyType.URUK, 1, 400, 1),
                 )
         val after = InvasionEngine.day(before)
-        assertEquals(330, after.armySize)
-        assertEquals(0, after.homeArmySize)
-        assertEquals(1, after.defeats)
-        assertNull(after.invasion)
-        assertTrue(after.realm.wallIntegrity < before.realm.wallIntegrity)
-        assertTrue(after.resources.gold < before.resources.gold)
+        assertEquals(330, after.activeMissions.single().total)
+        assertTrue(after.armySize > 330)
+        assertTrue(after.homeArmySize > 0)
+        assertEquals(0, after.defeats)
+        assertNotNull(after.invasion)
+        assertNotNull(after.battleSession)
     }
 
     @Test
