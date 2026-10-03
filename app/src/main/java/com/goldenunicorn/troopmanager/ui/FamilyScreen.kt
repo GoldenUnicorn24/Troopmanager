@@ -38,7 +38,7 @@ fun FamilyScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
     var selectedId by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableIntStateOf(0) }
     var newName by remember(state.dynasty.plannedChildName) { mutableStateOf(state.dynasty.plannedChildName.ifBlank { "Hoffnung" }) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Familie & Dynastie", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 24.sp)
         if (!state.settings.dynasty) {
             FamilyCard { Text("Die Dynastie ruht. Aktiviere sie in den Einstellungen, um Kinder, Erziehung und Nachfolge zu begleiten.", color = Mist) }

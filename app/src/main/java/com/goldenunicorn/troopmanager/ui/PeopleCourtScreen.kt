@@ -1,6 +1,8 @@
 package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,7 +21,7 @@ internal fun PeopleCourtScreen(state: GameState, onState: (GameState) -> Unit, o
     val selected = state.commanders.firstOrNull { it.id == selectedId } ?: state.commanders.firstOrNull()
     val details = state.court.characters.firstOrNull { it.commanderId == selected?.id }
     val bonuses = CharacterEngine.bonuses(state)
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SectionTitle("Hofämter & Karrieren")
         CourtDomainCard {
             Text("Jedes Amt wirkt durch die Fähigkeiten seiner Person. Im Einsatz oder bei geringer Loyalität ruht das Amt.", color = Mist, fontSize = 12.sp)

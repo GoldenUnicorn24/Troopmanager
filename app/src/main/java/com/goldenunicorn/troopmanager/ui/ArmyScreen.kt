@@ -72,7 +72,7 @@ internal fun ArmyScreen(
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 20.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when (tab) {
@@ -329,7 +329,9 @@ private fun ArmyUnitCard(
     val available = ArmyEngine.recruitable(state, type.culture)
     Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(type.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            val named = state.frontier.designs.firstOrNull { it.unitType == type && it.soldiers > 0 }
+            Text(named?.name ?: type.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            if (named != null) Text("Eigenes Regiment · Basis ${type.label}", color = PaleGold, fontSize = 12.sp)
             ArmyMetrics(
                 listOf(
                     "Gesamt" to state.soldiers(type),

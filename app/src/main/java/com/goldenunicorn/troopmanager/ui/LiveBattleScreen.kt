@@ -108,7 +108,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
             val commander = contingent.commanderId?.let { id -> state.commanders.firstOrNull { it.id == id }?.name } ?: state.player.name
             Surface(color = Panel, shape = RoundedCornerShape(12.dp)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${contingent.type.label} · ${contingent.soldiers} / ${contingent.startSoldiers}", color = PaleGold, fontWeight = FontWeight.Bold)
+                    Text("${contingent.displayName ?: contingent.type.label} · ${contingent.soldiers} / ${contingent.startSoldiers}", color = PaleGold, fontWeight = FontWeight.Bold)
                     Text("$commander · ${contingent.section.label}", color = Mist, fontSize = 12.sp)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Moral ${contingent.morale} % · ${MoraleState.from(contingent.morale, contingent.routed).label}", color = if (contingent.morale < 35) Danger else Success, fontSize = 12.sp)

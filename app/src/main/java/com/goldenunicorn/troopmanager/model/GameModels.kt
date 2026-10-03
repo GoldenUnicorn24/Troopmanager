@@ -199,6 +199,20 @@ data class Population(
             Culture.GOLD_ELF -> goldElfRecruits
             Culture.WALL -> wallRecruits
         }
+
+    fun count(culture: Culture): Int = when (culture) {
+        Culture.HUMAN -> human
+        Culture.WOOD_ELF -> woodElf
+        Culture.GOLD_ELF -> goldElf
+        Culture.WALL -> wall
+    }
+
+    fun takeRecruits(culture: Culture, amount: Int): Population = when (culture) {
+        Culture.HUMAN -> copy(human = (human - amount).coerceAtLeast(0), humanRecruits = (humanRecruits - amount).coerceAtLeast(0))
+        Culture.WOOD_ELF -> copy(woodElf = (woodElf - amount).coerceAtLeast(0), woodElfRecruits = (woodElfRecruits - amount).coerceAtLeast(0))
+        Culture.GOLD_ELF -> copy(goldElf = (goldElf - amount).coerceAtLeast(0), goldElfRecruits = (goldElfRecruits - amount).coerceAtLeast(0))
+        Culture.WALL -> copy(wall = (wall - amount).coerceAtLeast(0), wallRecruits = (wallRecruits - amount).coerceAtLeast(0))
+    }
 }
 
 @Serializable
@@ -248,6 +262,7 @@ data class GameState(
     val settings: GameSettings = GameSettings(),
     /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
     val foundingCultures: Set<Culture> = emptySet(),
+    val culturePatronage: Map<Culture, Int> = emptyMap(),
     val militaryStock: MilitaryStock = MilitaryStock(),
     val doctrine: MilitaryDoctrine = MilitaryDoctrine.BALANCED,
     val research: ResearchState = ResearchState(),

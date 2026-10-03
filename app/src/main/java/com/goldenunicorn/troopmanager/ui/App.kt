@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.data.SaveRepository
+import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.model.*
 import androidx.compose.ui.platform.LocalDensity
@@ -100,7 +101,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
                 fontSize = 16.sp,
                 modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
             )
-            Text("v0.65 · Herrscherpaar & lebendige Grenze", color = PaleGold)
+            Text("v0.74 · Festung, Grenze, Tageslohn", color = PaleGold)
             SaveSlotsPanel(ui, controller)
             if (ui.hasSave) {
                 GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
@@ -410,6 +411,7 @@ private fun GameShell(
     var screen by rememberSaveable { mutableStateOf(GameDestination.COMMAND) }
     var worldPage by rememberSaveable { mutableStateOf(0) }
     var showMore by rememberSaveable { mutableStateOf(false) }
+    var showCensus by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = showMore || screen != GameDestination.COMMAND) {
         if (showMore) showMore = false else screen = GameDestination.COMMAND
     }
@@ -417,14 +419,15 @@ private fun GameShell(
     Scaffold(
         containerColor = Ink,
         topBar = {
+            Column(Modifier.fillMaxWidth().statusBarsPadding().background(Ink)) {
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp),
+                Modifier.fillMaxWidth().padding(start = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     state.realm.settlementName,
                     color = PaleGold,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickable { showCensus = true },
                     maxLines = 1,
                 )
                 if (state.player.skillPoints > 0)
@@ -440,19 +443,24 @@ private fun GameShell(
                     Icon(Icons.Outlined.HelpOutline, "Hilfe und Menü", tint = Gold)
                 }
             }
+            ResourceStrip(state.resources, EconomyEngine.production(state).net)
+            }
         },
         bottomBar = {
-            Row(Modifier.fillMaxWidth().navigationBarsPadding().background(Panel)
-                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp),
+            val short = mapOf(GameDestination.COMMAND to "Hof", GameDestination.CITY to "Stadt", GameDestination.MILITARY to "Heer",
+                GameDestination.FRONTIER to "Grenze", GameDestination.WORLD to "Welt", GameDestination.RULERS to "Paar", GameDestination.FAMILY to "Haus")
+            Row(Modifier.fillMaxWidth().background(Panel).navigationBarsPadding()
+                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(GameDestination.COMMAND, GameDestination.CITY, GameDestination.MILITARY, GameDestination.WORLD,
-                    GameDestination.COURT, GameDestination.RULERS, GameDestination.FAMILY, GameDestination.CHARACTER).forEach { tab ->
+                listOf(GameDestination.COMMAND, GameDestination.CITY, GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.WORLD,
+                    GameDestination.RULERS, GameDestination.FAMILY).forEach { tab ->
                     FilterChip(screen == tab || (screen == GameDestination.DECISIONS && tab == GameDestination.COMMAND),
-                        { showMore = false; screen = tab }, label = { Text(tab.label) })
+                        { showMore = false; screen = tab }, label = { Text(short[tab] ?: tab.label, maxLines = 1) })
                 }
             }
         },
     ) { padding ->
+        if (showCensus) PopulationDialog(state, onState, onNotice) { showCensus = false }
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (showMore) {
                 MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller)

@@ -10,7 +10,7 @@ object RelationshipEventDirector {
     fun options(event: RelationshipEvent): List<RelationshipChoice> {
         if (event.options.isNotEmpty()) return event.options
         if (event.key == "intimacy") return listOf(
-            RelationshipChoice("private", "Den privaten Abend gemeinsam verbringen", "Ihr zieht euch gemeinsam zurück.", consequenceHint = "Freiwillige private Nähe; Fade-to-black."),
+            RelationshipChoice("private", "Die Nacht miteinander verbringen", "Ihr zieht euch aus und bleibt bis zum Morgen im Bett.", consequenceHint = "Ab 18, freiwillig, ausgeschrieben."),
             RelationshipChoice("conversation", "Über den Feldzug und eure Sorgen sprechen", "Ihr nehmt euch Zeit für ein Gespräch."),
             RelationshipChoice("rest", "Heute Ruhe und Abstand wählen", "Ein Nein wird ohne Vorwurf angenommen.", boundary = true))
         val source = RelationshipContentCatalog.scenarios.firstOrNull { it.key == (legacyKeys[event.key] ?: event.key) }

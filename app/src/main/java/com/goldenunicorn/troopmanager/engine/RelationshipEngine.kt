@@ -278,7 +278,15 @@ object RelationshipEngine {
             val blocker = intimacyBlocker(state)
             if (blocker != null) return GameEngine.ActionResult(state, blocker)
             if (r.pendingEvent != null) return GameEngine.ActionResult(state, "Besprecht zuerst das offene Ereignis.")
-            val event = RelationshipEvent("intimacy", "Ein Abend für euch", "Der lange Feldzug liegt hinter euch. Zum ersten Mal seit Wochen gehört der Abend nur euch. Ihr könnt ihn gemeinsam verbringen, über den Krieg sprechen oder einander Ruhe lassen.", adultsOnly = true, consentRequired = true, presentation = "FADE_TO_BLACK")
+            val event = RelationshipEvent("intimacy", "Ein Abend für euch", "${c.name} schließt die Tür. Beide ab 18, heute ein Ja. Wählt Bett, Zuber, langsam oder hart. Reden und Nein bleiben offen.", adultsOnly = true, consentRequired = true, presentation = "EXPLICIT",
+                options = listOf(
+                    RelationshipChoice("bed", "Bett", "Ihr bleibt im Bett."),
+                    RelationshipChoice("bath", "Zuber", "Ihr geht zum Zuber."),
+                    RelationshipChoice("slow", "Langsam", "Ihr lasst euch Zeit."),
+                    RelationshipChoice("hard", "Hart", "Ihr wollt es deutlich."),
+                    RelationshipChoice("talk", "Nur reden", "Ihr bleibt angezogen."),
+                    RelationshipChoice("no", "Nein, heute nicht", "Ein Nein ohne Vorwurf.", boundary = true),
+                ))
             return GameEngine.ActionResult(state.copy(relationship = r.copy(pendingEvent = event, intimacyConsentDay = state.day)), "${c.name} stimmt einem privaten Abend zu. Du entscheidest freiwillig, ob ihr ihn gemeinsam verbringt.")
         }
         if (action in setOf("open_relationship", "monogamy")) {
@@ -305,12 +313,13 @@ object RelationshipEngine {
         val text = when (target) {
             RomanceStage.INTEREST -> "Du sprichst offen über deine Gefühle. ${c.name} erwidert dein Interesse."
             RomanceStage.ROMANCE -> "Ihr fragt einander und teilt euren ersten Kuss."
-            RomanceStage.PARTNERSHIP -> "Ihr entscheidet euch freiwillig für eine feste Partnerschaft."
+            RomanceStage.PARTNERSHIP -> "Ihr entscheidet euch freiwillig für eine feste Partnerschaft. Ab jetzt reicht für eine Nacht ein gemeinsames Ja."
             RomanceStage.ENGAGED -> "${c.name} nimmt deinen Antrag aus freiem Willen an."
             RomanceStage.MARRIED -> "Ihr versprecht euch eine gemeinsame Zukunft als Lebenspartner."
             else -> "Ihr entscheidet gemeinsam, das Reich als Herrscherpaar zu führen."
         }
-        val nextR = r.copy(actionDay = state.day, spentActions = spent + cost, romanceStage = target, attraction = maxOf(r.attraction, 60), commitment = maxOf(r.commitment, target.ordinal * 15), lastRomanceDay = state.day)
+        val openNight = target >= RomanceStage.PARTNERSHIP && state.settings.romance == RomanceMode.MATURE && state.player.age >= 18 && state.companion.age >= 18
+        val nextR = r.copy(actionDay = state.day, spentActions = spent + cost, romanceStage = target, attraction = maxOf(r.attraction, 60), commitment = maxOf(r.commitment, target.ordinal * 15), lastRomanceDay = state.day, consent = if (openNight) r.consent.copy(intimacyAllowed = true) else r.consent)
         var next = state.copy(relationship = nextR, companion = c.copy(role = if (target == RomanceStage.CO_RULERS) "Mitregentin" else c.role))
         next = remember(next, action, text, 5, setOf("voluntary", "adults"))
         next = next.copy(chronicle = (next.chronicle + ChronicleEntry(next.day, target.label, text)).takeLast(2000))
@@ -330,9 +339,9 @@ object RelationshipEngine {
         state.settings.romance != RomanceMode.MATURE -> "Intime Ereignisse sind in den Einstellungen ausgeschaltet."
         state.player.age < 18 || state.companion.age < 18 -> "Private Intimität ist ausschließlich Erwachsenen ab 18 erlaubt."
         state.relationship.romanceStage < RomanceStage.PARTNERSHIP -> "Ein privater Abend benötigt eine freiwillige feste Partnerschaft."
-        !state.relationship.consent.romanceAllowed || !state.relationship.consent.intimacyAllowed || "no_intimacy" in state.relationship.consent.boundaries -> "Die vereinbarten persönlichen Grenzen erlauben diese Begegnung nicht."
-        state.companion.trust < 80 || state.companion.respect < 70 || state.relationship.commitment < 45 || state.relationship.conflict > 20 -> "Heute braucht ihr ein Gespräch und Abstand; es gibt kein gemeinsames Ja."
-        state.day - state.relationship.lastIntimacyDay < 7 -> "Private Nähe entsteht aus eurer Geschichte. Lasst euch Zeit."
+        !state.relationship.consent.romanceAllowed || "no_intimacy" in state.relationship.consent.boundaries -> "Sie hat Nähe ausgeschlossen. Das bleibt so, bis ihr es gemeinsam ändert."
+        state.companion.trust < 55 || state.relationship.conflict > 40 -> "Heute ist zu viel Streit. Erst reden."
+        state.day - state.relationship.lastIntimacyDay < 2 -> "Ihr wart gerade erst beieinander. Zwei Tage Abstand."
         PresenceEngine.sharedActivityBlocker(state) != null -> "Im Einsatz, bei Gefangenschaft, Verletzung oder an verschiedenen Orten findet keine intime Begegnung statt."
         else -> null
     }
@@ -341,16 +350,24 @@ object RelationshipEngine {
         val blocker = intimacyBlocker(state)
         if (blocker != null || state.relationship.intimacyConsentDay != state.day) return GameEngine.ActionResult(state.copy(relationship = state.relationship.copy(pendingEvent = null, intimacyConsentDay = null)), blocker ?: "Die Begegnung braucht ein neues gemeinsames Ja.")
         val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
-        if (choice != 2 && spent + 2 > 2) return GameEngine.ActionResult(state, "Heute ist eure gemeinsame Zeit ausgeschöpft.")
-        var next = if (choice == 2) state else spend(state, 2)
+        if (choice != 5 && spent + 2 > 2) return GameEngine.ActionResult(state, "Heute ist eure gemeinsame Zeit ausgeschöpft.")
+        var next = if (choice == 5) state else spend(state, 2)
         next = next.copy(relationship = next.relationship.copy(pendingEvent = null, intimacyConsentDay = null))
-        val text = when (choice) {
-            0 -> "Ihr zieht euch gemeinsam zurück. Der Rest der Nacht gehört nur euch.\nAm nächsten Morgen sprecht ihr leise über eure gemeinsame Zukunft."
-            1 -> "Ihr sprecht über den Feldzug und die Sorgen der Menschen. Nähe braucht kein Versprechen für diese Nacht."
-            else -> "Ihr lasst einander Ruhe. Ein Nein wird ohne Vorwurf angenommen."
+        val name = state.companion.name
+        val kind = listOf("bed", "bath", "slow", "hard").getOrNull(choice) ?: "talk"
+        val scene = when (kind) {
+            "bed" -> "$name zieht dich ins Bett, küsst dich und setzt sich auf dich. Sie nimmt dich in sich auf und reitet, bis ihr beide kommt. Danach bleibt sie auf deiner Brust liegen."
+            "bath" -> "Im Zuber setzt sich $name auf deinen Schoß, führt deine Hand zwischen ihre Schenkel und lässt dich von hinten in sie. Das Wasser schwappt, sie stöhnt deinen Namen, und ihr kommt zusammen."
+            "slow" -> "$name lässt sich Zeit. Sie nimmt dich in den Mund, sieht dich an, und legt sich dann unter dich. Du stößt langsam und tief, bis sie sich an dir festkrallt."
+            "hard" -> "$name will es deutlich. Sie dreht sich auf die Knie, sagt dass du nicht nachlassen sollst, und kommt, während du hart in sie stößt. Danach lacht sie leise und bleibt nackt bei dir."
+            else -> "Ihr bleibt angezogen, trinkt und redet. Nähe braucht diese Nacht kein Bett."
         }
-        if (choice == 0) next = next.copy(relationship = next.relationship.copy(lastIntimacyDay = state.day, intimacy = (next.relationship.intimacy + 1).coerceAtMost(100)))
-        next = remember(next, if (choice == 0) "private_evening" else "respected_boundary", text, if (choice == 0) 5 else if (choice == 2) 0 else 2, if (choice == 0) setOf("FADE_TO_BLACK", "consensual", "adults") else setOf("boundary"))
+        val text = if (choice == 5) "Ihr lasst einander Ruhe. Ein Nein wird ohne Vorwurf angenommen." else scene
+        if (choice in 0..3) {
+            val shot = state.relationship.nightSceneUri ?: "asset:$kind"
+            next = next.copy(relationship = next.relationship.copy(lastIntimacyDay = state.day, intimacy = (next.relationship.intimacy + 1).coerceAtMost(100), nightAlbum = (next.relationship.nightAlbum + shot).takeLast(12)))
+        }
+        next = remember(next, if (choice in 0..3) "private_evening" else "respected_boundary", text, if (choice in 0..3) 5 else if (choice == 5) 0 else 2, if (choice in 0..3) setOf("EXPLICIT", "consensual", "adults", kind) else setOf("boundary"))
         return GameEngine.ActionResult(next, text)
     }
 

@@ -62,6 +62,13 @@ internal fun RulerPairScreen(
             onNotice("Portrait der Gefährtin gespeichert.")
         }
     }
+    val nightPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            onState(state.copy(relationship = state.relationship.copy(nightSceneUri = uri.toString())))
+            onNotice("Eigenes Szenenbild gespeichert. Es erscheint im Abend.")
+        }
+    }
     fun action(id: String) {
         val result = RelationshipEngine.action(state, id)
         onState(result.state)
@@ -156,9 +163,18 @@ internal fun RulerPairScreen(
                         }
                         if (state.relationship.romanceStage != RomanceStage.NONE) SmallAction("Als Freunde weitergehen") { action("friendship") }
                         if (state.settings.romance == RomanceMode.MATURE && state.relationship.romanceStage >= RomanceStage.PARTNERSHIP) {
-                            SmallAction("Privatsphäre und Grenzen besprechen") { action("boundaries") }
-                            SmallAction("Einen privaten Abend vorschlagen") { action("intimacy") }
-                            Text("Freiwillig, ab 18 und mit Ausblende. Ein Nein wird ohne Strafe angenommen.", color = Mist, fontSize = 11.sp)
+                            OutlinedButton(enabled = sharedBlocker == null, onClick = { action("intimacy") }, modifier = Modifier.fillMaxWidth()) { Text("Nacht miteinander") }
+                            SmallAction("Eigenes Szenenbild aus der Galerie") { nightPicker.launch(arrayOf("image/*")) }
+                            Text("Ab Partnerschaft reicht ein Ja. Im Dialog: Bett, Zuber, langsam, hart. Nein bleibt ohne Strafe.", color = Mist, fontSize = 11.sp)
+                            if (state.relationship.nightAlbum.isNotEmpty()) {
+                                Text("Galerie der Abende", color = PaleGold, fontWeight = FontWeight.Bold)
+                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    state.relationship.nightAlbum.takeLast(6).forEach { shot ->
+                                        val model = if (shot.startsWith("asset:")) "file:///android_asset/night_${if (shot.endsWith("bath")) "bath" else if (shot.endsWith("hard") || shot.endsWith("slow")) "close" else "bed"}.webp" else shot
+                                        AsyncImage(model, "Abend", Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -277,6 +293,11 @@ private fun RelationshipDialogue(state: GameState, event: RelationshipEvent, onD
         Surface(color = Panel, shape = RoundedCornerShape(22.dp)) {
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 660.dp), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item { RulerPortrait(state.companion.portraitUri, "companion", state.companion.name, Modifier.fillMaxWidth(), 140) }
+                if (event.key == "intimacy" && state.settings.romance == RomanceMode.MATURE && state.player.age >= 18 && state.companion.age >= 18) item {
+                    val scene = state.relationship.nightSceneUri ?: listOf("file:///android_asset/night_bed.webp", "file:///android_asset/night_bath.webp", "file:///android_asset/night_close.webp")[state.relationship.intimacy % 3]
+                    AsyncImage(scene, "Abend", Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
+                    Text(if (state.relationship.nightSceneUri != null) "Dein Bild" else "Szene wechselt mit den Abenden", color = Mist, fontSize = 11.sp)
+                }
                 item { Text(event.title, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 22.sp) }
                 item { Text(event.text, color = Mist) }
                 blocker?.let { item { Text(it, color = Gold, fontSize = 12.sp) } }

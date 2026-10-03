@@ -248,7 +248,7 @@ object CharacterEngine {
         if (r.romanceStage != RomanceStage.NONE || r.intimacyConsentDay != null || r.pendingEvent?.adultsOnly == true)
             require(state.player.age >= 18 && state.companion.age >= 18) { "Romanze ist ausschließlich Erwachsenen erlaubt." }
         if (r.intimacyConsentDay != null) require(r.consent.intimacyAllowed && r.romanceStage >= RomanceStage.PARTNERSHIP) { "Intime Zustimmung benötigt eine freiwillige Partnerschaft." }
-        if (r.pendingEvent?.key == "intimacy") require(r.pendingEvent.adultsOnly && r.pendingEvent.consentRequired && r.pendingEvent.presentation == "FADE_TO_BLACK" && r.intimacyConsentDay != null) { "Intime Ereignisse benötigen alle Schutzbedingungen." }
+        if (r.pendingEvent?.key == "intimacy") require(r.pendingEvent.adultsOnly && r.pendingEvent.consentRequired && r.pendingEvent.presentation in setOf("FADE_TO_BLACK", "EXPLICIT") && r.intimacyConsentDay != null && state.player.age >= 18 && state.companion.age >= 18) { "Intime Ereignisse benötigen zwei Erwachsene und ein gemeinsames Ja." }
         require(state.court.characters.map { it.commanderId }.distinct().size == state.court.characters.size) { "Doppelte Hofcharaktere." }
         state.court.characters.forEach { d -> require(d.age in 0..150 && listOf(d.ambition, d.courage, d.diplomacy, d.stewardship, d.intrigue, d.medicine, d.playerOpinion).all { it in 0..100 }) { "Ungültiger Hofcharakter." } }
         require(state.court.offices.values.distinct().size == state.court.offices.size && state.court.offices.values.all { id -> state.commanders.any { it.id == id } }) { "Ungültige Hofämter." }

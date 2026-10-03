@@ -185,7 +185,7 @@ object MilitaryEconomyEngine {
             if (room <= 0) return
             var possible = minOf(wanted, room)
             if (iron > 0) possible = minOf(possible, raw.iron / iron)
-            if (wood > 0) possible = minOf(possible, raw.wood / wood)
+            if (wood > 0) possible = minOf(possible, (raw.wood * 35 / 100) / wood)
             if (food > 0) possible = minOf(possible, raw.food / food)
             if (gold > 0) possible = minOf(possible, raw.gold / gold)
             if (possible <= 0) return

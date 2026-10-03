@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +44,7 @@ internal fun FrontierScreen(
     var expandedWeapon by remember { mutableStateOf<WallWeaponType?>(null) }
     var expandedDesign by rememberSaveable { mutableStateOf<Long?>(null) }
     var editorOpen by rememberSaveable { mutableStateOf(false) }
+    var houseOpen by rememberSaveable { mutableStateOf(false) }
     val inBattle = state.battleSession?.isActive == true
     fun apply(result: GameEngine.ActionResult) {
         onState(result.state)
@@ -68,7 +70,7 @@ internal fun FrontierScreen(
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (inBattle) item {
@@ -76,6 +78,7 @@ internal fun FrontierScreen(
             }
             when (tab) {
                 0 -> {
+                    item { FrontierMap(state, !inBattle, ::apply) }
                     item { SectionTitle("Grenzlage") }
                     val visibleHordes = state.frontier.hordes.filter { it.discovered }.sortedBy { it.daysToArrival }
                     if (visibleHordes.isEmpty()) item {
@@ -85,7 +88,7 @@ internal fun FrontierScreen(
                     item { SectionTitle("Patrouille") }
                     item { PatrolCard(state, !inBattle, ::apply) }
                     item { SectionTitle("Kampfgefährten") }
-                    item { FrontierBondCard(state, !inBattle, ::apply) }
+                    item { FrontierBondCard(state, !inBattle, ::apply) { houseOpen = true } }
                     item { SectionTitle("Hilfe unterwegs") }
                     if (state.frontier.reinforcements.isEmpty()) item {
                         EmptyCard("Keine verbündete Verstärkung auf Reisen. Hilfe anfordern oder Soldaten kaufen unter Verbündete.")
@@ -146,6 +149,7 @@ internal fun FrontierScreen(
         apply(result)
         if (result.state != state) editorOpen = false
     }
+    if (houseOpen) HouseDialog(state, { houseOpen = false }, ::apply)
 }
 
 @Composable
@@ -221,13 +225,14 @@ private fun PatrolCard(state: GameState, actionsEnabled: Boolean, apply: (GameEn
 }
 
 @Composable
-private fun FrontierBondCard(state: GameState, actionsEnabled: Boolean, apply: (GameEngine.ActionResult) -> Unit) {
+private fun FrontierBondCard(state: GameState, actionsEnabled: Boolean, apply: (GameEngine.ActionResult) -> Unit, onHouse: () -> Unit) {
     val bond = state.frontier.bond
     FrontierCard {
         Text(bond.stage, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Text("${bond.sessions} gemeinsame Trainingseinheiten", color = Gold, fontSize = 13.sp)
         if (bond.sharedBattles > 0) Text("${bond.sharedBattles} gemeinsame Schlachten", color = Mist, fontSize = 12.sp)
         Text("Gemeinsame Übung stärkt eure Kampffertigkeiten und euer Zusammenspiel.", color = Mist, fontSize = 12.sp)
+        FrontierAction("Haus öffnen", true, onClick = onHouse)
         val reason = FrontierEngine.companionTrainingUnavailableReason(state)
         FrontierAction("Mit ${state.companion.name} trainieren", actionsEnabled && reason == null) {
             apply(FrontierEngine.trainWithCompanion(state))
@@ -261,8 +266,17 @@ private fun AllyCard(
     val number = amount.toIntOrNull() ?: 0
     FrontierCard {
         Column(Modifier.fillMaxWidth().clickable(onClick = onExpand)) {
-            Text(pact.people.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text("${pact.stock} Soldaten verfügbar · ${if (expanded) "Weniger ↑" else "Details ↓"}", color = Gold, fontSize = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AsyncImage(when (pact.people) {
+                    AllyPeople.GOLD_ELVES -> "file:///android_asset/category_gold_elf.webp"
+                    AllyPeople.FREE_HOLDS -> "file:///android_asset/category_human.webp"
+                    AllyPeople.WALL_ENVOYS -> "file:///android_asset/category_wall.webp"
+                }, null, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
+                Column {
+                    Text(pact.people.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("${pact.stock} Soldaten verfügbar · ${if (expanded) "Weniger ↑" else "Details ↓"}", color = Gold, fontSize = 12.sp)
+                }
+            }
         }
         ArmyQuality("Vertrauen", pact.trust)
         if (expanded) {
@@ -323,6 +337,72 @@ private fun WallWeaponCard(
     }
 }
 
+
+@Composable
+private fun FrontierMap(state: GameState, actionsEnabled: Boolean, apply: (GameEngine.ActionResult) -> Unit) {
+    var picked by remember { mutableStateOf<String?>(null) }
+    val horde = state.frontier.hordes.firstOrNull { it.id == picked }
+    Box(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(18.dp))) {
+        AsyncImage("file:///android_asset/world_map.webp", null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x22000000), Color(0xCC070A0D)))))
+        Text("Feste", color = PaleGold, fontWeight = FontWeight.Black, modifier = Modifier.align(Alignment.Center))
+        state.frontier.patrol?.let {
+            Text("Patrouille ${it.soldiers}", color = Color.White, fontSize = 11.sp, modifier = Modifier.align(Alignment.BottomStart).padding(8.dp))
+        }
+        state.frontier.hordes.filter { it.discovered }.forEach { banner ->
+            val align = when (banner.kind) {
+                HordeKind.ORC -> Alignment.CenterStart
+                HordeKind.URUK -> Alignment.TopEnd
+                HordeKind.TAO_TEI -> Alignment.BottomEnd
+            }
+            Surface(color = Color(0xCC121920), shape = RoundedCornerShape(12.dp), modifier = Modifier.align(align).padding(8.dp).clickable { picked = banner.id }) {
+                Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(when (banner.kind) {
+                        HordeKind.ORC -> "file:///android_asset/category_human.webp"
+                        HordeKind.URUK -> "file:///android_asset/category_wall.webp"
+                        HordeKind.TAO_TEI -> "file:///android_asset/menu_cover.webp"
+                    }, null, Modifier.height(36.dp).width(36.dp), contentScale = ContentScale.Crop)
+                    Text("${banner.kind.label} · ${banner.daysToArrival} T.", color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(start = 6.dp))
+                }
+            }
+        }
+    }
+    Text("Tipp ein Banner an. Lager wachsen, wenn du sie lässt. Sturm kostet 40 Holz. Mauerwaffen feuern, wenn du befestigst.", color = Mist, fontSize = 12.sp)
+    if (horde != null) AlertDialog(
+        onDismissRequest = { picked = null },
+        title = { Text(horde.name) },
+        text = { Text("${horde.kind.label} · noch ${horde.daysToArrival} Tage · ${horde.estimateMinimum}–${horde.estimateMaximum}. Orks und Uruks können zusammen marschieren. Tao Tei sind Feinde aller.") },
+        confirmButton = { TextButton(onClick = { apply(FrontierEngine.assaultCamp(state, horde.id)); picked = null }, enabled = actionsEnabled) { Text("Lager stürmen") } },
+        dismissButton = { TextButton(onClick = { apply(FrontierEngine.huntHorde(state, horde.id)); picked = null }, enabled = actionsEnabled) { Text("Nur jagen") } },
+    )
+}
+
+@Composable
+private fun HouseDialog(state: GameState, onDismiss: () -> Unit, apply: (GameEngine.ActionResult) -> Unit) {
+    val children = state.dynasty.members.filter { it.alive && it.id != state.dynasty.rulerId }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Schließen") } },
+        title = { Text("Haus") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                AsyncImage(state.companion.portraitUri ?: "file:///android_asset/portrait_companion.webp", null, Modifier.fillMaxWidth().height(120.dp), contentScale = ContentScale.Crop)
+                Text("${state.companion.name} · ${state.frontier.bond.stage}", color = PaleGold, fontWeight = FontWeight.Bold)
+                Text("Vertrauen ${state.companion.trust} · Zuneigung ${state.companion.affection}", color = Mist, fontSize = 12.sp)
+                Text("Schwert ${state.player.sword}/${state.companion.sword} · Bogen ${state.player.bow}/${state.companion.bow}. Gemeinsames Training hebt beide.", color = Gold, fontSize = 12.sp)
+                Text("Goldelben, Freie Höfe und Mauerlegion schicken Hilfe mit Reisezeit. Vertrauen steht unter Verbündete.", color = Mist, fontSize = 12.sp)
+                TextButton(onClick = { apply(FrontierEngine.trainWithCompanion(state)) }) { Text("Mit ihr trainieren") }
+                if (children.isEmpty()) Text("Noch kein Kind im Haus. Leichtes Training ab 10, Notensatz ab 16.", color = Mist, fontSize = 12.sp)
+                children.forEach { child ->
+                    val age = child.age(state.day)
+                    Text("${child.name}, $age", color = Color.White)
+                    TextButton(onClick = { apply(FrontierEngine.trainChild(state, child.id)) }, enabled = age >= 10) { Text(if (age < 10) "Ab 10" else "Leicht trainieren") }
+                }
+            }
+        },
+    )
+}
+
 @Composable
 private fun CustomDesignCard(
     state: GameState,
@@ -355,6 +435,9 @@ private fun CustomDesignCard(
             }
             if (design.trainingAmount > 0) Text("Ein weiterer Auftrag ist nach Abschluss der laufenden Ausbildung möglich.", color = Mist, fontSize = 12.sp)
             else if (available < 50) Text("Ausbildungsgruppen benötigen 10, 25 oder 50 verfügbare Rekruten dieser Kultur.", color = Mist, fontSize = 12.sp)
+            FrontierAction(if (design.trainingAmount > 0) "Erst nach der Ausbildung löschbar" else "Design löschen", actionsEnabled && design.trainingAmount == 0) {
+                apply(FrontierEngine.deleteDesign(state, design.id))
+            }
         }
     }
 }

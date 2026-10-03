@@ -2,7 +2,9 @@ package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
@@ -126,7 +128,7 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
 
 @Composable
 internal fun ResourceStrip(r: Resources, production: Resources? = null) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         listOf(
                 Triple("◈", "Gold", r.gold),
                 Triple("✦", "Nahrung", r.food),
@@ -136,20 +138,20 @@ internal fun ResourceStrip(r: Resources, production: Resources? = null) {
             )
             .forEach { (icon, label, value) ->
                 Surface(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(11.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = Panel2,
                 ) {
                     Column(
-                        Modifier.padding(horizontal = 3.dp, vertical = 7.dp),
+                        Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(icon, color = Gold, fontSize = 12.sp)
+                        Text("$icon $label", color = Color(0xFF9FAAB1), fontSize = 9.sp, maxLines = 1)
                         Text(
                             value.toString(),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
+                            maxLines = 1,
                         )
                         if (production != null) {
                             val gain =
@@ -161,12 +163,12 @@ internal fun ResourceStrip(r: Resources, production: Resources? = null) {
                                     else -> production.iron
                                 }
                             Text(
-                                "${if (gain >= 0) "+" else ""}$gain/Tag",
+                                "${if (gain >= 0) "+" else ""}$gain",
                                 color = if (gain < 0) Danger else Gold,
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
+                                maxLines = 1,
                             )
                         }
-                        Text(label, color = Color(0xFF9FAAB1), fontSize = 10.sp, maxLines = 1)
                     }
                 }
             }

@@ -32,6 +32,8 @@ data class RelationshipState(
     val lastDirectorDay: Int = -1,
     val lastReactionDay: Int = -1,
     val observedPolicy: Map<String, Int> = emptyMap(),
+    val nightSceneUri: String? = null,
+    val nightAlbum: List<String> = emptyList(),
 )
 
 @Serializable

@@ -174,6 +174,9 @@ data class FrontierState(
     val nextReinforcementId: Long = 1,
     val lastTickDay: Int = 0,
     val hordePressureKeys: Set<String> = emptySet(),
+    val dailyGoal: String = "",
+    val dailyGoalClaimed: Boolean = false,
+    val lastStoryDay: Int = 0,
 )
 
 /** Campaign forecasts reveal only what scouts have reported, including for legacy invasions. */

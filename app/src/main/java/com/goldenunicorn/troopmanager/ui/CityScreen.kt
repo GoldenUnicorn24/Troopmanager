@@ -190,7 +190,7 @@ internal fun CityScreen(
                 LazyColumn(
                     Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp),
+                    contentPadding = PaddingValues(bottom = 88.dp),
                 ) {
                     item { ContextTutorialCard(state, "city", onState) }
                     item {

@@ -86,6 +86,7 @@ object InvasionEngine {
                 if (it.id == worldArmy.id) it.copy(status = WorldArmyStatus.ENGAGED) else it
             }))
             next = next.copy(realm = next.realm.copy(threat = 100))
+            if (next.homeArmySize == 0) next = FrontierEngine.armNottruppe(next)
             if (next.homeArmySize > 0)
                 next =
                     BattleEngine.start(
@@ -131,7 +132,7 @@ object InvasionEngine {
                                     ChronicleEntry(
                                         next.day,
                                         "Unverteidigte Festung",
-                                        "Die Invasion plündert die Festung. Missionstruppen bleiben unterwegs. Die Siedlung kann sich erholen.",
+                                        "Keine Soldaten und keine Nottruppe an der Mauer. Die Invasion plündert die Festung.",
                                     ))
                                 .takeLast(2000),
                     )

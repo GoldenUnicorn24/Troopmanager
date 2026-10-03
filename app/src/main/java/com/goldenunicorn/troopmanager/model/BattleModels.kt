@@ -91,6 +91,8 @@ data class BattleContingent(
     val commanderWounded: Boolean = false,
     val commanderRescued: Boolean = false,
     val routed: Boolean = false,
+    val displayName: String? = null,
+    val designId: Long? = null,
 )
 
 @Serializable

@@ -29,12 +29,12 @@ internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit,
         HubTabs(listOf("Tageslage", "Entscheidungen & Reich", "Aufgaben", "Tagesbericht", "Chronik"), page) { page = it }
         Box(Modifier.weight(1f)) {
             when (page) {
-                0 -> CommandOverview(state, onNavigate, onAdvanceDay)
+                0 -> CommandOverview(state, onNavigate, onAdvanceDay, onState, onNotice)
                 1 -> RealmDashboard(state, onState, onNotice, { onNavigate(GameDestination.CITY) },
                     { onNavigate(GameDestination.WORLD) }, { onNavigate(GameDestination.MILITARY) },
                     { onNavigate(GameDestination.COURT) }, onAdvanceDay)
                 2 -> QuestJournalScreen(state, onNavigate)
-                3 -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                3 -> LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item { PageTitle("TAGESBERICHT · TAG ${state.day}", "Entscheidungen, Herkunft und Folgen deiner Tageslage.") }
                     items(state.dailyReport.entries, key = { "${it.category}:${it.title}:${it.detail}" }) { row ->
                         CommandCard(row.title, { onNavigate(reportDestination(row)) }) {
@@ -50,7 +50,7 @@ internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit,
 }
 
 @Composable
-private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> Unit, onAdvanceDay: () -> Unit) {
+private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> Unit, onAdvanceDay: () -> Unit, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val presence = PresenceEngine.presence(state)
     val tasks = remember(state) { QuestJournalEngine.tasks(state) }
     val urgent = tasks.filter { it.category in listOf(JournalCategory.OPEN, JournalCategory.PERSONAL) ||
@@ -58,6 +58,27 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
     val completed = state.dailyReport.entries.filter { it.important && it.title.contains("abgeschlossen") }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageTitle("KOMMANDOZENTRALE · TAG ${state.day}", state.realm.settlementName) }
+        item {
+            CommandCard("Tagesziel", { onNavigate(GameDestination.FRONTIER) }) {
+                Text(state.frontier.dailyGoal.ifBlank { "Prüft Hof, Ausbildung und Grenze." }, color = Color.White, fontSize = 14.sp)
+                Text(if (state.frontier.dailyGoalClaimed) "Tageslohn genommen." else "Patrouille oder Ausbildung, dann den Lohn holen.", color = Mist, fontSize = 12.sp)
+                if (!state.frontier.dailyGoalClaimed) GoldButton("Abendlohn nehmen", {
+                    val result = FrontierEngine.claimDailyGoal(state)
+                    onState(result.state)
+                    onNotice(result.message)
+                })
+                if (state.commanders.size < 3 && state.realm.level(BuildingType.BARRACKS) >= 4) SmallAction("Hauptmann verpflichten · 600 Gold") {
+                    val result = FrontierEngine.hireCaptain(state)
+                    onState(result.state)
+                    onNotice(result.message)
+                }
+            }
+        }
+        if (state.day <= 7) item {
+            CommandCard("Erster Abend", { onNavigate(GameDestination.MILITARY) }) {
+                Text("1. Hof und Bauernhof prüfen. 2. 20 Mann ausbilden. 3. Unter Grenze eine kleine Patrouille schicken. Die ersten Orks bleiben klein.", color = Mist, fontSize = 13.sp)
+            }
+        }
         item {
             CommandCard(if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Das Herrscherpaar" else state.title,
                 { onNavigate(GameDestination.RULERS) }) {

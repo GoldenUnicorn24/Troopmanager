@@ -6,7 +6,7 @@ data class DailyProduction(val gross: Resources, val upkeep: Int, val net: Resou
 
 object EconomyEngine {
     fun workerFactor(state: GameState, kind: ResourceKind): Double {
-        val efficiency = (state.workers.toDouble() / state.workerDemand.coerceAtLeast(1)).coerceIn(0.0, 1.0)
+        val efficiency = (state.workers.toDouble() / state.workerDemand.coerceAtLeast(1)).coerceIn(0.7, 1.0)
         if (state.city.workerPriority == WorkerPriority.BALANCED) return efficiency
         fun priority(k: ResourceKind) = when (k) {
             ResourceKind.GOLD -> WorkerPriority.TRADE
@@ -45,11 +45,11 @@ object EconomyEngine {
     fun breakdown(state: GameState, kind: ResourceKind): ResourceBreakdown {
         val r = state.realm
         val (base, perLevel, perTerritory) = when (kind) {
-            ResourceKind.GOLD -> Triple(200, 100, 75)
-            ResourceKind.FOOD -> Triple(400, 150, 100)
-            ResourceKind.WOOD -> Triple(200, 100, 50)
-            ResourceKind.STONE -> Triple(160, 100, 40)
-            ResourceKind.IRON -> Triple(120, 75, 25)
+            ResourceKind.GOLD -> Triple(450, 180, 120)
+            ResourceKind.FOOD -> Triple(900, 320, 180)
+            ResourceKind.WOOD -> Triple(700, 260, 90)
+            ResourceKind.STONE -> Triple(480, 200, 70)
+            ResourceKind.IRON -> Triple(320, 150, 45)
         }
         fun safe(value: Long) = value.coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
         val building = safe(r.level(productionBuilding(kind)).toLong() * perLevel)
@@ -198,18 +198,18 @@ object EconomyEngine {
             Culture.entries
                 .filter { ArmyEngine.population(pop, it) > 0 }
                 .forEach { c ->
-                    val baseline = (if (c == Culture.GOLD_ELF) 2 else 12) * (1 + next.realm.territory)
+                    val favor = next.culturePatronage[c] ?: 0
+                    val top = next.culturePatronage.values.maxOrNull() ?: 0
+                    val bias = (1.0 + favor * 0.55) * (if (top >= 3 && favor < top) 0.4 else 1.0)
+                    val baseline = ((if (c == Culture.GOLD_ELF) 6 else 12) * (1 + next.realm.territory) * bias).toInt()
                     val social = (0.5 + next.city.satisfaction / 100.0) * (0.75 + next.city.security / 200.0)
                     val desired = (baseline * next.city.taxLevel.growthFactor * social).toInt().coerceAtLeast(0)
                     val growth = minOf(desired, (next.city.housingCapacity - pop.total).coerceAtLeast(0))
                     val before = ArmyEngine.population(pop, c)
                     pop = ArmyEngine.adjustPopulation(pop, c, growth)
-                    pop =
-                        ArmyEngine.adjustRecruits(
-                            pop,
-                            c,
-                            (ArmyEngine.population(pop, c) - before) / 3,
-                        )
+                    val newcomers = ArmyEngine.population(pop, c) - before
+                    val volunteer = ((ArmyEngine.population(pop, c) / (if (c == Culture.GOLD_ELF) 18 else 40)) * (1 + favor)).coerceAtMost(8 + favor * 6)
+                    pop = ArmyEngine.adjustRecruits(pop, c, (newcomers / 2 + volunteer).coerceAtLeast(0))
                 }
             next = next.copy(population = pop)
         }

@@ -138,6 +138,8 @@ object BattleEngine {
             chosen.flatMap { d ->
                 d.units.map { u ->
                     val pool = state.armyPools.first { it.type == u.type }
+                    val named = state.frontier.designs.firstOrNull { it.unitType == u.type && it.soldiers > 0 }
+                    val namedCount = minOf(u.amount, named?.soldiers ?: 0)
                     BattleContingent(
                         u.type,
                         d.commanderId,
@@ -147,6 +149,8 @@ object BattleEngine {
                         pool.experience,
                         ((ownMorale ?: pool.morale) + CharacterEngine.bonuses(state).morale + (d.commanderId?.let { CharacterEngine.commanderMorale(state, it) } ?: 0) + if (participation == BattleParticipation.PERSONAL) 8 else 0).coerceAtMost(100),
                         pool.equipment,
+                        displayName = if (namedCount > 0) named?.name else null,
+                        designId = if (namedCount > 0) named?.id else null,
                     )
                 }
             }
@@ -158,13 +162,14 @@ object BattleEngine {
                 state,
                 "Mindestens ein Kontingent muss eine Front halten.",
             )
+        val wallVolley = if (tactic == Tactic.FORTIFY) state.frontier.weapons.filter { it.count > 0 && it.ammunition > 0 }.sumOf { it.type.defense * it.count } else 0
         val strength =
-            enemyStrength
+            ((enemyStrength
                 ?: (when (enemy) {
                     EnemyType.ORC -> 220
                     EnemyType.URUK -> 380
                     EnemyType.TAO_TEI -> 480
-                } + state.realm.territory * 35 + state.victories * 55)
+                } + state.realm.territory * 35 + state.victories * 55)) - wallVolley).coerceAtLeast(40)
         if (enemyUnits.isNotEmpty() && (enemyUnits.any { it.amount <= 0 } || enemyUnits.map { it.type }.distinct().size != enemyUnits.size || enemyUnits.sumOf { it.amount.toLong() } != strength.toLong()))
             return GameEngine.ActionResult(state, "Die gegnerische Truppenliste muss der Startstärke entsprechen.")
         val devices =
@@ -1125,6 +1130,12 @@ object BattleEngine {
             state.copy(
                 battleSession = final,
                 armyPools = pools,
+                frontier = state.frontier.copy(designs = state.frontier.designs.map { design ->
+                    val losses = session.contingents.filter { it.designId == design.id }.sumOf { (it.startSoldiers - it.soldiers).coerceAtLeast(0) }
+                    if (losses == 0) design else design.copy(soldiers = (design.soldiers - losses).coerceAtLeast(0))
+                }, weapons = if (session.tactic != Tactic.FORTIFY) state.frontier.weapons else state.frontier.weapons.map { stock ->
+                    if (stock.count == 0 || stock.ammunition <= 0) stock else stock.copy(ammunition = (stock.ammunition - 1).coerceAtLeast(0), integrity = (stock.integrity - 4).coerceAtLeast(20))
+                }),
                 commanders = state.commanders.map { commander ->
                     val deployed = session.contingents.filter { it.commanderId == commander.id && it.startSoldiers > 0 }
                     if (deployed.isEmpty()) commander else commander.copy(
