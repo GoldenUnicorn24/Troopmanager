@@ -6,6 +6,15 @@ import kotlin.math.ceil
 /** Border quantities reserve existing troops. Invasion banners only project their world army. */
 object FrontierEngine {
     data class WallVolleyResult(val state: GameState, val battle: BattleSession)
+    data class CaptainOffer(
+        val index: Int,
+        val name: String,
+        val culture: Culture,
+        val leadership: Int,
+        val tactics: Int,
+        val trait: String,
+        val cost: Int,
+    )
 
     private fun result(state: GameState, message: String) = GameEngine.ActionResult(state, message)
     private fun log(state: GameState, title: String, text: String): GameState =
@@ -767,15 +776,42 @@ object FrontierEngine {
         return result(log(next, "Volk gefördert", "${culture.label} auf Stufe ${level + 1}. Mehr Zuzug und mehr Rekruten, solange Wohnraum da ist."), "${culture.label} gefördert. Zuzug und Rekruten steigen.")
     }
 
-    fun hireCaptain(state: GameState): GameEngine.ActionResult {
+    fun captainOffers(state: GameState): List<CaptainOffer> {
+        val favored = state.culturePatronage.maxByOrNull { it.value }?.key
+            ?: Culture.entries.maxByOrNull { ArmyEngine.population(state.population, it) }
+            ?: Culture.HUMAN
+        val secondary = Culture.entries.firstOrNull { it != favored && ArmyEngine.population(state.population, it) > 0 } ?: Culture.HUMAN
+        return listOf(
+            CaptainOffer(0, "Aren Falkenblick", favored, 58, 48, "Inspirierend", 600),
+            CaptainOffer(1, "Lysa Sturmhand", secondary, 48, 61, "Taktikerin", 650),
+            CaptainOffer(2, "Torren Schildwall", favored, 64, 43, "Standhaft", 700),
+        )
+    }
+
+    fun hireCaptain(state: GameState): GameEngine.ActionResult = hireCaptain(state, 0)
+
+    fun hireCaptain(state: GameState, offerIndex: Int): GameEngine.ActionResult {
         if (state.commanders.size >= 3) return result(state, "Drei Hauptleute reichen für diese Feste.")
-        if (state.realm.level(BuildingType.BARRACKS) < 4) return result(state, "Ein zweiter Hauptmann braucht Kaserne Stufe 4.")
-        if (state.resources.gold < 600) return result(state, "Der Hauptmann kostet 600 Gold.")
+        if (state.realm.level(BuildingType.BARRACKS) < 4) return result(state, "Ein weiterer Hauptmann braucht Kaserne Stufe 4.")
+        val offer = captainOffers(state).firstOrNull { it.index == offerIndex } ?: return result(state, "Dieses Angebot ist nicht mehr verfügbar.")
+        if (state.resources.gold < offer.cost) return result(state, "${offer.name} verlangt ${offer.cost} Gold.")
         val id = (state.commanders.maxOfOrNull { it.id } ?: 0) + 1
-        val culture = state.culturePatronage.maxByOrNull { it.value }?.key ?: Culture.HUMAN
-        val captain = Commander(id, "Hauptmann $id", culture, "knight", leadership = 46, tactics = 44, rank = "Hauptmann")
-        val next = state.copy(resources = state.resources.copy(gold = state.resources.gold - 600), commanders = state.commanders + captain)
-        return result(log(next, "Hauptmann", "${captain.name} aus den ${culture.label} übernimmt ein Regiment."), "Neuer Hauptmann verpflichtet.")
+        val captain = Commander(
+            id = id,
+            name = offer.name,
+            culture = offer.culture,
+            portraitKey = "knight",
+            leadership = offer.leadership,
+            tactics = offer.tactics,
+            loyalty = 70 + offer.index * 4,
+            trait = offer.trait,
+            rank = "Hauptmann",
+        )
+        val next = state.copy(resources = state.resources.copy(gold = state.resources.gold - offer.cost), commanders = state.commanders + captain)
+        return result(
+            log(next, "Hauptmann verpflichtet", "${captain.name} (${captain.culture.label}) tritt als ${captain.trait} in deinen Dienst."),
+            "${captain.name} verpflichtet · Führung ${captain.leadership} · Taktik ${captain.tactics}.",
+        )
     }
     fun claimDailyGoal(state: GameState): GameEngine.ActionResult {
         if (state.frontier.dailyGoalClaimed) return result(state, "Der Tageslohn ist schon genommen.")
