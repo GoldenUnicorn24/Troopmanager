@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import com.goldenunicorn.troopmanager.engine.CoRulerEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.PresenceEngine
 import com.goldenunicorn.troopmanager.engine.RelationshipEngine
@@ -124,6 +125,37 @@ internal fun RulerPairScreen(
                             Text("Ressort: ${state.coRuler.portfolio.label}", color = PaleGold)
                         GoldButton("Gemeinsamen Rat öffnen", onCouncil, Modifier.fillMaxWidth())
                         SmallAction("Ressort und Delegation") { tab = "Regieren" }
+                    }
+                }
+                if (state.relationship.romanceStage == RomanceStage.CO_RULERS) item {
+                    val cultures = Culture.entries.filter { state.population.count(it) > 0 }
+                    val weakest = cultures.minByOrNull {
+                        (state.frontier.cultureStanding[it] ?: 50) + (state.frontier.cultureIntegration[it] ?: 50)
+                    }
+                    val lastDecision = state.coRuler.decisions.lastOrNull()
+                    val nextCase = CoRulerEngine.councilCases(state).firstOrNull()
+                    RulerCard {
+                        Text("Gemeinsame Regierung", color = PaleGold, fontWeight = FontWeight.Bold)
+                        Text("Aktuelle Führung: ${state.coRuler.actingRuler} · Ressort ${state.coRuler.portfolio.label}", color = Gold, fontSize = 12.sp)
+                        Text(
+                            if (state.coRuler.delegation.enabled)
+                                "Vollmacht aktiv · ${state.coRuler.delegation.maxGoldPerAction} Gold/Aktion · ${state.coRuler.delegation.maxGoldPerDay} Gold/Tag"
+                            else "Vollmacht pausiert · Entscheidungen bleiben beim gemeinsamen Rat.",
+                            color = Mist,
+                            fontSize = 12.sp,
+                        )
+                        weakest?.let { culture ->
+                            val standing = state.frontier.cultureStanding[culture] ?: 50
+                            val integration = state.frontier.cultureIntegration[culture] ?: 50
+                            Text("Schwächste Einbindung: ${culture.label} · Loyalität $standing · Integration $integration", color = if (standing < 35 || integration < 35) Danger else Mist, fontSize = 12.sp)
+                        }
+                        if (state.dynasty.successionTension > 0)
+                            Text("Nachfolge belastet die Regierung: ${state.dynasty.successionTension}/100", color = if (state.dynasty.successionTension >= 60) Danger else Gold, fontSize = 12.sp)
+                        nextCase?.let { Text("Nächste Ratsfrage: ${it.title}", color = PaleGold, fontSize = 12.sp) }
+                        lastDecision?.let {
+                            Text("Letzte Entscheidung: ${it.title} · ${it.choice} · ${it.actor}", color = Mist, fontSize = 11.sp)
+                        }
+                        GoldButton("Gemeinsam regieren", onCouncil, Modifier.fillMaxWidth())
                     }
                 }
                 event?.let { pending -> item {
