@@ -13,8 +13,8 @@ android {
         applicationId = "com.goldenunicorn.troopmanager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 43
-        versionName = "0.95.0"
+        versionCode = 44
+        versionName = "0.96.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
