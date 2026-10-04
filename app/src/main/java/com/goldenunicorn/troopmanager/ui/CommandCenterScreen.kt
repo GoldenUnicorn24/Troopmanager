@@ -404,11 +404,47 @@ internal fun QuestJournalScreen(state: GameState, onNavigate: (GameDestination) 
 
 @Composable
 internal fun PalaceHubScreen(state: GameState, onNavigate: (GameDestination) -> Unit) {
-    val rooms = listOf("Thronsaal" to GameDestination.DECISIONS, "Kriegsrat" to GameDestination.COUNCIL,
-        "Privatgemächer" to GameDestination.RULERS, "Familie" to GameDestination.FAMILY, "Hof" to GameDestination.COURT)
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageTitle("PALASTBEZIRK", if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Das Herrscherpaar empfängt Rat und Gesandte." else "Audienzen, Rat und das gemeinsame Leben im Reich.") }
-        items(rooms, key = { it.first }) { room -> CommandCard(room.first, { onNavigate(room.second) }) { Text(room.second.label, color = Mist) } }
+    val rooms = listOf(
+        Triple("Thronsaal", "Reichsentscheidungen, Audienzen und Grundsatzfragen", GameDestination.DECISIONS),
+        Triple("Kriegsrat", "Strategie, Mitregentin und offene Ratsfragen", GameDestination.COUNCIL),
+        Triple("Privatgemächer", "Beziehung, gemeinsame Zeit und Erinnerungen", GameDestination.RULERS),
+        Triple("Familie", "Dynastie, Nachfolge und Haus des Herrschers", GameDestination.FAMILY),
+        Triple("Hof", "Ämter, Persönlichkeiten und politische Netzwerke", GameDestination.COURT),
+    )
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp, 14.dp, 16.dp, 30.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { RulerPairHero(state) }
+        item {
+            PremiumPanel(emphasized = true) {
+                Text("PALASTBEZIRK", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Text(
+                    if (state.relationship.romanceStage == RomanceStage.CO_RULERS)
+                        "Das politische Herz eurer gemeinsamen Herrschaft."
+                    else
+                        "Audienzen, Rat und das persönliche Leben des Herrscherhauses.",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "Offene Ratsfragen: ${CoRulerEngine.councilCases(state).size} · Hofämter frei: ${CourtOffice.entries.count { it !in state.court.offices }}",
+                    color = Muted,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+        items(rooms, key = { it.first }) { room ->
+            SituationCard(
+                eyebrow = "Palast",
+                title = room.first,
+                detail = room.second,
+                urgent = room.third == GameDestination.COUNCIL && CoRulerEngine.councilCases(state).isNotEmpty(),
+                onClick = { onNavigate(room.third) },
+            )
+        }
     }
 }
 
@@ -425,9 +461,15 @@ internal fun CommanderDirectoryScreen(state: GameState, onState: (GameState) -> 
 
 @Composable
 private fun CommandCard(title: String, onOpen: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(onClick = onOpen), color = Panel, shape = RoundedCornerShape(16.dp)) {
+    Surface(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        color = StoneRaised,
+        shape = RoundedCornerShape(19.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+        shadowElevation = 2.dp,
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title.uppercase(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(title.uppercase(), color = Gold, fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.1.sp)
             content()
         }
     }
