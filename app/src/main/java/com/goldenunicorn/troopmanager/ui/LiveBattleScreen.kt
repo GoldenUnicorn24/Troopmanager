@@ -222,10 +222,8 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                             OutlinedButton(onClick = { if (battle.minute == 0 && state.world.encounter == null) setup = true else sheet = "orders" },
                                 modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
                                 Text(
-                                    if (battle.minute == 0 && state.world.encounter == null) {
-                                        if (compact) "Aufst." else "Aufstellung"
-                                    } else if (compact) "Befehl" else "Befehle",
-                                    fontSize = if (compact) 9.sp else 12.sp,
+                                    if (battle.minute == 0 && state.world.encounter == null) "Aufstellung" else "Befehle",
+                                    fontSize = if (compact) 8.sp else 12.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
@@ -233,10 +231,8 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                             Button(onClick = { if (battle.pendingEvent == null) apply(BattleEngine.advance(state)) else sheet = "orders" },
                                 modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
                                 Text(
-                                    if (battle.pendingEvent == null) {
-                                        if (compact) "+5 Min" else "+5 Minuten"
-                                    } else if (compact) "Reaktion" else "Reagieren",
-                                    fontSize = if (compact) 9.sp else 12.sp,
+                                    if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren",
+                                    fontSize = if (compact) 8.sp else 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -245,7 +241,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                         } else Button(onClick = { onState(state.copy(battleSession = null)); onNotice("Bericht und Replay bleiben in der Chronik.") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Zur Welt") }
                         TextButton(onClick = { detailTab = if (battle.minute == 0) 3 else 0; sheet = "details" },
                             modifier = Modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
-                            Text(if (compact) "Info" else "Details", color = ModernBlue, fontSize = if (compact) 9.sp else 12.sp, maxLines = 1)
+                            Text("Details", color = ModernBlue, fontSize = if (compact) 8.sp else 12.sp, maxLines = 1)
                         }
                     }
                 }
