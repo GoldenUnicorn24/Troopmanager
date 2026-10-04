@@ -625,34 +625,79 @@ object FrontierEngine {
         val battle = state.battleSession ?: return state
         if (!isHomeFortifiedBattle(state, battle)) return state
         val ready = state.frontier.weapons.filter { it.count > 0 && it.integrity > 0 }
-        if (ready.isEmpty()) return state
+        if (ready.isEmpty()) return state.copy(battleSession = battle.copy(wallWeapons = emptyList()))
         return state.copy(frontier = state.frontier.copy(weapons = state.frontier.weapons.map { it.copy(reloadRounds = 0) }),
-            battleSession = battle.copy(log = battle.log + BattleLogEntry(0, "Mauerabschnitte bereit: ${ready.joinToString { "${it.type.label} am ${it.section.label} (${it.ammunition} Ladungen)" }}.")))
+            battleSession = battle.copy(wallWeapons = ready.map { it.copy(reloadRounds = 0) }, log = battle.log + BattleLogEntry(0, "Mauerabschnitte bereit: ${ready.joinToString { "${it.type.label} am ${it.section.label} (${it.ammunition} Ladungen)" }}.")))
     }
-    fun fireWallWeapons(state: GameState, battle: BattleSession): WallVolleyResult {
+    fun fireWallWeapons(state: GameState, battle: BattleSession, decision: BattleDecision? = null, section: BattleSection? = null): WallVolleyResult {
         if (!isHomeFortifiedBattle(state, battle) || !battle.isActive || battle.phase == BattlePhase.PURSUIT) return WallVolleyResult(state, battle)
-        var updated = battle
-        val weapons = state.frontier.weapons.map { stock ->
-            // A winch moves deployed soldiers; owning its mechanism never creates a crane corps.
+        var updated = battle.copy(lastSounds = emptyList())
+        val reports = updated.wallWeaponReports.toMutableMap()
+        val charges = updated.weaponChargesUsed.toMutableMap()
+        val weapons = state.frontier.weapons.map { original ->
+            val stock = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section)
+                original.copy(priority = WallWeaponPriority.DEVICES) else original
+            val front = updated.fronts.firstOrNull { it.section == stock.section }
+            val local = updated.siegeDevices.filter { it.section == stock.section && !it.disabled && it.detected && it.crew > 0 && it.distance <= 320 }
+            val close = local.any { it.distance <= 25 } || (front?.enemyDistance ?: 400) <= 25
+            val guards = updated.contingents.filter { it.section == stock.section && it.type == UnitType.CRANE_GUARD && it.soldiers > 0 && !it.routed }
+            val manual = decision == BattleDecision.FIRE_OIL && section == stock.section && stock.type == WallWeaponType.FIRE_OIL
+            val blocked = updated.segment(stock.section)?.rangedOrder == RangedOrder.HOLD && !manual
             if (stock.reloadRounds > 0) stock.copy(reloadRounds = stock.reloadRounds - 1)
-            else if (stock.count <= 0 || stock.ammunition <= 0 || stock.integrity <= 0 || updated.enemyRemaining <= 0 ||
-                (stock.type == WallWeaponType.CRANE_WINCH && updated.contingents.none { it.type == UnitType.CRANE_GUARD && it.soldiers > 0 && !it.routed })) stock
+            else if (stock.count <= 0 || stock.ammunition <= 0 || stock.integrity <= 0 || front == null || front.enemySoldiers == 0 || blocked ||
+                (!stock.automatic && !manual) ||
+                (stock.type in listOf(WallWeaponType.FIRE_OIL, WallWeaponType.CRANE_WINCH) && !close) ||
+                (stock.type == WallWeaponType.CRANE_WINCH && guards.isEmpty()) ||
+                (stock.priority == WallWeaponPriority.DEVICES && local.isEmpty())) stock
             else {
-                val craneTroops = updated.contingents.filter { it.type == UnitType.CRANE_GUARD && !it.routed }.sumOf { it.soldiers }
-                val shots = minOf(stock.count, stock.ammunition, if (stock.type == WallWeaponType.CRANE_WINCH) maxOf(1, craneTroops / 5) else Int.MAX_VALUE)
-                val raw = (shots.toLong() * stock.type.defense * stock.integrity.coerceIn(0, 100) / 200).coerceAtMost(Int.MAX_VALUE.toLong()).toInt().coerceAtLeast(1)
-                var left = raw
-                val fronts = updated.fronts.sortedBy { if (it.section == stock.section) 0 else 1 }.map { front -> val losses = minOf(front.enemySoldiers, left); left -= losses; front.copy(enemySoldiers = front.enemySoldiers - losses) }
-                val dealt = raw - left
-                val crane = stock.type == WallWeaponType.CRANE_WINCH
-                updated = updated.copy(fronts = fronts, log = updated.log + BattleLogEntry(updated.minute,
-                    if (crane) "Kranichwinden lassen die blaue Garde am ${stock.section.label} ausfallen: $dealt Gegner ausgeschaltet. Seile brauchen eine neue Ladung."
-                    else "${stock.type.label} am ${stock.section.label}: $dealt Gegner ausgeschaltet, $shots Ladungen verbraucht.", enemyLosses = dealt),
+                val shots = minOf(stock.count, stock.ammunition, if (stock.type == WallWeaponType.CRANE_WINCH) (guards.sumOf { it.soldiers } / 5).coerceAtLeast(1) else Int.MAX_VALUE)
+                val raw = shots.toDouble() * stock.type.defense * stock.integrity / 200.0
+                val prefersDevice = stock.priority == WallWeaponPriority.DEVICES ||
+                    stock.priority == WallWeaponPriority.AUTO && stock.type in listOf(WallWeaponType.BALLISTA, WallWeaponType.BLACK_POWDER, WallWeaponType.FIRE_OIL)
+                val target = if (prefersDevice) local.sortedBy { when (it.type) {
+                    SiegeDevice.TOWER -> 0; SiegeDevice.RAM -> 1; SiegeDevice.CLIMBERS, SiegeDevice.LADDERS -> 2; SiegeDevice.CATAPULT -> 3; SiegeDevice.TUNNEL -> 4
+                } }.firstOrNull { stock.type != WallWeaponType.FIRE_OIL || it.distance <= 25 } else null
+                val rng = Random(updated.seed xor ((updated.step + 1) * 104729) xor (stock.type.ordinal * 997))
+                val damage = if (target == null) 0 else BattleResolutionEngine.stochasticRound(raw * when (stock.type) {
+                    WallWeaponType.BALLISTA -> 3.2
+                    WallWeaponType.FIRE_OIL -> 5.0
+                    WallWeaponType.BLACK_POWDER -> 2.4
+                    else -> 1.0
+                } / if (target.type == SiegeDevice.TOWER) 2.0 else 1.0, rng).coerceAtMost(target.integrity)
+                val infantryPower = if (target == null) raw * (if (stock.type == WallWeaponType.REPEATER) 1.6 else if (stock.type == WallWeaponType.FIRE_OIL) 3.0 else 1.0)
+                    else if (stock.type == WallWeaponType.BLACK_POWDER || stock.type == WallWeaponType.FIRE_OIL) raw * .35 else 0.0
+                val dealt = minOf(front.enemySoldiers, BattleResolutionEngine.stochasticRound(infantryPower, rng))
+                val fronts = updated.fronts.map { if (it.section == stock.section) it.copy(enemySoldiers = it.enemySoldiers - dealt,
+                    morale = (it.morale - if (stock.type == WallWeaponType.BLACK_POWDER && dealt > 0) 4 else 0).coerceAtLeast(0)) else it }
+                val devices = updated.siegeDevices.map { device -> if (device.id == target?.id) device.copy(
+                    integrity = device.integrity - damage, disabled = device.integrity - damage <= 0) else device }
+                reports[stock.section] = (reports[stock.section] ?: 0) + dealt
+                charges[stock.type] = (charges[stock.type] ?: 0) + shots
+                val text = "${stock.type.label} am ${stock.section.label}: $dealt Gegner ausgeschaltet" +
+                    (if (target != null) "; ${target.type.label} −$damage Zustand" else "") + "; $shots Ladungen verbraucht."
+                updated = updated.copy(fronts = fronts, enemyRoster = BattleReportEngine.rosterAfterFrontLosses(updated.enemyRoster, fronts),
+                    siegeDevices = devices, devices = devices.filterNot { it.disabled }.map { it.type }.distinct(),
+                    contingents = if (stock.type == WallWeaponType.CRANE_WINCH) updated.contingents.map { c ->
+                        if (c in guards) c.copy(fatigue = (c.fatigue + 10).coerceAtMost(100), cohesion = (c.cohesion - 4).coerceAtLeast(0)) else c
+                    } else updated.contingents,
+                    log = (updated.log + BattleLogEntry(updated.minute + 5, text, enemyLosses = dealt)).takeLast(60),
                     lastSounds = (updated.lastSounds + if (stock.type == WallWeaponType.FIRE_OIL) BattleSoundCue.FIRE else BattleSoundCue.ARTILLERY).distinct())
                 stock.copy(ammunition = stock.ammunition - shots, reloadRounds = if (stock.type == WallWeaponType.REPEATER) 1 else 2)
             }
         }
+        updated = updated.copy(wallWeapons = weapons.filter { it.count > 0 }, wallWeaponReports = reports, weaponChargesUsed = charges)
         return WallVolleyResult(state.copy(frontier = state.frontier.copy(weapons = weapons)), updated)
+    }
+
+    fun configureWallWeapon(state: GameState, type: WallWeaponType, section: BattleSection,
+        priority: WallWeaponPriority, automatic: Boolean): GameEngine.ActionResult {
+        if (section == BattleSection.RESERVE || state.battleSession?.let { it.isActive && it.step > 0 } == true)
+            return result(state, "Mauerwaffen werden vor dem ersten Austausch eingerichtet.")
+        if (state.frontier.weapons.none { it.type == type && it.count > 0 }) return result(state, "Diese Mauerwaffe ist noch nicht gebaut.")
+        val weapons = state.frontier.weapons.map { if (it.type == type) it.copy(section = section, priority = priority, automatic = automatic) else it }
+        val battle = state.battleSession?.let { it.copy(wallWeapons = weapons.filter { weapon -> weapon.count > 0 },
+            replayStart = it.replayStart?.copy(frontier = state.frontier.copy(weapons = weapons))) }
+        return result(state.copy(frontier = state.frontier.copy(weapons = weapons), battleSession = battle), "${type.label}: ${section.label}, ${priority.label}.")
     }
     fun afterBattle(state: GameState, battle: BattleSession): GameState {
         var next = state

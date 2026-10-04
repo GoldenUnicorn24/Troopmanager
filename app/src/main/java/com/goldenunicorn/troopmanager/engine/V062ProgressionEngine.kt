@@ -81,6 +81,9 @@ object DoctrineEngine {
     fun rangedPowerFactor(state: GameState): Double =
         if (state.doctrine == MilitaryDoctrine.RANGED_SUPREMACY) 1.10 else 1.0
 
+    fun arrowConsumptionFactor(state: GameState): Double =
+        if (state.doctrine == MilitaryDoctrine.RANGED_SUPREMACY) 1.15 else 1.0
+
     fun infantryMoraleBonus(state: GameState): Int =
         if (state.doctrine == MilitaryDoctrine.DISCIPLINED_LINE) 5 else 0
 

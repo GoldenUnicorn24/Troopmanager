@@ -107,7 +107,14 @@ data class WallWeaponStock(
     val integrity: Int = 100,
     val reloadRounds: Int = 0,
     val section: BattleSection = BattleSection.CENTER,
+    val priority: WallWeaponPriority = WallWeaponPriority.AUTO,
+    val automatic: Boolean = true,
 )
+
+@Serializable
+enum class WallWeaponPriority(val label: String) {
+    AUTO("Automatisch nach Rolle"), DEVICES("Belagerungsgeräte"), INFANTRY("Infanterie"), ELITES("Eliteziele"),
+}
 
 @Serializable
 enum class CustomUnitRole(val label: String) {

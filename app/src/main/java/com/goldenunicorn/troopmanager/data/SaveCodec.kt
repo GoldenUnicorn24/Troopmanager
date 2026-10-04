@@ -56,6 +56,7 @@ object SaveCodec {
                 state = CharacterEngine.initialize(state)
                 state = DiplomacyEngine.initialize(state)
             }
+            state = BattleStateEngine.migrate(state)
             validate(state)
             return state
         } catch (error: SaveFormatException) {
