@@ -789,7 +789,7 @@ object BattleEngine {
             BattleDecision.HOLD -> true
             BattleDecision.ORDERED_RETREAT -> session.status == BattleStatus.ACTIVE
             BattleDecision.SCALE_WALL, BattleDecision.BREACH_GATE, BattleDecision.TOWER_ASSAULT, BattleDecision.UNDERMINE ->
-                session.enemyFortification > 0 && (segment?.integrity ?: 0) > 0 && deployed.any { it.soldiers >= 50 && it.type.ranged < 8 }
+                session.tactic != Tactic.FORTIFY && (segment?.cover ?: 0.0) > 0 && (segment?.integrity ?: 0) > 0 && deployed.any { it.soldiers >= 50 && it.type.ranged < 8 }
             BattleDecision.RALLY -> session.rallyPerk && section != null && session.soldiers(section) > 0
             BattleDecision.FEIGNED_RETREAT -> session.feignedRetreatPerk && deployed.isNotEmpty() && segment?.contactState?.allowsMelee == true
             BattleDecision.ARROW_VOLLEY, BattleDecision.FOCUS_FIRE, BattleDecision.FOCUS_ARCHERS ->

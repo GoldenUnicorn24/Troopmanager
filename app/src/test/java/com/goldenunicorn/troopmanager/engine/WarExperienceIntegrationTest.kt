@@ -102,4 +102,23 @@ class WarExperienceIntegrationTest {
         assertTrue(tasks.any { it.id == "endgame:frontier" })
         assertEquals(tasks, QuestJournalEngine.tasks(late))
     }
+
+    @Test fun localFortificationSurvivesARoundedGlobalWallAverageOfZero() {
+        val initial = state().copy(armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_ARCHER, 300), ArmyUnitPool(UnitType.HUMAN_SWORD, 100)))
+        var protectedLosses = 0
+        var uncoveredLosses = 0
+        repeat(10) { seed ->
+            val base = BattleEngine.start(initial, EnemyType.ORC, Tactic.HOLD,
+                listOf(BattleDeployment(null, BattleSection.LEFT, listOf(UnitAllocation(UnitType.HUMAN_ARCHER, 300), UnitAllocation(UnitType.HUMAN_SWORD, 100)))),
+                seed = seed, enemyStrength = 900, enemyUnits = listOf(UnitAllocation(UnitType.HUMAN_SWORD, 900)), enemyFortification = 100).state
+            val battle = base.battleSession!!.copy(enemyFortification = 0, siegeDevices = emptyList(), segments = base.battleSession!!.segments.map {
+                if (it.section == BattleSection.LEFT) it.copy(integrity = 2, gateIntegrity = 2) else it.copy(integrity = 0, gateIntegrity = 0, breachWidth = 80) })
+            assertTrue(BattleEngine.canOrder(battle, BattleDecision.SCALE_WALL, BattleSection.LEFT))
+            val covered = SiegeEngine.advance(base, battle, null, null)
+            val uncovered = covered.copy(battle = covered.battle.copy(segments = covered.battle.segments.map { it.copy(cover = 0.0) }))
+            protectedLosses += BattleResolutionEngine.resolve(base, covered.battle, covered, null, null).report.enemyLosses
+            uncoveredLosses += BattleResolutionEngine.resolve(base, uncovered.battle, uncovered, null, null).report.enemyLosses
+        }
+        assertTrue("A remaining segment retains cover after the integer global average reaches zero", protectedLosses < uncoveredLosses)
+    }
 }

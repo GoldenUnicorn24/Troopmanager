@@ -40,7 +40,7 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
         } else pulse.snapTo(1f)
     }
     val groups = remember(session.contingents, session.fronts) { BattleEngine.visualGroups(session) }
-    val fort = session.tactic == Tactic.FORTIFY || session.enemyFortification > 0
+    val fort = session.tactic == Tactic.FORTIFY || session.segments.any { it.cover > 0 }
     val frame = pulse.value
     Box(modifier.clip(RoundedCornerShape(22.dp)).background(Brush.verticalGradient(listOf(Color(0xFF172B31), Color(0xFF111A21), Ink)))) {
         Canvas(Modifier.fillMaxSize()) {

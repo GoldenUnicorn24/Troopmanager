@@ -96,8 +96,8 @@ object SiegeEngine {
                     BattleDecision.OPEN_GATE -> open = true
                     BattleDecision.HOLD_GATE -> open = false
                     BattleDecision.FALL_BACK_COURTYARD -> fallenBack = true
-                    BattleDecision.SCALE_WALL, BattleDecision.TOWER_ASSAULT -> if (!fortified && original.enemyFortification > 0) { progress = (progress + 40).coerceAtMost(100); integrity = (integrity - 7).coerceAtLeast(0) }
-                    BattleDecision.BREACH_GATE, BattleDecision.UNDERMINE, BattleDecision.ARTILLERY_TARGET -> if (!fortified && original.enemyFortification > 0) { integrity = (integrity - if (decision == BattleDecision.UNDERMINE) 22 else 14).coerceAtLeast(0); if (segment.section == BattleSection.CENTER) gate = integrity }
+                    BattleDecision.SCALE_WALL, BattleDecision.TOWER_ASSAULT -> if (!fortified && segment.cover > 0) { progress = (progress + 40).coerceAtMost(100); integrity = (integrity - 7).coerceAtLeast(0) }
+                    BattleDecision.BREACH_GATE, BattleDecision.UNDERMINE, BattleDecision.ARTILLERY_TARGET -> if (!fortified && segment.cover > 0) { integrity = (integrity - if (decision == BattleDecision.UNDERMINE) 22 else 14).coerceAtLeast(0); if (segment.section == BattleSection.CENTER) gate = integrity }
                     else -> Unit
                 }
             }

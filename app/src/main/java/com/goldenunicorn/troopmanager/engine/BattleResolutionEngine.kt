@@ -157,7 +157,7 @@ object BattleResolutionEngine {
                 (if (state.resources.food == 0) .70 else 1.0) * (if (hold) 1.18 else 1.0)
             val enemyDefense = if (enemyCount == 0) 1.0 else enemyUnits.sumOf { it.soldiers * (.55 + it.type.defense / 15.0) * (.45 + it.equipment / 180.0) } / enemyCount
             val coverOwn = if (battle.tactic == Tactic.FORTIFY) SiegeEngine.exposure(segment) else 1.0
-            val coverEnemy = if (battle.tactic != Tactic.FORTIFY && battle.enemyFortification > 0) SiegeEngine.exposure(segment) else 1.0
+            val coverEnemy = if (battle.tactic != Tactic.FORTIFY && segment.cover > 0) SiegeEngine.exposure(segment) else 1.0
             val rawRangedOwn = if (count > 0) enemyRangedPower / 115.0 / ownDefense.coerceAtLeast(.2) else 0.0
             val rangedOwn = rawRangedOwn * coverOwn
             val rangedEnemy = if (enemyCount > 0) (ownRangedPower - aimedPower) / 115.0 / enemyDefense.coerceAtLeast(.2) * coverEnemy else 0.0
