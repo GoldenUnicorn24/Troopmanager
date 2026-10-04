@@ -77,6 +77,7 @@ data class EnemyCommander(
     val rank: String = "Hauptmann", val experience: Int = 0, val victories: Int = 0,
     val defeats: Int = 0, val injuries: Int = 0, val rivalry: Int = 0, val epithet: String? = null,
     val revengeTarget: String? = null, val rulerLoyalty: Int = 70,
+    val memories: List<String> = emptyList(),
 )
 
 @Serializable
@@ -101,6 +102,9 @@ data class WorldArmy(
     val status: WorldArmyStatus = WorldArmyStatus.HOLDING, val missionId: Long? = null,
     val lastMovedDay: Int = 0, val lastLosses: Int = 0,
     val preparationUntilDay: Int? = null,
+    val delayUntilDay: Int = 0,
+    val lastSupplyOutpostId: Long? = null,
+    val lastOutpostRestDay: Int = 0,
 ) {
     val total: Int get() = units.sumOf { it.amount.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     val cultures: Map<Culture, Int> get() = units.groupBy { it.type.culture }.mapValues { (_, troops) -> troops.sumOf { it.amount } }
@@ -157,6 +161,7 @@ data class WorldState(
     val stories: List<WorldStory> = emptyList(), val encounter: WorldEncounter? = null,
     val invasionArmyId: String? = null,
     val nextArmyNumber: Long = 1, val nextConvoyNumber: Long = 1, val lastTickDay: Int = 0,
+    val regionReputation: Map<String, Int> = emptyMap(),
 ) {
     val playerFieldArmies: List<WorldArmy> get() = armies.filter { it.factionId == PLAYER_FACTION && it.missionId == null && it.status.isAway }
     fun knowledgeFor(factionId: String) = knowledge.firstOrNull { it.factionId == factionId } ?: FactionKnowledge(factionId)

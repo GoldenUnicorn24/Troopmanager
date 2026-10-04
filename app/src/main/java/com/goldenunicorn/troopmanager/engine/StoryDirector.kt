@@ -34,12 +34,13 @@ object StoryDirector {
             val foreignFamine = state.world.factions.any { it.id != PLAYER_FACTION && it.id != NEUTRAL_FACTION &&
                 it.food < it.population / 2 && state.world.knowledgeFor(PLAYER_FACTION).exploredRegions.any { region ->
                     state.world.place(region)?.ownerId == it.id } }
+            fun available(kind: StoryKind) = state.day >= (nextStory.familyCooldowns[kind] ?: 0)
             val kind = when {
-                foreignFamine && state.society.hunger < 30 -> StoryKind.REFUGEES
-                state.resources.gold > 12000 && state.society.inequality > 35 -> StoryKind.CORRUPTION
-                state.society.politicalLoyalty < 40 || state.defeats > state.victories + 2 -> StoryKind.LOYALTY_CRISIS
+                foreignFamine && state.society.hunger < 30 && available(StoryKind.REFUGEES) -> StoryKind.REFUGEES
+                state.resources.gold > 12000 && state.society.inequality > 35 && available(StoryKind.CORRUPTION) -> StoryKind.CORRUPTION
+                (state.society.politicalLoyalty < 40 || state.defeats > state.victories + 2 || state.society.warExhaustion >= 50 && state.society.groups.any { it.kind == PoliticalGroupKind.MILITARY && it.loyalty < 50 }) && available(StoryKind.LOYALTY_CRISIS) -> StoryKind.LOYALTY_CRISIS
                 state.day >= 28 && state.diplomacy.relations.none { it.atWar &&
-                    (it.firstFactionId == PLAYER_FACTION || it.secondFactionId == PLAYER_FACTION) } -> StoryKind.BORDER_MEDIATION
+                    (it.firstFactionId == PLAYER_FACTION || it.secondFactionId == PLAYER_FACTION) } && available(StoryKind.BORDER_MEDIATION) -> StoryKind.BORDER_MEDIATION
                 else -> null
             }
             if (kind != null) nextStory = nextStory.copy(pending = create(state, kind, "chain_${nextStory.nextId}"), nextId = nextStory.nextId + 1)
@@ -58,7 +59,7 @@ object StoryDirector {
             StoryKind.CORRUPTION -> "Unstimmigkeiten in den Rechnungen" to
                 "Hohe Schatzreserven und ungleiche Einkommen geben Bestechung Raum. Eine Prüfung kostet Gold und kann Kriminalität begrenzen."
             StoryKind.LOYALTY_CRISIS -> "Unruhe im Kriegsrat" to
-                "Niederlagen oder niedrige politische Loyalität belasten den Hof. Eine gemeinsame Aussprache mit Veteranen kann Vertrauen wiederherstellen."
+                "Kriegsmüdigkeit ${state.society.warExhaustion} %, Hunger ${state.society.hunger} % und politische Loyalität ${state.society.politicalLoyalty} % belasten Veteranen und Kommandanten. Versorgung, Aussprache und erfüllte Forderungen stabilisieren die nächste Front."
             StoryKind.BORDER_MEDIATION -> "Eine ruhige Grenze bleibt eine Aufgabe" to
                 "Nach Wochen des Friedens bitten Nachbarn um Gespräche zu Handelswegen und Grenzrechten. Diplomatie oder vorsichtige Verteidigung sind möglich."
         }
@@ -116,10 +117,11 @@ object StoryDirector {
                 if (choiceId == "support") {
                     if (!pay(gold = 250)) return GameEngine.ActionResult(state, "250 Gold benötigt.")
                     next = next.copy(society = next.society.copy(groups = next.society.groups.map {
-                        it.copy(loyalty = (it.loyalty + 12).coerceAtMost(100)) }), commanders = next.commanders.map {
+                        it.copy(loyalty = (it.loyalty + 12).coerceAtMost(100)) }, warExhaustion = (next.society.warExhaustion - 4).coerceAtLeast(0)), commanders = next.commanders.map {
                             it.copy(loyalty = (it.loyalty + 6).coerceAtMost(100)) })
                 } else next = next.copy(commanders = next.commanders.map { it.copy(loyalty = (it.loyalty - 5).coerceAtLeast(0)) },
-                    city = next.city.copy(satisfaction = (next.city.satisfaction - 4).coerceAtLeast(0)))
+                    city = next.city.copy(satisfaction = (next.city.satisfaction - 4).coerceAtLeast(0)),
+                    armyPools = next.armyPools.map { it.copy(morale = (it.morale - 5).coerceAtLeast(0)) })
             }
             StoryKind.BORDER_MEDIATION -> {
                 if (choiceId == "mediate") {
@@ -137,7 +139,7 @@ object StoryDirector {
         val story = next.society.story
         next = next.copy(society = next.society.copy(story = story.copy(pending = null,
             scheduled = if (schedule != null) story.scheduled + schedule else story.scheduled,
-            cooldownUntilDay = state.day + 28, resolved = (story.resolved + event.id).takeLast(60))),
+            cooldownUntilDay = state.day + 28, familyCooldowns = story.familyCooldowns + (event.kind to (state.day + 84)), resolved = (story.resolved + event.id).takeLast(60))),
             chronicle = (next.chronicle + ChronicleEntry(state.day, event.title,
                 choices(event).first { it.id == choiceId }.label + if (schedule != null) "; Folgen werden in den kommenden Wochen sichtbar." else ".")).takeLast(2000))
         return GameEngine.ActionResult(next, "Entscheidung getroffen: ${event.title}.")

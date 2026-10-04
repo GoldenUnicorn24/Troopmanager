@@ -50,12 +50,15 @@ class V045BattleTest {
     }
 
     @Test
-    fun artilleryTargetDestroysStrongestRealDeviceAndNeedsArtillery() {
+    fun artilleryTargetDamagesLocalRealDeviceAndNeedsArtillery() {
         val started = BattleEngine.start(army(), EnemyType.URUK, Tactic.FORTIFY, seed = 43).state
-        val before = event(started, BattleDecision.ARTILLERY_TARGET)
+        val before = event(started, BattleDecision.ARTILLERY_TARGET, section = BattleSection.LEFT)
         assertTrue(SiegeDevice.CATAPULT in before.battleSession!!.devices)
         val after = BattleEngine.advance(before, BattleDecision.ARTILLERY_TARGET).state
-        assertFalse(SiegeDevice.CATAPULT in after.battleSession!!.devices)
+        val catapult = after.battleSession!!.siegeDevices.first { it.type == SiegeDevice.CATAPULT }
+        assertTrue(catapult.integrity in 1..99)
+        assertFalse(catapult.disabled)
+        assertTrue(after.battleSession!!.siegeDevices.filter { it.section != BattleSection.LEFT }.all { it.integrity == 100 })
         assertTrue(after.battleSession!!.log.last().text.contains("Gezieltes Artilleriefeuer"))
         val unavailable = before.copy(battleSession = before.battleSession!!.copy(
             contingents = before.battleSession!!.contingents.filter { it.type != UnitType.DRAGON_ARTILLERY }))
@@ -63,11 +66,13 @@ class V045BattleTest {
     }
 
     @Test
-    fun gateOrdersOnlyAvailableDuringSiegesAndReduceWallDamage() {
-        val started = BattleEngine.start(army(), EnemyType.URUK, Tactic.FORTIFY, seed = 53).state
+    fun gateOrdersOnlyAvailableDuringSiegesAndReduceLocalGateDamage() {
+        val marching = BattleEngine.start(army(), EnemyType.URUK, Tactic.FORTIFY, seed = 53).state
+        val started = marching.copy(battleSession = marching.battleSession!!.copy(
+            siegeDevices = marching.battleSession!!.siegeDevices.map { if (it.type == SiegeDevice.RAM) it.copy(distance = 0) else it }))
         val held = BattleEngine.advance(event(started, BattleDecision.HOLD_GATE), BattleDecision.HOLD_GATE).state.battleSession!!
         val ordinary = BattleEngine.advance(event(started, BattleDecision.HOLD), BattleDecision.HOLD).state.battleSession!!
-        assertTrue(held.wallIntegrity > ordinary.wallIntegrity)
+        assertTrue(held.segment(BattleSection.CENTER)!!.gateIntegrity > ordinary.segment(BattleSection.CENTER)!!.gateIntegrity)
         val open = BattleEngine.advance(event(started, BattleDecision.OPEN_GATE), BattleDecision.OPEN_GATE).state.battleSession!!
         assertEquals(0, open.soldiers(BattleSection.RESERVE))
         assertTrue(open.contingents.any { it.type == UnitType.KNIGHT && it.section == BattleSection.CENTER })

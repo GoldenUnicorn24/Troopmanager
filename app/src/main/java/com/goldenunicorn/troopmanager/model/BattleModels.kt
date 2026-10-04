@@ -55,6 +55,17 @@ enum class BattleDecision(val label: String) {
     BREACH_GATE("Rammbock einsetzen"),
     TOWER_ASSAULT("Belagerungsturm vorschieben"),
     UNDERMINE("Tunnel vorantreiben"),
+    HOLD_FIRE("Feuer halten"),
+    NORMAL_FIRE("Normalfeuer"),
+    PRIORITIZE_DEVICES("Geräte priorisieren"),
+    REPEL_LADDERS("Leitern abwehren"),
+    FIRE_OIL("Feueröl einsetzen"),
+    COUNTER_TUNNEL("Tunnel bekämpfen"),
+    HOLD_BREACH("Bresche halten"),
+    SECOND_LINE("Zweite Linie bilden"),
+    COUNTERATTACK("Gegenangriff"),
+    FALL_BACK_COURTYARD("In den Innenhof zurück"),
+    ROTATE_RESERVE("Erschöpfte Linie ablösen"),
 }
 
 /** A consumer can react to a newly persisted minute; no audio files are required. */
@@ -93,6 +104,8 @@ data class BattleContingent(
     val routed: Boolean = false,
     val displayName: String? = null,
     val designId: Long? = null,
+    val cohesion: Int = 80,
+    val fatigue: Int = 0,
 )
 
 @Serializable
@@ -102,6 +115,10 @@ data class BattleFront(
     val enemyStart: Int,
     val morale: Int = 80,
     val position: Int = 50,
+    val enemyDistance: Int = 180,
+    val cohesion: Int = 80,
+    val fatigue: Int = 0,
+    val intent: BattleAiIntent = BattleAiIntent.APPROACH,
 )
 
 @Serializable
@@ -173,15 +190,35 @@ data class BattleSession(
     val enemyExperience: Int = 0,
     /** Fraction of the desired arrow load available when the battle started. */
     val rangedSupplyFactor: Double = 1.0,
+    val combatVersion: Int = 1,
+    val segments: List<FortificationSegmentState> = emptyList(),
+    val siegeDevices: List<SiegeDeviceState> = emptyList(),
+    val enemyRoster: List<EnemyBattleUnit> = emptyList(),
+    /** -1 exists only in old saves; migration never takes arrows from campaign stores twice. */
+    val battleArrowsRemaining: Int = -1,
+    val battleArrowsLoaded: Int = 0,
+    val enemyArrowsRemaining: Int = -1,
+    val exchanges: List<BattleExchangeReport> = emptyList(),
+    val outcomeGrade: BattleOutcomeGrade? = null,
+    val personalSection: BattleSection = BattleSection.CENTER,
+    val weaponChargesUsed: Map<WallWeaponType, Int> = emptyMap(),
+    val wallWeaponReports: Map<BattleSection, Int> = emptyMap(),
+    val wallWeapons: List<WallWeaponStock> = emptyList(),
+    val battleArtilleryRemaining: Int = -1,
+    val battleArtilleryLoaded: Int = 0,
+    val enemyArtilleryRemaining: Int = -1,
+    val counterTunnelUnlocked: Boolean = false,
 ) {
     val tacticalStageLabel: String
-        get() = if (tactic != Tactic.FORTIFY) phase.label else when {
+        get() = when {
             status == BattleStatus.PURSUIT -> "Flucht / Verfolgung"
-            phase == BattlePhase.FORMATION || phase == BattlePhase.RANGED -> "Anmarsch & Fernkampf"
-            phase == BattlePhase.CONTACT && devices.isNotEmpty() -> "Belagerungsgeräte"
-            wallIntegrity > 55 && phase in setOf(BattlePhase.CONTACT, BattlePhase.MAIN) -> "Sturm auf die Mauer"
-            wallIntegrity > 0 && phase in setOf(BattlePhase.MAIN, BattlePhase.RESERVES, BattlePhase.CRITICAL) -> "Mauerbruch & Tor"
-            else -> "Innenhof & Entscheidung"
+            segments.any { it.contactState == BattleContactState.COURTYARD } -> "Innenhof & Entscheidung"
+            segments.any { it.contactState == BattleContactState.BREACHED } -> "Mauerbruch & Tor"
+            segments.any { it.contactState == BattleContactState.WALL_ASSAULT } -> "Sturm auf die Mauer"
+            segments.any { it.contactState == BattleContactState.FIELD_CONTACT } -> "Feldkontakt"
+            segments.any { it.contactState == BattleContactState.SIEGE_CONTACT } -> "Belagerungsgeräte"
+            minute == 0 -> "Aufstellung"
+            else -> "Anmarsch & Fernkampf"
         }
 
     val tacticalStageIndex: Int
@@ -216,4 +253,8 @@ data class BattleSession(
 
     fun soldiers(section: BattleSection): Int =
         contingents.filter { it.section == section }.sumOf { it.soldiers }
+
+    fun segment(section: BattleSection): FortificationSegmentState? = segments.firstOrNull { it.section == section }
+
+    fun lastReport(section: BattleSection): FrontExchangeReport? = exchanges.lastOrNull()?.fronts?.firstOrNull { it.section == section }
 }

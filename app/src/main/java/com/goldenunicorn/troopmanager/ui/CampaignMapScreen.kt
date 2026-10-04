@@ -3,6 +3,8 @@ package com.goldenunicorn.troopmanager.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,8 +33,12 @@ import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.engine.OriginEngine
 import com.goldenunicorn.troopmanager.engine.OccupationEngine
 import com.goldenunicorn.troopmanager.engine.WorldEngine
+import com.goldenunicorn.troopmanager.engine.DiplomacyEngine
+import com.goldenunicorn.troopmanager.engine.SiegeEngine
+import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CampaignMapScreen(
     state: GameState,
@@ -42,6 +48,8 @@ internal fun CampaignMapScreen(
     val world = state.world
     val knowledge = world.knowledgeFor(PLAYER_FACTION)
     var selectedRegionId by remember { mutableStateOf(world.places.firstOrNull()?.id) }
+    var showRegion by remember { mutableStateOf(false) }
+    var showRegionList by remember { mutableStateOf(false) }
     var dispatchDestinationId by remember { mutableStateOf<String?>(null) }
     var redirectArmyId by remember { mutableStateOf<String?>(null) }
     var convoyArmyId by remember { mutableStateOf<String?>(null) }
@@ -145,8 +153,8 @@ internal fun CampaignMapScreen(
             CampaignMapScene(
                 markers,
                 world.roads.map { it.from to it.to },
-                armyMarkers, frontierMarkers, aidRoutes, convoyRoutes, state.presentation.heraldry, selectedRegion?.id,
-            ) { selectedRegionId = it }
+                armyMarkers, frontierMarkers, aidRoutes, convoyRoutes, state.frontier.outposts, state.presentation.heraldry, selectedRegion?.id,
+            ) { selectedRegionId = it; showRegion = true }
         }
         if (knownHordes.isNotEmpty() || state.frontier.reinforcements.isNotEmpty()) item {
             CampaignPanel {
@@ -163,11 +171,11 @@ internal fun CampaignMapScreen(
                 Text("Rote Rauten: entdeckte Horden · goldene Routen: Hilfe vom Verbündeten zur Heimat", color = Mist, fontSize = 11.sp)
             }
         }
-        item { SectionTitle("Orte auswählen") }
-        items(markers, key = { "region_${it.id}" }) { marker ->
+        item { ModernChoice(showRegionList, { showRegionList = !showRegionList }, { Text("Alle Orte als Liste") }) }
+        if (showRegionList) items(markers, key = { "region_${it.id}" }) { marker ->
             val number = markers.indexOf(marker) + 1
             Surface(
-                onClick = { selectedRegionId = marker.id },
+                onClick = { selectedRegionId = marker.id; showRegion = true },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .semantics { contentDescription = marker.description },
                 color = if (selectedRegion?.id == marker.id) Panel2 else Panel,
@@ -190,89 +198,9 @@ internal fun CampaignMapScreen(
         }
         selectedRegion?.let { region ->
             item {
-                val known = isKnown(region)
-                val visible = isVisible(region)
-                val weather = world.weather.at(region.id)
-                CampaignPanel {
-                    Text(if (known) region.name else "Unkartiertes Gebiet", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    if (known) Text("${region.kind.label} · ${region.terrain.label}", color = Mist)
-                    Text(
-                        when {
-                            region.ownerId == PLAYER_FACTION -> "Unter deinem Schutz"
-                            !visible -> "Herrschaft derzeit nicht aufgeklärt"
-                            else -> "Herrschaft: ${world.faction(region.ownerId)?.name ?: "Freie Siedlung"}"
-                        },
-                        color = if (region.ownerId == PLAYER_FACTION) Success else Mist, fontSize = 12.sp,
-                    )
-                    Text(
-                        if (visible) "Aktuelle Sicht durch eigene Gebiete, Heere oder Kundschafter"
-                        else if (known) "Kartiert · keine aktuelle Sicht" else "Noch keine gesicherte Ortskenntnis",
-                        color = Gold, fontSize = 12.sp,
-                    )
-                    if (visible) {
-                        Text("${weather.label} · ${world.weather.season.label}", color = Color.White)
-                        Text(
-                            "Marsch ${(weather.marchFactor * world.weather.season.marchFactor * 100).toInt()} % · Fernkampf ${(weather.rangedFactor * 100).toInt()} % · Kavallerie ${(weather.cavalryFactor * 100).toInt()} %",
-                            color = Mist, fontSize = 12.sp,
-                        )
-                        Text("${region.population} Einwohner · Befestigung ${region.fortification} · Wohlstand ${region.prosperity}", color = Mist, fontSize = 12.sp)
-                    }
-                    val depots = world.depots.filter { it.regionId == region.id && it.factionId == PLAYER_FACTION }
-                    depots.forEach { depot -> Text("Versorgungslager: ${depot.food} / ${depot.capacity} Nahrung", color = Success, fontSize = 12.sp) }
-                    state.occupations.firstOrNull { it.regionId == region.id }?.let { occupation ->
-                        val garrison =
-                            world.armies.filter {
-                                it.factionId == PLAYER_FACTION &&
-                                    it.regionId == region.id &&
-                                    it.status != WorldArmyStatus.DESTROYED
-                            }.sumOf { it.total }
-                        HorizontalDivider(color = Gold.copy(alpha = .35f))
-                        Text("BESATZUNGSVERWALTUNG", color = Gold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        Text(
-                            "Unruhe ${occupation.unrest}% · Garnison $garrison · ${occupation.policy.label}",
-                            color = if (occupation.unrest >= 70) Danger else if (occupation.unrest <= 25) Success else Mist,
-                            fontSize = 12.sp,
-                        )
-                        Text(occupation.policy.description, color = Mist, fontSize = 11.sp)
-                        OccupationPolicy.entries.forEach { policy ->
-                            if (policy != occupation.policy)
-                                OutlinedButton(
-                                    onClick = {
-                                        val result = OccupationEngine.setPolicy(state, region.id, policy)
-                                        onState(result.state)
-                                        onNotice(result.message)
-                                    },
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                                ) { Text(policy.label) }
-                        }
-                    }
-                    val scoutGold =
-                        kotlin.math.ceil(75 * OriginEngine.scoutingCostFactor(state)).toInt()
-                    OutlinedButton(
-                        onClick = {
-                            val result = WorldEngine.scout(state, region.id)
-                            onState(result.state); onNotice(result.message)
-                        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        enabled = state.battleSession?.isActive != true &&
-                            state.resources.gold >= scoutGold &&
-                            state.resources.food >= 100 &&
-                            (region.id in knowledge.exploredRegions || world.roads.any { it.connects(region.id) && it.other(region.id) in knowledge.exploredRegions }),
-                    ) { Text("Kundschafter · $scoutGold Gold / 100 Nahrung") }
-                    Button(
-                        enabled = state.homeArmySize >= 30 && state.battleSession?.isActive != true && region.id != "keep" && region.id in knowledge.exploredRegions,
-                        onClick = { dispatchDestinationId = region.id },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
-                    ) { Text("Feldheer hierhin entsenden") }
-                    if (!known) Text("Kundschafter erreichen bekannte Orte und ihre Nachbarn. Ein Heer benötigt zuerst ein aufgeklärtes Ziel.", color = Mist, fontSize = 12.sp)
-                    if (region.ownerId == PLAYER_FACTION && depots.isEmpty()) OutlinedButton(
-                        onClick = { depotRegionId = region.id },
-                        enabled = state.battleSession?.isActive != true && state.resources.gold >= 300 && state.resources.wood >= 150 && state.resources.food > 0,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    ) { Text("Depot bauen · 300 Gold / 150 Holz") }
-                    if (known) state.regions.firstOrNull { it.id == region.id && it.mission != null }?.let { legacy ->
-                        SmallAction("${legacy.mission?.label} vorbereiten") { missionRegion = legacy }
-                    }
+                PremiumPanel(onClick = { showRegion = true }) {
+                    Text(if (isKnown(region)) region.name else "Unkartiertes Gebiet", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Region, Außenposten, Stationierungen und Aktionen öffnen →", color = ModernBlue)
                 }
             }
         }
@@ -286,6 +214,12 @@ internal fun CampaignMapScreen(
                 Text("${placeName(army.regionId)}${army.destinationId?.let { " → ${placeName(it)}" } ?: ""}", color = Mist, fontSize = 12.sp)
                 army.arrivalDay?.let { arrival -> Text("Ankunft: Tag $arrival · ${(arrival - state.day).coerceAtLeast(0)} Tage", color = Mist, fontSize = 12.sp) }
                 Text("Moral ${army.morale} % · ${army.supplyDays} Tage Vorräte · ${army.marchPolicy.label}", color = if (army.supplyDays <= 1) Danger else Success, fontSize = 12.sp)
+                army.lastSupplyOutpostId?.let { postId -> state.frontier.outposts.firstOrNull { it.id == postId }?.let { post ->
+                    val corridor = WorldEngine.route(world, post.regionId, army.regionId).orEmpty()
+                    Text("Letzte Außenpostenversorgung: ${post.name} · ${post.suppliedFood} Nahrung insgesamt", color = ModernBlue, fontSize = 12.sp)
+                    if (corridor.isNotEmpty()) Text("Straßenverbindung: ${corridor.joinToString(" → ") { placeName(it) }} · Nachschub benötigt Vorräte am Ort oder einen Konvoi.", color = Mist, fontSize = 11.sp)
+                } }
+                if (army.delayUntilDay > state.day) Text("Außenpostenkampf: aufgehalten bis Tag ${army.delayUntilDay}", color = Danger)
                 Text(army.cultures.entries.joinToString(" · ") { "${it.key.label}: ${it.value}" }, color = Mist, fontSize = 12.sp)
                 if (army.lastLosses > 0) Text("Letzter Marschtag: ${army.lastLosses} Verluste", color = Danger, fontSize = 12.sp)
                 if (army.missionId == null && army.status.isAway) {
@@ -421,6 +355,17 @@ internal fun CampaignMapScreen(
         }
         item { Spacer(Modifier.height(16.dp)) }
     }
+    if (showRegion) selectedRegion?.let { region ->
+        ModalBottomSheet(onDismissRequest = { showRegion = false }, containerColor = Panel,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(.85f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+                RegionCampaignPanel(state, region, onState, onNotice,
+                    { showRegion = false; dispatchDestinationId = region.id },
+                    { showRegion = false; depotRegionId = region.id },
+                    { showRegion = false; missionRegion = it })
+            }
+        }
+    }
     dispatchDestinationId?.let { destinationId ->
         CampaignDispatchDialog(state, destinationId, { dispatchDestinationId = null }, onState, onNotice)
     }
@@ -446,6 +391,123 @@ internal fun CampaignMapScreen(
     missionRegion?.let { region -> region.mission?.let { mission ->
         MissionPreparationDialog(state, mission, region, { missionRegion = null }, onState, onNotice)
     } }
+}
+
+
+@Composable
+private fun RegionCampaignPanel(state: GameState, region: WorldPlace, onState: (GameState) -> Unit,
+    onNotice: (String) -> Unit, onDispatch: () -> Unit, onDepot: () -> Unit, onMission: (WorldRegion) -> Unit) {
+    val world = state.world
+    val knowledge = world.knowledgeFor(PLAYER_FACTION)
+    val known = region.ownerId == PLAYER_FACTION || region.id in knowledge.exploredRegions || region.id in knowledge.visibleRegions
+    val visible = region.ownerId == PLAYER_FACTION || region.id in knowledge.visibleRegions
+    val weather = world.weather.at(region.id)
+    CampaignPanel {
+        Text(if (known) region.name else "Unkartiertes Gebiet", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        if (known) Text("${region.kind.label} · ${region.terrain.label}", color = Mist)
+        Text(
+            when {
+                region.ownerId == PLAYER_FACTION -> "Unter deinem Schutz"
+                !visible -> "Herrschaft derzeit nicht aufgeklärt"
+                else -> "Herrschaft: ${world.faction(region.ownerId)?.name ?: "Freie Siedlung"}"
+            },
+            color = if (region.ownerId == PLAYER_FACTION) Success else Mist, fontSize = 12.sp,
+        )
+        Text(
+            if (visible) "Aktuelle Sicht durch eigene Gebiete, Heere oder Kundschafter"
+            else if (known) "Kartiert · keine aktuelle Sicht" else "Noch keine gesicherte Ortskenntnis",
+            color = Gold, fontSize = 12.sp,
+        )
+        if (visible) {
+            Text("${weather.label} · ${world.weather.season.label}", color = Color.White)
+            Text(
+                "Marsch ${(weather.marchFactor * world.weather.season.marchFactor * 100).toInt()} % · Fernkampf ${(weather.rangedFactor * 100).toInt()} % · Kavallerie ${(weather.cavalryFactor * 100).toInt()} %",
+                color = Mist, fontSize = 12.sp,
+            )
+            Text("${region.population} Einwohner · Befestigung ${region.fortification} · Wohlstand ${region.prosperity}", color = Mist, fontSize = 12.sp)
+        }
+        if (known) {
+            val terrain = WorldEngine.terrainFor(region.terrain)
+            Text("Gefechtsgelände: ${terrain.label} · aktive Frontbreite ${SiegeEngine.terrainFrontage(terrain)}", color = ModernBlue)
+            Text("Lokaler Ruf ${(world.regionReputation[region.id] ?: 0)} · erfolgreiche Expeditionen machen weitere Einsätze sicherer.", color = Mist)
+            if (visible && region.ownerId !in listOf(PLAYER_FACTION, NEUTRAL_FACTION)) {
+                val relation = DiplomacyEngine.relation(state, PLAYER_FACTION, region.ownerId)
+                Text("${if (relation.atWar) "Krieg" else "Frieden"} · Beziehung ${relation.relation} · Vertrauen ${relation.trust}", color = Mist)
+            }
+            state.frontier.outposts.filter { it.regionId == region.id }.forEach { post ->
+                val guard = world.armies.firstOrNull { it.id == post.garrisonArmyId && it.regionId == post.regionId && it.status == WorldArmyStatus.HOLDING }
+                Text("${post.name} · ${post.role} · ${post.integrity}% · ${post.stores}/${post.capacity} Nahrung", color = if (post.integrity == 0) Danger else Success)
+                Text("Garnison ${guard?.total ?: 0} · bisher ${post.suppliedFood} Nahrung ausgeliefert", color = Mist)
+                if (post.lastDefense.isNotBlank()) Text(post.lastDefense, color = Mist)
+            }
+            world.armies.filter { it.factionId == PLAYER_FACTION && it.regionId == region.id && it.status.isAway }.forEach {
+                Text("Stationiert: ${it.name} · ${it.total} Soldaten · ${it.supplyDays} Tage Vorräte", color = Success)
+            }
+            knowledge.observations.filter { it.regionId == region.id && it.factionId != PLAYER_FACTION }.forEach {
+                Text("Kontakt: ${it.name} · ${it.minimum}–${it.maximum} · Bericht Tag ${it.day}", color = Danger)
+            }
+            state.regions.firstOrNull { it.id == region.id }?.let { legacy ->
+                val yield = EconomyEngine.regionalYield(legacy.type)
+                Text("Gebietsbeitrag vor Arbeiterfaktor: ${yield.gold} Gold · ${yield.wood} Holz · ${yield.iron} Eisen/Tag${if (region.ownerId != PLAYER_FACTION) " bei eigener Kontrolle" else ""}", color = Mist)
+            }
+        }
+        val depots = world.depots.filter { it.regionId == region.id && it.factionId == PLAYER_FACTION }
+        depots.forEach { depot -> Text("Versorgungslager: ${depot.food} / ${depot.capacity} Nahrung", color = Success, fontSize = 12.sp) }
+        state.occupations.firstOrNull { it.regionId == region.id }?.let { occupation ->
+            val garrison =
+                world.armies.filter {
+                    it.factionId == PLAYER_FACTION &&
+                        it.regionId == region.id &&
+                        it.status != WorldArmyStatus.DESTROYED
+                }.sumOf { it.total }
+            HorizontalDivider(color = Gold.copy(alpha = .35f))
+            Text("BESATZUNGSVERWALTUNG", color = Gold, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+            Text(
+                "Unruhe ${occupation.unrest}% · Garnison $garrison · ${occupation.policy.label}",
+                color = if (occupation.unrest >= 70) Danger else if (occupation.unrest <= 25) Success else Mist,
+                fontSize = 12.sp,
+            )
+            Text(occupation.policy.description, color = Mist, fontSize = 11.sp)
+            OccupationPolicy.entries.forEach { policy ->
+                if (policy != occupation.policy)
+                    OutlinedButton(
+                        onClick = {
+                            val result = OccupationEngine.setPolicy(state, region.id, policy)
+                            onState(result.state)
+                            onNotice(result.message)
+                        },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+                    ) { Text(policy.label) }
+            }
+        }
+        val scoutGold =
+            kotlin.math.ceil(75 * OriginEngine.scoutingCostFactor(state)).toInt()
+        OutlinedButton(
+            onClick = {
+                val result = WorldEngine.scout(state, region.id)
+                onState(result.state); onNotice(result.message)
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            enabled = state.battleSession?.isActive != true &&
+                state.resources.gold >= scoutGold &&
+                state.resources.food >= 100 &&
+                (region.id in knowledge.exploredRegions || world.roads.any { it.connects(region.id) && it.other(region.id) in knowledge.exploredRegions }),
+        ) { Text("Kundschafter · $scoutGold Gold / 100 Nahrung") }
+        Button(
+            enabled = state.homeArmySize >= 30 && state.battleSession?.isActive != true && region.id != "keep" && region.id in knowledge.exploredRegions,
+            onClick = { onDispatch() },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
+        ) { Text("Feldheer hierhin entsenden") }
+        if (!known) Text("Kundschafter erreichen bekannte Orte und ihre Nachbarn. Ein Heer benötigt zuerst ein aufgeklärtes Ziel.", color = Mist, fontSize = 12.sp)
+        if (region.ownerId == PLAYER_FACTION && depots.isEmpty()) OutlinedButton(
+            onClick = { onDepot() },
+            enabled = state.battleSession?.isActive != true && state.resources.gold >= 300 && state.resources.wood >= 150 && state.resources.food > 0,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        ) { Text("Depot bauen · 300 Gold / 150 Holz") }
+        if (known) state.regions.firstOrNull { it.id == region.id && it.mission != null }?.let { legacy ->
+            SmallAction("${legacy.mission?.label} vorbereiten") { onMission(legacy) }
+        }
+    }
 }
 
 @Composable
@@ -633,6 +695,7 @@ private fun CampaignMapScene(
     frontier: List<CampaignFrontierMarker>,
     aidRoutes: List<CampaignAidRoute>,
     convoys: List<CampaignConvoyRoute>,
+    outposts: List<FrontierOutpost>,
     playerHeraldry: Heraldry,
     selectedRegionId: String?,
     onSelect: (String) -> Unit,
@@ -727,6 +790,13 @@ private fun CampaignMapScene(
                 drawCircle(Ink, 2.dp.toPx(), cart + Offset(-3.dp.toPx(), 5.dp.toPx()))
                 drawCircle(Ink, 2.dp.toPx(), cart + Offset(3.dp.toPx(), 5.dp.toPx()))
             }
+            outposts.forEach { post ->
+                val region = regions.firstOrNull { it.id == post.regionId } ?: return@forEach
+                val position = point(region.x, region.y) + Offset(-24.dp.toPx(), -24.dp.toPx())
+                val color = if (post.integrity == 0) Mist else ModernBlue
+                drawRect(color, position, Size(12.dp.toPx(), 12.dp.toPx()), style = Stroke(2.dp.toPx()))
+                drawLine(color, position + Offset(-2.dp.toPx(), 15.dp.toPx()), position + Offset(14.dp.toPx() * (post.stores.toFloat()/post.capacity).coerceIn(0f,1f), 15.dp.toPx()), 2.dp.toPx())
+            }
             frontier.forEach { marker ->
                 val position = point(marker.x, marker.y) + Offset(22.dp.toPx(), -25.dp.toPx())
                 val color = if (marker.taoTei) Color(0xFFB16CCA) else Danger
@@ -766,7 +836,7 @@ private fun CampaignMapScene(
             color = Ink.copy(alpha = .88f),
         ) {
             Text(
-                "Banner: eigenes Heer · Blau gestrichelt: Nachschub · Gold: Verbündetenhilfe · Rot: Feind · Grau: alter Bericht",
+                "Quadrat: Außenposten · Banner: eigenes Heer · Blau gestrichelt: Nachschub · Gold: Verbündetenhilfe · Rot: Feind · Grau: alter Bericht",
                 color = Mist, fontSize = 10.sp, modifier = Modifier.padding(10.dp),
             )
         }
@@ -775,13 +845,7 @@ private fun CampaignMapScene(
 
 @Composable
 private fun CampaignPanel(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-        Column(
-            Modifier.fillMaxWidth().padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            content = content,
-        )
-    }
+    PremiumPanel(content = content)
 }
 
 @Composable

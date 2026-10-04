@@ -1,6 +1,7 @@
 package com.goldenunicorn.troopmanager.data
 
 import com.goldenunicorn.troopmanager.model.*
+import com.goldenunicorn.troopmanager.engine.BattleStateEngine
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import org.junit.Assert.*
@@ -174,7 +175,7 @@ class SaveCodecTest {
         val storage = MemoryStorage()
         SaveRepository(storage).save(saved)
         val restarted = SaveRepository(storage).load()
-        assertEquals(saved, restarted)
+        assertEquals(BattleStateEngine.migrate(saved), restarted)
         assertEquals(240, restarted!!.homeArmySize)
         assertEquals(BattleDecision.HOLD, restarted.battleSession!!.pendingEvent!!.options.single())
     }
@@ -325,8 +326,8 @@ class SaveCodecTest {
             val repository = SaveRepository(storage)
             repository.save(healthy)
             storage.values[PRIMARY] = corrupted
-            assertEquals(healthy, SaveRepository(storage).load())
-            assertEquals(healthy, SaveCodec.decode(storage.values.getValue(PRIMARY)))
+            assertEquals(BattleStateEngine.migrate(healthy), SaveRepository(storage).load())
+            assertEquals(BattleStateEngine.migrate(healthy), SaveCodec.decode(storage.values.getValue(PRIMARY)))
         }
     }
 
@@ -377,7 +378,7 @@ class SaveCodecTest {
                     ),
             )
         val saved = state().copy(battleSession = battle)
-        assertEquals(saved, SaveCodec.decode(SaveCodec.encode(saved)))
+        assertEquals(BattleStateEngine.migrate(saved), SaveCodec.decode(SaveCodec.encode(saved)))
     }
 
     private fun raw(state: GameState): String {

@@ -19,7 +19,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.goldenunicorn.troopmanager.R
+import com.goldenunicorn.troopmanager.engine.MissionExperienceEngine
 import com.goldenunicorn.troopmanager.engine.MissionEngine
+import com.goldenunicorn.troopmanager.engine.WorldEngine
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
@@ -200,14 +202,20 @@ internal fun MissionPreparationDialog(
             if (count > 0) UnitAllocation(type, count) else null
         }
     val total = allocations.sumOf { it.amount.toLong() }
-    val duration =
+    val operationDays =
         MissionEngine.duration(
             state,
             mission,
             commanderIds.toList(),
             playerParticipates,
         )
-    val supply = total * duration.toLong() * 2L
+    val previewState = if (state.world.initialized) state else remember(state) { WorldEngine.initialize(state) }
+    val path = WorldEngine.route(previewState.world, "keep", region?.id ?: "keep")
+    val previewArmy = WorldArmy("preview", PLAYER_FACTION, mission.label, allocations, "keep")
+    val travel = WorldEngine.travelDays(previewState, previewArmy, path)
+    val duration = operationDays + travel * 2
+    val supply = (maxOf(total * duration.toLong() * 2L, previewArmy.dailyFood.toLong() * duration) *
+        MissionExperienceEngine.supplyFactor(state, commanderIds.toList(), playerParticipates)).toLong()
     val estimate =
         MissionEngine.estimate(
             state,
@@ -310,6 +318,10 @@ internal fun MissionPreparationDialog(
                             }
                         }
                         Text("$leaderCount / 3 Führungspersonen gewählt", color = Gold, fontSize = 12.sp)
+                        MissionExperienceEngine.roleLabels(state, commanderIds.toList(), playerParticipates).forEach {
+                            Text(it, color = Mist, fontSize = 12.sp)
+                        }
+                        Text("Mitgenommene Soldaten fehlen in der Heimat. Dauerhafte Kommandantenzuweisungen werden für die Reise freigegeben; Rückkehr benötigt einen echten Rückmarsch.", color = PaleGold, fontSize = 12.sp)
                     }
                 }
                 Text("Freie Soldaten plus feste Kontingente der ausgewählten Kommandanten können temporär mitgeschickt werden.", color = Mist, fontSize = 12.sp)
@@ -328,6 +340,12 @@ internal fun MissionPreparationDialog(
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Einschätzung", color = PaleGold, fontWeight = FontWeight.Bold)
                         Text(estimate.outcomeHint, color = Mist)
+                        Text("$travel Tage Anreise + $operationDays Tage Einsatz + $travel Tage Rückweg bei heutigem Wetter. Route: ${path.joinToString(" → ") { previewState.world.place(it)?.name ?: it }}", color = Mist, fontSize = 12.sp)
+                        region?.let { target -> previewState.world.place(target.id)?.let { place ->
+                            Text("${place.terrain.label}: Gelände beeinflusst Marsch und Vorratsdauer. Lokaler Ruf ${previewState.world.regionReputation[target.id] ?: 0} beeinflusst das Einsatzrisiko.", color = Mist, fontSize = 12.sp)
+                            val contacts = previewState.world.knowledgeFor(PLAYER_FACTION).observations.filter { it.regionId == target.id && it.factionId != PLAYER_FACTION }
+                            contacts.forEach { Text("Bekannter Kontakt: ${it.name} · ${it.minimum}–${it.maximum} · Tag ${it.day}; Stärke und Standort können sich ändern.", color = Danger, fontSize = 12.sp) }
+                        } }
                         StatGrid(listOf("Goldbeute" to "${estimate.goldRange.first}–${estimate.goldRange.last}", "Spieler-XP" to "${estimate.xpRange.first}–${estimate.xpRange.last}"))
                         Text("Schätzung ohne Erfolgsgarantie; Qualität, Führung und Zufall bestimmen die Rückkehr.", color = Mist, fontSize = 12.sp)
                     }

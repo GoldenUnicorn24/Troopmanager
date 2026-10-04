@@ -14,6 +14,12 @@ enum class TreatyKind(val label: String) {
 data class DiplomaticMemory(val day: Int, val text: String)
 
 @Serializable
+enum class WarGoal(val label: String) {
+    SECURE_REGION("Region sichern"), TRIBUTE("Tribut durchsetzen"),
+    FORCE_PEACE("Frieden erzwingen"), DEFEND_ALLY("Verbündeten verteidigen"),
+}
+
+@Serializable
 data class DiplomacyRelation(
     val firstFactionId: String,
     val secondFactionId: String,
@@ -24,6 +30,10 @@ data class DiplomacyRelation(
     val atWar: Boolean = false,
     val warStartedDay: Int? = null,
     val history: List<DiplomaticMemory> = emptyList(),
+    val playerWarGoal: WarGoal? = null,
+    val warGoalRegionId: String? = null,
+    val warGoalAllyId: String? = null,
+    val warLosses: Map<String, Int> = emptyMap(),
 ) {
     fun connects(first: String, second: String): Boolean =
         (firstFactionId == first && secondFactionId == second) ||
@@ -201,6 +211,7 @@ data class StoryState(
     val lastTickDay: Int = 0,
     val nextId: Long = 1,
     val resolved: List<String> = emptyList(),
+    val familyCooldowns: Map<StoryKind, Int> = emptyMap(),
 )
 
 @Serializable

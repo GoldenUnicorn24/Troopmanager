@@ -69,21 +69,8 @@ internal fun ArmyHubScreen(state: GameState, onState: (GameState) -> Unit, onNot
 
 @Composable
 internal fun HubTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    ScrollableTabRow(
-        selectedTabIndex = selected.coerceIn(0, labels.lastIndex.coerceAtLeast(0)),
-        containerColor = Panel,
-        contentColor = Gold,
-        edgePadding = 8.dp,
-        divider = {},
-    ) {
-        labels.forEachIndexed { index, label ->
-            Tab(
-                selected = selected == index,
-                onClick = { onSelect(index) },
-                text = { Text(label, maxLines = 1) },
-            )
-        }
-    }
+    ModernTabStrip(labels, selected.coerceIn(0, labels.lastIndex.coerceAtLeast(0)), onSelect,
+        Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
 }
 
 @Composable

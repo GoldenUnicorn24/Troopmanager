@@ -100,6 +100,18 @@ data class BattleReplayStart(
     val rangedSupplyFactor: Double = 1.0,
     val frontier: FrontierState = FrontierState(),
     val companion: CompanionProfile = CompanionProfile(),
+    val combatVersion: Int = 1,
+    val initialSegments: List<FortificationSegmentState> = emptyList(),
+    val initialSiegeDevices: List<SiegeDeviceState> = emptyList(),
+    val initialEnemyRoster: List<EnemyBattleUnit> = emptyList(),
+    val arrowsLoaded: Int = -1,
+    val enemyArrowsLoaded: Int = -1,
+    val personalSection: BattleSection = BattleSection.CENTER,
+    val militaryStock: MilitaryStock = MilitaryStock(),
+    val research: ResearchState = ResearchState(),
+    val artilleryLoaded: Int = -1,
+    val enemyArtilleryLoaded: Int = -1,
+    val counterTunnelUnlocked: Boolean = false,
 )
 
 @Serializable
@@ -130,6 +142,13 @@ data class BattleRecord(
     val enemyUnits: List<UnitAllocation> = emptyList(),
     val enemyFactionId: String? = null,
     val enemyArmyName: String? = null,
+    val outcomeGrade: BattleOutcomeGrade? = null,
+    val segments: List<FortificationSegmentState> = emptyList(),
+    val siegeDevices: List<SiegeDeviceState> = emptyList(),
+    val exchanges: List<BattleExchangeReport> = emptyList(),
+    val arrowsUsed: Int = 0,
+    val weaponChargesUsed: Map<WallWeaponType, Int> = emptyMap(),
+    val aftermath: List<String> = emptyList(),
 )
 
 @Serializable

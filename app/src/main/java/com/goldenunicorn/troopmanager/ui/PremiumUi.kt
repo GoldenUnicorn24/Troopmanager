@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -150,7 +152,7 @@ internal fun ModernTabStrip(
         labels.forEachIndexed { index, label ->
             val active = index == selected
             Surface(
-                modifier = Modifier.clickable { onSelect(index) },
+                modifier = Modifier.heightIn(min = 48.dp).clickable { onSelect(index) },
                 color = if (active) Color.White else Color(0xFF111820),
                 shape = RoundedCornerShape(100.dp),
                 border = BorderStroke(
@@ -161,13 +163,23 @@ internal fun ModernTabStrip(
                 Text(
                     label,
                     color = if (active) Ink else Muted,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                     maxLines = 1,
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun ModernChoice(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier) {
+    Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp).semantics { this.selected = selected },
+        color = if (selected) ModernSurface2 else StoneRaised,
+        contentColor = if (selected) Color.White else Muted,
+        shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, if (selected) ModernBlue else ModernLine)) {
+        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { label() }
     }
 }
 

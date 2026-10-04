@@ -1,6 +1,18 @@
-# Realm of the Last Wall — Troopmanager v0.83.0
+# Realm of the Last Wall — Troopmanager v0.90.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v0.90: war and experience overhaul
+
+Combat Engine 2.0 resolves distance, contact, cover and frontage independently for each front. Persistent siege devices, finite arrows/artillery, weapon priorities, local cohesion/fatigue and aggregate casualty allocation replace time-triggered melee and forced per-contingent losses. Exchange reports expose actual damage sources, prevented losses and ammunition; graded outcomes affect society, reputation and shared battle memories.
+
+The battle screen keeps a fixed HUD, three front selectors, a dominant procedural battlefield and 48 dp actions. Context orders, preparation, army details and reports use sheets. Android UI tests cover a 320×568 viewport, landscape, large fonts and pending-event reactions.
+
+Connected situations prioritize daily decisions. Outposts transfer real food, reserve existing field armies as garrisons, sustain raids and delay the same enemy army. Expeditions have leadership roles, operational decisions, scouting and regional reputation. City districts and world regions open contextual sheets; forecasts expose 7/14-day uncertainty and overflow. War objectives and actual losses/exhaustion influence peace; political demands show consequences and speaker roles. High-king campaigns gain coalition, frontier and reconstruction goals. Existing co-ruler advice, court, family, education and optional dynasty systems remain integrated.
+
+Save version 4 gains safe additive defaults and idempotent battle migration. New battle replays use their original seed, stocks, roster and decisions. Pre-v0.90 replays are deterministic reinterpretations under the new contact rules; impossible legacy orders become Hold, while original reports remain unchanged.
+
+See [v0.90 implementation and verification](docs/V0.90-WAR-EXPERIENCE.md) for architecture, balancing, compatibility and accepted adaptations.
 
 ## v0.83: campaign pulse and fun overhaul
 
@@ -54,7 +66,7 @@ See [v0.65 architecture and controls](docs/V0.65-RELATIONSHIP-CO-RULER.md) for t
 - Four culture cards show army totals and training. Commanders receive explicit unit quantities without duplicate assignments. Unassigned troops remain under the player's direct command.
 - Six mission types: border patrol, caravan escort, bandit suppression, monster hunt, village defense and reconnaissance. Choose soldiers and an optional commander, pay supplies and wait for the required days. Mission troops are unavailable at home, and outcomes include real casualties and rewards. Recall requires travel time.
 - Threat produces warnings, raids and announced invasions. The arrival countdown supports wall repairs, troop preparation, recalls and allied requests. Siege devices and fortress defenses affect the attack.
-- Persistent battles advance in phases rather than calculating a final report at the start. Deploy left, center, right and reserve; respond to battle events and choose pursuit after victory. Sound cues play bundled original synthesized effects.
+- Persistent battles advance through local distance/contact exchanges rather than calculating a final report at the start. Deploy left, center, right and reserve; respond to battle events and choose pursuit after victory. Sound cues play bundled original synthesized effects.
 - Character experience and skill points, meaningful commander stats and a companion who can command troops and missions.
 - Relationships allow at most one large or two small actions per day, with decisions and stages from companions to ruling couple.
 - Realm events offer consequential choices; cultures unlock through actual population and diplomacy. World regions connect locations with mission types.
@@ -77,13 +89,14 @@ Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project
 
 - `compileSdk` / `targetSdk`: 35
 - `minSdk`: 26
-- `versionName`: 0.82.0
-- `versionCode`: 38
+- `versionName`: 0.90.0
+- `versionCode`: 42
 
 ```bash
 gradle :app:testDebugUnitTest --stacktrace
 gradle :app:lintDebug --stacktrace
 gradle :app:assembleDebug --stacktrace
+gradle :app:connectedDebugAndroidTest --stacktrace
 gradle :app:assembleRelease --stacktrace
 test -f app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -91,7 +104,9 @@ test -f app/build/outputs/apk/debug/app-debug.apk
 The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 The unsigned release APK is `app/build/outputs/apk/release/app-release-unsigned.apk`; sign it outside the repository with the existing update key before updating an installed campaign.
 
-GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → Android lint → APK build → package/version/signature verification → artifact upload on pushes and pull requests to `main`, `codex/v0.81`, `codex/v0.82-overhaul` and the maintained earlier branches, plus manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.82.0-debug`.
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → Android lint → APK build → package/version/signature verification → artifact upload on pushes and pull requests to `codex/v0.90-war-experience-overhaul`, `codex/v0.85-modern-ui`, `main` and the maintained earlier branches, plus manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.90.0-debug`.
+
+A second CI job runs four battle-layout tests on Android 35 and uploads actual UI screenshots and instrumented test reports.
 
 The debug artifact is intended for local installation and testing; store distribution and production signing are separate release tasks. The simulation uses 2D fortress and battlefield views, aggregate formations and deterministic state transitions; visible formations represent aggregate soldiers; local synthesized audio is bundled.
 

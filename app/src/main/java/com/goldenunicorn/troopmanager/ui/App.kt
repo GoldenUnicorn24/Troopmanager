@@ -448,10 +448,11 @@ private fun GameShell(
         if (showMore) showMore = false else screen = GameDestination.COMMAND
     }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
+    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
     Scaffold(
         containerColor = Ink,
         topBar = {
-            Column(
+            if (!battleVisible) Column(
                 Modifier.fillMaxWidth().statusBarsPadding().background(Ink)
             ) {
                 Row(

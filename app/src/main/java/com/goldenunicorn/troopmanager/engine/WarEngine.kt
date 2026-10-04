@@ -51,6 +51,7 @@ object WarEngine {
             require(listOf(record.casualties.dead, record.casualties.wounded, record.casualties.missing, record.casualties.captured).all { it >= 0 } && listOf(record.casualties.dead, record.casualties.wounded, record.casualties.missing, record.casualties.captured).sumOf { it.toLong() } == record.ownStart.toLong() - record.ownRemaining) { "Ungültige Verlustbilanz." }
         }
         state.battleSession?.let { battle ->
+            BattleStateEngine.validate(battle)
             require(battle.commandPoints in 0..battle.maxCommandPoints && battle.maxCommandPoints in 1..100 && battle.inputs.size <= 40 && battle.enemyFortification in 0..100 && (battle.deployedMorale == null || battle.deployedMorale in 0..100) && battle.enemyExperience in 0..10000) { "Ungültige Befehlspunkte." }
             require(battle.rangedWeather.isFinite() && battle.cavalryWeather.isFinite() && battle.seasonPenalty.isFinite() && battle.rangedWeather in 0.25..1.5 && battle.cavalryWeather in 0.25..1.5 && battle.seasonPenalty in 0.5..1.5) { "Ungültige Schlachtbedingungen." }
         }
@@ -302,20 +303,23 @@ object WarEngine {
                             .coerceAtMost(85) /
                         100
                 ).toInt()
-            val captured = if (victory || session.orderedRetreat) 0 else lost / 10
-            val missing = lost / 20
-            val dead = lost - injured - captured - missing
-            reports += CasualtyReport(dead, injured, missing, captured)
+            val heldWall = victory && session.tactic == Tactic.FORTIFY
+            val collapse = session.outcomeGrade in listOf(BattleOutcomeGrade.ROUT, BattleOutcomeGrade.CRUSHING_DEFEAT)
+            val captured = if (victory || session.orderedRetreat) 0 else lost / if (collapse) 7 else 10
+            val missing = if (heldWall) 0 else lost / if (session.orderedRetreat) 100 else if (collapse) 12 else 20
+            val survivingInjured = minOf(injured, lost - captured - missing)
+            val dead = lost - survivingInjured - captured - missing
+            reports += CasualtyReport(dead, survivingInjured, missing, captured)
             // ArmyEngine removes every battlefield loss from population. Living casualties stay citizens.
-            population = ArmyEngine.adjustPopulation(population, type.culture, injured + captured)
-            if (injured > 0) {
-                val medicineNeeded = ceil(injured / 4.0).toInt()
+            population = ArmyEngine.adjustPopulation(population, type.culture, survivingInjured + captured)
+            if (survivingInjured > 0) {
+                val medicineNeeded = ceil(survivingInjured / 4.0).toInt()
                 val medicineUsed = minOf(militaryStock.medicine, medicineNeeded)
                 militaryStock =
                     militaryStock.copy(
                         medicine = (militaryStock.medicine - medicineUsed).coerceAtLeast(0)
                     )
-                projectedPatients += injured
+                projectedPatients += survivingInjured
                 val overflow = (projectedPatients - capacity).coerceAtLeast(0)
                 val overloadDays =
                     if (overflow == 0) 0
@@ -333,7 +337,7 @@ object WarEngine {
                         ).coerceAtLeast(2)
                 val previous = wounded.firstOrNull { it.type == type && it.recoveryDay == recoveryDay }
                 wounded.removeAll { it.type == type && it.recoveryDay == recoveryDay }
-                wounded += WoundedCohort(previous?.id ?: "${id}_wounded_${type.name}", type, sum(previous?.soldiers ?: 0, injured), recoveryDay, troops.maxOf { it.experience }, troops.minOf { it.equipment })
+                wounded += WoundedCohort(previous?.id ?: "${id}_wounded_${type.name}", type, sum(previous?.soldiers ?: 0, survivingInjured), recoveryDay, troops.maxOf { it.experience }, troops.minOf { it.equipment })
             }
             if (captured > 0) {
                 val previous = captives.firstOrNull { it.own && it.type == type }
@@ -407,7 +411,10 @@ object WarEngine {
             }
         }
         val final = session.copy(casualties = casualties)
-        val record = BattleRecord(id, state.day, session.location ?: state.realm.settlementName, session.enemy, session.seed, session.tactic, session.ownStart, session.enemyStart, session.ownRemaining, session.enemyRemaining, victory, session.minute, casualties, session.contingents.mapNotNull { it.commanderId }.distinct(), session.log.filter { it.text.contains("Kommandant") || it.text.contains("bricht") || it.text.contains("Rückzug") }.map { it.text }.takeLast(12), session.terrain, session.participation, session.replayStart, session.inputs, session.enemyFactionName, session.enemyUnits, session.enemyFactionId, session.enemyArmyName)
+        val record = BattleRecord(id, state.day, session.location ?: state.realm.settlementName, session.enemy, session.seed, session.tactic, session.ownStart, session.enemyStart, session.ownRemaining, session.enemyRemaining, victory, session.minute, casualties, session.contingents.mapNotNull { it.commanderId }.distinct(), session.log.filter { it.text.contains("Kommandant") || it.text.contains("bricht") || it.text.contains("Rückzug") }.map { it.text }.takeLast(12), session.terrain, session.participation, session.replayStart, session.inputs, session.enemyFactionName, session.enemyUnits, session.enemyFactionId, session.enemyArmyName,
+            outcomeGrade = session.outcomeGrade, segments = session.segments, siegeDevices = session.siegeDevices,
+            exchanges = session.exchanges, arrowsUsed = (session.battleArrowsLoaded - session.battleArrowsRemaining).coerceAtLeast(0),
+            weaponChargesUsed = session.weaponChargesUsed)
         val records = state.war.history + record
         val history = records.mapIndexed { index, entry ->
             if (index < records.size - 24 && entry.replay != null) entry.copy(replay = null, inputs = emptyList()) else entry

@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldenunicorn.troopmanager.engine.CampaignInsightsEngine
 import com.goldenunicorn.troopmanager.engine.CityEngine
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
@@ -43,6 +44,7 @@ internal fun CityScreen(
     var cityName by
         remember(state.realm.settlementName) { mutableStateOf(state.realm.settlementName) }
     var districtName by rememberSaveable { mutableStateOf<String?>(null) }
+    var districtSheetName by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedName by rememberSaveable { mutableStateOf<String?>(null) }
     var accessibleList by rememberSaveable { mutableStateOf(false) }
     val selected =
@@ -84,15 +86,7 @@ internal fun CityScreen(
                 Text("Tag ${state.day} →", color = Gold)
             }
         }
-        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp, containerColor = Panel, contentColor = Gold) {
-            listOf("Stadtansicht", "Verwaltung", "Bauen", "Legenden").forEachIndexed { index, label ->
-                Tab(
-                    selected = tab == index,
-                    onClick = { tab = index },
-                    text = { Text(label, fontSize = 12.sp, maxLines = 1) },
-                )
-            }
-        }
+        ModernTabStrip(listOf("Stadtansicht", "Verwaltung", "Bauen", "Legenden"), tab, { tab = it })
         when (tab) {
             0 -> {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -102,17 +96,18 @@ internal fun CityScreen(
                         night = night,
                         season = state.city.season,
                         onBuilding = { selectedName = it.name },
+                        onDistrict = { districtName = it.name; districtSheetName = it.name },
                     )
                     Row(
                         Modifier.align(Alignment.TopEnd).padding(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        FilterChip(
+                        ModernChoice(
                             selected = night,
                             onClick = { night = !night },
                             label = { Text(if (night) "Nacht" else "Tag") },
                         )
-                        FilterChip(
+                        ModernChoice(
                             selected = accessibleList,
                             onClick = { accessibleList = !accessibleList },
                             label = { Text("Gebäudeliste") },
@@ -212,7 +207,10 @@ internal fun CityScreen(
                                 "Krankheit" to "${state.society.disease}%", "Hunger" to "${state.society.hunger}%",
                                 "Kulturelle Spannungen" to "${state.society.culturalTension}%", "Politische Loyalität" to "${state.society.politicalLoyalty}%",
                                 "Kriegsmüdigkeit" to "${state.society.warExhaustion}%", "Zuzug heute" to "${state.society.lastMigration}"))
-                            Text("Kriminalität senkt Sicherheit; Hunger und Krankheit hemmen Wachstum; politische Loyalität und Kriegsmüdigkeit beeinflussen Ordnung und Truppenmoral.", color = Mist, fontSize = 12.sp)
+                            CampaignInsightsEngine.societyDrivers(state).forEach { (title, why) ->
+                                Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(why, color = Mist, fontSize = 12.sp)
+                            }
                             val p = EconomyEngine.production(state)
                             val foodDeficit = (p.upkeep.toLong() - p.gross.food).coerceAtLeast(0)
                             Text(if (foodDeficit == 0L) "Nahrung: Der heutige Ertrag deckt den Unterhalt."
@@ -271,7 +269,7 @@ internal fun CityScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 TaxLevel.entries.forEach { level ->
-                                    FilterChip(
+                                    ModernChoice(
                                         selected = state.city.taxLevel == level,
                                         onClick = {
                                             applyAction(CityEngine.setTaxLevel(state, level))
@@ -301,7 +299,7 @@ internal fun CityScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     priorities.forEach { priority ->
-                                        FilterChip(
+                                        ModernChoice(
                                             selected = state.city.workerPriority == priority,
                                             onClick = {
                                                 applyAction(
@@ -321,6 +319,7 @@ internal fun CityScreen(
                             )
                         }
                     }
+                    item { LogisticsForecastPanel(state) }
                     item { SectionTitle("Lager & Tagesbilanz") }
                     items(ResourceKind.entries, key = { it.name }) { kind ->
                         val detail = EconomyEngine.breakdown(state, kind)
@@ -412,6 +411,20 @@ internal fun CityScreen(
             else -> PresentationScreen(state, onState, onNotice)
         }
     }
+    districtSheetName?.let { name -> CityDistrict.entries.firstOrNull { it.name == name }?.let { area ->
+        ModalBottomSheet(onDismissRequest = { districtSheetName = null }, containerColor = Panel) {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(.8f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(area.label, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Stadtweite Rahmenbedingungen: Wohlstand ${state.city.prosperity} · Sicherheit ${state.city.security} · ${state.population.total}/${state.city.housingCapacity} Wohnplätze.", color = Mist)
+                val sites = citySites.filter { it.district == area }
+                val projects = state.city.constructionQueue.filter { order -> sites.any { it.type == order.type } }
+                projects.forEach { Text("${it.type.label}: Stufe ${it.targetLevel} in ${it.daysRemaining} Tagen", color = ModernBlue) }
+                if (projects.isEmpty()) Text("Keine laufenden Bauprojekte in diesem Bezirk.", color = Mist)
+                sites.forEach { site -> CityBuildingRow(state, site) { districtSheetName = null; selectedName = site.type.name } }
+                CampaignInsightsEngine.societyDrivers(state).forEach { (driver, cause) -> Text("$driver: $cause", color = Mist, fontSize = 12.sp) }
+            }
+        }
+    } }
     if (selected != null) {
         ModalBottomSheet(
             onDismissRequest = { selectedName = null },
@@ -436,13 +449,13 @@ private fun CityDistrictFilter(selected: CityDistrict?, onSelect: (CityDistrict?
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        FilterChip(
+        ModernChoice(
             selected = selected == null,
             onClick = { onSelect(null) },
             label = { Text("Alle Bezirke") },
         )
         CityDistrict.entries.forEach { area ->
-            FilterChip(
+            ModernChoice(
                 selected = selected == area,
                 onClick = { onSelect(area) },
                 label = { Text(area.label, fontSize = 11.sp) },
@@ -481,11 +494,9 @@ private fun CityBuildingRow(state: GameState, site: CitySite, onClick: () -> Uni
 
 @Composable
 private fun CityPanel(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title, color = PaleGold, fontWeight = FontWeight.Bold)
-            content()
-        }
+    PremiumPanel {
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold)
+        content()
     }
 }
 
@@ -552,7 +563,7 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
             ResourceKind.entries
                 .filter { it != ResourceKind.GOLD }
                 .forEach { kind ->
-                    FilterChip(
+                    ModernChoice(
                         selected = resource == kind,
                         onClick = { resourceName = kind.name },
                         label = { Text(kind.label) },
@@ -561,7 +572,7 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(100, 500, 1000).forEach { quantity ->
-                FilterChip(
+                ModernChoice(
                     selected = amount == quantity,
                     onClick = { amount = quantity },
                     label = { Text(quantity.toString()) },
@@ -661,6 +672,18 @@ private fun BuildingDetails(state: GameState, type: BuildingType, onConstruction
                 "${level * 25} · Reichsfaktor ${(state.workers.toFloat() / state.workerDemand.coerceAtLeast(1) * 100).toInt()}%",
             )
         CityPanel("Ausbau auf Stufe ${level + 1}") {
+            val after = CityEngine.ensureCapacity(state.copy(realm = state.realm.copy(buildings = state.realm.buildings + (type to (level + 1).coerceAtMost(100)))))
+            if (producing != null) {
+                val beforeProduction = EconomyEngine.breakdown(state, producing)
+                val afterProduction = EconomyEngine.breakdown(after, producing)
+                CityValueRow("Netto / Tag bei heutigen Bedingungen", "${beforeProduction.net} → ${afterProduction.net}")
+                CityValueRow("Arbeiterfaktor", "${(beforeProduction.workerFactor * 100).toInt()}% → ${(afterProduction.workerFactor * 100).toInt()}%")
+            }
+            if (type == BuildingType.RESIDENTIAL) CityValueRow("Wohnplätze", "${state.city.housingCapacity} → ${after.city.housingCapacity}")
+            if (type == BuildingType.WAREHOUSE) CityValueRow("Nahrungslager", "${state.city.storageCapacity.food} → ${after.city.storageCapacity.food}")
+            if (type == BuildingType.HOSPITAL) CityValueRow("Lazarettplätze", "${WarEngine.hospitalCapacity(state)} → ${WarEngine.hospitalCapacity(after)}")
+            CityValueRow("Arbeiterbedarf im Reich", "${state.workerDemand} → ${after.workerDemand}")
+            Text("Vorschau ohne neue Ereignisse: Mehr Arbeitsbedarf kann andere Betriebe schwächen. Baumaterial und Bauplatz stehen während des Ausbaus nicht für Befestigungen oder Nachschub zur Verfügung.", color = Mist, fontSize = 12.sp)
             CityValueRow("Gold / Holz", "${cost.gold} / ${cost.wood}")
             CityValueRow("Stein / Eisen", "${cost.stone} / ${cost.iron}")
             if (cost.food > 0) CityValueRow("Nahrung", cost.food.toString())

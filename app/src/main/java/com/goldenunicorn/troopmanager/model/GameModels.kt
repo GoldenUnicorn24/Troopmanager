@@ -150,6 +150,7 @@ data class Commander(
     val battlesFought: Int = 0,
     val victories: Int = 0,
     val casualties: Int = 0,
+    val diplomacy: Int = 35,
 )
 
 @Serializable data class UnitAllocation(val type: UnitType, val amount: Int)

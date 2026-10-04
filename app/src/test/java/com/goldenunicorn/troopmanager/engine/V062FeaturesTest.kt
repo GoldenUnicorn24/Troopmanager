@@ -154,7 +154,8 @@ class V062FeaturesTest {
             ).state
 
         assertEquals(0, started.militaryStock.arrows)
-        assertEquals(0.35, started.battleSession!!.rangedSupplyFactor, 0.0001)
+        assertEquals(0.025, started.battleSession!!.rangedSupplyFactor, 0.0001)
+        assertEquals(10, started.battleSession!!.battleArrowsRemaining)
     }
 
     @Test

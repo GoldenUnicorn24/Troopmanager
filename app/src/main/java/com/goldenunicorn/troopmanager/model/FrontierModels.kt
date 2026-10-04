@@ -107,7 +107,14 @@ data class WallWeaponStock(
     val integrity: Int = 100,
     val reloadRounds: Int = 0,
     val section: BattleSection = BattleSection.CENTER,
+    val priority: WallWeaponPriority = WallWeaponPriority.AUTO,
+    val automatic: Boolean = true,
 )
+
+@Serializable
+enum class WallWeaponPriority(val label: String) {
+    AUTO("Automatisch nach Rolle"), DEVICES("Belagerungsgeräte"), INFANTRY("Infanterie"), ELITES("Eliteziele"),
+}
 
 @Serializable
 enum class CustomUnitRole(val label: String) {
@@ -179,9 +186,15 @@ data class FrontierOutpost(
     val level: Int = 1,
     val integrity: Int = 100,
     val stores: Int = 0,
+    val garrisonArmyId: String? = null,
+    val suppliedFood: Int = 0,
+    val raidDays: Map<String, Int> = emptyMap(),
+    val lastDefense: String = "",
 ) {
-    val scoutBonus: Int get() = level * 6
-    val growthSuppression: Int get() = level * 2
+    val capacity: Int get() = when (level) { 1 -> 250; 2 -> 600; else -> 1000 }
+    val role: String get() = when (level) { 1 -> "Spähposten"; 2 -> "Befestigte Wacht"; else -> "Grenzfort" }
+    val scoutBonus: Int get() = if (integrity == 0) 0 else level * 6
+    val growthSuppression: Int get() = if (integrity == 0) 0 else level * 2
 }
 
 @Serializable

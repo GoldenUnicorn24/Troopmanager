@@ -73,37 +73,9 @@ private fun CommandOverview(
     val foodStatus =
         if (foodNet >= 0) "+$foodNet/Tag"
         else "$foodNet/Tag"
-    val situations =
-        listOfNotNull(
-            state.campaign.pendingDecision?.let {
-                Triple(
-                    "Herrscherentscheidung",
-                    it.title,
-                    "Bis Tag ${it.expiresDay} · ${it.text}",
-                ) to GameDestination.DECISIONS
-            },
-            nearestThreat?.let {
-                Triple(
-                    "Grenzlage",
-                    it.name,
-                    "${it.estimatedStrengthLabel} · Ankunft in ${it.daysToArrival} Tagen",
-                ) to GameDestination.FRONTIER
-            },
-            if (wounded > 0)
-                Triple(
-                    "Lazarett",
-                    "$wounded Verwundete",
-                    "Soldaten warten auf Versorgung und Rückkehr in den Dienst.",
-                ) to GameDestination.HOSPITAL
-            else null,
-            urgent.firstOrNull()?.let {
-                Triple(
-                    "Aufgabe",
-                    it.title,
-                    it.dueDay?.let { day -> "Frist Tag $day" } ?: it.detail,
-                ) to it.destination
-            },
-        )
+    val situations = CampaignInsightsEngine.situations(state).map {
+        Triple(it.category, it.title, it.detail) to it.destination
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -184,7 +156,7 @@ private fun CommandOverview(
                 )
             }
         } else {
-            situations.take(3).forEachIndexed { index, row ->
+            situations.take(5).forEachIndexed { index, row ->
                 item {
                     val (copy, destination) = row
                     SituationCard(

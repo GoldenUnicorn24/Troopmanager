@@ -26,10 +26,14 @@ enum class MissionOutcome(val label: String) {
 enum class MissionPhase { OUTBOUND, OPERATING, RETURNING, DONE }
 
 @Serializable
+enum class MissionDecisionKind { ROUTE, OPERATION, EXTRACTION }
+
+@Serializable
 data class MissionDecision(
     val title: String,
     val text: String,
     val options: List<String>,
+    val kind: MissionDecisionKind = MissionDecisionKind.ROUTE,
 )
 
 @Serializable
@@ -66,6 +70,10 @@ data class ActiveMission(
     val wounded: Int = 0,
     /** Expected day on which the last wounded cohort from this mission is fit for duty. */
     val woundedRecoveryDay: Int = 0,
+    val experienceVersion: Int = 1,
+    val operationDecisionMade: Boolean = false,
+    val extractionDecisionMade: Boolean = false,
+    val rewardFactor: Double = 1.0,
 
 ) {
     val total: Int
