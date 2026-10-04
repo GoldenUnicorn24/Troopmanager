@@ -31,7 +31,8 @@ import com.goldenunicorn.troopmanager.model.*
 @Composable
 internal fun SessionBattleField(session: BattleSession, animations: Boolean, battleSpeed: Float,
     wallWeapons: List<WallWeaponStock> = emptyList(), modifier: Modifier = Modifier.fillMaxWidth().height(300.dp),
-    selected: BattleSection = BattleSection.CENTER, onSelect: (BattleSection) -> Unit = {}) {
+    selected: BattleSection = BattleSection.CENTER, compactLegend: Boolean = false,
+    onSelect: (BattleSection) -> Unit = {}) {
     val pulse = remember { Animatable(1f) }
     LaunchedEffect(session.step, animations) {
         if (animations && session.step > 0) {
@@ -225,8 +226,13 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                 }.clickable(role = Role.Button, onClickLabel = "Abschnitt auswählen") { onSelect(section) })
             }
         }
-        androidx.compose.material3.Text("■ Heer   ◆ Reiter   ▰ Geräte   Blau: Reserve", color = Mist, fontSize = 9.sp,
-            modifier = Modifier.align(Alignment.BottomStart).padding(8.dp))
+        androidx.compose.material3.Text(
+            if (compactLegend) "■ Heer  ◆ Reiter  ▰ Gerät  ━ Reserve" else "■ Heer   ◆ Reiter   ▰ Geräte   Blau: Reserve",
+            color = Mist,
+            fontSize = if (compactLegend) 7.sp else 9.sp,
+            maxLines = 1,
+            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 8.dp, vertical = if (compactLegend) 4.dp else 8.dp),
+        )
     }
 }
 
