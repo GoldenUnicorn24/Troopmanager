@@ -146,14 +146,21 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 BattleStateEngine.sections.forEach { section ->
                     val segment = battle.segment(section)
+                    val front = battle.fronts.firstOrNull { it.section == section }
                     val highlighted = selected == section
                     Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(48.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
                         color = if (selected == section) Panel2 else Panel, shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(if (selected == section) 2.dp else 0.dp, if (selected == section) ModernBlue else Color.Transparent)) {
-                        Column(Modifier.padding(horizontal = 6.dp, vertical = 3.dp)) {
+                        Column(Modifier.padding(horizontal = 6.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                             Text(when (section) { BattleSection.LEFT -> "LINKS"; BattleSection.RIGHT -> "RECHTS"; else -> "TOR / MITTE" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(if (battle.tactic == Tactic.FORTIFY) "${segment?.integrity ?: battle.wallIntegrity}% · ${segment?.contactState?.label ?: "Anmarsch"}" else segment?.contactState?.label ?: "Anmarsch",
-                                color = if (segment?.contactState?.allowsMelee == true) Danger else Mist, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                color = if (segment?.contactState?.allowsMelee == true) Danger else Mist, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            LinearProgressIndicator(
+                                progress = { (front?.cohesion ?: 0).coerceIn(0, 100) / 100f },
+                                modifier = Modifier.fillMaxWidth().height(2.dp),
+                                color = if ((front?.cohesion ?: 0) < 35) Danger else Success,
+                                trackColor = Color.White.copy(alpha = .08f),
+                            )
                         }
                     }
                 }
