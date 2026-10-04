@@ -1,6 +1,7 @@
 package com.goldenunicorn.troopmanager.engine
 
 import com.goldenunicorn.troopmanager.model.*
+import kotlin.random.Random
 import kotlin.math.ceil
 
 /** Border quantities reserve existing troops. Invasion banners only project their world army. */

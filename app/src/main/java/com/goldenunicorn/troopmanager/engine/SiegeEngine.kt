@@ -92,8 +92,8 @@ object SiegeEngine {
             val assault = local.filter { it.type in listOf(SiegeDevice.LADDERS, SiegeDevice.TOWER, SiegeDevice.CLIMBERS) && it.distance == 0 }
             if (fortified) progress = if (segment.assaultProgress >= 100) 100 else assault.maxOfOrNull { it.progress } ?: 0
             if (focus && decision == BattleDecision.COUNTERATTACK && front.position >= 50) progress = (progress - 30).coerceAtLeast(0)
-            val assaultWidth = maxOf(segment.assaultWidth, assault.filter { it.progress >= 100 }.sumOf {
-                if (it.type == SiegeDevice.TOWER) 45 else if (it.type == SiegeDevice.CLIMBERS) 12 else 8 })
+            val assaultWidth = maxOf(segment.assaultWidth, assault.filter { it.progress >= 100 }.map {
+                if (it.type == SiegeDevice.TOWER) 45 else if (it.type == SiegeDevice.CLIMBERS) 12 else 8 }.sum())
             val hasFort = fortified || original.enemyFortification > 0
             val breach = if (hasFort && (integrity == 0 || segment.section == BattleSection.CENTER && gate == 0))
                 maxOf(segment.breachWidth, if (integrity == 0) 80 else 28) else segment.breachWidth
