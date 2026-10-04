@@ -237,7 +237,7 @@ internal fun RealmHero(
         Modifier.fillMaxWidth().height(318.dp).clip(RoundedCornerShape(30.dp))
     ) {
         AsyncImage(
-            model = "file:///android_asset/city_landscape.webp",
+            model = "file:///android_asset/menu_cover.webp",
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
@@ -436,7 +436,7 @@ internal fun RulerPairHero(state: GameState) {
     val together = state.companion.met
 
     Box(
-        Modifier.fillMaxWidth().height(if (together) 332.dp else 250.dp).clip(RoundedCornerShape(30.dp))
+        Modifier.fillMaxWidth().height(if (together) 382.dp else 250.dp).clip(RoundedCornerShape(30.dp))
     ) {
         AsyncImage(
             model = "file:///android_asset/menu_cover.webp",
@@ -482,27 +482,69 @@ internal fun RulerPairHero(state: GameState) {
                 }
             }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                RulerMiniPortrait(
-                    state.player.portraitUri,
-                    "file:///android_asset/portrait_player.webp",
-                    R.drawable.portrait_knight,
-                    state.player.name,
-                    "${state.title} · ${presence.player.location.label}",
-                    Modifier.weight(1f),
-                )
-                if (together) {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     RulerMiniPortrait(
-                        state.companion.portraitUri,
-                        "file:///android_asset/portrait_companion.webp",
-                        R.drawable.portrait_companion,
-                        state.companion.name,
-                        "${state.companion.role} · ${presence.companion.location.label}",
+                        state.player.portraitUri,
+                        "file:///android_asset/portrait_player.webp",
+                        R.drawable.portrait_knight,
+                        state.player.name,
+                        "${state.title} · ${presence.player.location.label}",
                         Modifier.weight(1f),
                     )
+                    if (together) {
+                        RulerMiniPortrait(
+                            state.companion.portraitUri,
+                            "file:///android_asset/portrait_companion.webp",
+                            R.drawable.portrait_companion,
+                            state.companion.name,
+                            "${state.companion.role} · ${presence.companion.location.label}",
+                            Modifier.weight(1f),
+                        )
+                    }
+                }
+                if (together) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        PairMetric("Vertrauen", state.companion.trust, Emerald, Modifier.weight(1f))
+                        PairMetric("Nähe", state.companion.affection, Gold, Modifier.weight(1f))
+                        PairMetric("Respekt", state.companion.respect, ModernBlue, Modifier.weight(1f))
+                        PairMetric("Konflikt", state.relationship.conflict, Crimson, Modifier.weight(1f), inverse = true)
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PairMetric(
+    label: String,
+    value: Int,
+    accent: Color,
+    modifier: Modifier = Modifier,
+    inverse: Boolean = false,
+) {
+    val normalized = value.coerceIn(0, 100)
+    val displayAccent = if (inverse && normalized < 35) Emerald else accent
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xB811171E))
+            .border(1.dp, displayAccent.copy(alpha = .22f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(label.uppercase(), color = Muted, fontSize = 7.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text("$normalized", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black)
+        LinearProgressIndicator(
+            progress = { if (inverse) 1f - normalized / 100f else normalized / 100f },
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+            color = displayAccent,
+            trackColor = Color.White.copy(alpha = .08f),
+        )
     }
 }
 
