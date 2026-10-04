@@ -29,22 +29,33 @@ import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
-internal val Ink = Color(0xFF080B0E)
-internal val Panel = Color(0xFF10161B)
-internal val Panel2 = Color(0xFF172027)
-internal val Gold = Color(0xFFD0AE62)
-internal val PaleGold = Color(0xFFF4D894)
-internal val Mist = Color(0xFFCCD4D8)
-internal val Danger = Color(0xFFB65A5D)
-internal val Success = Color(0xFF72A985)
-internal val Blue = Color(0xFF6B91AD)
+internal val Ink = Color(0xFF070A0E)
+internal val Panel = Color(0xFF0F151C)
+internal val Panel2 = Color(0xFF151E27)
+internal val Gold = Color(0xFFE0BA63)
+internal val PaleGold = Color(0xFFF5D98B)
+internal val Mist = Color(0xFFC7D0D7)
+internal val Danger = Color(0xFFE2676B)
+internal val Success = Color(0xFF69C08B)
+internal val Blue = Color(0xFF72B8E8)
 
 @Composable
 internal fun PageTitle(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title.uppercase(), color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.2.sp)
-        Text(subtitle, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-        Box(Modifier.padding(top = 4.dp).width(42.dp).height(2.dp).background(Gold, RoundedCornerShape(4.dp)))
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            title.uppercase(),
+            color = Gold,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.8.sp,
+        )
+        Text(
+            subtitle,
+            color = Color.White,
+            fontSize = 25.sp,
+            lineHeight = 27.sp,
+            fontWeight = FontWeight.Black,
+        )
     }
 }
 
@@ -142,50 +153,58 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
 
 @Composable
 internal fun ResourceStrip(r: Resources, production: Resources? = null) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        Modifier.fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
         listOf(
-                Triple("◈", "Gold", r.gold),
-                Triple("✦", "Nahrung", r.food),
-                Triple("♣", "Holz", r.wood),
-                Triple("◆", "Stein", r.stone),
-                Triple("⚒", "Eisen", r.iron),
-            )
-            .forEach { (icon, label, value) ->
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Panel2,
+            Triple("Gold", r.gold, production?.gold),
+            Triple("Nahrung", r.food, production?.food),
+            Triple("Holz", r.wood, production?.wood),
+            Triple("Stein", r.stone, production?.stone),
+            Triple("Eisen", r.iron, production?.iron),
+        ).forEach { (label, value, gain) ->
+            val accent = when {
+                gain == null -> Gold
+                gain < 0 -> Danger
+                else -> Success
+            }
+            Surface(
+                color = Color(0xFF111820),
+                shape = RoundedCornerShape(100.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Column(
-                        Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text("$icon $label", color = Color(0xFF9FAAB1), fontSize = 9.sp, maxLines = 1)
+                    Box(Modifier.size(6.dp).background(accent, RoundedCornerShape(10.dp)))
+                    Column {
                         Text(
-                            value.toString(),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            maxLines = 1,
+                            label.uppercase(),
+                            color = Color(0xFF8F9BA4),
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = .8.sp,
                         )
-                        if (production != null) {
-                            val gain =
-                                when (label) {
-                                    "Gold" -> production.gold
-                                    "Nahrung" -> production.food
-                                    "Holz" -> production.wood
-                                    "Stein" -> production.stone
-                                    else -> production.iron
-                                }
-                            Text(
-                                "${if (gain >= 0) "+" else ""}$gain",
-                                color = if (gain < 0) Danger else Gold,
-                                fontSize = 9.sp,
-                                maxLines = 1,
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(value.toString(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp)
+                            if (gain != null) {
+                                Text(
+                                    "${if (gain >= 0) "+" else ""}$gain",
+                                    color = accent,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
     }
 }
 
@@ -309,39 +328,43 @@ internal fun resourceIcon(kind: ResourceKind): ImageVector =
 @Composable
 internal fun EconomyStrip(state: GameState) {
     var selected by remember { mutableStateOf<ResourceKind?>(null) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         ResourceKind.entries.forEach { kind ->
             val detail = EconomyEngine.breakdown(state, kind)
+            val accent = if (detail.net < 0) Danger else Success
             Surface(
-                Modifier.weight(1f).clickable { selected = kind },
-                color = Panel2,
-                shape = RoundedCornerShape(12.dp),
+                Modifier.widthIn(min = 104.dp).clickable { selected = kind },
+                color = Color(0xFF121A22),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
             ) {
                 Column(
-                    Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Icon(
-                        resourceIcon(kind),
-                        contentDescription = kind.label,
-                        tint = Gold,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(
+                            resourceIcon(kind),
+                            contentDescription = kind.label,
+                            tint = Gold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(kind.label.uppercase(), color = Color(0xFF8F9BA4), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                    }
                     Text(
                         kind.value(state.resources).toString(),
                         color = Color.White,
-                        fontSize = 12.sp,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "${if (detail.net >= 0) "+" else ""}${detail.net}/Tag",
+                        color = accent,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        "${if(detail.net>=0) "+" else ""}${detail.net}/Tag",
-                        color = if (detail.net < 0) Danger else Success,
-                        fontSize = 10.sp,
-                    )
-                    Text(
-                        if (detail.net < 0) "Defizit" else kind.label,
-                        color = if (detail.net < 0) Danger else Mist,
-                        fontSize = 10.sp,
                     )
                 }
             }
@@ -354,10 +377,11 @@ internal fun EconomyStrip(state: GameState) {
             title = { Text(kind.label) },
             text = {
                 Text(
-                    "Grundproduktion: ${d.base}\nGebäude: +${d.building}\nGebiete: +${d.territory}\nEreignisse/Handel: +${d.eventBonus}\nArbeiterfaktor: ${(d.workerFactor*100).toInt()} %\nSteuereffekt: ${d.taxBonus}\nBrutto: ${d.gross}\nUnterhalt: −${d.upkeep}\nNetto pro Tag: ${d.net}\nLager: ${kind.value(state.resources)} / ${d.capacity}\nNicht eingelagerter Überschuss: ${d.overflow}\n\nArbeiter, Priorität, Zufriedenheit und Wohlstand beeinflussen die tatsächliche Produktion."
+                    "Grundproduktion: ${d.base}\nGebäude: +${d.building}\nGebiete: +${d.territory}\nEreignisse/Handel: +${d.eventBonus}\nArbeiterfaktor: ${(d.workerFactor * 100).toInt()} %\nSteuereffekt: ${d.taxBonus}\nBrutto: ${d.gross}\nUnterhalt: −${d.upkeep}\nNetto pro Tag: ${d.net}\nLager: ${kind.value(state.resources)} / ${d.capacity}\nNicht eingelagerter Überschuss: ${d.overflow}\n\nArbeiter, Priorität, Zufriedenheit und Wohlstand beeinflussen die tatsächliche Produktion."
                 )
             },
             confirmButton = { TextButton(onClick = { selected = null }) { Text("Schließen") } },
         )
     }
 }
+
