@@ -17,10 +17,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.engine.OriginEngine
 import com.goldenunicorn.troopmanager.engine.OccupationEngine
@@ -708,26 +707,115 @@ private fun CampaignMapScene(
                     convoys.joinToString(prefix = ". ") { "Nachschubkonvoi mit ${it.food} Nahrung" }
             },
     ) {
-        AsyncImage(
-            model = "file:///android_asset/world_map.webp",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
         Canvas(Modifier.fillMaxSize()) {
-            drawRect(Ink.copy(alpha = .48f))
             fun point(x: Float, y: Float) = Offset(size.width * x, size.height * y)
+
+            // v0.96: one coherent campaign map instead of markers floating above a static picture.
+            // The terrain is generated in the same coordinate space as regions, roads and armies.
+            drawRect(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF17242A), Color(0xFF24362F), Color(0xFF151C20))
+                )
+            )
+
+            // Large terrain masses give the map readable geography without pretending to be an
+            // exact illustrated world that does not match the simulated regions.
+            repeat(7) { i ->
+                val cx = size.width * (.12f + (i * .137f % .78f))
+                val cy = size.height * (.14f + ((i * 37) % 67) / 100f)
+                val rw = size.width * (.25f + (i % 3) * .04f)
+                val rh = size.height * (.18f + (i % 2) * .07f)
+                drawOval(
+                    color = if (i % 3 == 0) Color(0xFF405340) else Color(0xFF35483D),
+                    topLeft = Offset(cx - rw / 2f, cy - rh / 2f),
+                    size = Size(rw, rh),
+                )
+            }
+
+            // Rivers are part of the map layer and sit below roads/units.
+            val river = Path().apply {
+                moveTo(size.width * .02f, size.height * .28f)
+                cubicTo(
+                    size.width * .23f, size.height * .18f,
+                    size.width * .37f, size.height * .48f,
+                    size.width * .55f, size.height * .39f,
+                )
+                cubicTo(
+                    size.width * .72f, size.height * .29f,
+                    size.width * .82f, size.height * .58f,
+                    size.width * .99f, size.height * .52f,
+                )
+            }
+            drawPath(river, Color(0xFF3C6574), style = Stroke(13.dp.toPx()))
+            drawPath(river, Color(0xFF6E94A0).copy(alpha = .38f), style = Stroke(3.dp.toPx()))
+
+            // Local terrain cues cluster around actual regions so the geography belongs to the
+            // simulation rather than to a decorative background image.
+            regions.forEachIndexed { index, region ->
+                val center = point(region.x, region.y)
+                val patch = when (index % 4) {
+                    0 -> Color(0xFF556343)
+                    1 -> Color(0xFF6A6044)
+                    2 -> Color(0xFF465C4F)
+                    else -> Color(0xFF66584A)
+                }
+                drawCircle(patch.copy(alpha = if (region.known) .36f else .18f), 46.dp.toPx(), center)
+                if (index % 4 == 0) {
+                    repeat(5) { n ->
+                        val dx = ((n * 17 % 41) - 20).dp.toPx()
+                        val dy = ((n * 23 % 37) - 18).dp.toPx()
+                        drawCircle(Color(0xFF294232), 5.dp.toPx(), center + Offset(dx, dy))
+                        drawLine(
+                            Color(0xFF66543C),
+                            center + Offset(dx, dy + 4.dp.toPx()),
+                            center + Offset(dx, dy + 10.dp.toPx()),
+                            2.dp.toPx(),
+                        )
+                    }
+                } else if (index % 4 == 1) {
+                    repeat(3) { n ->
+                        val base = center + Offset((n - 1) * 12.dp.toPx(), 7.dp.toPx())
+                        val mountain = Path().apply {
+                            moveTo(base.x - 12.dp.toPx(), base.y + 10.dp.toPx())
+                            lineTo(base.x, base.y - 13.dp.toPx())
+                            lineTo(base.x + 12.dp.toPx(), base.y + 10.dp.toPx())
+                            close()
+                        }
+                        drawPath(mountain, Color(0xFF777462))
+                        drawLine(
+                            Color.White.copy(alpha = .23f),
+                            base,
+                            base + Offset(0f, -8.dp.toPx()),
+                            2.dp.toPx(),
+                        )
+                    }
+                }
+            }
+
             roads.forEach { (startId, endId) ->
                 val start = regions.firstOrNull { it.id == startId }
                 val end = regions.firstOrNull { it.id == endId }
                 if (start != null && end != null) {
+                    val a = point(start.x, start.y)
+                    val b = point(end.x, end.y)
                     val known = start.known && end.known
-                    drawLine(
-                        if (known) PaleGold.copy(alpha = .52f) else Mist.copy(alpha = .15f),
-                        point(start.x, start.y), point(end.x, end.y), strokeWidth = 3.dp.toPx(),
+                    val mid = Offset(
+                        (a.x + b.x) / 2f,
+                        (a.y + b.y) / 2f - size.height * .035f,
+                    )
+                    val route = Path().apply {
+                        moveTo(a.x, a.y)
+                        quadraticBezierTo(mid.x, mid.y, b.x, b.y)
+                    }
+                    drawPath(route, Color(0xFF171C1C).copy(alpha = .75f), style = Stroke(7.dp.toPx()))
+                    drawPath(
+                        route,
+                        if (known) PaleGold.copy(alpha = .55f) else Mist.copy(alpha = .12f),
+                        style = Stroke(if (known) 2.4.dp.toPx() else 1.5.dp.toPx()),
                     )
                 }
             }
+
             regions.forEach { region ->
                 val center = point(region.x, region.y)
                 val color = when {
@@ -736,8 +824,13 @@ private fun CampaignMapScene(
                     region.known -> Blue
                     else -> Mist.copy(alpha = .35f)
                 }
-                drawCircle(color.copy(alpha = .12f), 29.dp.toPx(), center)
-                drawCircle(color.copy(alpha = .75f), 23.dp.toPx(), center, style = Stroke(1.5.dp.toPx()))
+                drawCircle(Color.Black.copy(alpha = .35f), 31.dp.toPx(), center)
+                drawCircle(color.copy(alpha = .16f), 28.dp.toPx(), center)
+                drawCircle(color.copy(alpha = .85f), 22.dp.toPx(), center, style = Stroke(2.dp.toPx()))
+                if (!region.known) {
+                    drawCircle(Ink.copy(alpha = .68f), 26.dp.toPx(), center)
+                    drawCircle(Mist.copy(alpha = .32f), 21.dp.toPx(), center, style = Stroke(1.dp.toPx()))
+                }
             }
             armies.forEach { army ->
                 val position = point(army.x, army.y) + Offset(18.dp.toPx(), -22.dp.toPx())
