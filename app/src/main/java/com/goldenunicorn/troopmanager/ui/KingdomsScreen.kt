@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.*
 import com.goldenunicorn.troopmanager.model.*
 
@@ -156,7 +157,7 @@ private fun DiplomacyMetric(
         modifier,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(label, color = Mist, fontSize = androidx.compose.ui.unit.sp(9f), maxLines = 1)
+        Text(label, color = Mist, fontSize = 9.sp, maxLines = 1)
         Text(value.toString(), color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
         LinearProgressIndicator(
             progress = { value.coerceIn(0, 100) / 100f },
