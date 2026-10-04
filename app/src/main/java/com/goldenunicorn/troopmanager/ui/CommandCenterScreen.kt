@@ -26,7 +26,12 @@ internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit,
                                  onNavigate: (GameDestination) -> Unit, onAdvanceDay: () -> Unit, initialPage: Int = 0) {
     var page by remember(initialPage) { mutableStateOf(initialPage) }
     Column(Modifier.fillMaxSize()) {
-        HubTabs(listOf("Tageslage", "Entscheidungen & Reich", "Aufgaben", "Tagesbericht", "Chronik"), page) { page = it }
+        ModernTabStrip(
+            labels = listOf("Tageslage", "Entscheidungen", "Aufgaben", "Tagesbericht", "Chronik"),
+            selected = page,
+            onSelect = { page = it },
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        )
         Box(Modifier.weight(1f)) {
             when (page) {
                 0 -> CommandOverview(state, onNavigate, onAdvanceDay, onState, onNotice)
@@ -161,7 +166,14 @@ private fun CommandOverview(
             }
         }
 
-        item { SectionTitle("Jetzt wichtig") }
+        item {
+            ModernSectionHeader(
+                eyebrow = "Live",
+                title = "Jetzt wichtig",
+                action = "Alle Aufgaben",
+                onAction = { onNavigate(GameDestination.JOURNAL) },
+            )
+        }
         if (situations.isEmpty()) {
             item {
                 SituationCard(
@@ -229,24 +241,30 @@ private fun CommandOverview(
             }
         }
 
-        item { SectionTitle("Direktzugriff") }
+        item { ModernSectionHeader("Navigation", "Direktzugriff") }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
+                ModernActionTile(
+                    "Heer",
+                    "${state.homeArmySize} bereit",
+                    accent = Gold,
                     onClick = { onNavigate(GameDestination.MILITARY) },
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(15.dp),
-                ) { Text("HEER", fontSize = 11.sp, fontWeight = FontWeight.Black) }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                )
+                ModernActionTile(
+                    "Welt",
+                    "${state.frontier.hordes.count { it.discovered }} Meldungen",
+                    accent = ModernBlue,
                     onClick = { onNavigate(GameDestination.WORLD) },
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(15.dp),
-                ) { Text("WELT", fontSize = 11.sp, fontWeight = FontWeight.Black) }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                )
+                ModernActionTile(
+                    "Palast",
+                    "${CoRulerEngine.councilCases(state).size} Ratsfragen",
+                    accent = Success,
                     onClick = { onNavigate(GameDestination.PALACE) },
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(15.dp),
-                ) { Text("PALAST", fontSize = 11.sp, fontWeight = FontWeight.Black) }
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
 
