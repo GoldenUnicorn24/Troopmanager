@@ -135,13 +135,28 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
     BoxWithConstraints(Modifier.fillMaxSize().background(Ink).testTag("battle_screen")) {
         val compact = maxHeight < 450.dp || LocalDensity.current.fontScale >= 1.3f
         Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
-            Row(Modifier.fillMaxWidth().height(if (compact) 20.dp else 54.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                BattleHudValue("HEER", battle.ownRemaining.toString(), Gold, compact)
-                BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger, compact)
-                BattleHudValue("MIN", "${battle.minute}′", Color.White, compact)
-                BattleHudValue("MORAL", "${battle.morale}%", Success, compact)
-                BattleHudValue("BEFEHLE", "${battle.commandPoints} BP", ModernBlue, compact)
+            Row(
+                Modifier.fillMaxWidth().height(if (compact) 28.dp else 54.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                if (compact) {
+                    Text(
+                        "H ${battle.ownRemaining}  •  G ${battle.enemyRemaining}  •  ${battle.minute}′  •  M ${battle.morale}%  •  ${battle.commandPoints} BP",
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    BattleHudValue("HEER", battle.ownRemaining.toString(), Gold)
+                    BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger)
+                    BattleHudValue("MIN", "${battle.minute}′", Color.White)
+                    BattleHudValue("MORAL", "${battle.morale}%", Success)
+                    BattleHudValue("BEFEHLE", "${battle.commandPoints} BP", ModernBlue)
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 BattleStateEngine.sections.forEach { section ->
@@ -166,8 +181,15 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth().testTag("battle_field")) {
-                SessionBattleField(battle, state.settings.animations, state.settings.battleSpeed, battle.wallWeapons,
-                    Modifier.fillMaxSize(), selected) { selected = it }
+                SessionBattleField(
+                    battle,
+                    state.settings.animations,
+                    state.settings.battleSpeed,
+                    battle.wallWeapons,
+                    Modifier.fillMaxSize(),
+                    selected,
+                    compactLegend = compact,
+                ) { selected = it }
                 battle.pendingEvent?.let { event ->
                     Surface(modifier = Modifier.align(Alignment.Center).fillMaxWidth(.93f), color = Panel2.copy(alpha = .97f),
                         shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, ModernBlue.copy(alpha = .7f))) {
@@ -198,14 +220,33 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         if (battle.isActive) {
                             OutlinedButton(onClick = { if (battle.minute == 0 && state.world.encounter == null) setup = true else sheet = "orders" },
-                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) { Text(if (battle.minute == 0 && state.world.encounter == null) "Aufstellung" else "Befehle", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                Text(
+                                    if (battle.minute == 0 && state.world.encounter == null) {
+                                        if (compact) "Aufst." else "Aufstellung"
+                                    } else if (compact) "Befehl" else "Befehle",
+                                    fontSize = if (compact) 9.sp else 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                             Button(onClick = { if (battle.pendingEvent == null) apply(BattleEngine.advance(state)) else sheet = "orders" },
                                 modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-                                Text(if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    if (battle.pendingEvent == null) {
+                                        if (compact) "+5 Min" else "+5 Minuten"
+                                    } else if (compact) "Reaktion" else "Reagieren",
+                                    fontSize = if (compact) 9.sp else 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             }
                         } else Button(onClick = { onState(state.copy(battleSession = null)); onNotice("Bericht und Replay bleiben in der Chronik.") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Zur Welt") }
                         TextButton(onClick = { detailTab = if (battle.minute == 0) 3 else 0; sheet = "details" },
-                            modifier = Modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Details", color = ModernBlue, fontSize = 12.sp, maxLines = 1) }
+                            modifier = Modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                            Text(if (compact) "Info" else "Details", color = ModernBlue, fontSize = if (compact) 9.sp else 12.sp, maxLines = 1)
+                        }
                     }
                 }
             }
