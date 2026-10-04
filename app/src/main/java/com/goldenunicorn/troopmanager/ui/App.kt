@@ -447,8 +447,11 @@ private fun GameShell(
                 }
             }
             ResourceStrip(state.resources, EconomyEngine.production(state).net)
+            val pendingCampaignDecision = state.campaign.pendingDecision
             val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
             val warningText = when {
+                pendingCampaignDecision != null ->
+                    "◆ ${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
                 nearestThreat != null -> "⚠ ${nearestThreat.name}: ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
                 state.war.wounded.isNotEmpty() -> "⚕ ${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
                 EconomyEngine.production(state).net.food < 0 -> "⚠ Nahrung ${EconomyEngine.production(state).net.food}/Tag"
@@ -458,7 +461,12 @@ private fun GameShell(
                 Surface(
                     modifier = Modifier.fillMaxWidth().clickable {
                         showMore = false
-                        screen = if (nearestThreat != null) GameDestination.FRONTIER else if (state.war.wounded.isNotEmpty()) GameDestination.HOSPITAL else GameDestination.CITY
+                        screen = when {
+                            pendingCampaignDecision != null -> GameDestination.DECISIONS
+                            nearestThreat != null -> GameDestination.FRONTIER
+                            state.war.wounded.isNotEmpty() -> GameDestination.HOSPITAL
+                            else -> GameDestination.CITY
+                        }
                     },
                     color = Color(0xFF2A2020),
                 ) {
