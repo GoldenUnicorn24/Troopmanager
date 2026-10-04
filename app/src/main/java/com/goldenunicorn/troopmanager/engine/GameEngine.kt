@@ -252,11 +252,14 @@ object GameEngine {
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
         next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
+        next = CampaignPulseEngine.tick(before, next)
         next = QuestJournalEngine.refresh(next)
         next = next.copy(dailyReport = DailyReportEngine.build(before, next))
         val message =
             if (next.battleSession?.isActive == true)
                 "Die Invasion erreicht deine Festung. Die Verteidigung beginnt!"
+            else if (next.campaign.pendingDecision != null)
+                "Tag ${next.day}: ${next.campaign.pendingDecision.title} wartet auf deine Entscheidung."
             else
                 "Tag ${next.day}: ${next.dailyReport.entries.count { it.important }} wichtige Meldungen im Tagesbericht."
         return ActionResult(next, message)

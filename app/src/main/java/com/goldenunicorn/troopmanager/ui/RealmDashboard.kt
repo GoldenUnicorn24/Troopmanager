@@ -40,6 +40,7 @@ internal fun RealmDashboard(
             )
         }
         item { EconomyStrip(state) }
+        item { CampaignPulseCard(state, onState, onNotice) }
         item {
             val production = EconomyEngine.production(state)
             val foodDeficit = (production.upkeep - production.gross.food).coerceAtLeast(0)
@@ -164,7 +165,8 @@ internal fun RealmDashboard(
         }
         item {
             GoldButton(
-                "Nächsten Tag beginnen",
+                if (state.campaign.pendingDecision != null) "Tag fortsetzen · Entscheidung offen"
+                else "Nächsten Tag beginnen",
                 onAdvanceDay,
                 Modifier.fillMaxWidth(),
             )
