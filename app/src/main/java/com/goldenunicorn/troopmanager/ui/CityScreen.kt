@@ -601,13 +601,18 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
             }
         }
         Text(
-            "Bestand: ${resource.value(state.resources)} · Kauf ${CityEngine.buyPrice(resource)} / Verkauf ${CityEngine.sellPrice(resource)} Gold je Einheit",
+            "Bestand: ${resource.value(state.resources)} · Kauf ${CityEngine.buyPrice(state, resource)} / Verkauf ${CityEngine.sellPrice(state, resource)} Gold je Einheit",
             color = Mist,
             fontSize = 12.sp,
         )
+        Text(
+            CityEngine.marketReason(state, resource),
+            color = Gold,
+            fontSize = 11.sp,
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val buyCost = amount * CityEngine.buyPrice(resource)
-            val sale = amount * CityEngine.sellPrice(resource)
+            val buyCost = amount * CityEngine.buyPrice(state, resource)
+            val sale = amount * CityEngine.sellPrice(state, resource)
             Button(
                 onClick = { onTrade(resource, amount, true) },
                 enabled =
