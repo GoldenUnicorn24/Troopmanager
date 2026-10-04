@@ -61,13 +61,13 @@ internal fun ArmyScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Box(
-                Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(22.dp))
+                Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))
             ) {
                 CategoryArt(dominantCulture, Modifier.fillMaxSize())
                 Box(
                     Modifier.fillMaxSize().background(
                         Brush.verticalGradient(
-                            listOf(Color(0x22000000), Color(0xD9080C0F))
+                            listOf(Color(0x22000000), Color(0x55080C0F), Color(0xEC080C10))
                         )
                     )
                 )
@@ -75,35 +75,26 @@ internal fun ArmyScreen(
                     Modifier.align(Alignment.BottomStart).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Text("STREITKRÄFTE", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.8.sp)
+                    ModernPill("Streitkräfte", Gold, filled = true)
                     Text(
                         "${state.armySize} Soldaten",
                         color = Color.White,
-                        fontSize = 25.sp,
+                        fontSize = 29.sp,
                         fontWeight = FontWeight.Black,
                     )
-                    Text(
-                        "${state.homeArmySize} einsatzbereit · ${state.awayArmySize} unterwegs · ${state.war.wounded.sumOf { it.soldiers }} verwundet",
-                        color = Mist,
-                        fontSize = 11.sp,
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ModernPill("${state.homeArmySize} bereit", Success)
+                        ModernPill("${state.awayArmySize} unterwegs", ModernBlue)
+                        if (state.war.wounded.sumOf { it.soldiers } > 0)
+                            ModernPill("${state.war.wounded.sumOf { it.soldiers }} verwundet", Danger)
+                    }
                 }
             }
-            TabRow(
-                selectedTabIndex = tab,
-                containerColor = Color.Transparent,
-                contentColor = Gold,
-                divider = { HorizontalDivider(color = Color.White.copy(alpha = .06f)) },
-            ) {
-                listOf("Übersicht", "Ausbildung", "Kommandanten").forEachIndexed { index, label ->
-                    Tab(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        text = { Text(label, fontSize = 13.sp) },
-                    )
-                }
-            }
+            ModernTabStrip(
+                labels = listOf("Übersicht", "Ausbildung", "Kommandanten"),
+                selected = tab,
+                onSelect = { tab = it },
+            )
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
