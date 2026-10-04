@@ -353,8 +353,12 @@ private fun ArmyUnitCard(
     val pool = state.armyPools.firstOrNull { it.type == type }
     val unlocked = GameEngine.isUnitUnlocked(state, type)
     val available = ArmyEngine.recruitable(state, type.culture)
-    Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Surface(
+        color = Color(0xFF111820),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+    ) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             val named = state.frontier.designs.firstOrNull { it.unitType == type && it.soldiers > 0 }
             Text(named?.name ?: type.label, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             if (named != null) Text("Eigenes Regiment · Basis ${type.label}", color = PaleGold, fontSize = 12.sp)
@@ -453,23 +457,16 @@ private fun ArmyUnitCard(
 
 @Composable
 internal fun ArmyMetrics(values: List<Pair<String, Int>>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         values.chunked(2).forEach { pair ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEach { (label, value) ->
-                    Column(
-                        Modifier.weight(1f)
-                            .background(Panel2, RoundedCornerShape(10.dp))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            value.toString(),
-                            color = PaleGold,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(label, color = Mist, fontSize = 13.sp)
-                    }
+                pair.forEachIndexed { index, (label, value) ->
+                    StatusMetric(
+                        label = label,
+                        value = value.toString(),
+                        modifier = Modifier.weight(1f),
+                        accent = if (index == 0) Gold else ModernBlue,
+                    )
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -479,17 +476,22 @@ internal fun ArmyMetrics(values: List<Pair<String, Int>>) {
 
 @Composable
 internal fun ArmyQuality(label: String, value: Int, explanation: String? = null) {
-    Column {
+    val accent = when {
+        value < 40 -> Danger
+        value >= 80 -> Success
+        else -> Gold
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = Mist, fontSize = 13.sp, modifier = Modifier.weight(1f))
-            Text("$value %", color = PaleGold, fontSize = 13.sp)
+            Text(label, color = Mist, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            ModernPill("$value %", accent)
             if (explanation != null) InfoTip(label, explanation)
         }
         LinearProgressIndicator(
             progress = { value.coerceIn(0, 100) / 100f },
-            modifier = Modifier.fillMaxWidth().height(5.dp),
-            color = if (value < 40) Danger else Gold,
-            trackColor = Panel2,
+            modifier = Modifier.fillMaxWidth().height(6.dp),
+            color = accent,
+            trackColor = Color.White.copy(alpha = .07f),
         )
     }
 }
