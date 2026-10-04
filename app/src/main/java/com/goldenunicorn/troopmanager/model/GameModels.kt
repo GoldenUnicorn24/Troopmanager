@@ -259,6 +259,7 @@ data class GameState(
     val espionage: EspionageState = EspionageState(),
     val society: SocietyState = SocietyState(),
     val presentation: PresentationState = PresentationState(),
+    val campaign: CampaignPulseState = CampaignPulseState(),
     val settings: GameSettings = GameSettings(),
     /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
     val foundingCultures: Set<Culture> = emptySet(),
