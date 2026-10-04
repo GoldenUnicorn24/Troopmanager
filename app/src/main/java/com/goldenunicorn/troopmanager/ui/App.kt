@@ -526,59 +526,74 @@ private fun GameShell(
         bottomBar = {
             val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
             val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
+            val moreSelected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD))
             val itemColors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Gold,
-                selectedTextColor = PaleGold,
-                indicatorColor = Gold.copy(alpha = .11f),
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = Color.White.copy(alpha = .10f),
                 unselectedIconColor = Muted,
                 unselectedTextColor = Muted,
             )
-            Surface(
-                color = Stone,
-                shadowElevation = 12.dp,
-                tonalElevation = 0.dp,
-                modifier = Modifier.navigationBarsPadding(),
+
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Ink.copy(alpha = .92f))
+                        )
+                    )
+                    .navigationBarsPadding()
+                    .padding(horizontal = 10.dp, vertical = 7.dp)
             ) {
-                NavigationBar(
-                    containerColor = Color.Transparent,
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xF20E151D),
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
+                    shadowElevation = 16.dp,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.heightIn(min = 70.dp),
                 ) {
-                    NavigationBarItem(
-                        selected = !showMore && realmSelected,
-                        onClick = { showMore = false; screen = GameDestination.COMMAND },
-                        icon = { Icon(Icons.Outlined.Castle, null) },
-                        label = { Text("Reich", fontSize = 10.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Bold else FontWeight.Normal) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && screen == GameDestination.CITY,
-                        onClick = { showMore = false; screen = GameDestination.CITY },
-                        icon = { Icon(Icons.Outlined.LocationCity, null) },
-                        label = { Text("Stadt", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && armySelected,
-                        onClick = { showMore = false; screen = GameDestination.MILITARY },
-                        icon = { Icon(Icons.Outlined.Shield, null) },
-                        label = { Text("Heer", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && screen == GameDestination.WORLD,
-                        onClick = { showMore = false; screen = GameDestination.WORLD },
-                        icon = { Icon(Icons.Outlined.Public, null) },
-                        label = { Text("Welt", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD)),
-                        onClick = { showMore = true },
-                        icon = { Icon(Icons.Outlined.MoreVert, null) },
-                        label = { Text("Mehr", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(68.dp),
+                    ) {
+                        NavigationBarItem(
+                            selected = !showMore && realmSelected,
+                            onClick = { showMore = false; screen = GameDestination.COMMAND },
+                            icon = { Icon(Icons.Outlined.Castle, null) },
+                            label = { Text("Reich", fontSize = 9.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && screen == GameDestination.CITY,
+                            onClick = { showMore = false; screen = GameDestination.CITY },
+                            icon = { Icon(Icons.Outlined.LocationCity, null) },
+                            label = { Text("Stadt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.CITY) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && armySelected,
+                            onClick = { showMore = false; screen = GameDestination.MILITARY },
+                            icon = { Icon(Icons.Outlined.Shield, null) },
+                            label = { Text("Heer", fontSize = 9.sp, fontWeight = if (!showMore && armySelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && screen == GameDestination.WORLD,
+                            onClick = { showMore = false; screen = GameDestination.WORLD },
+                            icon = { Icon(Icons.Outlined.Public, null) },
+                            label = { Text("Welt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.WORLD) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = moreSelected,
+                            onClick = { showMore = true },
+                            icon = { Icon(Icons.Outlined.MoreVert, null) },
+                            label = { Text("Mehr", fontSize = 9.sp, fontWeight = if (moreSelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                    }
                 }
             }
         },
