@@ -751,27 +751,6 @@ private fun CampaignMapScene(
 
             // Local terrain cues cluster around actual regions so the geography belongs to the
             // simulation rather than to a decorative background image.
-            regions.firstOrNull { it.id == selectedRegionId }?.let { selected ->
-            Surface(
-                modifier = Modifier.align(Alignment.TopStart).padding(10.dp),
-                color = Ink.copy(alpha = .88f),
-                shape = RoundedCornerShape(14.dp),
-                border = BorderStroke(1.dp, if (selected.owned) Success.copy(alpha = .55f) else Gold.copy(alpha = .45f)),
-            ) {
-                Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
-                    Text(selected.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(
-                        when {
-                            selected.owned -> "Eigenes Gebiet"
-                            selected.known -> "Aufgeklärte Region"
-                            else -> "Unbekanntes Gebiet"
-                        },
-                        color = if (selected.owned) Success else if (selected.known) ModernBlue else Mist,
-                        fontSize = 10.sp,
-                    )
-                }
-            }
-        }
         regions.forEachIndexed { index, region ->
                 val center = point(region.x, region.y)
                 val patch = when (index % 4) {
@@ -927,6 +906,30 @@ private fun CampaignMapScene(
                 drawLine(color, position + Offset(3.dp.toPx(), -8.dp.toPx()), position + Offset(7.dp.toPx(), -12.dp.toPx()), 2.dp.toPx())
             }
             drawRect(Gold.copy(alpha = .35f), style = Stroke(1.dp.toPx()))
+        }
+        regions.firstOrNull { it.id == selectedRegionId }?.let { selected ->
+            Surface(
+                modifier = Modifier.align(Alignment.TopStart).padding(10.dp),
+                color = Ink.copy(alpha = .88f),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (selected.owned) Success.copy(alpha = .55f) else Gold.copy(alpha = .45f),
+                ),
+            ) {
+                Column(Modifier.padding(horizontal = 11.dp, vertical = 8.dp)) {
+                    Text(selected.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(
+                        when {
+                            selected.owned -> "Eigenes Gebiet"
+                            selected.known -> "Aufgeklärte Region"
+                            else -> "Unbekanntes Gebiet"
+                        },
+                        color = if (selected.owned) Success else if (selected.known) ModernBlue else Mist,
+                        fontSize = 10.sp,
+                    )
+                }
+            }
         }
         regions.forEachIndexed { index, region ->
             Surface(
