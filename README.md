@@ -1,6 +1,14 @@
-# Realm of the Last Wall — Troopmanager v0.82.0
+# Realm of the Last Wall — Troopmanager v0.83.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v0.83: campaign pulse and fun overhaul
+
+v0.83 changes the campaign rhythm rather than piling on another isolated menu. The command center now exposes **Momentum** and **Pressure** derived from the real simulation, a selectable realm focus, streak rewards, short-lived strategic effects and recurring ruler dilemmas created from food, border, public-order and ruling-pair conditions.
+
+Every few campaign days the current state generates a compact decision with three genuinely different approaches. Outcomes feed back into resources, satisfaction, security, threat, walls, commanders, relationship conflict, trust and renown. Ignored dilemmas expire into a conservative free option, so the game never blocks progression. Realm focus adds a small daily specialization for prosperity, defense, the people, the ruling pair or expansion while preserving the existing 100 creation attribute points and 30 skill points.
+
+The goal of this pass is simple: fewer dead "next day" clicks, more visible cause-and-effect, and a stronger reason to react to what is happening in the realm.
 
 ## v0.82: frontier, realm UI and systemic polish
 
