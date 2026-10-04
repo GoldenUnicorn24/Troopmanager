@@ -131,6 +131,35 @@ object DailyReportEngine {
                 true,
             )
 
+        after.campaign.pendingDecision
+            ?.takeIf { it.id != before.campaign.pendingDecision?.id }
+            ?.let {
+                add(
+                    ReportCategory.WARNING,
+                    it.title,
+                    "${it.text} · Entscheidung bis Tag ${it.expiresDay}.",
+                    true,
+                    GameDestination.DECISIONS,
+                )
+            }
+
+        if (after.campaign.pressure >= 65 && before.campaign.pressure < 65)
+            add(
+                ReportCategory.WARNING,
+                "Der Druck auf das Reich steigt",
+                "Kampagnendruck ${after.campaign.pressure}/100 · Momentum ${after.campaign.momentum}/100. Prioritäten im Kommandobereich prüfen.",
+                true,
+                GameDestination.DECISIONS,
+            )
+        else if (after.campaign.momentum >= 75 && before.campaign.momentum < 75)
+            add(
+                ReportCategory.COURT,
+                "Das Reich hat Initiative",
+                "Momentum ${after.campaign.momentum}/100 · Serie ${after.campaign.streak} Tage · Schwerpunkt ${after.campaign.focus.label}.",
+                false,
+                GameDestination.DECISIONS,
+            )
+
         val newOccupations =
             after.occupations.filter { occupation ->
                 before.occupations.none { it.regionId == occupation.regionId }
