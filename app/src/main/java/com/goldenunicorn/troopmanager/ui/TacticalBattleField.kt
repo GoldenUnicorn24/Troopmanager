@@ -47,6 +47,29 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
             val w = size.width
             val h = size.height
             val wallY = h * .62f
+
+            // v0.96 visual pass: battlefield depth is generated from the actual combat canvas,
+            // not from decorative sprites. Front lines, roads and terrain all share this space.
+            drawRect(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF25383B), Color(0xFF2D3830), Color(0xFF161D1B))
+                )
+            )
+            drawOval(
+                Color(0x221A120D),
+                topLeft = Offset(-w * .15f, h * .68f),
+                size = Size(w * 1.3f, h * .38f),
+            )
+            repeat(9) { n ->
+                val y = h * (.18f + n * .075f)
+                drawLine(
+                    Color.White.copy(alpha = .025f + (n % 2) * .012f),
+                    Offset(0f, y),
+                    Offset(w, y + (n % 3 - 1) * 5.dp.toPx()),
+                    1.dp.toPx(),
+                )
+            }
+
             BattleStateEngine.sections.forEachIndexed { index, section ->
                 val x0 = w * index / 3f
                 val x1 = w * (index + 1) / 3f
@@ -99,7 +122,19 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                 fun formations(enemy: Boolean, y: Float) {
                     val rows = groups.filter { it.section == section && it.enemy == enemy }.take(12)
                     rows.forEachIndexed { n, group ->
-                        val position = Offset(x0 + w / 3 * (.17f + (n % 4) * .2f), y + (n / 4 - 1) * 16.dp.toPx())
+                        val contactMotion =
+                            if (contact && animations) kotlin.math.sin(frame * kotlin.math.PI.toFloat()) * 5.dp.toPx()
+                            else 0f
+                        val direction = if (enemy) 1f else -1f
+                        val position = Offset(
+                            x0 + w / 3 * (.17f + (n % 4) * .2f),
+                            y + (n / 4 - 1) * 16.dp.toPx() + contactMotion * direction,
+                        )
+                        drawOval(
+                            Color.Black.copy(alpha = if (group.routed) .12f else .25f),
+                            topLeft = position + Offset(-10.dp.toPx(), 5.dp.toPx()),
+                            size = Size(20.dp.toPx(), 7.dp.toPx()),
+                        )
                         formation(position, if (enemy) Danger else if (group.type?.culture == Culture.WOOD_ELF) Success else Gold,
                             group.type == UnitType.KNIGHT, group.routed, 5.dp.toPx())
                         if (!enemy && session.participation == BattleParticipation.PERSONAL && session.personalSection == section && n == 0)
@@ -130,18 +165,51 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                         val end = Offset(start.x, targetY)
                         drawCircle(Gold, 3.dp.toPx(), start + (end - start) * frame)
                     }
-                    if (report.arrowsUsed > 0) repeat(4) { n ->
-                        val x = x0 + w / 3 * (.22f + n * .17f)
-                        val y = ownY + (enemyY - ownY) * frame
-                        drawLine(Gold, Offset(x, y), Offset(x, y + 7.dp.toPx()), 1.5.dp.toPx())
+                    if (report.arrowsUsed > 0) repeat(5) { n ->
+                        val start = Offset(x0 + w / 3 * (.18f + n * .145f), ownY - (n % 2) * 5.dp.toPx())
+                        val end = Offset(x0 + w / 3 * (.2f + n * .14f), enemyY)
+                        val travel = frame.coerceIn(0f, 1f)
+                        val arc = kotlin.math.sin(travel * kotlin.math.PI.toFloat()) * 24.dp.toPx()
+                        val p = start + (end - start) * travel - Offset(0f, arc)
+                        val tangent = (end - start)
+                        val length = kotlin.math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(1f)
+                        val dir = Offset(tangent.x / length, tangent.y / length)
+                        drawLine(Gold, p - dir * 7.dp.toPx(), p + dir * 2.dp.toPx(), 1.3.dp.toPx())
                     }
-                    if (report.enemyArrowsUsed > 0) repeat(3) { n ->
-                        val x = x0 + w / 3 * (.26f + n * .2f)
-                        val y = enemyY + (ownY - enemyY) * frame
-                        drawLine(Danger, Offset(x, y), Offset(x, y - 7.dp.toPx()), 1.5.dp.toPx())
+                    if (report.enemyArrowsUsed > 0) repeat(4) { n ->
+                        val start = Offset(x0 + w / 3 * (.21f + n * .17f), enemyY)
+                        val end = Offset(x0 + w / 3 * (.23f + n * .16f), ownY)
+                        val travel = frame.coerceIn(0f, 1f)
+                        val arc = kotlin.math.sin(travel * kotlin.math.PI.toFloat()) * 21.dp.toPx()
+                        val p = start + (end - start) * travel - Offset(0f, arc)
+                        val tangent = (end - start)
+                        val length = kotlin.math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(1f)
+                        val dir = Offset(tangent.x / length, tangent.y / length)
+                        drawLine(Danger, p - dir * 7.dp.toPx(), p + dir * 2.dp.toPx(), 1.3.dp.toPx())
                     }
-                    if (contact && report.ownDamage.melee + report.enemyDamage.melee > 0)
-                        drawCircle(Color.White.copy(alpha = (1f - frame) * .7f), (6 + frame * 10).dp.toPx(), Offset(x0 + w / 6, (ownY + enemyY) / 2), style = Stroke(2.dp.toPx()))
+                    if (contact && report.ownDamage.melee + report.enemyDamage.melee > 0) {
+                        val clash = Offset(x0 + w / 6, (ownY + enemyY) / 2)
+                        drawCircle(
+                            Color.White.copy(alpha = (1f - frame) * .52f),
+                            (7 + frame * 13).dp.toPx(),
+                            clash,
+                            style = Stroke(2.dp.toPx()),
+                        )
+                        repeat(5) { spark ->
+                            val angle = (spark * 1.23f + frame * 2f) * kotlin.math.PI.toFloat()
+                            val radius = (5f + frame * 18f).dp.toPx()
+                            val end = clash + Offset(kotlin.math.cos(angle) * radius, kotlin.math.sin(angle) * radius)
+                            drawLine(Gold.copy(alpha = 1f - frame), clash, end, 1.dp.toPx())
+                        }
+                        repeat(3) { dust ->
+                            val dx = (dust - 1) * 11.dp.toPx()
+                            drawCircle(
+                                Color(0xFFB9A68A).copy(alpha = (1f - frame) * .18f),
+                                (6 + dust * 2).dp.toPx(),
+                                clash + Offset(dx, 5.dp.toPx()),
+                            )
+                        }
+                    }
                 }
             }
             groups.filter { it.section == BattleSection.RESERVE && !it.enemy }.take(12).forEachIndexed { n, group ->
@@ -163,17 +231,58 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
 }
 
 private fun DrawScope.formation(position: Offset, color: Color, cavalry: Boolean, routed: Boolean, extent: Float) {
-    val tint = if (routed) color.copy(alpha = .35f) else color
+    val tint = if (routed) color.copy(alpha = .34f) else color
+    val scale = extent / 5.dp.toPx().coerceAtLeast(1f)
+    val soldierRadius = 1.7.dp.toPx() * scale
+    val spacingX = 4.2.dp.toPx() * scale
+    val spacingY = 4.6.dp.toPx() * scale
+
     if (cavalry) {
-        val diamond = Path().apply { moveTo(position.x, position.y - extent * 1.3f); lineTo(position.x + extent, position.y); lineTo(position.x, position.y + extent * 1.3f); lineTo(position.x - extent, position.y); close() }
-        drawPath(diamond, tint)
+        // Two readable cavalry silhouettes instead of one abstract diamond.
+        repeat(2) { row ->
+            val p = position + Offset((row - .5f) * 7.dp.toPx() * scale, (row % 2) * 2.dp.toPx() * scale)
+            val horse = Path().apply {
+                moveTo(p.x - 5.dp.toPx() * scale, p.y + 2.dp.toPx() * scale)
+                lineTo(p.x - 1.dp.toPx() * scale, p.y - 3.dp.toPx() * scale)
+                lineTo(p.x + 5.dp.toPx() * scale, p.y - 1.dp.toPx() * scale)
+                lineTo(p.x + 4.dp.toPx() * scale, p.y + 4.dp.toPx() * scale)
+                lineTo(p.x - 4.dp.toPx() * scale, p.y + 4.dp.toPx() * scale)
+                close()
+            }
+            drawPath(horse, tint)
+            drawCircle(Color(0xFFCDB18A).copy(alpha = tint.alpha), soldierRadius, p + Offset(0f, -5.dp.toPx() * scale))
+            drawLine(tint, p + Offset(2.dp.toPx() * scale, -5.dp.toPx() * scale), p + Offset(7.dp.toPx() * scale, -11.dp.toPx() * scale), 1.2.dp.toPx())
+        }
     } else {
-        drawRect(tint, position - Offset(extent, extent), Size(extent * 2, extent * 2))
-        drawLine(Ink.copy(alpha = .5f), position - Offset(extent, 0f), position + Offset(extent, 0f), 1f)
-        drawLine(Ink.copy(alpha = .5f), position - Offset(0f, extent), position + Offset(0f, extent), 1f)
+        repeat(2) { row ->
+            repeat(3) { col ->
+                val p = position + Offset(
+                    (col - 1) * spacingX + if (row == 1) spacingX * .45f else 0f,
+                    (row - .5f) * spacingY,
+                )
+                drawCircle(Color(0xFFCDB18A).copy(alpha = tint.alpha), soldierRadius, p - Offset(0f, 2.5.dp.toPx() * scale))
+                drawLine(tint, p, p + Offset(0f, 4.dp.toPx() * scale), 2.1.dp.toPx() * scale)
+                drawLine(tint, p + Offset(-1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(-3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
+                drawLine(tint, p + Offset(1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
+                drawLine(
+                    Color(0xFFB8C0B8).copy(alpha = tint.alpha),
+                    p + Offset(3.dp.toPx() * scale, 3.dp.toPx() * scale),
+                    p + Offset(3.dp.toPx() * scale, -6.dp.toPx() * scale),
+                    .8.dp.toPx(),
+                )
+            }
+        }
     }
-    drawLine(tint, position + Offset(extent, extent), position + Offset(extent, -extent * 2.3f), 1.5.dp.toPx())
-    drawRect(tint, position + Offset(extent, -extent * 2.3f), Size(extent, extent * .6f))
+
+    // Unit banner remains the quick identity cue at zoomed-out scale.
+    drawLine(tint, position + Offset(extent, extent), position + Offset(extent, -extent * 2.6f), 1.4.dp.toPx())
+    val banner = Path().apply {
+        moveTo(position.x + extent, position.y - extent * 2.6f)
+        lineTo(position.x + extent * 2.4f, position.y - extent * 2.1f)
+        lineTo(position.x + extent, position.y - extent * 1.6f)
+        close()
+    }
+    drawPath(banner, tint)
 }
 
 private fun DrawScope.siegeDevice(type: SiegeDevice, position: Offset, color: Color) {
