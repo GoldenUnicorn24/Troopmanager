@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -168,6 +170,16 @@ internal fun ModernTabStrip(
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun ModernChoice(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier) {
+    Surface(onClick = onClick, modifier = modifier.heightIn(min = 48.dp).semantics { this.selected = selected },
+        color = if (selected) ModernSurface2 else StoneRaised,
+        contentColor = if (selected) Color.White else Muted,
+        shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, if (selected) ModernBlue else ModernLine)) {
+        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), contentAlignment = Alignment.Center) { label() }
     }
 }
 

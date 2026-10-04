@@ -8,7 +8,9 @@ object MissionExperienceEngine {
     private fun leaders(state: GameState, ids: List<Long>, player: Boolean) = buildList {
         if (player) add(Leader(state.player.name, state.player.leadership, state.player.tactics, state.player.bow, state.player.diplomacy))
         ids.distinct().forEach { id -> state.commanders.firstOrNull { it.id == id }?.let {
-            add(Leader(it.name, it.leadership, it.tactics, it.bow, it.diplomacy)) } }
+            val diplomacy = if (it.id == COMPANION_COMMANDER_ID) state.companion.diplomacy else
+                state.court.characters.firstOrNull { detail -> detail.commanderId == it.id }?.diplomacy ?: it.diplomacy
+            add(Leader(it.name, it.leadership, it.tactics, it.bow, diplomacy)) } }
     }
     fun roleLabels(state: GameState, ids: List<Long>, player: Boolean): List<String> =
         leaders(state, ids, player).mapIndexed { index, leader -> "${leader.name}: ${when(index) {
@@ -37,6 +39,7 @@ object MissionExperienceEngine {
 
     fun choose(state: GameState, mission: ActiveMission, choice: Int): GameEngine.ActionResult {
         val kind = mission.pendingDecision?.kind ?: return GameEngine.ActionResult(state, "Keine Einsatzentscheidung offen.")
+        if (choice !in mission.pendingDecision.options.indices) return GameEngine.ActionResult(state, "Ungültige Einsatzentscheidung.")
         val gold = if (kind == MissionDecisionKind.OPERATION && choice == 2) 120 else 0
         if (state.resources.gold < gold) return GameEngine.ActionResult(state, "$gold Gold benötigt.")
         val delay = if (choice == 0) 1 else 0
@@ -69,7 +72,7 @@ object MissionExperienceEngine {
         val areas = (listOf(regionId) + state.world.roads.filter { it.connects(regionId) }.map { it.other(regionId) }).distinct()
         val armies = state.world.armies.filter { it.regionId in areas && it.status.isAway }
         val intel = old.copy(exploredRegions = (old.exploredRegions + areas).distinct(),
-            visibleRegions = (old.visibleRegions + areas).distinct(), observations = old.observations.filterNot { it.armyId in armies.map { a -> a.id } } +
+            visibleRegions = (old.visibleRegions + areas).distinct(), observations = old.observations.filterNot { it.regionId in areas || it.armyId in armies.map { a -> a.id } } +
                 armies.map { ArmyObservation(it.id, it.regionId, state.day, it.total, it.total, true, it.factionId, it.name) })
         return state.copy(world = state.world.copy(knowledge = state.world.knowledge.filterNot { it.factionId == PLAYER_FACTION } + intel))
     }

@@ -5,6 +5,12 @@ import com.goldenunicorn.troopmanager.model.*
 data class DailyProduction(val gross: Resources, val upkeep: Int, val net: Resources)
 
 object EconomyEngine {
+    fun regionalYield(type: RegionType): Resources = when (type) {
+        RegionType.MINE -> Resources(0, 0, 0, 0, 75)
+        RegionType.FOREST -> Resources(0, 0, 100, 0, 0)
+        RegionType.VILLAGE -> Resources(75, 0, 0, 0, 0)
+        else -> Resources(0, 0, 0, 0, 0)
+    }
     fun workerFactor(state: GameState, kind: ResourceKind): Double {
         val efficiency = (state.workers.toDouble() / state.workerDemand.coerceAtLeast(1)).coerceIn(0.7, 1.0)
         if (state.city.workerPriority == WorkerPriority.BALANCED) return efficiency
@@ -54,12 +60,7 @@ object EconomyEngine {
         fun safe(value: Long) = value.coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
         val building = safe(r.level(productionBuilding(kind)).toLong() * perLevel)
         var territory = safe(r.territory.toLong() * perTerritory)
-        val regionBonus = state.regions.filter { it.owned }.sumOf { region -> when {
-            kind == ResourceKind.IRON && region.type == RegionType.MINE -> 75L
-            kind == ResourceKind.WOOD && region.type == RegionType.FOREST -> 100L
-            kind == ResourceKind.GOLD && region.type == RegionType.VILLAGE -> 75L
-            else -> 0L
-        } }
+        val regionBonus = state.regions.filter { it.owned }.sumOf { kind.value(regionalYield(it.type)).toLong() }
         territory = safe(territory.toLong() + regionBonus)
         val worker = workerFactor(state, kind)
         val c = state.companion

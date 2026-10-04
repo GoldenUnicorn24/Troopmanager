@@ -71,6 +71,13 @@ internal val citySites =
         CitySite(BuildingType.WALL, 780f, 820f, CityDistrict.MILITARY),
     )
 
+internal val cityDistrictAnchors = listOf(
+    Triple(CityDistrict.HOUSING, 460f, 380f), Triple(CityDistrict.MARKET, 650f, 795f),
+    Triple(CityDistrict.MILITARY, 1020f, 835f), Triple(CityDistrict.PRODUCTION, 1285f, 485f),
+    Triple(CityDistrict.PALACE, 745f, 195f), Triple(CityDistrict.CULTURAL, 545f, 300f),
+    Triple(CityDistrict.DIPLOMATIC, 955f, 290f), Triple(CityDistrict.OUTSKIRTS, 265f, 835f),
+)
+
 /**
  * Both pointer inversion and drawing use this exact transform; empty ground never picks a building.
  */
@@ -123,6 +130,15 @@ internal data class CityProjection(
         // targets by distance, so a tap on the palace does not accidentally open its neighbour.
         return citySites.filter { distance(it) <= 1f }.minByOrNull { distance(it) }?.type
     }
+
+    fun hitDistrict(x: Float, y: Float, minimumTouchRadius: Float): CityDistrict? {
+        val world = unproject(x, y)
+        val rx = max(100f, minimumTouchRadius / scale)
+        val ry = max(55f, minimumTouchRadius / scale)
+        fun distance(anchor: Triple<CityDistrict, Float, Float>) =
+            ((world.first - anchor.second) / rx).pow(2) + ((world.second - anchor.third) / ry).pow(2)
+        return cityDistrictAnchors.filter { distance(it) <= 1f }.minByOrNull { distance(it) }?.first
+    }
 }
 
 /** The same scene is reused by the city, the old map seam and fortified live battles. */
@@ -141,6 +157,7 @@ internal fun CityScene(
     defenseMode: Boolean = cityInDefense(state),
     wallIntegrity: Int = cityWallIntegrity(state),
     onBuilding: (BuildingType) -> Unit = {},
+    onDistrict: ((CityDistrict) -> Unit)? = null,
 ) {
     val context = LocalContext.current.applicationContext
     var landscape by remember(context) { mutableStateOf<ImageBitmap?>(null) }
@@ -159,6 +176,7 @@ internal fun CityScene(
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
     val currentBuildingAction by rememberUpdatedState(onBuilding)
+    val currentDistrictAction by rememberUpdatedState(onDistrict)
     val phaseState: State<Float> = if (state.settings.animations) {
         val clock = rememberInfiniteTransition(label = "Stadtatmosphäre")
         clock.animateFloat(
@@ -223,7 +241,7 @@ internal fun CityScene(
                             pan = Offset.Zero
                         }
                     ) { position ->
-                        CityProjection(
+                        val projection = CityProjection(
                                 size.width.toFloat(),
                                 size.height.toFloat(),
                                 zoom,
@@ -231,8 +249,9 @@ internal fun CityScene(
                                 pan.y,
                             )
                             .bounded()
-                            .hit(position.x, position.y, minimumTouchRadius)
-                            ?.let(currentBuildingAction)
+                        val building = projection.hit(position.x, position.y, minimumTouchRadius)
+                        if (building != null) currentBuildingAction(building)
+                        else projection.hitDistrict(position.x, position.y, minimumTouchRadius)?.let { currentDistrictAction?.invoke(it) }
                     }
                 }
         ) {
@@ -469,21 +488,13 @@ internal fun CityScene(
                 if (activity.hungry) drawRect(Color(0x22544834), size = Size(1600f, 1000f))
                 // District labels are geographically attached and remain readable at overview
                 // scale.
-                val districtLabels =
-                    listOf(
-                        Triple("WOHNVIERTEL", 460f, 380f),
-                        Triple("MARKTVIERTEL", 650f, 795f),
-                        Triple("MILITÄRVIERTEL", 1020f, 835f),
-                        Triple("PRODUKTION", 1285f, 485f),
-                        Triple("PALASTBEZIRK", 745f, 195f),
-                        Triple("KULTURVIERTEL", 545f, 300f),
-                        Triple("DIPLOMATIE", 955f, 290f),
-                        Triple("AUSSENLAND", 265f, 835f),
-                    )
                 paint.color = android.graphics.Color.rgb(235, 212, 168)
                 paint.textSize = 10f / p.scale.coerceAtLeast(.2f)
-                districtLabels.forEach { (title, x, y) ->
-                    drawContext.canvas.nativeCanvas.drawText(title, x, y, paint)
+                cityDistrictAnchors.forEach { (district, x, y) ->
+                    val projects = state.city.constructionQueue.count { order -> citySites.any { it.district == district && it.type == order.type } }
+                    val status = if (projects > 0) " · $projects Bau" else if (district == CityDistrict.HOUSING && state.population.total > state.city.housingCapacity) " · Überfüllt" else ""
+                    drawContext.canvas.nativeCanvas.drawText(district.label.uppercase() + status, x, y, paint)
+                    if (onDistrict != null) drawLine(ModernBlue.copy(alpha = .65f), Offset(x - 60f, y + 7f), Offset(x + 60f, y + 7f), 2f / p.scale)
                 }
             }
         }

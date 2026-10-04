@@ -110,11 +110,12 @@ object SiegeEngine {
             val hasFort = fortified || original.segments.any { it.cover > 0 }
             val breach = if (hasFort && (integrity == 0 || segment.section == BattleSection.CENTER && gate == 0))
                 maxOf(segment.breachWidth, if (integrity == 0) 80 else 28) else segment.breachWidth
+            val inside = segment.contactState in listOf(BattleContactState.BREACHED, BattleContactState.COURTYARD)
             val contact = when {
                 front.enemySoldiers == 0 -> BattleContactState.DISTANT
                 !hasFort && front.enemyDistance == 0 -> BattleContactState.FIELD_CONTACT
-                hasFort && front.enemyDistance == 0 && fallenBack && (breach > 0 || open || progress >= 100) -> BattleContactState.COURTYARD
-                hasFort && front.enemyDistance == 0 && (breach > 0 || open) -> BattleContactState.BREACHED
+                hasFort && front.enemyDistance == 0 && fallenBack && (breach > 0 || open || progress >= 100 || inside) -> BattleContactState.COURTYARD
+                hasFort && front.enemyDistance == 0 && (breach > 0 || open || inside) -> BattleContactState.BREACHED
                 hasFort && front.enemyDistance == 0 && progress >= 100 -> BattleContactState.WALL_ASSAULT
                 hasFort && local.any { it.distance == 0 && it.type != SiegeDevice.TUNNEL } -> BattleContactState.SIEGE_CONTACT
                 front.enemyDistance <= 200 -> BattleContactState.MISSILE_RANGE
@@ -142,12 +143,14 @@ object SiegeEngine {
             BattleContactState.WALL_ASSAULT -> segment.assaultWidth.coerceAtLeast(8)
             BattleContactState.BREACHED -> if (segment.gateOpen && segment.breachWidth == 0) 20 else segment.breachWidth.coerceIn(18, 160)
             BattleContactState.COURTYARD -> 32
-            BattleContactState.FIELD_CONTACT -> when (battle.terrain[section]) {
-                BattleTerrain.BRIDGE -> 24; BattleTerrain.PASS -> 32; BattleTerrain.RIVER, BattleTerrain.STREET -> 50
-                BattleTerrain.FOREST, BattleTerrain.HILL -> 90; BattleTerrain.MUD -> 100; else -> 180
-            }
+            BattleContactState.FIELD_CONTACT -> terrainFrontage(battle.terrain[section] ?: BattleTerrain.PLAIN)
             else -> 0
         }
+    }
+
+    fun terrainFrontage(terrain: BattleTerrain): Int = when (terrain) {
+        BattleTerrain.BRIDGE -> 24; BattleTerrain.PASS -> 32; BattleTerrain.RIVER, BattleTerrain.STREET -> 50
+        BattleTerrain.FOREST, BattleTerrain.HILL -> 90; BattleTerrain.MUD -> 100; else -> 180
     }
 
     fun exposure(segment: FortificationSegmentState?): Double {

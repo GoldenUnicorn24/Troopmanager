@@ -93,6 +93,21 @@ object QuestJournalEngine {
             add("proposal:${it.id}", "${it.kind.label}: Gegenangebot", it.explanation,
                 JournalCategory.DIPLOMACY, GameDestination.WORLD, it.expiresDay)
         }
+        if (state.completedRealm) {
+            fun completed(id: String) = state.journal.history.any { it.id == id }
+            val alliances = state.diplomacy.treaties.count { it.kind == TreatyKind.DEFENSIVE_ALLIANCE && it.expiresDay > state.day &&
+                PLAYER_FACTION in listOf(it.firstFactionId, it.secondFactionId) }
+            if (!completed("endgame:coalition") && alliances < 2)
+                add("endgame:coalition", "Eine tragfähige Koalition", "$alliances von zwei aktiven Verteidigungsbündnissen. Militärzugang, Aufklärung und Versorgung machen Partner verlässlicher als bloße Freundschaft.", JournalCategory.DIPLOMACY, GameDestination.WORLD)
+            val forts = state.frontier.outposts.count { it.level == 3 && it.integrity >= 80 && it.stores >= 300 &&
+                (OutpostEngine.garrison(state, it)?.total ?: 0) >= 150 }
+            if (!completed("endgame:frontier") && forts < 3)
+                add("endgame:frontier", "Das Reich jenseits der Mauer", "$forts von drei versorgten Grenzforts mit echten Garnisonen. Plane Märsche und Vorräte, ohne die Heimatverteidigung auszuhöhlen.", JournalCategory.MILITARY, GameDestination.FRONTIER)
+            if (!completed("endgame:recovery") && (state.war.buildingDamage.values.any { it > 0 } || state.war.wounded.isNotEmpty() || state.occupations.any { it.unrest >= 40 }))
+                add("endgame:recovery", "Den Frieden tragfähig machen", "Kriegsschäden reparieren, Verwundete versorgen und besetzte Gebiete befrieden. Die Herrschaft endet nicht mit dem Schlachtsieg.", JournalCategory.REALM, GameDestination.CITY)
+            if (state.settings.dynasty && state.dynasty.heirId == null)
+                add("endgame:succession", "Eine geordnete Nachfolge", "Erben, Mentoren und mögliche Regentschaft im Familienrat festlegen. Die Dynastie bleibt optional.", JournalCategory.PERSONAL, GameDestination.FAMILY)
+        }
         return tasks.distinctBy { it.id }.sortedWith(compareBy<JournalTask> { it.dueDay ?: Int.MAX_VALUE }.thenBy { it.id })
     }
 
@@ -112,6 +127,7 @@ object QuestJournalEngine {
                 task.id.startsWith("unit-training:") -> "Ausbildung abgeschlossen"
                 task.id.startsWith("patrol:") -> "Patrouille beendet"
                 task.id.startsWith("campaign:") -> "Herrscherentscheidung bearbeitet"
+                task.id.startsWith("endgame:") -> "Langfristiges Herrschaftsziel erreicht"
                 task.dueDay != null && task.dueDay <= state.day -> "Frist beendet"
                 else -> "Entscheidung bearbeitet"
             }

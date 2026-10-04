@@ -180,6 +180,7 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
             TextButton(onClick = { historyPage = page + 1 }, enabled = page + 1 < pageCount) { Text("Ältere") }
         }
         Text("Alle Zusammenfassungen bleiben erhalten; ausführliche Replays umfassen die letzten 24 Schlachten.", color = Mist, fontSize = 11.sp)
+        Text("Replays vor v0.90 verwenden die neuen Kontaktregeln. Heute unzulässige alte Befehle werden durch Halten ersetzt; historische Ergebnisse bleiben in der Chronik erhalten.", color = Mist, fontSize = 11.sp)
         state.war.history.asReversed().drop(page * 24).take(24).forEach { record ->
             CompactCard("Tag ${record.day} · ${record.place} · ${if (record.victory) "Sieg" else "Niederlage"}", "${record.ownStart} gegen ${record.enemyStart} · ${record.minute} Minuten · ${record.casualties.dead} gefallen / ${record.casualties.wounded} verwundet / ${record.casualties.missing} vermisst / ${record.casualties.captured} gefangen")
             if (record.replay != null) TextButton(onClick = { replayStep = 0; replayRecord = record; replayPlaying = false }) { Text("Schlacht aus Befehlen wiederholen") }

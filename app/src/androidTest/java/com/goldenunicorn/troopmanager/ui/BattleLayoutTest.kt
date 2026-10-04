@@ -1,7 +1,10 @@
 package com.goldenunicorn.troopmanager.ui
 
 import android.content.res.Configuration
+import android.content.ContentValues
 import android.graphics.Bitmap
+import android.os.Build
+import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -35,9 +38,19 @@ class BattleLayoutTest {
             assertTrue(node.boundsInRoot.width >= 48 * density - 1)
         }
         rule.onNodeWithText("Details").assertIsDisplayed()
-        val folder = File(rule.activity.getExternalFilesDir(null), "battle-screenshots").apply { mkdirs() }
-        File(folder, "$name.png").outputStream().use {
-            rule.onNodeWithTag("battle_screen").captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+        val bitmap = rule.onNodeWithTag("battle_screen").captureToImage().asAndroidBitmap()
+        if (Build.VERSION.SDK_INT >= 29) {
+            // UTP uninstalls the app after the suite. Shared Downloads survive that cleanup.
+            val resolver = rule.activity.contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, "$name.png")
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/troopmanager-battle")
+            }) ?: error("Screenshot destination unavailable")
+            resolver.openOutputStream(uri)!!.use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        } else {
+            val folder = File(rule.activity.getExternalFilesDir(null), "battle-screenshots").apply { mkdirs() }
+            File(folder, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
     }
     @Test fun smallPortraitKeepsTheFieldAndActionsVisible() {

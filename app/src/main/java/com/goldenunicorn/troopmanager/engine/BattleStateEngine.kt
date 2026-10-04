@@ -67,13 +67,18 @@ object BattleStateEngine {
             else (artilleryLoad.toLong() * (6 - battle.step).coerceAtLeast(0) / 6).toInt()
         val enemyArtillery = if (battle.enemyArtilleryRemaining >= 0) battle.enemyArtilleryRemaining else
             ((roster.filter { it.type == UnitType.DRAGON_ARTILLERY }.sumOf { it.soldiers.toLong() } + 9) / 10 * (8 - battle.step).coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-        return battle.copy(combatVersion = 2, enemyUnits = allocations, enemyRoster = roster,
+        val initialized = battle.copy(combatVersion = 2, enemyUnits = allocations, enemyRoster = roster,
             segments = segments, battleArrowsRemaining = ownArrows,
             battleArrowsLoaded = if (battle.battleArrowsRemaining < 0) legacyLoad else battle.battleArrowsLoaded,
             enemyArrowsRemaining = enemyArrows, battleArtilleryRemaining = ownArtillery,
             battleArtilleryLoaded = if (battle.battleArtilleryRemaining < 0) artilleryLoad else battle.battleArtilleryLoaded,
             enemyArtilleryRemaining = enemyArtillery,
             siegeDevices = siegeDevices.map { if (it.ammunition >= 0) it else it.copy(ammunition = if (it.type == SiegeDevice.CATAPULT) (8 - battle.step).coerceAtLeast(0) else 0) })
+        val pending = initialized.pendingEvent ?: return initialized
+        if (battle.combatVersion >= 2) return initialized
+        val safe = if (initialized.status == BattleStatus.PURSUIT) BattleDecision.HOLD_FORMATION else BattleDecision.HOLD
+        val legal = pending.options.filter { BattleEngine.canOrder(initialized, it, pending.section) }
+        return initialized.copy(pendingEvent = pending.copy(options = (legal + safe).distinct()))
     }
 
     fun generateRoster(enemy: EnemyType, strength: Int, seed: Int): List<UnitAllocation> {

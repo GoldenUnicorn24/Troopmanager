@@ -270,7 +270,11 @@ object WorldEngine {
             val homes = state.world.places.filter { it.ownerId == f.id }.map { it.id }
             val ownArmies = state.world.armies.filter { it.factionId == f.id && it.status != WorldArmyStatus.DESTROYED && it.status != WorldArmyStatus.HOME }
             val sight = if (f.id == PLAYER_FACTION && state.realm.scoutingDays > 0) 2 else 1
-            val visible = (homes + ownArmies.map { it.regionId }).toMutableSet()
+            val posts = if (f.id == PLAYER_FACTION) state.frontier.outposts.filter { it.integrity > 0 } else emptyList()
+            val visible = (homes + ownArmies.map { it.regionId } + posts.map { it.regionId }).toMutableSet()
+            posts.filter { it.level >= 2 }.forEach { post ->
+                state.world.roads.filter { it.connects(post.regionId) }.forEach { visible.add(it.other(post.regionId)) }
+            }
             repeat(sight) {
                 val frontier = visible.toList()
                 state.world.roads.filter { it.from in frontier || it.to in frontier }.forEach { road ->
@@ -598,17 +602,7 @@ object WorldEngine {
         val battle = BattleEngine.start(released, profile, Tactic.HOLD,
             listOf(BattleDeployment(own.commanderId, BattleSection.CENTER, own.units)),
             seed = (own.id.hashCode() xor enemy.id.hashCode() xor state.day), enemyStrength = enemy.total,
-            terrain = BattleSection.entries.associateWith { section ->
-                when (state.world.place(own.regionId)?.terrain) {
-                    WorldTerrain.FOREST -> BattleTerrain.FOREST
-                    WorldTerrain.HILLS -> BattleTerrain.HILL
-                    WorldTerrain.MOUNTAIN -> BattleTerrain.PASS
-                    WorldTerrain.RIVER -> if (section == BattleSection.CENTER) BattleTerrain.BRIDGE else BattleTerrain.RIVER
-                    WorldTerrain.MARSH -> BattleTerrain.MUD
-                    WorldTerrain.CITY -> BattleTerrain.STREET
-                    else -> BattleTerrain.PLAIN
-                }
-            },
+            terrain = BattleSection.entries.associateWith { terrainFor(state.world.place(own.regionId)?.terrain ?: WorldTerrain.PLAIN, it) },
             rangedWeather = state.world.weather.at(own.regionId).rangedFactor,
             cavalryWeather = state.world.weather.at(own.regionId).cavalryFactor,
             seasonPenalty = if (state.world.weather.season == Season.WINTER) .8 else 1.0,
@@ -754,12 +748,23 @@ object WorldEngine {
         )
     }
 
+    fun terrainFor(terrain: WorldTerrain, section: BattleSection = BattleSection.CENTER): BattleTerrain = when (terrain) {
+        WorldTerrain.FOREST -> BattleTerrain.FOREST
+        WorldTerrain.HILLS -> BattleTerrain.HILL
+        WorldTerrain.MOUNTAIN -> BattleTerrain.PASS
+        WorldTerrain.RIVER -> if (section == BattleSection.CENTER) BattleTerrain.BRIDGE else BattleTerrain.RIVER
+        WorldTerrain.MARSH -> BattleTerrain.MUD
+        WorldTerrain.CITY -> BattleTerrain.STREET
+        else -> BattleTerrain.PLAIN
+    }
+
     private fun updateNemesis(state: GameState, id: String?, won: Boolean, player: Boolean): GameState = state.copy(world = state.world.copy(enemyCommanders = state.world.enemyCommanders.map { c ->
         if (c.id != id) c else c.copy(experience = (c.experience + 15).coerceAtMost(10000), victories = c.victories + if (won) 1 else 0,
             defeats = c.defeats + if (won) 0 else 1, injuries = c.injuries + if (won) 0 else 1,
             rivalry = (c.rivalry + if (player) 15 else 0).coerceAtMost(100), revengeTarget = if (player && !won) PLAYER_FACTION else c.revengeTarget,
             epithet = if (!won) "die gezeichnete Klinge" else if (c.victories >= 2) "Grenzbezwinger" else c.epithet,
-            rank = if (c.victories >= 2) "General" else c.rank)
+            rank = if (c.victories >= 2) "General" else c.rank,
+            memories = (c.memories + "Tag ${state.day}: ${if (won) "Sieg" else "Niederlage"}${if (player) " gegen ${state.player.name}" else " im Feldzug"}${if (!won) "; Verwundung und Rückzug" else ""}.").takeLast(20))
     }))
 
     private fun storyTick(state: GameState): GameState {
@@ -831,7 +836,7 @@ object WorldEngine {
         world.enemyCommanders.forEach { require(it.factionId in factionIds && it.experience >= 0 && it.victories >= 0 && it.defeats >= 0 && it.injuries >= 0 && it.rivalry in 0..100 && it.rulerLoyalty in 0..100 && it.memories.size <= 20) }
         val missionReservations = mutableSetOf<Long>()
         world.armies.forEach { army ->
-            require(army.factionId in factionIds && army.regionId in placeIds && army.supplyFood >= 0 && army.morale in 0..100 && army.legProgress >= 0 && army.lastMovedDay in 0..state.day && army.delayUntilDay >= 0 && (army.lastSupplyOutpostId == null || army.lastSupplyOutpostId > 0) && (army.preparationUntilDay == null || army.preparationUntilDay >= 0))
+            require(army.factionId in factionIds && army.regionId in placeIds && army.supplyFood >= 0 && army.morale in 0..100 && army.legProgress >= 0 && army.lastMovedDay in 0..state.day && army.delayUntilDay >= 0 && army.lastOutpostRestDay in 0..state.day && (army.lastSupplyOutpostId == null || army.lastSupplyOutpostId > 0) && (army.preparationUntilDay == null || army.preparationUntilDay >= 0))
             require(army.units.all { it.amount > 0 } && army.units.map { it.type }.toSet().size == army.units.size && army.units.sumOf { it.amount.toLong() } <= Int.MAX_VALUE)
             require(army.route.all { it in placeIds } && (army.route.isEmpty() && army.routeIndex == 0 || army.routeIndex in army.route.indices))
             require(army.destinationId == null || army.destinationId in placeIds)

@@ -123,6 +123,13 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                 }
                 val report = session.lastReport(section)
                 if (animations && frame < 1f && report != null) {
+                    if (report.artilleryChargesUsed > 0) {
+                        val start = Offset(x0 + w / 6, ownY)
+                        val device = session.siegeDevices.firstOrNull { it.section == section && it.detected }
+                        val targetY = if (report.deviceDamage > 0 && device != null) wallY - (device.distance / 400f) * h * .42f else enemyY
+                        val end = Offset(start.x, targetY)
+                        drawCircle(Gold, 3.dp.toPx(), start + (end - start) * frame)
+                    }
                     if (report.arrowsUsed > 0) repeat(4) { n ->
                         val x = x0 + w / 3 * (.22f + n * .17f)
                         val y = ownY + (enemyY - ownY) * frame

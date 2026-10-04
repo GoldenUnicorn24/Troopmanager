@@ -43,6 +43,7 @@ object BattleConsequencesEngine {
             next = RelationshipEngine.remember(next, "shared_battle", "${grade.label} bei ${battle.location ?: state.realm.settlementName}: gemeinsam geführt, ${battle.casualties.total} Ausfälle${if (rescued) ", Bergung aus der Front" else ""}.",
                 if (rescued) 5 else 3, setOf("government", "war", "shared"))
         }
+        next = WarGoalsEngine.recordBattle(next, battle)
         val effects = listOf("Kriegsmüdigkeit ${signed(next.society.warExhaustion - state.society.warExhaustion)}",
             "Stadtzufriedenheit ${signed(next.city.satisfaction - state.city.satisfaction)}",
             "Soldatenloyalität ${signed((next.society.groups.firstOrNull { it.kind == PoliticalGroupKind.MILITARY }?.loyalty ?: 0) - (state.society.groups.firstOrNull { it.kind == PoliticalGroupKind.MILITARY }?.loyalty ?: 0))}") +

@@ -808,7 +808,8 @@ object BattleEngine {
             BattleDecision.OPEN_GATE -> session.tactic == Tactic.FORTIFY && section == BattleSection.CENTER && (segment?.gateIntegrity ?: 0) > 0 &&
                 session.contingents.any { it.type == UnitType.KNIGHT && it.soldiers > 0 && !it.routed }
             BattleDecision.REPEL_LADDERS -> deployed.isNotEmpty() && devices.any { it.type in listOf(SiegeDevice.LADDERS, SiegeDevice.CLIMBERS) && it.distance == 0 }
-            BattleDecision.FIRE_OIL -> session.wallWeapons.any { it.type == WallWeaponType.FIRE_OIL && it.section == section && it.ammunition > 0 && it.integrity > 0 && it.reloadRounds == 0 } && devices.any { it.distance <= 25 }
+            BattleDecision.FIRE_OIL -> session.wallWeapons.any { it.type == WallWeaponType.FIRE_OIL && it.section == section && it.ammunition > 0 && it.integrity > 0 && it.reloadRounds == 0 } &&
+                (devices.any { it.distance <= 25 } || session.fronts.any { it.section == section && it.enemyDistance <= 25 && it.enemySoldiers > 0 })
             BattleDecision.COUNTER_TUNNEL -> session.counterTunnelUnlocked && deployed.any { it.type.ranged < 8 } && devices.any { it.type == SiegeDevice.TUNNEL }
             BattleDecision.HOLD_BREACH, BattleDecision.SECOND_LINE, BattleDecision.FALL_BACK_COURTYARD -> deployed.isNotEmpty() && segment?.contactState in listOf(BattleContactState.BREACHED, BattleContactState.COURTYARD)
             BattleDecision.COUNTERATTACK -> deployed.isNotEmpty() && segment?.contactState?.allowsMelee == true

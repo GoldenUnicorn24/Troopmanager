@@ -63,6 +63,10 @@ object DiplomacyEngine {
             respect = (old.respect + if (trustDelta > 0) 2 else if (trustDelta < -5) -4 else 0).coerceIn(0, 100),
             fear = (old.fear + if (war && !old.atWar) 10 else 0).coerceIn(0, 100), atWar = war,
             warStartedDay = if (war) old.warStartedDay ?: state.day else null,
+            playerWarGoal = if (war && !old.atWar && PLAYER_FACTION in listOf(first, second)) WarGoal.FORCE_PEACE else old.playerWarGoal,
+            warGoalRegionId = if (war && !old.atWar) null else old.warGoalRegionId,
+            warGoalAllyId = if (war && !old.atWar) null else old.warGoalAllyId,
+            warLosses = if (war && !old.atWar) emptyMap() else old.warLosses,
             history = (old.history + DiplomaticMemory(state.day, text)).takeLast(40))
         return state.copy(diplomacy = state.diplomacy.copy(relations =
             state.diplomacy.relations.filterNot { it.connects(first, second) } + updated),
@@ -70,6 +74,11 @@ object DiplomacyEngine {
                 val other = when (faction.id) { first -> second; second -> first; else -> null }
                 if (other == null) faction else faction.copy(relations = faction.relations + (other to updated.relation),
                     wars = if (war) (faction.wars + other).distinct() else faction.wars - other)
+            }, enemyCommanders = state.world.enemyCommanders.map { commander ->
+                val opponent = if (first == PLAYER_FACTION) second else if (second == PLAYER_FACTION) first else null
+                if (commander.factionId == opponent && war && !old.atWar) commander.copy(
+                    memories = (commander.memories + "Tag ${state.day}: $text").takeLast(20),
+                    rivalry = (commander.rivalry + if (trustDelta <= -30) 10 else 3).coerceAtMost(100)) else commander
             }))
     }
 
@@ -101,7 +110,8 @@ object DiplomacyEngine {
         val gift = ((value(proposal.offered) - value(proposal.requested)) / 25).coerceIn(-100, 100).toInt()
         return r.relation / 3 + r.trust / 3 + r.respect / 5 + r.fear / 10 + temperament +
             state.player.diplomacy / 4 + OriginEngine.diplomacyBonus(state) +
-            ambassador + armyPressure + gift - burden
+            ambassador + armyPressure + gift - burden +
+            if (proposal.kind == TreatyKind.PEACE) WarGoalsEngine.peacePressure(state, target.id) else 0
     }
 
     fun propose(state: GameState, targetFactionId: String, kind: TreatyKind,
@@ -533,6 +543,10 @@ object DiplomacyEngine {
             require(it.relation in -100..100 && it.trust in 0..100 && it.fear in 0..100 && it.respect in 0..100)
             require(it.warStartedDay == null || it.warStartedDay in 1..state.day)
             require(it.history.size <= 40 && it.history.all { memory -> memory.day in 1..state.day })
+            require(it.warGoalRegionId == null || state.world.place(it.warGoalRegionId) != null)
+            require(it.warGoalAllyId == null || it.warGoalAllyId in factionIds)
+            require(it.warLosses.keys.all { id -> id in listOf(it.firstFactionId, it.secondFactionId) } && it.warLosses.values.all { losses -> losses >= 0 })
+            require(it.playerWarGoal == null || PLAYER_FACTION in listOf(it.firstFactionId, it.secondFactionId))
         }
         require(diplomacy.treaties.map { it.id }.distinct().size == diplomacy.treaties.size)
         diplomacy.treaties.forEach {
@@ -583,6 +597,7 @@ object DiplomacyEngine {
         require(society.policyUntilDay.values.all { it >= 0 })
         val story = society.story
         require(story.nextId > 0 && story.lastTickDay in 0..state.day && story.cooldownUntilDay >= 0)
+        require(story.familyCooldowns.values.all { it >= 0 })
         require(story.resolved.size <= 60 && story.resolved.distinct().size == story.resolved.size)
         require(story.scheduled.all { it.dueDay >= 1 && it.chainId.isNotBlank() })
         story.pending?.let { require(it.id.isNotBlank() && it.createdDay in 1..state.day && it.expiresDay > it.createdDay && it.id !in story.resolved) }

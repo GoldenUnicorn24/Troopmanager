@@ -21,13 +21,7 @@ internal fun KingdomsScreen(state: GameState, onState: (GameState) -> Unit, onNo
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageTitle("REICHE & GESELLSCHAFT", "Verträge, Informationen und politische Verantwortung") }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                names.forEachIndexed { index, name ->
-                    TextButton(onClick = { section = index }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Text(name, color = if (section == index) PaleGold else Mist)
-                    }
-                }
-            }
+            ModernTabStrip(names, section, { section = it })
         }
         if (section == 0) {
             item { Text("Angebote werden nach Vertrauen, Persönlichkeit, Nutzen und Risiko bewertet. Gegenforderungen übertragen Ressourcen erst bei Annahme.", color = Mist) }
@@ -66,6 +60,7 @@ internal fun KingdomsScreen(state: GameState, onState: (GameState) -> Unit, onNo
                     Text("Hunger ${s.hunger} · Krankheit ${s.disease} · Kriminalität ${s.crime}\nUngleichheit ${s.inequality} · Kulturspannung ${s.culturalTension}\nPolitische Loyalität ${s.politicalLoyalty} · Kriegsmüdigkeit ${s.warExhaustion}", color = Mist)
                     Text("Migration heute: ${s.lastMigration}; aufgenommen ${s.totalImmigrants}, abgewandert ${s.totalEmigrants}.", color = Mist)
                     Text("Hunger und Spannungen senken Zufriedenheit; Krankheit kostet Versorgung; Kriminalität kostet Gold und Sicherheit. Kriegsmüdigkeit schwächt Armeemoral. Loyalität bestimmt Forderungen und politische Krisen.", color = Mist)
+                    CampaignInsightsEngine.societyDrivers(state).forEach { (driver, reason) -> Text("$driver: $reason", color = Mist) }
                 }
             }
             state.society.story.pending?.let { event ->
@@ -94,14 +89,19 @@ internal fun KingdomsScreen(state: GameState, onState: (GameState) -> Unit, onNo
             items(state.society.demands, key = { it.id }) { demand ->
                 KingdomCard {
                     Text("${demand.group.label}: ${demand.kind.label}", color = PaleGold)
+                    Text(speaker(state, demand.group), color = ModernBlue)
                     Text("Frist Tag ${demand.deadlineDay} · Kosten ${demand.kind.cost} ${if (demand.kind == PoliticalDemandKind.FOOD_RELIEF) "Nahrung" else "Gold"}", color = Mist)
+                    val accepted = SocietyEngine.resolveDemand(state, demand.id, true).state
+                    val rejected = SocietyEngine.resolveDemand(state, demand.id, false).state
+                    Text("Erfüllen: ${demandPreview(state, accepted, demand.group)}", color = Success)
+                    Text("Ablehnen: ${demandPreview(state, rejected, demand.group)}", color = Danger)
                     SmallAction("Forderung erfüllen") { apply(SocietyEngine.resolveDemand(state, demand.id, true)) }
                     SmallAction("Forderung ablehnen · Loyalität sinkt") { apply(SocietyEngine.resolveDemand(state, demand.id, false)) }
                 }
             }
             item { SectionTitle("Politische Gruppen") }
             items(state.society.groups, key = { it.kind.name }) { group ->
-                CompactCard(group.kind.label, "Loyalität ${group.loyalty} · Einfluss ${group.influence}; Unzufriedenheit führt zu Forderungen.")
+                CompactCard(group.kind.label, "${speaker(state, group.kind)}\nLoyalität ${group.loyalty} · Einfluss ${group.influence}; Unzufriedenheit führt zu Forderungen.")
             }
         }
     }
@@ -109,9 +109,40 @@ internal fun KingdomsScreen(state: GameState, onState: (GameState) -> Unit, onNo
 
 @Composable
 private fun KingdomCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = Panel, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
+    PremiumPanel(content = content)
+}
+
+private fun speaker(state: GameState, group: PoliticalGroupKind): String {
+    val office = when (group) {
+        PoliticalGroupKind.MILITARY -> CourtOffice.MARSHAL
+        PoliticalGroupKind.MERCHANTS, PoliticalGroupKind.NOBILITY -> CourtOffice.TREASURER
+        PoliticalGroupKind.FARMERS -> CourtOffice.STEWARD
+        PoliticalGroupKind.CULTURAL_REPRESENTATIVES -> CourtOffice.AMBASSADOR
     }
+    val person = state.commanders.firstOrNull { it.id == state.court.offices[office] }
+    return if (person != null) "Sprecher: ${person.name} · ${office.label}" else when (group) {
+        PoliticalGroupKind.MILITARY -> "Sprecherrolle: Veteranenvertretung"
+        PoliticalGroupKind.MERCHANTS -> "Sprecherrolle: Handelsgilde"
+        PoliticalGroupKind.NOBILITY -> "Sprecherrolle: Adelsrat"
+        PoliticalGroupKind.FARMERS -> "Sprecherrolle: Erntegemeinschaft"
+        PoliticalGroupKind.CULTURAL_REPRESENTATIVES -> "Sprecherrolle: Gesandte der Kulturen"
+    }
+}
+
+private fun demandPreview(before: GameState, after: GameState, group: PoliticalGroupKind): String {
+    if (before == after) return "Derzeit nicht ausführbar; Ressourcen oder verfügbare Entscheidungszeit fehlen."
+    val changes = mutableListOf<String>()
+    fun add(label: String, old: Int, new: Int) { if (old != new) changes += "$label $old → $new" }
+    add("Gruppenloyalität", before.society.groups.first { it.kind == group }.loyalty, after.society.groups.first { it.kind == group }.loyalty)
+    add("Kriegsmüdigkeit", before.society.warExhaustion, after.society.warExhaustion)
+    add("Hunger", before.society.hunger, after.society.hunger)
+    add("Kriminalität", before.society.crime, after.society.crime)
+    add("Kulturspannung", before.society.culturalTension, after.society.culturalTension)
+    add("Ungleichheit", before.society.inequality, after.society.inequality)
+    add("Sicherheit", before.city.security, after.city.security)
+    add("Zufriedenheit", before.city.satisfaction, after.city.satisfaction)
+    if (before.city.taxLevel != after.city.taxLevel) changes += "Steuern: ${after.city.taxLevel.label}"
+    return changes.joinToString(" · ")
 }
 
 @Composable
@@ -128,12 +159,34 @@ private fun DiplomacyCard(state: GameState, faction: WorldFaction, apply: (GameE
         Text("${faction.name} · ${if (relation.atWar) "Krieg" else "Frieden"}", color = PaleGold, fontWeight = FontWeight.Bold)
         Text("${faction.ruler} · ${faction.personality.label}\nBeziehung ${relation.relation} · Vertrauen ${relation.trust} · Respekt ${relation.respect} · Furcht ${relation.fear}", color = Mist)
         Text("Ziel: ${faction.longTermGoal}", color = Mist)
+        if (relation.atWar || relation.playerWarGoal != null) {
+            Text("Kriegsziel: ${relation.playerWarGoal?.label ?: "Noch offen"}", color = ModernBlue)
+            Text(WarGoalsEngine.progress(state, faction.id), color = Mist)
+            Text("Ausfälle im Krieg: ${relation.warLosses[PLAYER_FACTION] ?: 0} eigene / ${relation.warLosses[faction.id] ?: 0} Gegner · Verhandlungsdruck ${WarGoalsEngine.peacePressure(state, faction.id)}", color = Mist)
+        }
         state.diplomacy.politics.firstOrNull { it.factionId == faction.id }?.let { politics ->
             Text("Herrscheralter ${faction.rulerAge} · Nachfolgen ${faction.successionCount}\nStabilität ${politics.stability} · Kriegsmüdigkeit ${politics.warExhaustion} · Nahrungskrise ${politics.hungerDays} Tage", color = Mist)
             politics.history.takeLast(2).forEach { Text("Tag ${it.day}: ${it.text}", color = Mist) }
         }
         SmallAction(if (expanded) "Verhandlungen schließen" else "Vertrag aushandeln") { expanded = !expanded }
         if (expanded) {
+            if (relation.atWar) {
+                var goal by remember(faction.id) { mutableStateOf(relation.playerWarGoal ?: WarGoal.FORCE_PEACE) }
+                var regionId by remember(faction.id) { mutableStateOf(relation.warGoalRegionId) }
+                var allyId by remember(faction.id) { mutableStateOf(relation.warGoalAllyId) }
+                KingdomChoice("Kriegsziel", goal.label, WarGoal.entries.map { it to it.label }) { goal = it }
+                if (goal == WarGoal.SECURE_REGION) {
+                    val regions = state.world.places.filter { it.ownerId == faction.id && it.id in state.world.knowledgeFor(PLAYER_FACTION).exploredRegions }
+                    KingdomChoice("Zielregion", state.world.place(regionId ?: "")?.name ?: "Bekannte Region wählen", regions.map { it.id to it.name }) { regionId = it }
+                }
+                if (goal == WarGoal.DEFEND_ALLY) {
+                    val allies = state.world.factions.filter { it.id != PLAYER_FACTION && it.id != faction.id &&
+                        DiplomacyEngine.hasTreaty(state, PLAYER_FACTION, it.id, TreatyKind.DEFENSIVE_ALLIANCE) && DiplomacyEngine.atWar(state, it.id, faction.id) }
+                    KingdomChoice("Verbündeter", state.world.faction(allyId ?: "")?.name ?: "Bündnispartner wählen", allies.map { it.id to it.name }) { allyId = it }
+                }
+                SmallAction("Kriegsziel festlegen") { apply(WarGoalsEngine.set(state, faction.id, goal, regionId, allyId)) }
+                Text("Frieden berücksichtigt bekannte Schlachtausfälle, besetzte Zielregionen, Kriegsdauer und Erschöpfung beider Reiche. Ein Angebot überträgt Ressourcen erst bei Annahme.", color = Mist)
+            }
             KingdomChoice("Vertragsart", kind.label, TreatyKind.entries.filter {
                 (!relation.atWar || it == TreatyKind.PEACE) && (it != TreatyKind.DYNASTIC_ALLIANCE || state.settings.dynasty)
             }.map { it to it.label }) { kind = it }

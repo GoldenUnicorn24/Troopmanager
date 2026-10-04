@@ -119,7 +119,7 @@ jobs:
           script: |
             gradle :app:connectedDebugAndroidTest --stacktrace
             mkdir -p build/ui-screenshots
-            adb pull /sdcard/Android/data/com.goldenunicorn.troopmanager/files/battle-screenshots build/ui-screenshots
+            adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots
       - name: Upload UI evidence
         if: always()
         uses: actions/upload-artifact@v4
