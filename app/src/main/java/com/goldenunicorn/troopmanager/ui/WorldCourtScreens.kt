@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import coil.compose.AsyncImage
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,9 +74,56 @@ internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         }
         item { SectionTitle("Regionen") }
         item {
-            BoxWithConstraints(Modifier.fillMaxWidth().height(340.dp)) {
-                AsyncImage("file:///android_asset/world_map.webp", "Weltkarte mit auswählbaren Regionen", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            BoxWithConstraints(
+                Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(20.dp)).background(Panel)
+            ) {
                 val positions = listOf(0.08f to 0.63f, 0.50f to 0.65f, 0.08f to 0.14f, 0.60f to 0.15f, 0.40f to 0.42f, 0.64f to 0.39f, 0.12f to 0.39f)
+                Canvas(Modifier.fillMaxSize()) {
+                    drawRect(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF17242A), Color(0xFF26372F), Color(0xFF151B20))
+                        )
+                    )
+                    repeat(6) { i ->
+                        val cx = size.width * (.15f + (i * .139f % .72f))
+                        val cy = size.height * (.16f + ((i * 31) % 61) / 100f)
+                        drawOval(
+                            color = if (i % 2 == 0) Color(0xFF405443) else Color(0xFF5C5741),
+                            topLeft = Offset(cx - size.width * .16f, cy - size.height * .10f),
+                            size = Size(size.width * .32f, size.height * .20f),
+                        )
+                    }
+                    val river = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(size.width * .02f, size.height * .27f)
+                        cubicTo(
+                            size.width * .24f, size.height * .20f,
+                            size.width * .39f, size.height * .47f,
+                            size.width * .56f, size.height * .38f,
+                        )
+                        cubicTo(
+                            size.width * .75f, size.height * .27f,
+                            size.width * .84f, size.height * .57f,
+                            size.width * .99f, size.height * .50f,
+                        )
+                    }
+                    drawPath(river, Color(0xFF426B79), style = androidx.compose.ui.graphics.drawscope.Stroke(11.dp.toPx()))
+                    drawPath(river, Color(0xFF8AA8B0).copy(alpha = .25f), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+                    positions.take(state.regions.take(7).size).zipWithNext().forEach { (a, b) ->
+                        drawLine(
+                            PaleGold.copy(alpha = .34f),
+                            Offset(size.width * a.first, size.height * a.second),
+                            Offset(size.width * b.first, size.height * b.second),
+                            2.dp.toPx(),
+                        )
+                    }
+                    state.regions.take(7).forEachIndexed { index, region ->
+                        val (x, y) = positions[index % positions.size]
+                        val center = Offset(size.width * x, size.height * y)
+                        val color = if (region.owned) Success else ModernBlue
+                        drawCircle(color.copy(alpha = .14f), 28.dp.toPx(), center)
+                        drawCircle(color.copy(alpha = .65f), 21.dp.toPx(), center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+                    }
+                }
                 state.regions.take(7).forEachIndexed { index, region ->
                     val (x, y) = positions[index % positions.size]
                     Surface(onClick = { selectedRegionId = region.id }, modifier = Modifier.offset(x = maxWidth * x, y = maxHeight * y).heightIn(min = 48.dp),
