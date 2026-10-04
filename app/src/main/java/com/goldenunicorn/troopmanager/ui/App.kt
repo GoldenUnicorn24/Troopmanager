@@ -92,35 +92,67 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
             Modifier.fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D))))
         )
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Bottom) {
-            Text("REALM OF THE", color = PaleGold, fontSize = 18.sp, letterSpacing = 3.sp)
-            Text("LAST WALL", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
+        Column(
+            Modifier.fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(22.dp),
+            verticalArrangement = Arrangement.Bottom,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ModernPill("Offline Strategy RPG", ModernBlue, filled = true)
+                ModernPill("v${com.goldenunicorn.troopmanager.BuildConfig.VERSION_NAME}", Gold)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("REALM OF THE", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
             Text(
-                "Vom jungen Grenzherrn zum Herrscher einer mächtigen Festung.",
-                color = Mist,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
+                "LAST WALL",
+                color = Color.White,
+                fontSize = 48.sp,
+                lineHeight = 48.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
             )
-            Text("v${com.goldenunicorn.troopmanager.BuildConfig.VERSION_NAME} · lebendige Grenze & Reich", color = PaleGold)
-            SaveSlotsPanel(ui, controller)
-            if (ui.hasSave) {
-                GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-            }
-            var confirmOverwrite by remember { mutableStateOf(false) }
-            if (confirmOverwrite) AlertDialog(onDismissRequest = { confirmOverwrite = false },
-                title = { Text("Neues Reich in Platz ${ui.activeSlot}?") },
-                text = { Text("Die Kampagne in diesem Platz wird beim Gründen ersetzt. Wähle einen leeren Platz, um sie zu behalten.") },
-                confirmButton = { TextButton(onClick = { confirmOverwrite = false; controller.newGame() }) { Text("Neues Reich") } },
-                dismissButton = { TextButton(onClick = { confirmOverwrite = false }) { Text("Abbrechen") } })
-            OutlinedButton(onClick = { if (ui.hasSave) confirmOverwrite = true else controller.newGame() }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                Text("Neues Reich", fontWeight = FontWeight.Bold, color = PaleGold)
-            }
             Text(
-                "Offline · keine Echtgeldkäufe · lokaler Spielstand",
-                color = Color(0xFFA8B2B8),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 18.dp, bottom = 12.dp),
+                "Baue dein Reich. Führe Armeen. Regiere gemeinsam. Jede Entscheidung verändert die Grenze.",
+                color = Mist,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(top = 10.dp, bottom = 20.dp).widthIn(max = 420.dp),
+            )
+
+            PremiumPanel(emphasized = ui.hasSave) {
+                Text("KAMPAGNE", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                SaveSlotsPanel(ui, controller)
+
+                if (ui.hasSave) {
+                    GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
+                }
+
+                var confirmOverwrite by remember { mutableStateOf(false) }
+                if (confirmOverwrite) AlertDialog(
+                    onDismissRequest = { confirmOverwrite = false },
+                    title = { Text("Neues Reich in Platz ${ui.activeSlot}?") },
+                    text = { Text("Die Kampagne in diesem Platz wird beim Gründen ersetzt. Wähle einen leeren Platz, um sie zu behalten.") },
+                    confirmButton = { TextButton(onClick = { confirmOverwrite = false; controller.newGame() }) { Text("Neues Reich") } },
+                    dismissButton = { TextButton(onClick = { confirmOverwrite = false }) { Text("Abbrechen") } },
+                )
+                OutlinedButton(
+                    onClick = { if (ui.hasSave) confirmOverwrite = true else controller.newGame() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                ) {
+                    Text("NEUES REICH", fontWeight = FontWeight.Black, color = Color.White, fontSize = 11.sp)
+                }
+            }
+
+            Text(
+                "100 % offline · kein Pay-to-Win · lokale Spielstände",
+                color = Color(0xFF8D99A2),
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
             )
         }
     }
@@ -526,59 +558,74 @@ private fun GameShell(
         bottomBar = {
             val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
             val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
+            val moreSelected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD))
             val itemColors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Gold,
-                selectedTextColor = PaleGold,
-                indicatorColor = Gold.copy(alpha = .11f),
+                selectedIconColor = Color.White,
+                selectedTextColor = Color.White,
+                indicatorColor = Color.White.copy(alpha = .10f),
                 unselectedIconColor = Muted,
                 unselectedTextColor = Muted,
             )
-            Surface(
-                color = Stone,
-                shadowElevation = 12.dp,
-                tonalElevation = 0.dp,
-                modifier = Modifier.navigationBarsPadding(),
+
+            Box(
+                Modifier.fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Ink.copy(alpha = .92f))
+                        )
+                    )
+                    .navigationBarsPadding()
+                    .padding(horizontal = 10.dp, vertical = 7.dp)
             ) {
-                NavigationBar(
-                    containerColor = Color.Transparent,
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xF20E151D),
+                    shape = RoundedCornerShape(26.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .08f)),
+                    shadowElevation = 16.dp,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.heightIn(min = 70.dp),
                 ) {
-                    NavigationBarItem(
-                        selected = !showMore && realmSelected,
-                        onClick = { showMore = false; screen = GameDestination.COMMAND },
-                        icon = { Icon(Icons.Outlined.Castle, null) },
-                        label = { Text("Reich", fontSize = 10.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Bold else FontWeight.Normal) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && screen == GameDestination.CITY,
-                        onClick = { showMore = false; screen = GameDestination.CITY },
-                        icon = { Icon(Icons.Outlined.LocationCity, null) },
-                        label = { Text("Stadt", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && armySelected,
-                        onClick = { showMore = false; screen = GameDestination.MILITARY },
-                        icon = { Icon(Icons.Outlined.Shield, null) },
-                        label = { Text("Heer", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = !showMore && screen == GameDestination.WORLD,
-                        onClick = { showMore = false; screen = GameDestination.WORLD },
-                        icon = { Icon(Icons.Outlined.Public, null) },
-                        label = { Text("Welt", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
-                    NavigationBarItem(
-                        selected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD)),
-                        onClick = { showMore = true },
-                        icon = { Icon(Icons.Outlined.MoreVert, null) },
-                        label = { Text("Mehr", fontSize = 10.sp) },
-                        colors = itemColors,
-                    )
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(68.dp),
+                    ) {
+                        NavigationBarItem(
+                            selected = !showMore && realmSelected,
+                            onClick = { showMore = false; screen = GameDestination.COMMAND },
+                            icon = { Icon(Icons.Outlined.Castle, null) },
+                            label = { Text("Reich", fontSize = 9.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && screen == GameDestination.CITY,
+                            onClick = { showMore = false; screen = GameDestination.CITY },
+                            icon = { Icon(Icons.Outlined.LocationCity, null) },
+                            label = { Text("Stadt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.CITY) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && armySelected,
+                            onClick = { showMore = false; screen = GameDestination.MILITARY },
+                            icon = { Icon(Icons.Outlined.Shield, null) },
+                            label = { Text("Heer", fontSize = 9.sp, fontWeight = if (!showMore && armySelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = !showMore && screen == GameDestination.WORLD,
+                            onClick = { showMore = false; screen = GameDestination.WORLD },
+                            icon = { Icon(Icons.Outlined.Public, null) },
+                            label = { Text("Welt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.WORLD) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                        NavigationBarItem(
+                            selected = moreSelected,
+                            onClick = { showMore = true },
+                            icon = { Icon(Icons.Outlined.MoreVert, null) },
+                            label = { Text("Mehr", fontSize = 9.sp, fontWeight = if (moreSelected) FontWeight.Black else FontWeight.Medium) },
+                            colors = itemColors,
+                        )
+                    }
                 }
             }
         },

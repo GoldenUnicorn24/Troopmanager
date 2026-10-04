@@ -2,8 +2,11 @@ package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,14 +27,26 @@ import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.PresenceEngine
 import com.goldenunicorn.troopmanager.model.*
 
-internal val Stone = Color(0xFF0E1318)
-internal val StoneRaised = Color(0xFF151D24)
-internal val Steel = Color(0xFF26323B)
-internal val GoldSoft = Color(0xFFBFA365)
-internal val Ivory = Color(0xFFF3E8CF)
-internal val Muted = Color(0xFF98A4AC)
-internal val Crimson = Color(0xFF8F3C42)
-internal val Emerald = Color(0xFF5F9A75)
+internal val Stone = Color(0xFF090D12)
+internal val StoneRaised = Color(0xFF101720)
+internal val Steel = Color(0xFF1D2A35)
+internal val GoldSoft = Color(0xFFE1BE68)
+internal val Ivory = Color(0xFFF8F2E5)
+internal val Muted = Color(0xFF98A5AF)
+internal val Crimson = Color(0xFFE2676B)
+internal val Emerald = Color(0xFF69C08B)
+internal val ModernBlue = Color(0xFF72B8E8)
+internal val ModernSurface = Color(0xF2131921)
+internal val ModernSurface2 = Color(0xEE1A2430)
+internal val ModernLine = Color(0x22FFFFFF)
+
+private val ModernPanelBrush =
+    Brush.linearGradient(
+        listOf(
+            Color(0xFF171F29),
+            Color(0xFF11171E),
+        )
+    )
 
 @Composable
 internal fun PremiumPanel(
@@ -40,21 +55,143 @@ internal fun PremiumPanel(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val surfaceModifier =
-        if (onClick != null) modifier.fillMaxWidth().clickable(onClick = onClick)
-        else modifier.fillMaxWidth()
-    Surface(
-        modifier = surfaceModifier,
-        color = if (emphasized) StoneRaised else Panel,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, if (emphasized) Gold.copy(alpha = .30f) else Color.White.copy(alpha = .06f)),
-        shadowElevation = if (emphasized) 4.dp else 1.dp,
+    val shape = RoundedCornerShape(24.dp)
+    val click = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                if (emphasized)
+                    Brush.linearGradient(listOf(Color(0xFF202B35), Color(0xFF121922)))
+                else ModernPanelBrush
+            )
+            .border(
+                1.dp,
+                if (emphasized) Gold.copy(alpha = .28f) else Color.White.copy(alpha = .075f),
+                shape,
+            )
+            .then(click)
     ) {
         Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.fillMaxWidth().padding(17.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
             content = content,
         )
+    }
+}
+
+@Composable
+internal fun ModernPill(
+    text: String,
+    accent: Color = Gold,
+    filled: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = if (filled) accent.copy(alpha = .18f) else Color.Black.copy(alpha = .26f),
+        shape = RoundedCornerShape(100.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = .28f)),
+    ) {
+        Text(
+            text.uppercase(),
+            color = accent,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = .8.sp,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+internal fun ModernSectionHeader(
+    eyebrow: String,
+    title: String,
+    action: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                eyebrow.uppercase(),
+                color = Gold,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp,
+            )
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        }
+        if (action != null && onAction != null) {
+            TextButton(onClick = onAction, contentPadding = PaddingValues(horizontal = 4.dp)) {
+                Text(action, color = ModernBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ModernTabStrip(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        labels.forEachIndexed { index, label ->
+            val active = index == selected
+            Surface(
+                modifier = Modifier.clickable { onSelect(index) },
+                color = if (active) Color.White else Color(0xFF111820),
+                shape = RoundedCornerShape(100.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (active) Color.White else Color.White.copy(alpha = .07f),
+                ),
+            ) {
+                Text(
+                    label,
+                    color = if (active) Ink else Muted,
+                    fontSize = 10.sp,
+                    fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ModernActionTile(
+    title: String,
+    subtitle: String,
+    accent: Color = ModernBlue,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(Color(0xFF17212B), Color(0xFF111820))))
+            .border(1.dp, accent.copy(alpha = .16f), shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.width(24.dp).height(3.dp).background(accent, RoundedCornerShape(10.dp)))
+        Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(subtitle, color = Muted, fontSize = 9.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -70,19 +207,22 @@ internal fun RealmHero(
     val headline = when {
         decision != null -> decision.title
         nearest != null -> "${nearest.name} nähert sich"
-        production.food < 0 -> "Die Versorgung braucht Aufmerksamkeit"
-        state.city.satisfaction < 45 -> "Unruhe wächst in den Vierteln"
-        else -> "Das Reich hält die Initiative"
+        production.food < 0 -> "Versorgung unter Druck"
+        state.city.satisfaction < 45 -> "Unruhe im Reich"
+        state.campaign.momentum >= 70 -> "Du hältst die Initiative"
+        else -> "Das Reich wartet auf deinen Befehl"
     }
     val detail = when {
         decision != null -> decision.text
         nearest != null -> "${nearest.estimatedStrengthLabel} · Ankunft in ${nearest.daysToArrival} Tagen"
-        production.food < 0 -> "Nahrung ${production.food}/Tag · Reserven ${state.resources.food}"
+        production.food < 0 -> "Nahrung ${production.food}/Tag · Reserve ${state.resources.food}"
         state.city.satisfaction < 45 -> "Zufriedenheit ${state.city.satisfaction}% · Sicherheit ${state.city.security}%"
-        else -> "Momentum ${state.campaign.momentum}/100 · Druck ${state.campaign.pressure}/100"
+        else -> "Momentum ${state.campaign.momentum}/100 · Druck ${state.campaign.pressure}/100 · Fokus ${state.campaign.focus.label}"
     }
+    val urgency = decision != null || nearest?.daysToArrival?.let { it <= 3 } == true || state.campaign.pressure >= 70
+
     Box(
-        Modifier.fillMaxWidth().height(282.dp).clip(RoundedCornerShape(24.dp))
+        Modifier.fillMaxWidth().height(318.dp).clip(RoundedCornerShape(30.dp))
     ) {
         AsyncImage(
             model = "file:///android_asset/city_landscape.webp",
@@ -96,13 +236,21 @@ internal fun RealmHero(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     listOf(
-                        Color(0x22000000),
-                        Color(0x77080C0F),
-                        Color(0xF20A0E12),
+                        Color(0x33060A0D),
+                        Color(0x44060A0D),
+                        Color(0xF2090D12),
                     )
                 )
             )
         )
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    listOf(Color(0x33000000), Color.Transparent, Color(0x22000000))
+                )
+            )
+        )
+
         Column(
             Modifier.fillMaxSize().padding(18.dp),
             verticalArrangement = Arrangement.SpaceBetween,
@@ -112,48 +260,78 @@ internal fun RealmHero(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Column {
-                    Text("TAG ${state.day}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ModernPill("Tag ${state.day}", Gold, filled = true)
+                        ModernPill(state.realm.settlementTier.label, ModernBlue)
+                    }
                     Text(
                         state.realm.settlementName,
                         color = Color.White,
-                        fontSize = 27.sp,
+                        fontSize = 30.sp,
+                        lineHeight = 32.sp,
                         fontWeight = FontWeight.Black,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text("${state.title} · ${state.realm.settlementTier.label}", color = Ivory, fontSize = 12.sp)
+                    Text("${state.title} · ${state.player.name}", color = Ivory.copy(alpha = .88f), fontSize = 12.sp)
                 }
-                Surface(
-                    color = Color.Black.copy(alpha = .45f),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Gold.copy(alpha = .30f)),
-                ) {
-                    Column(
-                        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.End,
-                    ) {
-                        Text("MOMENTUM", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
-                        Text("${state.campaign.momentum}", color = if (state.campaign.momentum >= 65) Success else Gold, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                    }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ModernPill(
+                        "Momentum ${state.campaign.momentum}",
+                        if (state.campaign.momentum >= 65) Emerald else Gold,
+                        filled = true,
+                    )
+                    ModernPill(
+                        "Druck ${state.campaign.pressure}",
+                        if (state.campaign.pressure >= 65) Crimson else Muted,
+                    )
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(headline, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                Text(detail, color = Mist, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = onPrimary,
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
-                    ) { Text(if (decision != null) "ENTSCHEIDEN" else "TAGESLAGE", fontWeight = FontWeight.Black, fontSize = 11.sp) }
-                    OutlinedButton(
-                        onClick = onSecondary,
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .26f)),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
-                    ) { Text("REICH ÖFFNEN", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(23.dp))
+                    .background(Color(0xCC10161D))
+                    .border(1.dp, Color.White.copy(alpha = .11f), RoundedCornerShape(23.dp))
+            ) {
+                Column(
+                    Modifier.padding(15.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Box(Modifier.size(7.dp).background(if (urgency) Crimson else Emerald, CircleShape))
+                        Text(
+                            if (urgency) "JETZT REAGIEREN" else "AKTUELLE LAGE",
+                            color = if (urgency) Crimson else Emerald,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp,
+                        )
+                    }
+                    Text(headline, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(detail, color = Mist, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = onPrimary,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Ink),
+                            shape = RoundedCornerShape(13.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
+                        ) {
+                            Text(if (decision != null) "ENTSCHEIDEN" else "ÖFFNEN", fontWeight = FontWeight.Black, fontSize = 10.sp)
+                        }
+                        OutlinedButton(
+                            onClick = onSecondary,
+                            shape = RoundedCornerShape(13.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .18f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
+                        ) {
+                            Text("REICH", fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        }
+                    }
                 }
             }
         }
@@ -168,16 +346,23 @@ internal fun StatusMetric(
     accent: Color = Gold,
     supporting: String? = null,
 ) {
-    Surface(
-        modifier = modifier,
-        color = StoneRaised,
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+    val shape = RoundedCornerShape(20.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(ModernPanelBrush)
+            .border(1.dp, Color.White.copy(alpha = .07f), shape)
     ) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label.uppercase(), color = Muted, fontSize = 9.sp, letterSpacing = .8.sp)
-            Text(value, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black, maxLines = 1)
-            supporting?.let { Text(it, color = accent, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        Column(
+            Modifier.fillMaxWidth().padding(13.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Box(Modifier.width(26.dp).height(3.dp).background(accent, RoundedCornerShape(6.dp)))
+            Text(label.uppercase(), color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = .9.sp)
+            Text(value, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            supporting?.let {
+                Text(it, color = accent, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
@@ -190,27 +375,46 @@ internal fun SituationCard(
     urgent: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        color = if (urgent) Color(0xFF211719) else StoneRaised,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, if (urgent) Danger.copy(alpha = .42f) else Color.White.copy(alpha = .07f)),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.width(4.dp).height(48.dp).background(if (urgent) Danger else Gold, RoundedCornerShape(8.dp))
+    val accent = if (urgent) Crimson else ModernBlue
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    if (urgent)
+                        listOf(Color(0xFF25171B), Color(0xFF15171D))
+                    else
+                        listOf(Color(0xFF18222C), Color(0xFF111820))
+                )
             )
-            Column(Modifier.weight(1f)) {
-                Text(eyebrow.uppercase(), color = if (urgent) Danger else Gold, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(detail, color = Muted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            }
-            Text("›", color = PaleGold, fontSize = 24.sp, fontWeight = FontWeight.Light)
+            .border(1.dp, accent.copy(alpha = .20f), shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(40.dp)
+                .background(accent.copy(alpha = .13f), CircleShape)
+                .border(1.dp, accent.copy(alpha = .25f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                if (urgent) "!" else "›",
+                color = accent,
+                fontSize = if (urgent) 15.sp else 22.sp,
+                fontWeight = FontWeight.Black,
+            )
         }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(eyebrow.uppercase(), color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(detail, color = Muted, fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Text("›", color = Color.White.copy(alpha = .55f), fontSize = 23.sp)
     }
 }
 
@@ -218,8 +422,9 @@ internal fun SituationCard(
 internal fun RulerPairHero(state: GameState) {
     val presence = PresenceEngine.presence(state)
     val together = state.companion.met
+
     Box(
-        Modifier.fillMaxWidth().height(if (together) 305.dp else 230.dp).clip(RoundedCornerShape(24.dp))
+        Modifier.fillMaxWidth().height(if (together) 332.dp else 250.dp).clip(RoundedCornerShape(30.dp))
     ) {
         AsyncImage(
             model = "file:///android_asset/menu_cover.webp",
@@ -231,34 +436,41 @@ internal fun RulerPairHero(state: GameState) {
         )
         Box(
             Modifier.fillMaxSize().background(
-                Brush.verticalGradient(listOf(Color(0x55000000), Color(0xE80A0E12)))
+                Brush.verticalGradient(
+                    listOf(Color(0x44000000), Color(0x55070B0F), Color(0xF1090D12))
+                )
             )
         )
         Column(
-            Modifier.fillMaxSize().padding(16.dp),
+            Modifier.fillMaxSize().padding(17.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column {
-                Text(
-                    if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "GEMEINSAME HERRSCHAFT" else "HERRSCHERHAUS",
-                    color = Gold,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.8.sp,
-                )
-                Text(
-                    if (together) "${state.player.name} & ${state.companion.name}" else state.player.name,
-                    color = Color.White,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Black,
-                )
-                Text(
-                    if (together) state.relationshipStage() else state.title,
-                    color = Ivory,
-                    fontSize = 12.sp,
-                )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ModernPill(
+                        if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Co-Rulers" else "Herrscherhaus",
+                        Gold,
+                        filled = true,
+                    )
+                    Text(
+                        if (together) "${state.player.name} & ${state.companion.name}" else state.player.name,
+                        color = Color.White,
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(if (together) state.relationshipStage() else state.title, color = Ivory.copy(alpha = .85f), fontSize = 11.sp)
+                }
+                if (together) {
+                    ModernPill(
+                        if (state.relationship.conflict >= 60) "angespannt" else "verbunden",
+                        if (state.relationship.conflict >= 60) Crimson else Emerald,
+                    )
+                }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 RulerMiniPortrait(
                     state.player.portraitUri,
                     "file:///android_asset/portrait_player.webp",
@@ -291,22 +503,26 @@ private fun RulerMiniPortrait(
     subtitle: String,
     modifier: Modifier,
 ) {
-    Surface(
-        modifier = modifier,
-        color = Color.Black.copy(alpha = .42f),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .12f)),
+    Box(
+        modifier
+            .clip(RoundedCornerShape(19.dp))
+            .background(Color(0xD711171E))
+            .border(1.dp, Color.White.copy(alpha = .10f), RoundedCornerShape(19.dp))
     ) {
-        Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(9.dp),
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             AsyncImage(
                 model = uri ?: asset,
                 contentDescription = null,
-                modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)),
+                modifier = Modifier.size(58.dp).clip(RoundedCornerShape(15.dp)),
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(fallback),
                 error = painterResource(fallback),
             )
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp, maxLines = 1)
                 Text(subtitle, color = Mist, fontSize = 9.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }

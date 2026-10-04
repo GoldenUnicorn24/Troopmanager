@@ -34,9 +34,10 @@ internal fun RealmDashboard(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            PageTitle(
-                "TAG ${state.day} · ${state.realm.settlementTier.label.uppercase()}",
-                "${state.player.name} · ${state.title}",
+            RealmHero(
+                state = state,
+                onPrimary = onCity,
+                onSecondary = onWorld,
             )
         }
         item { EconomyStrip(state) }
@@ -50,9 +51,9 @@ internal fun RealmDashboard(
             val weakest = presentCultures.minByOrNull {
                 FrontierEngine.cultureStanding(state, it) + FrontierEngine.cultureIntegration(state, it)
             }
-            Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("REICHSLAGE", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            PremiumPanel {
+                ModernSectionHeader("Reich", "Lageübersicht")
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text(
                         "${state.realm.settlementName} · ${state.world.weather.season.label} · Mauer ${state.realm.wallIntegrity}%",
                         color = Color.White,
@@ -173,18 +174,20 @@ internal fun RealmDashboard(
         }
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
+                ModernActionTile(
+                    title = "Stadt",
+                    subtitle = "${state.city.constructionQueue.size} Bauprojekte",
+                    accent = Gold,
                     onClick = onCity,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                ) {
-                    Text("Stadt & Bauen")
-                }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                )
+                ModernActionTile(
+                    title = "Welt",
+                    subtitle = "${state.activeMissions.count { it.status.isAway }} Missionen aktiv",
+                    accent = ModernBlue,
                     onClick = onWorld,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
-                ) {
-                    Text("Mission planen")
-                }
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
         if (state.player.skillPoints > 0)

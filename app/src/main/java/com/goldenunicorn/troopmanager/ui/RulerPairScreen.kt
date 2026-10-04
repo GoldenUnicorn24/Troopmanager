@@ -43,6 +43,7 @@ internal fun RulerPairScreen(
 ) {
     val context = LocalContext.current
     var tab by remember { mutableStateOf("Überblick") }
+    val tabLabels = listOf("Überblick", "Gefährtin", "Regieren", "Gemeinsame Zeit", "Erinnerungen", "Aufgaben")
     var memoryFilter by remember { mutableStateOf("Alle") }
     var albumMemoryIds by remember { mutableStateOf<Set<String>?>(null) }
     val event = state.relationship.pendingEvent
@@ -118,11 +119,11 @@ internal fun RulerPairScreen(
             }
         }
         item {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Überblick", "Gefährtin", "Regieren", "Gemeinsame Zeit", "Erinnerungen", "Aufgaben").forEach { label ->
-                    FilterChip(selected = tab == label, onClick = { tab = label }, label = { Text(label) })
-                }
-            }
+            ModernTabStrip(
+                labels = tabLabels,
+                selected = tabLabels.indexOf(tab).coerceAtLeast(0),
+                onSelect = { index -> tab = tabLabels[index] },
+            )
         }
         if (!state.companion.met) item { EmptyCard("Profil, persönliche Aufgaben und gemeinsame Erinnerungen öffnen sich nach eurer Begegnung.") }
         else when (tab) {

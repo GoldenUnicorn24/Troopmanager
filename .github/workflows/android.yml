@@ -2,9 +2,9 @@ name: Android APK
 
 on:
   push:
-    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
   pull_request:
-    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
   workflow_dispatch:
 
 permissions:
@@ -50,13 +50,13 @@ jobs:
           from pathlib import Path
           badging = Path("build/apk-badging.txt").read_text()
           assert "name='com.goldenunicorn.troopmanager'" in badging
-          assert "versionCode='40'" in badging and "versionName='0.84.0'" in badging
+          assert "versionCode='41'" in badging and "versionName='0.85.0'" in badging
           PYAPK
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v0.84.0-debug
+          name: Realm-of-the-Last-Wall-v0.85.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
