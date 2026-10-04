@@ -136,6 +136,65 @@ internal fun ModernSectionHeader(
 }
 
 @Composable
+internal fun ModernTabStrip(
+    labels: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        labels.forEachIndexed { index, label ->
+            val active = index == selected
+            Surface(
+                modifier = Modifier.clickable { onSelect(index) },
+                color = if (active) Color.White else Color(0xFF111820),
+                shape = RoundedCornerShape(100.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (active) Color.White else Color.White.copy(alpha = .07f),
+                ),
+            ) {
+                Text(
+                    label,
+                    color = if (active) Ink else Muted,
+                    fontSize = 10.sp,
+                    fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ModernActionTile(
+    title: String,
+    subtitle: String,
+    accent: Color = ModernBlue,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(Color(0xFF17212B), Color(0xFF111820))))
+            .border(1.dp, accent.copy(alpha = .16f), shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.width(24.dp).height(3.dp).background(accent, RoundedCornerShape(10.dp)))
+        Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        Text(subtitle, color = Muted, fontSize = 9.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
 internal fun RealmHero(
     state: GameState,
     onPrimary: () -> Unit,
