@@ -58,6 +58,7 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
     val completed = state.dailyReport.entries.filter { it.important && it.title.contains("abgeschlossen") }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { PageTitle("KOMMANDOZENTRALE · TAG ${state.day}", state.realm.settlementName) }
+        item { CampaignPulseCard(state, onState, onNotice) }
         item {
             CommandCard("Tagesziel", { onNavigate(GameDestination.FRONTIER) }) {
                 Text(state.frontier.dailyGoal.ifBlank { "Prüft Hof, Ausbildung und Grenze." }, color = Color.White, fontSize = 14.sp)
@@ -159,7 +160,111 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
                 state.relationship.memories.lastOrNull()?.let { Text("Letzter Moment · Tag ${it.day}: ${it.text}", color = PaleGold, fontSize = 12.sp) }
             }
         }
-        item { GoldButton("Nächsten Tag beginnen", onAdvanceDay, Modifier.fillMaxWidth()) }
+        item {
+            GoldButton(
+                if (state.campaign.pendingDecision != null) "Tag fortsetzen · Entscheidung offen"
+                else "Nächsten Tag beginnen",
+                onAdvanceDay,
+                Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CampaignPulseCard(
+    state: GameState,
+    onState: (GameState) -> Unit,
+    onNotice: (String) -> Unit,
+) {
+    val pulse = state.campaign
+    val momentumColor = when {
+        pulse.momentum >= 70 -> Success
+        pulse.momentum <= 30 -> Danger
+        else -> Gold
+    }
+    val pressureColor = when {
+        pulse.pressure >= 65 -> Danger
+        pulse.pressure >= 40 -> Gold
+        else -> Success
+    }
+    CommandCard("Kampagnenpuls", {}) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("MOMENTUM · ${pulse.momentum}", color = momentumColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                LinearProgressIndicator(
+                    progress = { pulse.momentum / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    color = momentumColor,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text("DRUCK · ${pulse.pressure}", color = pressureColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                LinearProgressIndicator(
+                    progress = { pulse.pressure / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    color = pressureColor,
+                )
+            }
+        }
+        Text(
+            "Serie: ${pulse.streak} Tage · Bestwert ${pulse.bestStreak} · Fokus: ${pulse.focus.label}",
+            color = Mist,
+            fontSize = 11.sp,
+        )
+
+        Text("Reichsschwerpunkt", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            CampaignFocus.entries.forEach { focus ->
+                FilterChip(
+                    selected = focus == pulse.focus,
+                    onClick = {
+                        val result = CampaignPulseEngine.setFocus(state, focus)
+                        onState(result.state)
+                        onNotice(result.message)
+                    },
+                    label = { Text(focus.label) },
+                )
+            }
+        }
+        Text(pulse.focus.description, color = Mist, fontSize = 11.sp)
+
+        pulse.pendingDecision?.let { decision ->
+            HorizontalDivider(color = Gold.copy(alpha = .35f))
+            Text(decision.title, color = PaleGold, fontWeight = FontWeight.Bold)
+            Text(decision.text, color = Color.White, fontSize = 13.sp)
+            Text(
+                "Entscheidung bis Tag ${decision.expiresDay} · Druckstufe ${decision.intensity}",
+                color = pressureColor,
+                fontSize = 11.sp,
+            )
+            CampaignPulseEngine.choices(state, decision).forEach { choice ->
+                SmallAction("${choice.label} · ${choice.detail}") {
+                    val result = CampaignPulseEngine.resolve(state, choice.id)
+                    onState(result.state)
+                    onNotice(result.message)
+                }
+            }
+        } ?: Text(
+            "Der Hof hat gerade keine akute Grundsatzfrage. Alle vier Tage entsteht aus deiner tatsächlichen Reichslage eine neue Entscheidung.",
+            color = Mist,
+            fontSize = 12.sp,
+        )
+
+        if (pulse.prosperityDays > 0 || pulse.supplyReliefDays > 0 || pulse.defenseReadinessDays > 0) {
+            val active = buildList {
+                if (pulse.prosperityDays > 0) add("Wohlstand ${pulse.prosperityDays} T.")
+                if (pulse.supplyReliefDays > 0) add("Versorgung ${pulse.supplyReliefDays} T.")
+                if (pulse.defenseReadinessDays > 0) add("Bereitschaft ${pulse.defenseReadinessDays} T.")
+            }
+            Text("Aktive Folgen: ${active.joinToString(" · ")}", color = Success, fontSize = 11.sp)
+        }
+        pulse.recentOutcomes.lastOrNull()?.let {
+            Text("Zuletzt: $it", color = Gold, fontSize = 11.sp)
+        }
     }
 }
 
