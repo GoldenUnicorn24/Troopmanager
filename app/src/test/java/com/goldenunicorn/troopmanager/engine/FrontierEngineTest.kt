@@ -173,7 +173,9 @@ class FrontierEngineTest {
         val withGuard = ArmyEngine.add(original, UnitType.CRANE_GUARD, 20)
         val guardBattle = BattleEngine.start(withGuard, EnemyType.ORC, Tactic.FORTIFY, seed = 4, enemyStrength = 500).state.battleSession!!
         assertTrue(guardBattle.contingents.any { it.type == UnitType.CRANE_GUARD && it.soldiers > 0 })
-        val used = FrontierEngine.fireWallWeapons(withGuard, guardBattle)
+        // The winch reaches attackers at the wall, not distant marching units.
+        val contact = guardBattle.copy(fronts = guardBattle.fronts.map { it.copy(enemyDistance = 0) })
+        val used = FrontierEngine.fireWallWeapons(withGuard, contact)
         assertTrue(used.battle.enemyRemaining < guardBattle.enemyRemaining)
         assertEquals(4, used.state.frontier.weapons.single().ammunition)
     }

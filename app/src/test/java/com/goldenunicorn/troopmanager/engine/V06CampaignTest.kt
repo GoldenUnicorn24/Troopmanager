@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class V06CampaignTest {
+    @Test fun volunteersNeverDoubleReserveWoundedOrServingCitizens() {
+        val state = GameState(day = 6, player = CharacterProfile("Reserve"),
+            population = Population(human = 100, woodElf = 0, goldElf = 0, wall = 0,
+                humanRecruits = 0, woodElfRecruits = 0, goldElfRecruits = 0, wallRecruits = 0),
+            armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 80)),
+            city = CityState(housingCapacity = 100),
+            war = WarState(wounded = listOf(WoundedCohort("patients", UnitType.HUMAN_SWORD, 20, 20, 0, 70))))
+        val next = EconomyEngine.day(state)
+        assertEquals(0, next.population.humanRecruits)
+        assertEquals(state.population, next.population)
+        WarEngine.validate(next)
+    }
+
     private fun settleBattle(initial: GameState): GameState {
         var state = initial
         var steps = 0

@@ -209,7 +209,12 @@ object EconomyEngine {
                     pop = ArmyEngine.adjustPopulation(pop, c, growth)
                     val newcomers = ArmyEngine.population(pop, c) - before
                     val volunteer = ((ArmyEngine.population(pop, c) / (if (c == Culture.GOLD_ELF) 18 else 40)) * (1 + favor)).coerceAtMost(8 + favor * 6)
-                    pop = ArmyEngine.adjustRecruits(pop, c, (newcomers / 2 + volunteer).coerceAtLeast(0))
+                    val reserved = next.armyPools.filter { it.type.culture == c }.sumOf { it.soldiers.toLong() } +
+                        next.trainingQueue.filter { it.type.culture == c }.sumOf { it.amount.toLong() } +
+                        next.war.wounded.filter { it.type.culture == c }.sumOf { it.soldiers.toLong() } +
+                        next.war.captives.filter { it.own && it.type?.culture == c }.sumOf { it.soldiers.toLong() } + pop.recruits(c)
+                    val available = (ArmyEngine.population(pop, c).toLong() - reserved).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
+                    pop = ArmyEngine.adjustRecruits(pop, c, minOf(available, (newcomers / 2 + volunteer).coerceAtLeast(0)))
                 }
             next = next.copy(population = pop)
         }

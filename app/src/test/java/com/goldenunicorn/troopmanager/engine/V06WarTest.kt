@@ -30,7 +30,11 @@ class V06WarTest {
     @Test fun terrainChangesActualCavalryAndArcherCombat() {
         val cavalry = army().copy(armyPools = listOf(ArmyUnitPool(UnitType.KNIGHT, 3000)), population = Population(human = 5000))
         val deployments = listOf(BattleDeployment(null, BattleSection.CENTER, listOf(UnitAllocation(UnitType.KNIGHT, 3000))))
-        fun step(terrain: BattleTerrain) = BattleEngine.advance(BattleEngine.start(cavalry, EnemyType.URUK, Tactic.AGGRESSIVE, deployments, 11, 3000, BattleSection.entries.associateWith { terrain }).state).state.battleSession!!
+        fun step(terrain: BattleTerrain): BattleSession {
+            val started = BattleEngine.start(cavalry, EnemyType.URUK, Tactic.AGGRESSIVE, deployments, 11, 3000, BattleSection.entries.associateWith { terrain }).state
+            val contact = started.copy(battleSession = started.battleSession!!.copy(fronts = started.battleSession!!.fronts.map { it.copy(enemyDistance = 0) }))
+            return BattleEngine.advance(contact).state.battleSession!!
+        }
         assertTrue(step(BattleTerrain.PLAIN).enemyRemaining < step(BattleTerrain.FOREST).enemyRemaining)
         assertTrue(BattleEngine.terrainMultiplier(BattleTerrain.HILL, UnitType.HUMAN_ARCHER, BattlePhase.RANGED) > BattleEngine.terrainMultiplier(BattleTerrain.PLAIN, UnitType.HUMAN_ARCHER, BattlePhase.RANGED))
     }
@@ -122,7 +126,9 @@ class V06WarTest {
         val skilled = army().copy(court = CourtState(perks = setOf(PlayerPerk.LEADERSHIP_RESERVE, PlayerPerk.WARFARE_FEIGNED_RETREAT, PlayerPerk.WARFARE_RALLY)))
         val state = BattleEngine.start(skilled, EnemyType.URUK, Tactic.HOLD, seed = 84, enemyStrength = 8000).state
         val session = state.battleSession!!
-        assertTrue(BattleEngine.canOrder(session, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))
+        assertFalse(BattleEngine.canOrder(session, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))
+        val contact = session.copy(segments = session.segments.map { it.copy(contactState = BattleContactState.FIELD_CONTACT) })
+        assertTrue(BattleEngine.canOrder(contact, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))
         val reinforced = BattleEngine.order(state, BattleDecision.SEND_RESERVE, BattleSection.CENTER).state.battleSession!!
         assertEquals(0, reinforced.soldiers(BattleSection.RESERVE))
         assertEquals(2, BattleEngine.orderCost(session, BattleDecision.SEND_RESERVE))
