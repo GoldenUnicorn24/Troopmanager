@@ -201,6 +201,7 @@ data class StoryState(
     val lastTickDay: Int = 0,
     val nextId: Long = 1,
     val resolved: List<String> = emptyList(),
+    val familyCooldowns: Map<StoryKind, Int> = emptyMap(),
 )
 
 @Serializable

@@ -98,7 +98,7 @@ object WorldEngine {
             val progress = if (index == 0 && from == army.regionId) army.legProgress else 0
             val remaining = ((road?.distance ?: 30) - progress).coerceAtLeast(0)
             ceil(remaining.toDouble() / movementPerDay(state, army.copy(regionId = from), to)).toInt()
-        }.sum()
+        }.sum() + (army.delayUntilDay - state.day).coerceAtLeast(0)
 
     /** Cheapest physically usable route; a peaceful realm's road cannot block an otherwise open detour. */
     fun routeForFaction(state: GameState, factionId: String, from: String, to: String): List<String> {
@@ -428,7 +428,10 @@ object WorldEngine {
         var next = state
         var army = state.world.armies.firstOrNull { it.id == id } ?: return state
         if (army.lastMovedDay >= state.day) return state
-        val waiting = army.missionId?.let { missionId -> state.activeMissions.firstOrNull { it.id == missionId }?.pendingDecision != null } == true
+        val outpost = OutpostEngine.interact(next, army)
+        next = outpost.state
+        army = outpost.army
+        val waiting = army.delayUntilDay > state.day || army.missionId?.let { missionId -> state.activeMissions.firstOrNull { it.id == missionId }?.pendingDecision != null } == true
         val logisticsFactor =
             if (
                 army.factionId == PLAYER_FACTION &&
@@ -493,6 +496,11 @@ object WorldEngine {
             val progress = army.legProgress + movementPerDay(next, army, to)
             if (progress >= distance) army = army.copy(regionId = to, routeIndex = army.routeIndex + 1, legProgress = 0)
             else army = army.copy(legProgress = progress)
+            if (progress >= distance) {
+                val arrival = OutpostEngine.interact(next, army)
+                next = arrival.state
+                army = arrival.army
+            }
             val remaining = army.route.drop(army.routeIndex)
             val forecast = state.day + travelDays(next, army, remaining)
             val oldForecast = army.arrivalDay
@@ -816,13 +824,14 @@ object WorldEngine {
         require(world.lastTickDay in 0..state.day && world.nextArmyNumber > 0 && world.nextConvoyNumber > 0)
         val placeIds = world.places.map { it.id }.toSet()
         val factionIds = world.factions.map { it.id }.toSet()
+        require(world.regionReputation.all { it.key in placeIds && it.value in -50..50 })
         world.places.forEach { require(it.id.isNotBlank() && it.ownerId in factionIds && it.population >= 0 && it.fortification in 0..100 && it.prosperity in 0..100 && it.x.isFinite() && it.y.isFinite() && it.x in 0f..1f && it.y in 0f..1f) }
         world.roads.forEach { require(it.from in placeIds && it.to in placeIds && it.from != it.to && it.distance > 0 && it.quality in 0..100) }
         world.factions.forEach { require(it.capitalId in placeIds && it.gold >= 0 && it.food >= 0 && it.iron >= 0 && it.population >= 0 && it.aggression in 0..100 && it.buildings >= 0 && it.wars.all { id -> id in factionIds && id != it.id } && it.relations.all { (id, value) -> id in factionIds && value in -100..100 }) }
-        world.enemyCommanders.forEach { require(it.factionId in factionIds && it.experience >= 0 && it.victories >= 0 && it.defeats >= 0 && it.injuries >= 0 && it.rivalry in 0..100 && it.rulerLoyalty in 0..100) }
+        world.enemyCommanders.forEach { require(it.factionId in factionIds && it.experience >= 0 && it.victories >= 0 && it.defeats >= 0 && it.injuries >= 0 && it.rivalry in 0..100 && it.rulerLoyalty in 0..100 && it.memories.size <= 20) }
         val missionReservations = mutableSetOf<Long>()
         world.armies.forEach { army ->
-            require(army.factionId in factionIds && army.regionId in placeIds && army.supplyFood >= 0 && army.morale in 0..100 && army.legProgress >= 0 && army.lastMovedDay in 0..state.day && (army.preparationUntilDay == null || army.preparationUntilDay >= 0))
+            require(army.factionId in factionIds && army.regionId in placeIds && army.supplyFood >= 0 && army.morale in 0..100 && army.legProgress >= 0 && army.lastMovedDay in 0..state.day && army.delayUntilDay >= 0 && (army.lastSupplyOutpostId == null || army.lastSupplyOutpostId > 0) && (army.preparationUntilDay == null || army.preparationUntilDay >= 0))
             require(army.units.all { it.amount > 0 } && army.units.map { it.type }.toSet().size == army.units.size && army.units.sumOf { it.amount.toLong() } <= Int.MAX_VALUE)
             require(army.route.all { it in placeIds } && (army.route.isEmpty() && army.routeIndex == 0 || army.routeIndex in army.route.indices))
             require(army.destinationId == null || army.destinationId in placeIds)

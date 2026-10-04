@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.goldenunicorn.troopmanager.R
+import com.goldenunicorn.troopmanager.engine.MissionExperienceEngine
 import com.goldenunicorn.troopmanager.engine.MissionEngine
 import com.goldenunicorn.troopmanager.model.*
 
@@ -310,6 +311,10 @@ internal fun MissionPreparationDialog(
                             }
                         }
                         Text("$leaderCount / 3 Führungspersonen gewählt", color = Gold, fontSize = 12.sp)
+                        MissionExperienceEngine.roleLabels(state, commanderIds, playerParticipates).forEach {
+                            Text(it, color = Mist, fontSize = 12.sp)
+                        }
+                        Text("Mitgenommene Soldaten fehlen in der Heimat. Dauerhafte Kommandantenzuweisungen werden für die Reise freigegeben; Rückkehr benötigt einen echten Rückmarsch.", color = PaleGold, fontSize = 12.sp)
                     }
                 }
                 Text("Freie Soldaten plus feste Kontingente der ausgewählten Kommandanten können temporär mitgeschickt werden.", color = Mist, fontSize = 12.sp)

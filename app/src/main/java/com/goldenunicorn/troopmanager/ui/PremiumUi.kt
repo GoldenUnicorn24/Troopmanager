@@ -150,7 +150,7 @@ internal fun ModernTabStrip(
         labels.forEachIndexed { index, label ->
             val active = index == selected
             Surface(
-                modifier = Modifier.clickable { onSelect(index) },
+                modifier = Modifier.heightIn(min = 48.dp).clickable { onSelect(index) },
                 color = if (active) Color.White else Color(0xFF111820),
                 shape = RoundedCornerShape(100.dp),
                 border = BorderStroke(
@@ -161,9 +161,9 @@ internal fun ModernTabStrip(
                 Text(
                     label,
                     color = if (active) Ink else Muted,
-                    fontSize = 10.sp,
+                    fontSize = 12.sp,
                     fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 9.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
                     maxLines = 1,
                 )
             }

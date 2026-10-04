@@ -408,6 +408,7 @@ object FrontierEngine {
     }
 
     fun buildOutpost(state: GameState, regionId: String): GameEngine.ActionResult {
+        if (state.battleSession?.isActive == true) return result(state, "Außenpostenbau nach der Schlacht möglich.")
         val place = state.world.place(regionId) ?: return result(state, "Ort nicht gefunden.")
         if (regionId == "keep") return result(state, "Die Grenzfeste selbst braucht keinen Außenposten.")
         if (place.ownerId !in setOf(PLAYER_FACTION, NEUTRAL_FACTION)) return result(state, "In offen feindlichem Gebiet kann kein dauerhafter Außenposten entstehen.")
@@ -422,6 +423,7 @@ object FrontierEngine {
     }
 
     fun upgradeOutpost(state: GameState, id: Long): GameEngine.ActionResult {
+        if (state.battleSession?.isActive == true) return result(state, "Ausbau nach der Schlacht möglich.")
         val post = state.frontier.outposts.firstOrNull { it.id == id } ?: return result(state, "Außenposten nicht gefunden.")
         if (post.level >= 3) return result(state, "${post.name} ist bereits vollständig ausgebaut.")
         val cost = 220 * post.level
@@ -435,10 +437,12 @@ object FrontierEngine {
 
     fun stockOutpost(state: GameState, id: Long): GameEngine.ActionResult {
         val post = state.frontier.outposts.firstOrNull { it.id == id } ?: return result(state, "Außenposten nicht gefunden.")
-        if (state.resources.food < 100) return result(state, "Für das Depot fehlen 100 Nahrung.")
-        val next = state.copy(resources = state.resources.copy(food = state.resources.food - 100),
-            frontier = state.frontier.copy(outposts = state.frontier.outposts.map { if (it.id == id) it.copy(stores = (it.stores + 100).coerceAtMost(1000)) else it }))
-        return result(next, "${post.name}: 100 Nahrung eingelagert.")
+        if (state.battleSession?.isActive == true || post.integrity == 0) return result(state, "Das Depot muss gesichert und unzerstört sein.")
+        val amount = minOf(100, post.capacity - post.stores, state.resources.food)
+        if (amount <= 0) return result(state, "Depot voll oder keine Nahrung verfügbar.")
+        val next = state.copy(resources = state.resources.copy(food = state.resources.food - amount),
+            frontier = state.frontier.copy(outposts = state.frontier.outposts.map { if (it.id == id) it.copy(stores = it.stores + amount) else it }))
+        return result(next, "${post.name}: $amount Nahrung eingelagert.")
     }
 
     private fun projectInvasion(state: GameState): GameState {
@@ -1135,7 +1139,8 @@ object FrontierEngine {
         require(f.designs.mapNotNull { it.captainId }.distinct().size == f.designs.mapNotNull { it.captainId }.size) { "Ein Hauptmann führt mehrere eigene Regimenter." }
         require(f.cultureStanding.values.all { it in 0..100 } && f.cultureIntegration.values.all { it in 0..100 }) { "Ungültige Völkerwerte." }
         require(f.outposts.map { it.id }.distinct().size == f.outposts.size && f.outposts.map { it.regionId }.distinct().size == f.outposts.size &&
-            f.outposts.all { it.id > 0 && it.level in 1..3 && it.integrity in 0..100 && it.stores in 0..1000 && state.world.place(it.regionId) != null }) {
+            f.outposts.all { it.id > 0 && it.level in 1..3 && it.integrity in 0..100 && it.stores in 0..1000 && it.suppliedFood >= 0 &&
+                it.raidDays.size <= 40 && it.raidDays.values.all { day -> day in 1..state.day } && state.world.place(it.regionId) != null }) {
             "Ungültige Außenposten."
         }
         require(f.nextOutpostId > 0) { "Ungültige Außenposten-Kennung." }

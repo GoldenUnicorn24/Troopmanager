@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldenunicorn.troopmanager.engine.CampaignInsightsEngine
 import com.goldenunicorn.troopmanager.engine.CityEngine
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
@@ -84,15 +85,7 @@ internal fun CityScreen(
                 Text("Tag ${state.day} →", color = Gold)
             }
         }
-        ScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp, containerColor = Panel, contentColor = Gold) {
-            listOf("Stadtansicht", "Verwaltung", "Bauen", "Legenden").forEachIndexed { index, label ->
-                Tab(
-                    selected = tab == index,
-                    onClick = { tab = index },
-                    text = { Text(label, fontSize = 12.sp, maxLines = 1) },
-                )
-            }
-        }
+        ModernTabStrip(listOf("Stadtansicht", "Verwaltung", "Bauen", "Legenden"), tab, { tab = it })
         when (tab) {
             0 -> {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -212,7 +205,10 @@ internal fun CityScreen(
                                 "Krankheit" to "${state.society.disease}%", "Hunger" to "${state.society.hunger}%",
                                 "Kulturelle Spannungen" to "${state.society.culturalTension}%", "Politische Loyalität" to "${state.society.politicalLoyalty}%",
                                 "Kriegsmüdigkeit" to "${state.society.warExhaustion}%", "Zuzug heute" to "${state.society.lastMigration}"))
-                            Text("Kriminalität senkt Sicherheit; Hunger und Krankheit hemmen Wachstum; politische Loyalität und Kriegsmüdigkeit beeinflussen Ordnung und Truppenmoral.", color = Mist, fontSize = 12.sp)
+                            CampaignInsightsEngine.societyDrivers(state).forEach { (title, why) ->
+                                Text(title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Text(why, color = Mist, fontSize = 12.sp)
+                            }
                             val p = EconomyEngine.production(state)
                             val foodDeficit = (p.upkeep.toLong() - p.gross.food).coerceAtLeast(0)
                             Text(if (foodDeficit == 0L) "Nahrung: Der heutige Ertrag deckt den Unterhalt."
@@ -321,6 +317,7 @@ internal fun CityScreen(
                             )
                         }
                     }
+                    item { LogisticsForecastPanel(state) }
                     item { SectionTitle("Lager & Tagesbilanz") }
                     items(ResourceKind.entries, key = { it.name }) { kind ->
                         val detail = EconomyEngine.breakdown(state, kind)

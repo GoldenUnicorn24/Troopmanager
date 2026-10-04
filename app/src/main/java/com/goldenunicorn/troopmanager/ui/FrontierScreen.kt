@@ -27,6 +27,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.goldenunicorn.troopmanager.engine.OutpostEngine
+import com.goldenunicorn.troopmanager.engine.WorldEngine
 import com.goldenunicorn.troopmanager.engine.FrontierEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.ArmyEngine
@@ -160,7 +162,7 @@ internal fun FrontierScreen(
                     item {
                         FrontierCard {
                             Text("Außenposten", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Text("Wachtürme verbessern Aufklärung und bremsen das Wachstum feindlicher Lager in derselben Region. Ausbau bis Stufe 3.", color = Mist, fontSize = 12.sp)
+                            Text("Spähposten klären auf; befestigte Wachten und Grenzforts versorgen reale Feldheere. Eine zu Fuß eingetroffene Garnison kann Invasionen um Tage aufhalten.", color = Mist, fontSize = 12.sp)
                             Text("Baukosten: 300 Gold · 180 Holz · 80 Stein", color = Gold, fontSize = 12.sp)
                         }
                     }
@@ -170,9 +172,22 @@ internal fun FrontierScreen(
                         FrontierCard {
                             Text(post.name, color = PaleGold, fontWeight = FontWeight.Bold)
                             Text("${place?.name ?: post.regionId} · Stufe ${post.level} · Zustand ${post.integrity} %", color = Mist)
-                            Text("Aufklärung +${post.scoutBonus} · Lagerwachstum −${post.growthSuppression}/Tag · Depot ${post.stores}/1000 Nahrung", color = Gold, fontSize = 12.sp)
+                            Text("Aufklärung +${post.scoutBonus} · Lagerwachstum −${post.growthSuppression}/Tag · Depot ${post.stores}/${post.capacity} Nahrung", color = Gold, fontSize = 12.sp)
                             if (post.level < 3) FrontierAction("Ausbauen", !inBattle) { apply(FrontierEngine.upgradeOutpost(state, post.id)) }
-                            FrontierAction("100 Nahrung einlagern", !inBattle && state.resources.food >= 100) { apply(FrontierEngine.stockOutpost(state, post.id)) }
+                            Text("${post.role} · ${post.suppliedFood} Nahrung an Feldheere geliefert", color = Mist, fontSize = 12.sp)
+                            val guard = OutpostEngine.garrison(state, post)
+                            if (guard != null) {
+                                Text("Garnison ${guard.name}: ${guard.total} Soldaten · ${guard.supplyDays} Tage Vorrat", color = Success, fontSize = 12.sp)
+                                FrontierAction("Garnison zurückmarschieren lassen", !inBattle) { apply(WorldEngine.recall(state, guard.id)) }
+                            } else if (post.level >= 2) {
+                                Text("Keine Garnison vor Ort. Ein Feldheer muss über die Weltkarte hierhin marschieren.", color = Mist, fontSize = 12.sp)
+                                state.world.playerFieldArmies.filter { it.regionId == post.regionId && it.status == WorldArmyStatus.HOLDING }.forEach { army ->
+                                    FrontierAction("${army.name} als Garnison", !inBattle && post.integrity > 0) { apply(OutpostEngine.assignGarrison(state, post.id, army.id)) }
+                                }
+                            }
+                            if (post.lastDefense.isNotEmpty()) Text(post.lastDefense, color = Mist, fontSize = 12.sp)
+                            if (post.integrity < 100) FrontierAction("Reparieren · ${(100-post.integrity)*2} Gold / ${100-post.integrity} Stein", !inBattle) { apply(OutpostEngine.repair(state, post.id)) }
+                            FrontierAction("Bis 100 Nahrung einlagern", !inBattle && state.resources.food > 0 && post.stores < post.capacity && post.integrity > 0) { apply(FrontierEngine.stockOutpost(state, post.id)) }
                         }
                     }
                     val buildable = state.world.places.filter { it.id != "keep" && it.ownerId in setOf(PLAYER_FACTION, NEUTRAL_FACTION) && state.frontier.outposts.none { p -> p.regionId == it.id } }.take(8)

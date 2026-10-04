@@ -986,7 +986,7 @@ object BattleEngine {
                             ))
                         .takeLast(2000),
             )
-        val recorded = FrontierEngine.afterBattle(WarEngine.recordOutcome(result, final, victory), final)
+        val recorded = BattleConsequencesEngine.apply(FrontierEngine.afterBattle(WarEngine.recordOutcome(result, final, victory), final), final)
         val career = WorldEngine.reconcileBattle(CharacterEngine.recordBattle(recorded, session.contingents.mapNotNull { it.commanderId }.distinct(), victory, session.ownStart - session.ownRemaining, session.ownStart < session.enemyStart))
         return DynastyEngine.resolveBattleSuccession(ProgressionEngine.update(
             ProgressionEngine.awardXp(

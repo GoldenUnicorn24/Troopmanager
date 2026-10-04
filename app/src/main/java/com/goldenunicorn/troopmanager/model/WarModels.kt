@@ -145,6 +145,7 @@ data class BattleRecord(
     val exchanges: List<BattleExchangeReport> = emptyList(),
     val arrowsUsed: Int = 0,
     val weaponChargesUsed: Map<WallWeaponType, Int> = emptyMap(),
+    val aftermath: List<String> = emptyList(),
 )
 
 @Serializable

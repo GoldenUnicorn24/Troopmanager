@@ -377,7 +377,8 @@ object SaveCodec {
                 mission.startDay in 1..state.day &&
                     mission.duration > 0 &&
                     mission.supplyCost >= 0 &&
-                    mission.losses >= 0 && mission.xpReward >= 0 && mission.renownReward >= 0
+                    mission.losses >= 0 && mission.xpReward >= 0 && mission.renownReward >= 0 &&
+                    mission.experienceVersion in 1..2 && mission.rewardFactor.isFinite() && mission.rewardFactor in .5..1.5
             ) {
                 "Ungültige Mission."
             }

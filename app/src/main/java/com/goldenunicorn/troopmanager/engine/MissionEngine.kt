@@ -102,7 +102,7 @@ object MissionEngine {
             power *
                 (1 + sword / 180.0 + leadership / 350.0 + tactics / 350.0) *
                 (0.7 + loyalty / 333.0) *
-                coordination / (type.spec().difficulty * 20.0)
+                coordination * MissionExperienceEngine.roleFactor(state, commanderIds, playerParticipates) / (type.spec().difficulty * 20.0)
         val hint =
             when {
                 score >= 1.6 -> "Sehr gute Aussichten"
@@ -111,7 +111,7 @@ object MissionEngine {
                 else -> "Hohes Verlustrisiko"
             }
         return MissionEstimate(
-            "${hint} · ${leaders.size} Führungsperson${if (leaders.size == 1) "" else "en"} · Schätzung, Zufall und Einheitenspezialisierung beeinflussen den Ausgang",
+            "${hint} · ${MissionExperienceEngine.roleLabels(state, commanderIds, playerParticipates).joinToString(" · ")} · Schätzung: Gelände, Versorgung und unbekannte Feinde bleiben unsicher",
             0..type.spec().difficulty * 6,
             10..maxOf(10, type.spec().difficulty * 3 / 4),
         )
@@ -230,7 +230,8 @@ object MissionEngine {
         val travel = WorldEngine.travelDays(worldState, previewArmy, path)
         val operationDays = duration(state, type, leaders, playerParticipates)
         val days = operationDays + travel * 2
-        val supply = maxOf(total.toLong() * days * 2, previewArmy.dailyFood.toLong() * days)
+        val supply = (maxOf(total.toLong() * days * 2, previewArmy.dailyFood.toLong() * days) *
+            MissionExperienceEngine.supplyFactor(state, leaders, playerParticipates)).toLong()
 
         if (supply > state.resources.food)
             return GameEngine.ActionResult(state, "Versorgung benötigt $supply Nahrung.")
@@ -252,6 +253,8 @@ object MissionEngine {
                 operationDaysRemaining = operationDays,
                 originalTotal = total,
                 lastTickDay = state.day,
+                experienceVersion = 2,
+                riskFactor = (1.0 - (worldState.world.regionReputation[target] ?: 0) / 250.0).coerceIn(.8, 1.2),
                 quality =
                     selected.map { u ->
                         state.armyPools.first { it.type == u.type }.copy(soldiers = u.amount)
@@ -311,6 +314,7 @@ object MissionEngine {
         val decision = mission.pendingDecision ?: return GameEngine.ActionResult(state, "Keine Routenentscheidung offen.")
         if (choice !in decision.options.indices || state.battleSession?.isActive == true)
             return GameEngine.ActionResult(state, "Diese Entscheidung ist gerade nicht möglich.")
+        if (decision.kind != MissionDecisionKind.ROUTE) return MissionExperienceEngine.choose(state, mission, choice)
         val army = state.world.armies.firstOrNull { it.missionId == id }
         if (choice == 2 && state.resources.gold < 100) return GameEngine.ActionResult(state, "Lokale Vorräte kosten 100 Gold.")
         val localOwner = army?.let { state.world.place(it.regionId)?.ownerId } ?: NEUTRAL_FACTION
@@ -364,6 +368,11 @@ object MissionEngine {
                 next = restoreCommand(next, done, emptyList())
                 if (army != null) next = next.copy(resources = EconomyEngine.add(next.resources, Resources(0, army.supplyFood, 0, 0, 0)),
                     world = next.world.copy(armies = next.world.armies.map { if (it.id == army.id) it.copy(supplyFood = 0, status = WorldArmyStatus.HOME) else it }))
+                return@forEach
+            }
+            val offered = MissionExperienceEngine.offer(mission)
+            if (offered.pendingDecision != null) {
+                next = update(next, offered)
                 return@forEach
             }
             if (mission.remainingDays > 1 && mission.phase != MissionPhase.RETURNING) next = update(next, mission.copy(remainingDays = mission.remainingDays - 1, operationDaysRemaining = (mission.operationDaysRemaining - 1).coerceAtLeast(0)))
@@ -455,7 +464,7 @@ object MissionEngine {
             power *
                 (1 + skill / 180.0 + leadership / 350.0 + tactics / 350.0) *
                 (0.7 + loyalty / 333.0) *
-                coordination *
+                coordination * MissionExperienceEngine.roleFactor(state, mission.allCommanderIds, mission.playerParticipates) *
                 roll.coerceIn(0.1, 2.0) /
                     (
                         mission.missionType.spec().difficulty *
@@ -531,7 +540,7 @@ object MissionEngine {
                 MissionOutcome.PARTIAL -> 1
                 else -> 0
             }
-        val base = mission.missionType.spec().difficulty * rewardScale
+        val base = (mission.missionType.spec().difficulty * rewardScale * mission.rewardFactor).toInt()
         val reward =
             Resources(
                 gold = base * 2,
@@ -784,6 +793,7 @@ object MissionEngine {
         mission.allCommanderIds.forEach { id ->
             next = CharacterEngine.recordMission(next, id, success, mission.missionType.label)
         }
+        next = MissionExperienceEngine.completed(next, mission, success)
         next = RelationshipEngine.onEvent(next, if (success) "mission" else "wounded")
         return ProgressionEngine.update(ProgressionEngine.awardXp(next, maxOf(10, base / 4)))
     }

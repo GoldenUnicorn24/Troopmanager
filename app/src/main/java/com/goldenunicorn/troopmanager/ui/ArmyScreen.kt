@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.ArmyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.CampaignInsightsEngine
 import com.goldenunicorn.troopmanager.engine.MilitaryEconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
@@ -399,6 +400,7 @@ private fun ArmyUnitCard(
                     }
                 }
             }
+            Text(CampaignInsightsEngine.unitRole(type), color = Mist, fontSize = 12.sp)
             if (training) {
                 Text(
                     "Angriff ${type.attack} · Verteidigung ${type.defense} · Fernkampf ${type.ranged}",
