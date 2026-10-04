@@ -1,6 +1,16 @@
-# Realm of the Last Wall — Troopmanager v0.90.0
+# Realm of the Last Wall — Troopmanager v0.95.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v0.95: living realm and coherent city
+
+v0.95 builds on Combat Engine 2.0 instead of replacing it. The player's settlement is now rendered as one coherent procedural scene: the old photographic city backdrop is no longer drawn underneath the generated walls, districts and buildings. Terrain, roads, fields, river, outskirts, season, night lighting, population growth and war damage now share the same coordinate system, so upgrades look like part of one city rather than objects pasted over another image.
+
+The city screen adds live prosperity, security, population and supply feedback. The market now reacts deterministically to real stock levels, storage capacity, season, threat and invasion demand while preserving a buy/sell spread to prevent arbitrage. The command hero no longer presents the old city image as if it were the player's exact settlement.
+
+The ruling-pair presentation now exposes trust, affection, respect and conflict directly in the hero instead of hiding those values deeper in menus. Existing consent, memories, shared government, delegation, court cases, presence, family and dynasty systems remain the source of gameplay effects.
+
+This branch remains save-compatible with v0.90 save schema 4. Version 0.95.0 uses versionCode 43.
 
 ## v0.90: war and experience overhaul
 
@@ -89,8 +99,8 @@ Use JDK 17, Android SDK 35 and Gradle 8.9. Android Studio can import the project
 
 - `compileSdk` / `targetSdk`: 35
 - `minSdk`: 26
-- `versionName`: 0.90.0
-- `versionCode`: 42
+- `versionName`: 0.95.0
+- `versionCode`: 43
 
 ```bash
 gradle :app:testDebugUnitTest --stacktrace
@@ -104,7 +114,7 @@ test -f app/build/outputs/apk/debug/app-debug.apk
 The installable debug APK is `app/build/outputs/apk/debug/app-debug.apk`.
 The unsigned release APK is `app/build/outputs/apk/release/app-release-unsigned.apk`; sign it outside the repository with the existing update key before updating an installed campaign.
 
-GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → Android lint → APK build → package/version/signature verification → artifact upload on pushes and pull requests to `codex/v0.90-war-experience-overhaul`, `codex/v0.85-modern-ui`, `main` and the maintained earlier branches, plus manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.90.0-debug`.
+GitHub Actions runs checkout → JDK 17 → Gradle 8.9 → unit tests → Android lint → APK build → package/version/signature verification → artifact upload on pushes and pull requests to `codex/v0.90-war-experience-overhaul`, `codex/v0.85-modern-ui`, `main` and the maintained earlier branches, plus manual dispatch. The artifact is named `Realm-of-the-Last-Wall-v0.95.0-debug`.
 
 A second CI job runs four battle-layout tests on Android 35 and uploads actual UI screenshots and instrumented test reports.
 
