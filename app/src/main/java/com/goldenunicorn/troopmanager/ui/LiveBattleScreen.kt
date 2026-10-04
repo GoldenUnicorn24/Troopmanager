@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.graphics.Color
@@ -132,9 +133,9 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize().background(Ink).testTag("battle_screen")) {
-        val compact = maxHeight < 450.dp
+        val compact = maxHeight < 450.dp || LocalDensity.current.fontScale >= 1.3f
         Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
-            Row(Modifier.fillMaxWidth().height(if (compact) 22.dp else 54.dp), verticalAlignment = Alignment.CenterVertically,
+            Row(Modifier.fillMaxWidth().height(if (compact) 20.dp else 54.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
                 BattleHudValue("HEER", battle.ownRemaining.toString(), Gold, compact)
                 BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger, compact)
@@ -146,11 +147,11 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                 BattleStateEngine.sections.forEach { section ->
                     val segment = battle.segment(section)
                     val highlighted = selected == section
-                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
+                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(48.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
                         color = if (selected == section) Panel2 else Panel, shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(if (selected == section) 2.dp else 0.dp, if (selected == section) ModernBlue else Color.Transparent)) {
-                        Column(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
-                            Text(when (section) { BattleSection.LEFT -> "LINKS"; BattleSection.RIGHT -> "RECHTS"; else -> "TOR / MITTE" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Column(Modifier.padding(horizontal = 6.dp, vertical = 3.dp)) {
+                            Text(when (section) { BattleSection.LEFT -> "LINKS"; BattleSection.RIGHT -> "RECHTS"; else -> "TOR / MITTE" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(if (battle.tactic == Tactic.FORTIFY) "${segment?.integrity ?: battle.wallIntegrity}% · ${segment?.contactState?.label ?: "Anmarsch"}" else segment?.contactState?.label ?: "Anmarsch",
                                 color = if (segment?.contactState?.allowsMelee == true) Danger else Mist, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -190,14 +191,14 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         if (battle.isActive) {
                             OutlinedButton(onClick = { if (battle.minute == 0 && state.world.encounter == null) setup = true else sheet = "orders" },
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(if (battle.minute == 0 && state.world.encounter == null) "Aufstellung" else "Befehle", fontSize = 12.sp) }
+                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) { Text(if (battle.minute == 0 && state.world.encounter == null) "Aufstellung" else "Befehle", fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             Button(onClick = { if (battle.pendingEvent == null) apply(BattleEngine.advance(state)) else sheet = "orders" },
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-                                Text(if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
+                                Text(if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         } else Button(onClick = { onState(state.copy(battleSession = null)); onNotice("Bericht und Replay bleiben in der Chronik.") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Zur Welt") }
                         TextButton(onClick = { detailTab = if (battle.minute == 0) 3 else 0; sheet = "details" },
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text("Details", color = ModernBlue, fontSize = 12.sp) }
+                            modifier = Modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) { Text("Details", color = ModernBlue, fontSize = 12.sp, maxLines = 1) }
                     }
                 }
             }
