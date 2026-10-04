@@ -172,7 +172,7 @@ private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> U
 }
 
 @Composable
-private fun CampaignPulseCard(
+internal fun CampaignPulseCard(
     state: GameState,
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
