@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.*
 import com.goldenunicorn.troopmanager.model.*
 
@@ -146,6 +147,28 @@ private fun demandPreview(before: GameState, after: GameState, group: PoliticalG
 }
 
 @Composable
+private fun DiplomacyMetric(
+    label: String,
+    value: Int,
+    accent: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Text(label, color = Mist, fontSize = 9.sp, maxLines = 1)
+        Text(value.toString(), color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
+        LinearProgressIndicator(
+            progress = { value.coerceIn(0, 100) / 100f },
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+            color = accent,
+            trackColor = androidx.compose.ui.graphics.Color.White.copy(alpha = .08f),
+        )
+    }
+}
+
+@Composable
 private fun DiplomacyCard(state: GameState, faction: WorldFaction, apply: (GameEngine.ActionResult) -> Unit) {
     val relation = DiplomacyEngine.relation(state, PLAYER_FACTION, faction.id)
     var expanded by remember(faction.id) { mutableStateOf(false) }
@@ -157,7 +180,13 @@ private fun DiplomacyCard(state: GameState, faction: WorldFaction, apply: (GameE
     var playerPays by remember(faction.id) { mutableStateOf(true) }
     KingdomCard {
         Text("${faction.name} · ${if (relation.atWar) "Krieg" else "Frieden"}", color = PaleGold, fontWeight = FontWeight.Bold)
-        Text("${faction.ruler} · ${faction.personality.label}\nBeziehung ${relation.relation} · Vertrauen ${relation.trust} · Respekt ${relation.respect} · Furcht ${relation.fear}", color = Mist)
+        Text("${faction.ruler} · ${faction.personality.label}", color = Mist)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            DiplomacyMetric("Beziehung", ((relation.relation + 100) / 2).coerceIn(0, 100), ModernBlue, Modifier.weight(1f))
+            DiplomacyMetric("Vertrauen", relation.trust.coerceIn(0, 100), Success, Modifier.weight(1f))
+            DiplomacyMetric("Respekt", relation.respect.coerceIn(0, 100), Gold, Modifier.weight(1f))
+            DiplomacyMetric("Furcht", relation.fear.coerceIn(0, 100), Danger, Modifier.weight(1f))
+        }
         Text("Ziel: ${faction.longTermGoal}", color = Mist)
         if (relation.atWar || relation.playerWarGoal != null) {
             Text("Kriegsziel: ${relation.playerWarGoal?.label ?: "Noch offen"}", color = ModernBlue)

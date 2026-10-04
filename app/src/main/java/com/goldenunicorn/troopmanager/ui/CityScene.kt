@@ -1,6 +1,5 @@
 package com.goldenunicorn.troopmanager.ui
 
-import android.graphics.BitmapFactory
 import android.graphics.Paint
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -21,16 +20,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.goldenunicorn.troopmanager.model.*
 import com.goldenunicorn.troopmanager.engine.PresentationEngine
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlin.math.*
 
 internal enum class CityDistrict(val label: String) {
@@ -159,19 +154,6 @@ internal fun CityScene(
     onBuilding: (BuildingType) -> Unit = {},
     onDistrict: ((CityDistrict) -> Unit)? = null,
 ) {
-    val context = LocalContext.current.applicationContext
-    var landscape by remember(context) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(context) {
-        // Decode once off main; disposal cancels publication of a stale result.
-        val decoded = withContext(Dispatchers.IO) {
-            runCatching {
-                context.assets.open("city_landscape.webp").use {
-                    BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inScaled = false })
-                }?.asImageBitmap()
-            }.getOrNull()
-        }
-        landscape = decoded
-    }
     val minimumTouchRadius = with(LocalDensity.current) { 24.dp.toPx() }
     var zoom by remember { mutableFloatStateOf(1f) }
     var pan by remember { mutableStateOf(Offset.Zero) }
@@ -258,36 +240,23 @@ internal fun CityScene(
             // Read the animation in draw scope so frames do not rebuild semantics and composition.
             val phase = phaseState.value
             val p = CityProjection(size.width, size.height, zoom, pan.x, pan.y).bounded()
-            // Full-screen atmospheric backdrop remains behind the zoomable, architecturally layered
-            // city.
-            landscape?.let {
-                drawImage(
-                    it,
-                    dstSize = IntSize(size.width.toInt(), size.height.toInt()),
-                    alpha = .48f,
-                )
-            }
+            // v0.95: the player's city is rendered as one coherent scene. The old photo-like
+            // city_landscape.webp is intentionally not composited underneath the procedural
+            // settlement anymore; that double-city effect made the player's buildings look pasted on.
             drawRect(
                 Brush.verticalGradient(
-                    listOf(Color(0x99111923), Color(0x00233930), Color(0xCC0A0E12))
+                    listOf(
+                        if (night) Color(0xFF071019) else Color(0xFF314957),
+                        if (night) Color(0xFF111922) else Color(0xFF6D7C69),
+                        Color(0xFF0A0E12),
+                    )
                 )
             )
             withTransform({
                 translate(p.originX, p.originY)
                 scale(p.scale, p.scale, Offset.Zero)
             }) {
-                landscape?.let {
-                    drawImage(it, dstSize = IntSize(1600, 1000), alpha = if (night) .62f else .95f)
-                }
-                if (landscape == null)
-                    drawRect(
-                        Brush.radialGradient(
-                            listOf(Color(0xFF667260), Color(0xFF243D36)),
-                            center = Offset(800f, 510f),
-                            radius = 960f,
-                        ),
-                        size = Size(1600f, 1000f),
-                    )
+                drawCityTerrain(state, season, night, phase)
                 if (season == Season.WINTER || season == Season.AUTUMN)
                     drawRect(
                         if (season == Season.WINTER) Color(0x447C96A7) else Color(0x33765522),
@@ -890,6 +859,139 @@ private fun DrawScope.drawSite(
             }
             if (site.type == BuildingType.STABLES)
                 repeat(tier + 1) { i -> drawCitizen(x - 40f + i * 27f, y + 22f, 2, night, phase) }
+        }
+    }
+}
+
+private fun DrawScope.drawCityTerrain(
+    state: GameState,
+    season: Season,
+    night: Boolean,
+    phase: Float,
+) {
+    val prosperity = state.city.prosperity.coerceIn(0, 100) / 100f
+    val base = when (season) {
+        Season.WINTER -> Color(0xFF68747A)
+        Season.AUTUMN -> Color(0xFF716348)
+        Season.SPRING -> Color(0xFF63785B)
+        Season.SUMMER -> Color(0xFF6E7B58)
+    }
+    val deep = when (season) {
+        Season.WINTER -> Color(0xFF34444C)
+        Season.AUTUMN -> Color(0xFF3F4537)
+        Season.SPRING -> Color(0xFF344F43)
+        Season.SUMMER -> Color(0xFF3A4D3A)
+    }
+
+    drawRect(
+        Brush.radialGradient(
+            listOf(base, deep),
+            center = Offset(790f, 540f),
+            radius = 980f,
+        ),
+        size = Size(1600f, 1000f),
+    )
+
+    // Distant terrain establishes depth without pretending to be a second city.
+    repeat(7) { index ->
+        val width = 250f + index * 26f
+        val x = -70f + index * 245f
+        val y = 110f + (index % 2) * 42f
+        drawOval(
+            color = deep.copy(alpha = .26f + index * .015f),
+            topLeft = Offset(x, y),
+            size = Size(width, 180f + index * 8f),
+        )
+    }
+
+    // Agricultural strips and outskirts visibly react to prosperity and season.
+    val fieldAlpha = (.16f + prosperity * .16f).coerceIn(.12f, .34f)
+    repeat(9) { i ->
+        val left = 70f + (i % 5) * 285f
+        val top = 705f + (i / 5) * 95f + (i % 2) * 18f
+        val crop = if (season == Season.WINTER) Color(0xFF9AA1A0) else Color(0xFFB7A268)
+        drawRect(
+            crop.copy(alpha = fieldAlpha),
+            topLeft = Offset(left, top),
+            size = Size(205f, 54f),
+        )
+        repeat(5) { row ->
+            drawLine(
+                Color(0x55765F3B),
+                Offset(left + 8f, top + 8f + row * 9f),
+                Offset(left + 195f, top + 8f + row * 9f),
+                1.5f,
+            )
+        }
+    }
+
+    // A single river and road network tie all generated districts into the same ground plane.
+    val river = Path().apply {
+        moveTo(-40f, 550f)
+        cubicTo(220f, 505f, 350f, 610f, 545f, 590f)
+        cubicTo(760f, 565f, 910f, 470f, 1160f, 500f)
+        cubicTo(1370f, 525f, 1490f, 620f, 1640f, 585f)
+        lineTo(1640f, 665f)
+        cubicTo(1450f, 700f, 1320f, 605f, 1130f, 585f)
+        cubicTo(890f, 560f, 740f, 655f, 515f, 674f)
+        cubicTo(305f, 691f, 160f, 596f, -40f, 630f)
+        close()
+    }
+    drawPath(river, if (night) Color(0xFF263A48) else Color(0xFF587989))
+    drawPath(river, Color.White.copy(alpha = if (night) .035f else .08f), style = Stroke(2f))
+
+    val hub = Offset(770f, 585f)
+    val roadEnds = listOf(
+        Offset(800f, 970f),
+        Offset(260f, 875f),
+        Offset(1335f, 835f),
+        Offset(1500f, 470f),
+        Offset(735f, 125f),
+    )
+    roadEnds.forEachIndexed { index, end ->
+        val bend = Offset(
+            (hub.x + end.x) / 2f + if (index % 2 == 0) 45f else -35f,
+            (hub.y + end.y) / 2f,
+        )
+        val road = Path().apply {
+            moveTo(hub.x, hub.y)
+            quadraticBezierTo(bend.x, bend.y, end.x, end.y)
+        }
+        drawPath(road, Color(0xFF6F604A).copy(alpha = .72f), style = Stroke(20f))
+        drawPath(road, Color(0xFFB8A57A).copy(alpha = .22f), style = Stroke(4f))
+    }
+
+    // Trees around the outside frame the playable settlement rather than overlapping buildings.
+    repeat(44) { i ->
+        val side = i % 4
+        val t = (i / 4) / 10f
+        val x = when (side) {
+            0 -> 85f + t * 1430f
+            1 -> 90f + t * 210f
+            2 -> 1510f - t * 240f
+            else -> 170f + t * 1260f
+        }
+        val y = when (side) {
+            0 -> 118f + sin(i * 1.7f) * 24f
+            1 -> 250f + t * 560f
+            2 -> 260f + t * 560f
+            else -> 900f + sin(i * 1.3f) * 18f
+        }
+        val sway = sin((phase + i * .071f) * 2f * PI.toFloat()) * 2f
+        drawLine(Color(0xFF4C4030), Offset(x, y), Offset(x + sway, y - 23f), 4f)
+        drawCircle(
+            if (season == Season.AUTUMN) Color(0xFF7B6741) else Color(0xFF38533F),
+            11f,
+            Offset(x + sway, y - 30f),
+        )
+    }
+
+    if (night) {
+        drawRect(Color(0x55101B29), size = Size(1600f, 1000f))
+        repeat(18) { i ->
+            val x = 240f + (i * 73f % 1110f)
+            val y = 260f + (i * 47f % 500f)
+            drawCircle(Color(0x22FFD996), 15f + (i % 3) * 4f, Offset(x, y))
         }
     }
 }

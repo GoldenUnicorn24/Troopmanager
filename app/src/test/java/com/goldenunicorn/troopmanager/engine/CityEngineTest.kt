@@ -101,9 +101,10 @@ class CityEngineTest {
     @Test
     fun marketRejectsOverflowAndCannotGenerateGoldByRoundTrip() {
         val initial = human()
+        val unitPrice = CityEngine.buyPrice(initial, ResourceKind.WOOD)
         val purchased = CityEngine.trade(initial, ResourceKind.WOOD, 100, buy = true).state
         assertEquals(initial.resources.wood + 100, purchased.resources.wood)
-        assertEquals(initial.resources.gold - 300, purchased.resources.gold)
+        assertEquals(initial.resources.gold - 100 * unitPrice, purchased.resources.gold)
         val sold = CityEngine.trade(purchased, ResourceKind.WOOD, 100, buy = false).state
         assertEquals(initial.resources.wood, sold.resources.wood)
         assertTrue(sold.resources.gold < initial.resources.gold)

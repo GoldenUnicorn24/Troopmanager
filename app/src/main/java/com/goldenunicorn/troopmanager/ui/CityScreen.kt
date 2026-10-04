@@ -99,6 +99,14 @@ internal fun CityScreen(
                         onDistrict = { districtName = it.name; districtSheetName = it.name },
                     )
                     Row(
+                        Modifier.align(Alignment.TopStart).padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        ModernPill("${state.city.season.label}", Gold, filled = true)
+                        ModernPill("${state.population.total} Einwohner", ModernBlue)
+                        ModernPill("Sicherheit ${state.city.security}", if (state.city.security < 40) Danger else Success)
+                    }
+                    Row(
                         Modifier.align(Alignment.TopEnd).padding(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
@@ -139,11 +147,24 @@ internal fun CityScreen(
                                 fontSize = 11.sp,
                             )
                         } else {
+                            val cityHeadline = when {
+                                state.resources.food < 800 -> "Versorgung kritisch · Vorräte werden knapp"
+                                state.population.total >= state.city.housingCapacity -> "Wohnraum ausgelastet · Ausbau nötig"
+                                state.city.security < 40 -> "Unruhe in den Straßen · Sicherheit stärken"
+                                state.city.constructionQueue.isNotEmpty() -> "${state.city.constructionQueue.size} Bauprojekte verändern das Stadtbild"
+                                state.city.prosperity >= 70 -> "Die Stadt floriert · Wohlstand ${state.city.prosperity}%"
+                                else -> "Die Stadt lebt mit deinem Reich und deinen Entscheidungen"
+                            }
                             Text(
-                                "Eine Stadt, die mit deinem Reich wächst",
-                                color = PaleGold,
+                                cityHeadline,
+                                color = if (state.city.security < 40 || state.resources.food < 800) Danger else PaleGold,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                "Wohlstand ${state.city.prosperity}% · Zufriedenheit ${state.city.satisfaction}% · Nahrung ${state.resources.food}",
+                                color = Mist,
+                                fontSize = 10.sp,
                             )
                         }
                         Text(
@@ -580,13 +601,18 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
             }
         }
         Text(
-            "Bestand: ${resource.value(state.resources)} · Kauf ${CityEngine.buyPrice(resource)} / Verkauf ${CityEngine.sellPrice(resource)} Gold je Einheit",
+            "Bestand: ${resource.value(state.resources)} · Kauf ${CityEngine.buyPrice(state, resource)} / Verkauf ${CityEngine.sellPrice(state, resource)} Gold je Einheit",
             color = Mist,
             fontSize = 12.sp,
         )
+        Text(
+            CityEngine.marketReason(state, resource),
+            color = Gold,
+            fontSize = 11.sp,
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val buyCost = amount * CityEngine.buyPrice(resource)
-            val sale = amount * CityEngine.sellPrice(resource)
+            val buyCost = amount * CityEngine.buyPrice(state, resource)
+            val sale = amount * CityEngine.sellPrice(state, resource)
             Button(
                 onClick = { onTrade(resource, amount, true) },
                 enabled =
