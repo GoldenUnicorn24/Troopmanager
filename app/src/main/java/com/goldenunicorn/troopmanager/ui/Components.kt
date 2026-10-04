@@ -27,21 +27,22 @@ import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
-internal val Ink = Color(0xFF0A0E12)
-internal val Panel = Color(0xFF121920)
-internal val Panel2 = Color(0xFF19232C)
-internal val Gold = Color(0xFFD6B66B)
-internal val PaleGold = Color(0xFFFFE2A1)
-internal val Mist = Color(0xFFD8E0E5)
-internal val Danger = Color(0xFFB74C4C)
-internal val Success = Color(0xFF6AAE7A)
-internal val Blue = Color(0xFF5189B7)
+internal val Ink = Color(0xFF080B0E)
+internal val Panel = Color(0xFF10161B)
+internal val Panel2 = Color(0xFF172027)
+internal val Gold = Color(0xFFD0AE62)
+internal val PaleGold = Color(0xFFF4D894)
+internal val Mist = Color(0xFFCCD4D8)
+internal val Danger = Color(0xFFB65A5D)
+internal val Success = Color(0xFF72A985)
+internal val Blue = Color(0xFF6B91AD)
 
 @Composable
 internal fun PageTitle(title: String, subtitle: String) {
-    Column {
-        Text(title, color = PaleGold, fontSize = 13.sp, letterSpacing = 2.sp)
-        Text(subtitle, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title.uppercase(), color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 2.2.sp)
+        Text(subtitle, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
+        Box(Modifier.padding(top = 4.dp).width(42.dp).height(2.dp).background(Gold, RoundedCornerShape(4.dp)))
     }
 }
 
@@ -61,24 +62,35 @@ internal fun SectionTitle(text: String) {
 internal fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Button(
         onClick = onClick,
-        modifier = modifier.heightIn(min = 52.dp),
+        modifier = modifier.heightIn(min = 54.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp, pressedElevation = 0.dp),
     ) {
-        Text(text, fontWeight = FontWeight.Black)
+        Text(text.uppercase(), fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = .7.sp)
     }
 }
 
 @Composable
 internal fun SmallAction(text: String, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-        Text(text)
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .12f)),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = PaleGold),
+    ) {
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
 internal fun EmptyCard(text: String) {
-    Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
+    Surface(
+        color = Panel,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+    ) {
         Text(text, color = Mist, modifier = Modifier.padding(16.dp), fontSize = 13.sp)
     }
 }
