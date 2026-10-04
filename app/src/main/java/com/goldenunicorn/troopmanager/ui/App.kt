@@ -92,35 +92,67 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
             Modifier.fillMaxSize()
                 .background(Brush.verticalGradient(listOf(Color(0x22000000), Color(0xF2070A0D))))
         )
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Bottom) {
-            Text("REALM OF THE", color = PaleGold, fontSize = 18.sp, letterSpacing = 3.sp)
-            Text("LAST WALL", color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Black)
+        Column(
+            Modifier.fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(22.dp),
+            verticalArrangement = Arrangement.Bottom,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                ModernPill("Offline Strategy RPG", ModernBlue, filled = true)
+                ModernPill("v${com.goldenunicorn.troopmanager.BuildConfig.VERSION_NAME}", Gold)
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("REALM OF THE", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
             Text(
-                "Vom jungen Grenzherrn zum Herrscher einer mächtigen Festung.",
-                color = Mist,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(top = 8.dp, bottom = 26.dp),
+                "LAST WALL",
+                color = Color.White,
+                fontSize = 48.sp,
+                lineHeight = 48.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1).sp,
             )
-            Text("v${com.goldenunicorn.troopmanager.BuildConfig.VERSION_NAME} · lebendige Grenze & Reich", color = PaleGold)
-            SaveSlotsPanel(ui, controller)
-            if (ui.hasSave) {
-                GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
-                Spacer(Modifier.height(10.dp))
-            }
-            var confirmOverwrite by remember { mutableStateOf(false) }
-            if (confirmOverwrite) AlertDialog(onDismissRequest = { confirmOverwrite = false },
-                title = { Text("Neues Reich in Platz ${ui.activeSlot}?") },
-                text = { Text("Die Kampagne in diesem Platz wird beim Gründen ersetzt. Wähle einen leeren Platz, um sie zu behalten.") },
-                confirmButton = { TextButton(onClick = { confirmOverwrite = false; controller.newGame() }) { Text("Neues Reich") } },
-                dismissButton = { TextButton(onClick = { confirmOverwrite = false }) { Text("Abbrechen") } })
-            OutlinedButton(onClick = { if (ui.hasSave) confirmOverwrite = true else controller.newGame() }, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-                Text("Neues Reich", fontWeight = FontWeight.Bold, color = PaleGold)
-            }
             Text(
-                "Offline · keine Echtgeldkäufe · lokaler Spielstand",
-                color = Color(0xFFA8B2B8),
-                fontSize = 12.sp,
-                modifier = Modifier.padding(top = 18.dp, bottom = 12.dp),
+                "Baue dein Reich. Führe Armeen. Regiere gemeinsam. Jede Entscheidung verändert die Grenze.",
+                color = Mist,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(top = 10.dp, bottom = 20.dp).widthIn(max = 420.dp),
+            )
+
+            PremiumPanel(emphasized = ui.hasSave) {
+                Text("KAMPAGNE", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                SaveSlotsPanel(ui, controller)
+
+                if (ui.hasSave) {
+                    GoldButton("Spiel fortsetzen", controller::continueGame, Modifier.fillMaxWidth())
+                }
+
+                var confirmOverwrite by remember { mutableStateOf(false) }
+                if (confirmOverwrite) AlertDialog(
+                    onDismissRequest = { confirmOverwrite = false },
+                    title = { Text("Neues Reich in Platz ${ui.activeSlot}?") },
+                    text = { Text("Die Kampagne in diesem Platz wird beim Gründen ersetzt. Wähle einen leeren Platz, um sie zu behalten.") },
+                    confirmButton = { TextButton(onClick = { confirmOverwrite = false; controller.newGame() }) { Text("Neues Reich") } },
+                    dismissButton = { TextButton(onClick = { confirmOverwrite = false }) { Text("Abbrechen") } },
+                )
+                OutlinedButton(
+                    onClick = { if (ui.hasSave) confirmOverwrite = true else controller.newGame() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .13f)),
+                ) {
+                    Text("NEUES REICH", fontWeight = FontWeight.Black, color = Color.White, fontSize = 11.sp)
+                }
+            }
+
+            Text(
+                "100 % offline · kein Pay-to-Win · lokale Spielstände",
+                color = Color(0xFF8D99A2),
+                fontSize = 10.sp,
+                modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
             )
         }
     }
