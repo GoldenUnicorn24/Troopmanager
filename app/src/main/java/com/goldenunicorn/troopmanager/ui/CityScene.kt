@@ -257,6 +257,7 @@ internal fun CityScene(
                 scale(p.scale, p.scale, Offset.Zero)
             }) {
                 drawCityTerrain(state, season, night, phase)
+                drawCityStreetNetwork(state, night)
                 if (season == Season.WINTER || season == Season.AUTUMN)
                     drawRect(
                         if (season == Season.WINTER) Color(0x447C96A7) else Color(0x33765522),
@@ -367,6 +368,9 @@ internal fun CityScene(
                                 drawLine(Color(0xFF746C5C), Offset(site.x + 20f, site.y - 5f), Offset(site.x + 20f, site.y - 23f), 10f)
                             }
                             if (damage > 0) drawBuildingDamage(site, damage, defenseMode, phase)
+                            if (state.city.constructionQueue.any { it.type == site.type }) {
+                                drawConstructionScaffold(site, phase)
+                            }
                         }
                         if (
                             zoom >= 1.65f ||
@@ -468,6 +472,80 @@ internal fun CityScene(
             }
         }
     }
+}
+
+private fun DrawScope.drawCityStreetNetwork(state: GameState, night: Boolean) {
+    val plaza = Offset(760f, 585f)
+    drawCircle(Color(0xFF75664F).copy(alpha = .78f), 58f, plaza)
+    drawCircle(
+        Color(0xFFB6A77F).copy(alpha = .22f),
+        46f,
+        plaza,
+        style = Stroke(3f),
+    )
+
+    citySites.forEachIndexed { index, site ->
+        val level = state.realm.level(site.type)
+        if (level <= 0) return@forEachIndexed
+        val start = plaza
+        val end = Offset(site.x, site.y + 8f)
+        val bend = Offset(
+            (start.x + end.x) / 2f + if (index % 2 == 0) 28f else -28f,
+            (start.y + end.y) / 2f + if (site.district == CityDistrict.OUTSKIRTS) 24f else 0f,
+        )
+        val road = Path().apply {
+            moveTo(start.x, start.y)
+            quadraticBezierTo(bend.x, bend.y, end.x, end.y)
+        }
+        val roadWidth = when {
+            site.type == BuildingType.PALACE || site.type == BuildingType.MARKET -> 18f
+            level >= 5 -> 15f
+            else -> 11f
+        }
+        drawPath(road, Color(0xFF4B4034).copy(alpha = .75f), style = Stroke(roadWidth + 6f))
+        drawPath(
+            road,
+            Color(0xFF9C8B68).copy(alpha = if (night) .30f else .52f),
+            style = Stroke(roadWidth),
+        )
+        drawLine(
+            Color.White.copy(alpha = .04f),
+            Offset(site.x - 18f, site.y + 18f),
+            Offset(site.x + 18f, site.y + 18f),
+            2f,
+        )
+    }
+
+    // Main gate road makes the fortress and surrounding terrain read as one settlement.
+    val gateRoad = Path().apply {
+        moveTo(plaza.x, plaza.y)
+        cubicTo(770f, 690f, 800f, 790f, 805f, 995f)
+    }
+    drawPath(gateRoad, Color(0xFF4A3F34), style = Stroke(24f))
+    drawPath(gateRoad, Color(0xFF9C8A66).copy(alpha = .62f), style = Stroke(17f))
+}
+
+private fun DrawScope.drawConstructionScaffold(site: CitySite, phase: Float) {
+    val x = site.x
+    val y = site.y
+    val wood = Color(0xFF8B704A)
+    val rope = Color(0xFFC0AD7F)
+    val pulse = .45f + kotlin.math.sin(phase * kotlin.math.PI.toFloat() * 2f) * .08f
+
+    drawRect(
+        Color(0x3326170E),
+        topLeft = Offset(x - 46f, y - 58f),
+        size = Size(92f, 74f),
+    )
+    listOf(-40f, -18f, 18f, 40f).forEach { dx ->
+        drawLine(wood, Offset(x + dx, y + 14f), Offset(x + dx, y - 58f), 4f)
+    }
+    listOf(-46f, -25f, -4f, 17f).forEach { dy ->
+        drawLine(wood, Offset(x - 43f, y + dy), Offset(x + 43f, y + dy), 3f)
+    }
+    drawLine(rope, Offset(x - 42f, y - 54f), Offset(x + 42f, y + 10f), 1.5f)
+    drawLine(rope, Offset(x + 42f, y - 54f), Offset(x - 42f, y + 10f), 1.5f)
+    drawCircle(Gold.copy(alpha = pulse.coerceIn(.2f, .7f)), 5f, Offset(x + 48f, y - 52f))
 }
 
 private fun DrawScope.drawBuildingDamage(site: CitySite, damage: Int, siege: Boolean, phase: Float) {
