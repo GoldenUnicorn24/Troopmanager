@@ -235,6 +235,86 @@ object CityEngine {
             else -> 1
         }
 
+    /**
+     * v0.95 living market: prices derive from the actual campaign state instead of a fixed
+     * shop table. The calculation is deterministic and needs no additional save fields.
+     */
+    fun buyPrice(state: GameState, kind: ResourceKind): Int {
+        if (kind == ResourceKind.GOLD) return 1
+        val base = buyPrice(kind)
+        val capacity = kind.value(state.city.storageCapacity).coerceAtLeast(1)
+        val ratio = kind.value(state.resources).toDouble() / capacity
+        val scarcity = when {
+            ratio < .12 -> 2
+            ratio < .25 -> 1
+            ratio > .82 -> -1
+            else -> 0
+        }
+        val seasonal = when (kind) {
+            ResourceKind.FOOD -> when (state.city.season) {
+                Season.WINTER -> 2
+                Season.SPRING -> 1
+                Season.AUTUMN -> -1
+                Season.SUMMER -> 0
+            }
+            ResourceKind.WOOD -> if (state.city.season == Season.WINTER) 1 else 0
+            ResourceKind.STONE -> if (state.city.season == Season.WINTER) 1 else 0
+            ResourceKind.IRON -> if (state.realm.threat >= 65 || state.invasion != null) 1 else 0
+            ResourceKind.GOLD -> 0
+        }
+        val marketRelief =
+            if (WarEngine.effectiveLevel(state, BuildingType.MARKET) >= 5 && state.city.prosperity >= 65) -1 else 0
+        return (base + scarcity + seasonal + marketRelief).coerceAtLeast(1)
+    }
+
+    fun sellPrice(state: GameState, kind: ResourceKind): Int {
+        if (kind == ResourceKind.GOLD) return 1
+        val base = sellPrice(kind)
+        val capacity = kind.value(state.city.storageCapacity).coerceAtLeast(1)
+        val ratio = kind.value(state.resources).toDouble() / capacity
+        val demand = when {
+            ratio < .12 -> 2
+            ratio < .25 -> 1
+            ratio > .82 -> -1
+            else -> 0
+        }
+        val wartimeDemand =
+            if (state.realm.threat >= 65 || state.invasion != null) {
+                when (kind) {
+                    ResourceKind.FOOD, ResourceKind.IRON, ResourceKind.WOOD -> 1
+                    else -> 0
+                }
+            } else 0
+        val raw = base + demand + wartimeDemand
+        // Buying always remains more expensive than selling, so the player cannot create a
+        // deterministic arbitrage loop by repeatedly buying and selling on the same day.
+        return raw.coerceIn(1, (buyPrice(state, kind) - 1).coerceAtLeast(1))
+    }
+
+    fun marketReason(state: GameState, kind: ResourceKind): String {
+        if (kind == ResourceKind.GOLD) return "Gold wird nicht direkt gehandelt."
+        val capacity = kind.value(state.city.storageCapacity).coerceAtLeast(1)
+        val ratio = kind.value(state.resources).toDouble() / capacity
+        val reasons = mutableListOf<String>()
+        when {
+            ratio < .12 -> reasons += "akute Knappheit"
+            ratio < .25 -> reasons += "knapper Bestand"
+            ratio > .82 -> reasons += "Lager gut gefüllt"
+        }
+        if (kind == ResourceKind.FOOD) when (state.city.season) {
+            Season.WINTER -> reasons += "Winter verteuert Nahrung"
+            Season.SPRING -> reasons += "Frühjahr vor der Haupternte"
+            Season.AUTUMN -> reasons += "Erntezeit drückt den Preis"
+            Season.SUMMER -> Unit
+        }
+        if ((state.realm.threat >= 65 || state.invasion != null) &&
+            kind in listOf(ResourceKind.FOOD, ResourceKind.IRON, ResourceKind.WOOD))
+            reasons += "Kriegsnachfrage"
+        if (WarEngine.effectiveLevel(state, BuildingType.MARKET) >= 5 && state.city.prosperity >= 65)
+            reasons += "starker Markt senkt Einkaufskosten"
+        return reasons.joinToString(" · ").ifBlank { "stabile Marktlage" }
+    }
+
     fun trade(
         state: GameState,
         kind: ResourceKind,
@@ -247,7 +327,7 @@ object CityEngine {
             return GameEngine.ActionResult(state, "Ein Markt wird benötigt.")
         if (amount <= 0 || kind == ResourceKind.GOLD)
             return GameEngine.ActionResult(state, "Ungültige Handelsmenge.")
-        val total = amount.toLong() * (if (buy) buyPrice(kind) else sellPrice(kind))
+        val total = amount.toLong() * (if (buy) buyPrice(state, kind) else sellPrice(state, kind))
         if (total > Int.MAX_VALUE) return GameEngine.ActionResult(state, "Handelsmenge zu groß.")
         val stock = kind.value(state.resources)
         if (
