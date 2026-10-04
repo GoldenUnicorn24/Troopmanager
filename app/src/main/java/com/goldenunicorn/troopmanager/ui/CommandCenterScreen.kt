@@ -50,116 +50,206 @@ internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit,
 }
 
 @Composable
-private fun CommandOverview(state: GameState, onNavigate: (GameDestination) -> Unit, onAdvanceDay: () -> Unit, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    val presence = PresenceEngine.presence(state)
+private fun CommandOverview(
+    state: GameState,
+    onNavigate: (GameDestination) -> Unit,
+    onAdvanceDay: () -> Unit,
+    onState: (GameState) -> Unit,
+    onNotice: (String) -> Unit,
+) {
     val tasks = remember(state) { QuestJournalEngine.tasks(state) }
-    val urgent = tasks.filter { it.category in listOf(JournalCategory.OPEN, JournalCategory.PERSONAL) ||
-        it.dueDay?.let { day -> day <= state.day + 3 } == true }
-    val completed = state.dailyReport.entries.filter { it.important && it.title.contains("abgeschlossen") }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageTitle("KOMMANDOZENTRALE · TAG ${state.day}", state.realm.settlementName) }
-        item { CampaignPulseCard(state, onState, onNotice) }
+    val urgent = tasks.filter {
+        it.category in listOf(JournalCategory.OPEN, JournalCategory.PERSONAL) ||
+            it.dueDay?.let { day -> day <= state.day + 3 } == true
+    }
+    val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+    val wounded = state.war.wounded.sumOf { it.soldiers }
+    val foodNet = EconomyEngine.production(state).net.food
+    val foodStatus =
+        if (foodNet >= 0) "+$foodNet/Tag"
+        else "$foodNet/Tag"
+    val situations =
+        listOfNotNull(
+            state.campaign.pendingDecision?.let {
+                Triple(
+                    "Herrscherentscheidung",
+                    it.title,
+                    "Bis Tag ${it.expiresDay} · ${it.text}",
+                ) to GameDestination.DECISIONS
+            },
+            nearestThreat?.let {
+                Triple(
+                    "Grenzlage",
+                    it.name,
+                    "${it.estimatedStrengthLabel} · Ankunft in ${it.daysToArrival} Tagen",
+                ) to GameDestination.FRONTIER
+            },
+            if (wounded > 0)
+                Triple(
+                    "Lazarett",
+                    "$wounded Verwundete",
+                    "Soldaten warten auf Versorgung und Rückkehr in den Dienst.",
+                ) to GameDestination.HOSPITAL
+            else null,
+            urgent.firstOrNull()?.let {
+                Triple(
+                    "Aufgabe",
+                    it.title,
+                    it.dueDay?.let { day -> "Frist Tag $day" } ?: it.detail,
+                ) to it.destination
+            },
+        )
+
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp, 14.dp, 16.dp, 28.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
         item {
-            CommandCard("Tagesziel", { onNavigate(GameDestination.FRONTIER) }) {
-                Text(state.frontier.dailyGoal.ifBlank { "Prüft Hof, Ausbildung und Grenze." }, color = Color.White, fontSize = 14.sp)
-                Text(if (state.frontier.dailyGoalClaimed) "Tageslohn genommen." else "Patrouille oder Ausbildung, dann den Lohn holen.", color = Mist, fontSize = 12.sp)
-                if (!state.frontier.dailyGoalClaimed) GoldButton("Abendlohn nehmen", {
-                    val result = FrontierEngine.claimDailyGoal(state)
-                    onState(result.state)
-                    onNotice(result.message)
-                })
-                val candidates = FrontierEngine.captainCandidates(state)
-                if (candidates.isNotEmpty()) {
-                    Text("Hauptmann-Kandidaten", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    candidates.forEachIndexed { index, candidate ->
-                        SmallAction("${candidate.name} · ${candidate.culture.label} · F ${candidate.leadership} / T ${candidate.tactics} · ${candidate.trait} · ${FrontierEngine.captainCost(index)} Gold") {
-                            val result = FrontierEngine.hireCaptain(state, index)
+            RealmHero(
+                state = state,
+                onPrimary = {
+                    onNavigate(
+                        if (state.campaign.pendingDecision != null) GameDestination.DECISIONS
+                        else if (nearestThreat != null) GameDestination.FRONTIER
+                        else GameDestination.JOURNAL
+                    )
+                },
+                onSecondary = { onNavigate(GameDestination.CITY) },
+            )
+        }
+
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StatusMetric(
+                    "Heer",
+                    state.homeArmySize.toString(),
+                    Modifier.weight(1f),
+                    supporting = "${state.awayArmySize} unterwegs",
+                )
+                StatusMetric(
+                    "Nahrung",
+                    state.resources.food.toString(),
+                    Modifier.weight(1f),
+                    accent = if (foodNet < 0) Danger else Success,
+                    supporting = foodStatus,
+                )
+            }
+        }
+        item {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StatusMetric(
+                    "Stimmung",
+                    "${state.city.satisfaction}%",
+                    Modifier.weight(1f),
+                    accent = if (state.city.satisfaction < 45) Danger else Success,
+                    supporting = if (state.city.satisfaction < 45) "angespannt" else "stabil",
+                )
+                StatusMetric(
+                    "Druck",
+                    "${state.campaign.pressure}",
+                    Modifier.weight(1f),
+                    accent = if (state.campaign.pressure >= 65) Danger else Gold,
+                    supporting = "Momentum ${state.campaign.momentum}",
+                )
+            }
+        }
+
+        item { SectionTitle("Jetzt wichtig") }
+        if (situations.isEmpty()) {
+            item {
+                SituationCard(
+                    eyebrow = "Ruhige Lage",
+                    title = "Keine akute Krise",
+                    detail = "Nutze den Tag für Ausbau, Diplomatie, Training oder gemeinsame Zeit.",
+                    onClick = { onNavigate(GameDestination.DECISIONS) },
+                )
+            }
+        } else {
+            situations.take(3).forEachIndexed { index, row ->
+                item {
+                    val (copy, destination) = row
+                    SituationCard(
+                        eyebrow = copy.first,
+                        title = copy.second,
+                        detail = copy.third,
+                        urgent = index == 0 && (state.campaign.pendingDecision != null || nearestThreat?.daysToArrival?.let { it <= 3 } == true),
+                        onClick = { onNavigate(destination) },
+                    )
+                }
+            }
+        }
+
+        item { CampaignPulseCard(state, onState, onNotice) }
+
+        if (state.companion.met) {
+            item {
+                Box(
+                    Modifier.fillMaxWidth().clickable { onNavigate(GameDestination.RULERS) }
+                ) {
+                    RulerPairHero(state)
+                }
+            }
+        }
+
+        item {
+            PremiumPanel(emphasized = true) {
+                Text("TAGESZIEL", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                Text(
+                    state.frontier.dailyGoal.ifBlank { "Stärke heute eine Säule deines Reiches." },
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (state.frontier.dailyGoalClaimed)
+                        "Tageslohn bereits erhalten."
+                    else
+                        "Erledige Patrouille oder Ausbildung und sichere dir anschließend den Tageslohn.",
+                    color = Muted,
+                    fontSize = 11.sp,
+                )
+                if (!state.frontier.dailyGoalClaimed) {
+                    GoldButton(
+                        "Abendlohn nehmen",
+                        {
+                            val result = FrontierEngine.claimDailyGoal(state)
                             onState(result.state)
                             onNotice(result.message)
-                        }
-                    }
+                        },
+                        Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
-        if (state.day <= 7) item {
-            CommandCard("Erster Abend", { onNavigate(GameDestination.MILITARY) }) {
-                Text("1. Hof und Bauernhof prüfen. 2. 20 Mann ausbilden. 3. Unter Grenze eine kleine Patrouille schicken. Die ersten Orks bleiben klein.", color = Mist, fontSize = 13.sp)
-            }
-        }
+
+        item { SectionTitle("Direktzugriff") }
         item {
-            CommandCard(if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Das Herrscherpaar" else state.title,
-                { onNavigate(GameDestination.RULERS) }) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RulerIdentity(state.player.name, state.title, state.player.portraitUri ?: "file:///android_asset/portrait_player.webp",
-                        presence.player.location.label, Modifier.weight(1f))
-                    if (state.companion.met) RulerIdentity(state.companion.name, state.companion.role,
-                        state.companion.portraitUri ?: "file:///android_asset/portrait_companion.webp",
-                        presence.companion.location.label, Modifier.weight(1f))
-                }
-                if (state.relationship.romanceStage == RomanceStage.CO_RULERS)
-                    Text("Ressort: ${state.coRuler.portfolio.label} · Regierung: ${CoRulerEngine.regency(state).actor}", color = Gold, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { onNavigate(GameDestination.MILITARY) },
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(15.dp),
+                ) { Text("HEER", fontSize = 11.sp, fontWeight = FontWeight.Black) }
+                OutlinedButton(
+                    onClick = { onNavigate(GameDestination.WORLD) },
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(15.dp),
+                ) { Text("WELT", fontSize = 11.sp, fontWeight = FontWeight.Black) }
+                OutlinedButton(
+                    onClick = { onNavigate(GameDestination.PALACE) },
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(15.dp),
+                ) { Text("PALAST", fontSize = 11.sp, fontWeight = FontWeight.Black) }
             }
         }
-        item {
-            CommandCard("Heute wichtig", { onNavigate(GameDestination.JOURNAL) }) {
-                var count = 0
-                urgent.take(5).forEach { task ->
-                    TextButton(onClick = { onNavigate(task.destination) }, contentPadding = PaddingValues(0.dp)) {
-                        Text("${task.title}${task.dueDay?.let { " · Tag $it" }.orEmpty()}", color = if (task.dueDay?.let { it <= state.day + 1 } == true) Danger else PaleGold)
-                    }
-                    count++
-                }
-                if (state.war.wounded.isNotEmpty() && count < 6) {
-                    TextButton(onClick = { onNavigate(GameDestination.HOSPITAL) }) { Text("${state.war.wounded.sumOf { it.soldiers }} Verwundete versorgen", color = Danger) }
-                    count++
-                }
-                completed.take((6 - count).coerceAtLeast(0)).forEach { row ->
-                    TextButton(onClick = { onNavigate(reportDestination(row)) }) { Text(row.title, color = Success) }
-                }
-                if (count == 0 && completed.isEmpty()) Text("Keine dringenden Entscheidungen. Zeit für Planung und gemeinsame Aufgaben.", color = Mist)
-            }
-        }
-        item {
-            CommandCard("Reich", { onNavigate(GameDestination.CITY) }) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        Metric("Nahrung", state.resources.food, state.dailyReport.trends["food"])
-                        Metric("Gold", state.resources.gold, state.dailyReport.trends["gold"])
-                        Metric("Bevölkerung", state.population.total, state.dailyReport.trends["population"])
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Metric("Zufriedenheit", state.city.satisfaction, state.dailyReport.trends["satisfaction"], true)
-                        Metric("Sicherheit", state.city.security, state.dailyReport.trends["security"], true)
-                    }
-                }
-                Text("Bilanz gegenüber dem Vortag · Versorgung und Abgaben bestimmen die Entwicklung.", color = Mist, fontSize = 11.sp)
-            }
-        }
-        item {
-            CommandCard("Militär", { onNavigate(GameDestination.MILITARY) }) {
-                Text("${state.homeArmySize} einsatzbereit · ${state.awayArmySize} unterwegs", color = PaleGold)
-                Text("${state.war.wounded.sumOf { it.soldiers }} verwundet · ${state.trainingSize} in Ausbildung", color = Mist)
-                TextButton(onClick = { onNavigate(GameDestination.FRONTIER) }) {
-                    val discovered = state.frontier.hordes.count { it.discovered }
-                    Text("Grenzlage: $discovered gesichtete Banner", color = if (discovered == 0) Success else Danger)
-                }
-            }
-        }
-        item {
-            CommandCard("Hof", { onNavigate(GameDestination.COURT) }) {
-                Text("${CourtOffice.entries.count { it !in state.court.offices }} Ämter unbesetzt", color = Mist)
-                Text(state.commanderEvents.pending?.title ?: "${CoRulerEngine.councilCases(state).size} Ratsentscheidungen offen", color = PaleGold)
-                TextButton(onClick = { onNavigate(GameDestination.COUNCIL) }) { Text("Rat einberufen", color = Gold) }
-            }
-        }
-        if (state.companion.met) item {
-            CommandCard("Beziehung / Herrscherpaar", { onNavigate(GameDestination.RULERS) }) {
-                Text(state.relationshipStage(), color = Gold)
-                Metric("Konflikt", state.relationship.conflict, state.dailyReport.trends["conflict"], true, true)
-                Text(state.relationship.politicalOpinion, color = Mist, fontSize = 12.sp)
-                state.relationship.memories.lastOrNull()?.let { Text("Letzter Moment · Tag ${it.day}: ${it.text}", color = PaleGold, fontSize = 12.sp) }
-            }
-        }
+
         item {
             GoldButton(
                 if (state.campaign.pendingDecision != null) "Tag fortsetzen · Entscheidung offen"
@@ -314,11 +404,47 @@ internal fun QuestJournalScreen(state: GameState, onNavigate: (GameDestination) 
 
 @Composable
 internal fun PalaceHubScreen(state: GameState, onNavigate: (GameDestination) -> Unit) {
-    val rooms = listOf("Thronsaal" to GameDestination.DECISIONS, "Kriegsrat" to GameDestination.COUNCIL,
-        "Privatgemächer" to GameDestination.RULERS, "Familie" to GameDestination.FAMILY, "Hof" to GameDestination.COURT)
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { PageTitle("PALASTBEZIRK", if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Das Herrscherpaar empfängt Rat und Gesandte." else "Audienzen, Rat und das gemeinsame Leben im Reich.") }
-        items(rooms, key = { it.first }) { room -> CommandCard(room.first, { onNavigate(room.second) }) { Text(room.second.label, color = Mist) } }
+    val rooms = listOf(
+        Triple("Thronsaal", "Reichsentscheidungen, Audienzen und Grundsatzfragen", GameDestination.DECISIONS),
+        Triple("Kriegsrat", "Strategie, Mitregentin und offene Ratsfragen", GameDestination.COUNCIL),
+        Triple("Privatgemächer", "Beziehung, gemeinsame Zeit und Erinnerungen", GameDestination.RULERS),
+        Triple("Familie", "Dynastie, Nachfolge und Haus des Herrschers", GameDestination.FAMILY),
+        Triple("Hof", "Ämter, Persönlichkeiten und politische Netzwerke", GameDestination.COURT),
+    )
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp, 14.dp, 16.dp, 30.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { RulerPairHero(state) }
+        item {
+            PremiumPanel(emphasized = true) {
+                Text("PALASTBEZIRK", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Text(
+                    if (state.relationship.romanceStage == RomanceStage.CO_RULERS)
+                        "Das politische Herz eurer gemeinsamen Herrschaft."
+                    else
+                        "Audienzen, Rat und das persönliche Leben des Herrscherhauses.",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "Offene Ratsfragen: ${CoRulerEngine.councilCases(state).size} · Hofämter frei: ${CourtOffice.entries.count { it !in state.court.offices }}",
+                    color = Muted,
+                    fontSize = 11.sp,
+                )
+            }
+        }
+        items(rooms, key = { it.first }) { room ->
+            SituationCard(
+                eyebrow = "Palast",
+                title = room.first,
+                detail = room.second,
+                urgent = room.third == GameDestination.COUNCIL && CoRulerEngine.councilCases(state).isNotEmpty(),
+                onClick = { onNavigate(room.third) },
+            )
+        }
     }
 }
 
@@ -335,9 +461,15 @@ internal fun CommanderDirectoryScreen(state: GameState, onState: (GameState) -> 
 
 @Composable
 private fun CommandCard(title: String, onOpen: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(onClick = onOpen), color = Panel, shape = RoundedCornerShape(16.dp)) {
+    Surface(
+        Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        color = StoneRaised,
+        shape = RoundedCornerShape(19.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = .06f)),
+        shadowElevation = 2.dp,
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(title.uppercase(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Text(title.uppercase(), color = Gold, fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.1.sp)
             content()
         }
     }

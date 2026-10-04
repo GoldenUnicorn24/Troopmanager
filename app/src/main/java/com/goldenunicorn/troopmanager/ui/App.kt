@@ -419,96 +419,167 @@ private fun GameShell(
     Scaffold(
         containerColor = Ink,
         topBar = {
-            Column(Modifier.fillMaxWidth().statusBarsPadding().background(Ink)) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                Modifier.fillMaxWidth().statusBarsPadding().background(Ink)
             ) {
-                Text(
-                    state.realm.settlementName,
-                    color = PaleGold,
-                    modifier = Modifier.weight(1f).clickable { showCensus = true },
-                    maxLines = 1,
-                )
-                if (state.player.skillPoints > 0)
-                    TextButton(
-                        onClick = {
-                            showMore = false
-                            screen = GameDestination.CHARACTER
-                        }
-                    ) {
-                        Text("${state.player.skillPoints} Skillpunkte")
-                    }
-                IconButton(onClick = { showTutorial = true }) {
-                    Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Gold)
-                }
-                IconButton(onClick = { showMore = !showMore }) {
-                    Icon(Icons.Outlined.MoreVert, "Menü", tint = Gold)
-                }
-            }
-            ResourceStrip(state.resources, EconomyEngine.production(state).net)
-            val pendingCampaignDecision = state.campaign.pendingDecision
-            val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
-            val warningText = when {
-                pendingCampaignDecision != null ->
-                    "◆ ${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
-                nearestThreat != null -> "⚠ ${nearestThreat.name}: ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
-                state.war.wounded.isNotEmpty() -> "⚕ ${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
-                EconomyEngine.production(state).net.food < 0 -> "⚠ Nahrung ${EconomyEngine.production(state).net.food}/Tag"
-                else -> null
-            }
-            if (warningText != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        showMore = false
-                        screen = when {
-                            pendingCampaignDecision != null -> GameDestination.DECISIONS
-                            nearestThreat != null -> GameDestination.FRONTIER
-                            state.war.wounded.isNotEmpty() -> GameDestination.HOSPITAL
-                            else -> GameDestination.CITY
-                        }
-                    },
-                    color = Color(0xFF2A2020),
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 5.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(warningText, color = PaleGold, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp), maxLines = 1)
+                    Column(
+                        Modifier.weight(1f).clickable { showCensus = true },
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                    ) {
+                        Text(
+                            state.realm.settlementName.uppercase(),
+                            color = Gold,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.4.sp,
+                            maxLines = 1,
+                        )
+                        Text(
+                            "Tag ${state.day} · ${state.title}",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                        )
+                    }
+                    if (state.player.skillPoints > 0) {
+                        Surface(
+                            color = Gold.copy(alpha = .13f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = .25f)),
+                            modifier = Modifier.clickable {
+                                showMore = false
+                                screen = GameDestination.CHARACTER
+                            },
+                        ) {
+                            Text(
+                                "${state.player.skillPoints} SKILL",
+                                color = PaleGold,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                            )
+                        }
+                    }
+                    IconButton(onClick = { showTutorial = true }) {
+                        Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Muted)
+                    }
+                    IconButton(onClick = { showMore = !showMore }) {
+                        Icon(Icons.Outlined.MoreVert, "Menü", tint = Gold)
+                    }
                 }
-            }
+
+                ResourceStrip(state.resources, EconomyEngine.production(state).net)
+
+                val pendingCampaignDecision = state.campaign.pendingDecision
+                val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+                val warningText = when {
+                    pendingCampaignDecision != null ->
+                        "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
+                    nearestThreat != null ->
+                        "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
+                    state.war.wounded.isNotEmpty() ->
+                        "${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
+                    EconomyEngine.production(state).net.food < 0 ->
+                        "Nahrung ${EconomyEngine.production(state).net.food}/Tag"
+                    else -> null
+                }
+                if (warningText != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).clickable {
+                            showMore = false
+                            screen = when {
+                                pendingCampaignDecision != null -> GameDestination.DECISIONS
+                                nearestThreat != null -> GameDestination.FRONTIER
+                                state.war.wounded.isNotEmpty() -> GameDestination.HOSPITAL
+                                else -> GameDestination.CITY
+                            }
+                        },
+                        color = Color(0xFF221719),
+                        shape = RoundedCornerShape(13.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Danger.copy(alpha = .28f)),
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Box(Modifier.size(6.dp).background(Danger, RoundedCornerShape(6.dp)))
+                            Text(
+                                warningText,
+                                color = PaleGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                            )
+                            Text("›", color = Gold, fontSize = 18.sp)
+                        }
+                    }
+                }
             }
         },
         bottomBar = {
             val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
             val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
-            NavigationBar(containerColor = Panel, modifier = Modifier.navigationBarsPadding()) {
-                NavigationBarItem(
-                    selected = !showMore && realmSelected,
-                    onClick = { showMore = false; screen = GameDestination.COMMAND },
-                    icon = { Icon(Icons.Outlined.Castle, null) },
-                    label = { Text("Reich") },
-                )
-                NavigationBarItem(
-                    selected = !showMore && screen == GameDestination.CITY,
-                    onClick = { showMore = false; screen = GameDestination.CITY },
-                    icon = { Icon(Icons.Outlined.LocationCity, null) },
-                    label = { Text("Stadt") },
-                )
-                NavigationBarItem(
-                    selected = !showMore && armySelected,
-                    onClick = { showMore = false; screen = GameDestination.MILITARY },
-                    icon = { Icon(Icons.Outlined.Shield, null) },
-                    label = { Text("Heer") },
-                )
-                NavigationBarItem(
-                    selected = !showMore && screen == GameDestination.WORLD,
-                    onClick = { showMore = false; screen = GameDestination.WORLD },
-                    icon = { Icon(Icons.Outlined.Public, null) },
-                    label = { Text("Welt") },
-                )
-                NavigationBarItem(
-                    selected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD)),
-                    onClick = { showMore = true },
-                    icon = { Icon(Icons.Outlined.HelpOutline, null) },
-                    label = { Text("Mehr") },
-                )
+            val itemColors = NavigationBarItemDefaults.colors(
+                selectedIconColor = Gold,
+                selectedTextColor = PaleGold,
+                indicatorColor = Gold.copy(alpha = .11f),
+                unselectedIconColor = Muted,
+                unselectedTextColor = Muted,
+            )
+            Surface(
+                color = Stone,
+                shadowElevation = 12.dp,
+                tonalElevation = 0.dp,
+                modifier = Modifier.navigationBarsPadding(),
+            ) {
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.heightIn(min = 70.dp),
+                ) {
+                    NavigationBarItem(
+                        selected = !showMore && realmSelected,
+                        onClick = { showMore = false; screen = GameDestination.COMMAND },
+                        icon = { Icon(Icons.Outlined.Castle, null) },
+                        label = { Text("Reich", fontSize = 10.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Bold else FontWeight.Normal) },
+                        colors = itemColors,
+                    )
+                    NavigationBarItem(
+                        selected = !showMore && screen == GameDestination.CITY,
+                        onClick = { showMore = false; screen = GameDestination.CITY },
+                        icon = { Icon(Icons.Outlined.LocationCity, null) },
+                        label = { Text("Stadt", fontSize = 10.sp) },
+                        colors = itemColors,
+                    )
+                    NavigationBarItem(
+                        selected = !showMore && armySelected,
+                        onClick = { showMore = false; screen = GameDestination.MILITARY },
+                        icon = { Icon(Icons.Outlined.Shield, null) },
+                        label = { Text("Heer", fontSize = 10.sp) },
+                        colors = itemColors,
+                    )
+                    NavigationBarItem(
+                        selected = !showMore && screen == GameDestination.WORLD,
+                        onClick = { showMore = false; screen = GameDestination.WORLD },
+                        icon = { Icon(Icons.Outlined.Public, null) },
+                        label = { Text("Welt", fontSize = 10.sp) },
+                        colors = itemColors,
+                    )
+                    NavigationBarItem(
+                        selected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD)),
+                        onClick = { showMore = true },
+                        icon = { Icon(Icons.Outlined.MoreVert, null) },
+                        label = { Text("Mehr", fontSize = 10.sp) },
+                        colors = itemColors,
+                    )
+                }
             }
         },
     ) { padding ->

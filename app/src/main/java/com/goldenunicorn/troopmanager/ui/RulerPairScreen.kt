@@ -82,18 +82,39 @@ internal fun RulerPairScreen(
         modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { PageTitle("HERRSCHERPAAR", if (state.companion.met) state.relationshipStage() else "Eine gemeinsame Geschichte beginnt") }
-        item {
-            RulerCard {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    RulerPortrait(state.player.portraitUri, "knight", state.player.name, Modifier.weight(1f))
-                    if (state.companion.met) RulerPortrait(state.companion.portraitUri, "companion", state.companion.name, Modifier.weight(1f))
+        item { RulerPairHero(state) }
+        if (state.companion.met) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatusMetric(
+                        "Vertrauen",
+                        "${state.companion.trust}",
+                        Modifier.weight(1f),
+                        accent = Success,
+                        supporting = if (state.companion.trust >= 70) "sehr hoch" else if (state.companion.trust >= 45) "stabil" else "fragil",
+                    )
+                    StatusMetric(
+                        "Nähe",
+                        "${state.companion.affection}",
+                        Modifier.weight(1f),
+                        accent = Gold,
+                        supporting = derivedRelationshipMood(state).replaceFirstChar { it.uppercase() },
+                    )
+                    StatusMetric(
+                        "Konflikt",
+                        "${state.relationship.conflict}",
+                        Modifier.weight(1f),
+                        accent = if (state.relationship.conflict >= 60) Danger else Success,
+                        supporting = if (state.relationship.conflict >= 60) "angespannt" else "beherrschbar",
+                    )
                 }
-                Text("${state.player.name} · ${state.title} · ${presence.player.location.label}", color = PaleGold)
-                if (state.companion.met) {
-                    Text("${state.companion.name} · ${state.companion.role} · ${presence.companion.location.label}", color = Gold)
-                    Text("${derivedRelationshipMood(state).replaceFirstChar { it.uppercase() }} · ${presence.companion.detail}", color = Mist, fontSize = 12.sp)
-                } else Text("Ab Tag 5 kann sich eine erfahrene Gefährtin deiner Grenzfeste anschließen.", color = Mist)
+            }
+        } else {
+            item {
+                PremiumPanel {
+                    Text("EINE GEMEINSAME GESCHICHTE BEGINNT", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Text("Ab Tag 5 kann sich eine erfahrene Gefährtin deiner Grenzfeste anschließen.", color = Mist, fontSize = 12.sp)
+                }
             }
         }
         item {
