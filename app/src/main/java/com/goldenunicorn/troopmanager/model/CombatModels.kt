@@ -33,6 +33,7 @@ data class FortificationSegmentState(
     val rangedOrder: RangedOrder = RangedOrder.NORMAL,
     val gateOpen: Boolean = false,
     val fallenBack: Boolean = false,
+    val devicePriority: Boolean = false,
 )
 
 @Serializable
@@ -46,6 +47,7 @@ data class SiegeDeviceState(
     val crew: Int = 20,
     val disabled: Boolean = false,
     val detected: Boolean = true,
+    val ammunition: Int = -1,
 )
 
 /** Persisted enemy formations are the sole source of enemy personnel attacks. */
@@ -85,6 +87,8 @@ data class FrontExchangeReport(
     val gateDamage: Int = 0,
     val arrowsUsed: Int = 0,
     val enemyArrowsUsed: Int = 0,
+    val deviceDamage: Int = 0,
+    val artilleryChargesUsed: Int = 0,
 )
 
 @Serializable

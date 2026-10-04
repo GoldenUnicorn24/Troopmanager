@@ -9,7 +9,7 @@ object BattleStateEngine {
 
     fun initialize(state: GameState, battle: BattleSession): BattleSession {
         if (battle.combatVersion >= 2 && battle.segments.size == 3 && battle.battleArrowsRemaining >= 0 &&
-            battle.enemyArrowsRemaining >= 0 && battle.enemyRoster.isNotEmpty()) return battle
+            battle.enemyArrowsRemaining >= 0 && battle.battleArtilleryRemaining >= 0 && battle.enemyArtilleryRemaining >= 0 && battle.enemyRoster.isNotEmpty() && battle.siegeDevices.all { it.ammunition >= 0 }) return battle
         val allocations = battle.enemyUnits.ifEmpty { generateRoster(battle.enemy, battle.enemyStart, battle.seed) }
         val roster = battle.enemyRoster.ifEmpty {
             var available = allocations.map { it.amount }.toMutableList()
@@ -62,10 +62,18 @@ object BattleStateEngine {
         val enemyShooters = roster.filter { it.type.ranged >= 8 && it.type != UnitType.DRAGON_ARTILLERY }.sumOf { it.soldiers.toLong() }
         val enemyArrows = if (battle.enemyArrowsRemaining >= 0) battle.enemyArrowsRemaining
             else (enemyShooters * (8 - battle.step).coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val artilleryLoad = ((battle.contingents.filter { it.type == UnitType.DRAGON_ARTILLERY }.sumOf { it.startSoldiers.toLong() } + 9) / 10 * 6).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        val ownArtillery = if (battle.battleArtilleryRemaining >= 0) battle.battleArtilleryRemaining
+            else (artilleryLoad.toLong() * (6 - battle.step).coerceAtLeast(0) / 6).toInt()
+        val enemyArtillery = if (battle.enemyArtilleryRemaining >= 0) battle.enemyArtilleryRemaining else
+            ((roster.filter { it.type == UnitType.DRAGON_ARTILLERY }.sumOf { it.soldiers.toLong() } + 9) / 10 * (8 - battle.step).coerceAtLeast(0)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         return battle.copy(combatVersion = 2, enemyUnits = allocations, enemyRoster = roster,
-            segments = segments, siegeDevices = siegeDevices, battleArrowsRemaining = ownArrows,
+            segments = segments, battleArrowsRemaining = ownArrows,
             battleArrowsLoaded = if (battle.battleArrowsRemaining < 0) legacyLoad else battle.battleArrowsLoaded,
-            enemyArrowsRemaining = enemyArrows)
+            enemyArrowsRemaining = enemyArrows, battleArtilleryRemaining = ownArtillery,
+            battleArtilleryLoaded = if (battle.battleArtilleryRemaining < 0) artilleryLoad else battle.battleArtilleryLoaded,
+            enemyArtilleryRemaining = enemyArtillery,
+            siegeDevices = siegeDevices.map { if (it.ammunition >= 0) it else it.copy(ammunition = if (it.type == SiegeDevice.CATAPULT) (8 - battle.step).coerceAtLeast(0) else 0) })
     }
 
     fun generateRoster(enemy: EnemyType, strength: Int, seed: Int): List<UnitAllocation> {
@@ -104,7 +112,8 @@ object BattleStateEngine {
             battle.segments.all { it.integrity in 0..100 && it.gateIntegrity in 0..100 && it.cover.isFinite() && it.cover in 0.0..0.85 &&
                 it.assaultProgress in 0..100 && it.assaultWidth in 0..180 && it.breachWidth in 0..180 && it.fire in 0..100 }) { "Ungültige Mauersegmente." }
         require(battle.siegeDevices.map { it.id }.distinct().size == battle.siegeDevices.size && battle.siegeDevices.size <= 24 &&
-            battle.siegeDevices.all { it.section in sections && it.integrity in 0..100 && it.distance in 0..400 && it.progress in 0..100 && it.crew in 0..1000 && (!it.disabled || it.integrity >= 0) }) { "Ungültige Belagerungsgeräte." }
+            battle.siegeDevices.all { it.section in sections && it.integrity in 0..100 && it.distance in 0..400 && it.progress in 0..100 && it.crew in 0..1000 && it.ammunition in 0..100 && (!it.disabled || it.integrity >= 0) }) { "Ungültige Belagerungsgeräte." }
+        require(battle.battleArtilleryRemaining in 0..battle.battleArtilleryLoaded && battle.enemyArtilleryRemaining >= 0)
         require(battle.battleArrowsRemaining in 0..battle.battleArrowsLoaded && battle.enemyArrowsRemaining >= 0 && battle.personalSection in sections) { "Ungültige Schlachtmunition." }
         require(battle.contingents.all { it.cohesion in 0..100 && it.fatigue in 0..100 } &&
             battle.fronts.all { it.cohesion in 0..100 && it.fatigue in 0..100 && it.enemyDistance in 0..400 }) { "Ungültige taktische Zustände." }
@@ -113,7 +122,7 @@ object BattleStateEngine {
         battle.fronts.forEach { front -> require(battle.enemyRoster.filter { it.section == front.section }.sumOf { it.soldiers.toLong() } == front.enemySoldiers.toLong()) { "Gegnerformationen stimmen nicht mit der Front überein." } }
         require(battle.exchanges.size <= 20 && battle.exchanges.all { report -> report.minute in 0..95 &&
             report.fronts.all { it.preventedLosses.isFinite() && it.preventedLosses >= 0 && it.frontage >= 0 && it.ownActive >= 0 && it.enemyActive >= 0 &&
-                it.arrowsUsed >= 0 && it.enemyArrowsUsed >= 0 && listOf(it.ownDamage.ranged, it.ownDamage.melee, it.ownDamage.splash, it.enemyDamage.ranged,
+                it.arrowsUsed >= 0 && it.enemyArrowsUsed >= 0 && it.deviceDamage >= 0 && it.artilleryChargesUsed >= 0 && listOf(it.ownDamage.ranged, it.ownDamage.melee, it.ownDamage.splash, it.enemyDamage.ranged,
                     it.enemyDamage.melee, it.enemyDamage.splash, it.enemyDamage.wallWeapons).all { value -> value >= 0 } } }) { "Ungültiger Austauschbericht." }
     }
 }

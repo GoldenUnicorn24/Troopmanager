@@ -9,8 +9,8 @@ object BattleAiEngine {
         val devices = battle.siegeDevices.filter { it.section == front.section && !it.disabled && it.crew > 0 }
         if (devices.any { it.type == SiegeDevice.RAM && it.distance == 0 }) return BattleAiIntent.GATE
         if (battle.segment(front.section)?.contactState?.allowsMelee == true) return BattleAiIntent.ASSAULT
-        if (battle.enemy == EnemyType.URUK && devices.any { it.type == SiegeDevice.CATAPULT }) return BattleAiIntent.ARTILLERY
+        if (battle.enemy == EnemyType.URUK && devices.any { it.type == SiegeDevice.CATAPULT && it.ammunition > 0 }) return BattleAiIntent.ARTILLERY
         val shooters = battle.enemyRoster.filter { it.section == front.section && it.type.ranged >= 8 }.sumOf { it.soldiers }
-        return if (shooters * 2 > front.enemySoldiers && front.enemyDistance <= 200) BattleAiIntent.MISSILES else BattleAiIntent.APPROACH
+        return if ((battle.enemyArrowsRemaining > 0 || battle.enemyArtilleryRemaining > 0) && shooters * 2 > front.enemySoldiers && front.enemyDistance <= 200) BattleAiIntent.MISSILES else BattleAiIntent.APPROACH
     }
 }

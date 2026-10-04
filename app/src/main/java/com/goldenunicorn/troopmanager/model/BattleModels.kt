@@ -204,6 +204,10 @@ data class BattleSession(
     val weaponChargesUsed: Map<WallWeaponType, Int> = emptyMap(),
     val wallWeaponReports: Map<BattleSection, Int> = emptyMap(),
     val wallWeapons: List<WallWeaponStock> = emptyList(),
+    val battleArtilleryRemaining: Int = -1,
+    val battleArtilleryLoaded: Int = 0,
+    val enemyArtilleryRemaining: Int = -1,
+    val counterTunnelUnlocked: Boolean = false,
 ) {
     val tacticalStageLabel: String
         get() = when {

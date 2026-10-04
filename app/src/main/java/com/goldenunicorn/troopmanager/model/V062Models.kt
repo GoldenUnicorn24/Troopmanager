@@ -77,10 +77,10 @@ enum class ResearchTech(
 ) {
     CROP_ROTATION("Fruchtfolge", "+8 % Nahrungsproduktion.", ResearchBranch.AGRICULTURE, 8, 450),
     FIELD_MEDICINE("Feldmedizin", "Mehr Verwundete überleben und erholen sich schneller.", ResearchBranch.LOGISTICS, 10, 650),
-    SUPPLY_TRAINS("Versorgungskolonnen", "Feldheere verbrauchen weniger Nahrung.", ResearchBranch.LOGISTICS, 10, 700),
+    SUPPLY_TRAINS("Versorgungskolonnen", "Feldheere verbrauchen weniger Nahrung; Außenposten beladen größere Vorräte.", ResearchBranch.LOGISTICS, 10, 700),
     FORGE_STANDARDIZATION("Standardisierte Schmieden", "Arsenal produziert mehr Schwerter und Rüstungen.", ResearchBranch.ENGINEERING, 12, 850, 120),
     COMPOSITE_BOWS("Verbundbögen", "Verbessert Fernkampfkraft und Bogenproduktion.", ResearchBranch.ENGINEERING, 12, 900, 100),
-    SIEGE_ENGINEERING("Belagerungsingenieurwesen", "Belagerungsteile werden effizienter hergestellt.", ResearchBranch.ENGINEERING, 14, 1100, 180),
+    SIEGE_ENGINEERING("Belagerungsingenieurwesen", "Effizientere Belagerungsteile; schaltet Gegen-Tunnel-Befehle frei.", ResearchBranch.ENGINEERING, 14, 1100, 180),
     OFFICER_CORPS("Professionelles Offizierskorps", "Kommandanten entwickeln sich schneller.", ResearchBranch.DIPLOMACY, 12, 900),
     CIVIC_ADMINISTRATION("Reichsverwaltung", "Mehr Wohlstand und bessere Steuerstabilität.", ResearchBranch.DIPLOMACY, 10, 800),
 }

@@ -45,7 +45,7 @@ object OutpostEngine {
         val suppliedAlly = original.factionId != PLAYER_FACTION &&
             DiplomacyEngine.hasTreaty(state, PLAYER_FACTION, original.factionId, TreatyKind.DEFENSIVE_ALLIANCE)
         if (original.factionId == PLAYER_FACTION || suppliedAlly) {
-            val wanted = (original.dailyFood.toLong() * (post.level + 1) - original.supplyFood).coerceAtLeast(0)
+            val wanted = (original.dailyFood.toLong() * (post.level + 1 + if (original.factionId == PLAYER_FACTION && ResearchTech.SUPPLY_TRAINS in state.research.completed) 2 else 0) - original.supplyFood).coerceAtLeast(0)
             val taken = minOf(wanted, post.stores.toLong()).toInt()
             val resting = original.status == WorldArmyStatus.HOLDING && post.level >= 2 && original.supplyFood + taken >= original.dailyFood && original.lastOutpostRestDay < state.day
             val army = original.copy(supplyFood = (original.supplyFood.toLong() + taken).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),

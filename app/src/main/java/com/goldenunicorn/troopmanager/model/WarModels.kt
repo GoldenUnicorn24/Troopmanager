@@ -109,6 +109,9 @@ data class BattleReplayStart(
     val personalSection: BattleSection = BattleSection.CENTER,
     val militaryStock: MilitaryStock = MilitaryStock(),
     val research: ResearchState = ResearchState(),
+    val artilleryLoaded: Int = -1,
+    val enemyArtilleryLoaded: Int = -1,
+    val counterTunnelUnlocked: Boolean = false,
 )
 
 @Serializable

@@ -311,7 +311,7 @@ internal fun MissionPreparationDialog(
                             }
                         }
                         Text("$leaderCount / 3 Führungspersonen gewählt", color = Gold, fontSize = 12.sp)
-                        MissionExperienceEngine.roleLabels(state, commanderIds, playerParticipates).forEach {
+                        MissionExperienceEngine.roleLabels(state, commanderIds.toList(), playerParticipates).forEach {
                             Text(it, color = Mist, fontSize = 12.sp)
                         }
                         Text("Mitgenommene Soldaten fehlen in der Heimat. Dauerhafte Kommandantenzuweisungen werden für die Reise freigegeben; Rückkehr benötigt einen echten Rückmarsch.", color = PaleGold, fontSize = 12.sp)

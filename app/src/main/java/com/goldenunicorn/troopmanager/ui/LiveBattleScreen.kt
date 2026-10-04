@@ -10,6 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +71,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                         Text("−${front.ownDamage.total} eigene / −${front.enemyDamage.total} Gegner · aktive Linie ${front.ownActive}/${front.enemyActive} · Breite ${front.frontage}", color = Mist, fontSize = 12.sp)
                                         Text("Eigene Ausfälle: ${front.ownDamage.ranged} Pfeile · ${front.ownDamage.melee} Nahkampf · ${front.ownDamage.splash} Splitter", color = Mist, fontSize = 12.sp)
                                         Text("Deckung verhinderte rechnerisch ${String.format(java.util.Locale.GERMAN, "%.1f", front.preventedLosses)} weitere Ausfälle · ${front.arrowsUsed} Pfeile verbraucht", color = Success, fontSize = 12.sp)
+                                        if (front.deviceDamage + front.artilleryChargesUsed > 0) Text("Geräteschaden ${front.deviceDamage} · Artillerieladungen ${front.artilleryChargesUsed}", color = ModernBlue, fontSize = 12.sp)
                                         if (front.structuralDamage + front.gateDamage > 0) Text("Mauer −${front.structuralDamage} · Tor −${front.gateDamage}", color = Danger, fontSize = 12.sp)
                                     }
                                     report.events.forEach { Text(it, color = Mist, fontSize = 12.sp) }
@@ -127,21 +131,22 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
             }
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Ink).testTag("battle_screen")) {
         val compact = maxHeight < 450.dp
-        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth().height(if (compact) 42.dp else 54.dp), verticalAlignment = Alignment.CenterVertically,
+        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
+            Row(Modifier.fillMaxWidth().height(if (compact) 22.dp else 54.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                BattleHudValue("HEER", battle.ownRemaining.toString(), Gold)
-                BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger)
-                BattleHudValue("MIN", "${battle.minute}′", Color.White)
-                BattleHudValue("MORAL", "${battle.morale}%", Success)
-                BattleHudValue("BEFEHLE", "${battle.commandPoints} BP", ModernBlue)
+                BattleHudValue("HEER", battle.ownRemaining.toString(), Gold, compact)
+                BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger, compact)
+                BattleHudValue("MIN", "${battle.minute}′", Color.White, compact)
+                BattleHudValue("MORAL", "${battle.morale}%", Success, compact)
+                BattleHudValue("BEFEHLE", "${battle.commandPoints} BP", ModernBlue, compact)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 BattleStateEngine.sections.forEach { section ->
                     val segment = battle.segment(section)
-                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    val highlighted = selected == section
+                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
                         color = if (selected == section) Panel2 else Panel, shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(if (selected == section) 2.dp else 0.dp, if (selected == section) ModernBlue else Color.Transparent)) {
                         Column(Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) {
@@ -152,33 +157,33 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     }
                 }
             }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            Box(Modifier.weight(1f).fillMaxWidth().testTag("battle_field")) {
                 SessionBattleField(battle, state.settings.animations, state.settings.battleSpeed, battle.wallWeapons,
                     Modifier.fillMaxSize(), selected) { selected = it }
                 battle.pendingEvent?.let { event ->
                     Surface(modifier = Modifier.align(Alignment.Center).fillMaxWidth(.93f), color = Panel2.copy(alpha = .97f),
                         shape = RoundedCornerShape(22.dp), border = androidx.compose.foundation.BorderStroke(1.dp, ModernBlue.copy(alpha = .7f))) {
                         Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(event.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2)
+                            Text(event.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                             if (!compact) Text(event.text, color = Mist, fontSize = 12.sp, maxLines = 3)
-                            event.options.take(2).forEach { order ->
+                            event.options.take(if (compact) 1 else 2).forEach { order ->
                                 OutlinedButton(onClick = { execute(order) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                                    enabled = battle.commandPoints >= BattleEngine.orderCost(battle, order)) {
+                                    enabled = battle.commandPoints >= BattleEngine.orderCost(battle, order) && BattleEngine.canOrder(battle, order, event.section)) {
                                     Text("${order.label} · ${BattleEngine.orderCost(battle, order)} BP", maxLines = 1, fontSize = 12.sp)
                                 }
                             }
-                            if (event.options.size > 2) TextButton(onClick = { sheet = "orders" }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Weitere Reaktionen") }
+                            if (event.options.size > if (compact) 1 else 2) TextButton(onClick = { sheet = "orders" }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Weitere Reaktionen") }
                         }
                     }
                 }
             }
             Surface(color = Panel, shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 0.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     val report = battle.lastReport(selected)
                     val segment = battle.segment(selected)
                     val active = report?.ownActive ?: 0
                     val secondLine = (battle.fighting(selected) - active).coerceAtLeast(0)
-                    Text(if (!battle.isActive) battle.outcomeGrade?.label ?: "Schlacht beendet" else
+                    if (!compact) Text(if (!battle.isActive) battle.outcomeGrade?.label ?: "Schlacht beendet" else
                         "${selected.label} · $active aktiv · $secondLine zweite Linie · ${battle.battleArrowsRemaining} Pfeile", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (!compact) Text(if (report == null) "${segment?.contactState?.label ?: battle.tacticalStageLabel} · Reserve ${battle.fighting(BattleSection.RESERVE)}" else
                         "−${report.ownDamage.total} eigene / −${report.enemyDamage.total} Gegner · Deckung verhinderte ≈${report.preventedLosses.toInt()} Ausfälle", color = Mist, fontSize = 11.sp, maxLines = 1)
@@ -201,7 +206,11 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
 }
 
 @Composable
-private fun BattleHudValue(label: String, value: String, accent: Color) {
+private fun BattleHudValue(label: String, value: String, accent: Color, compact: Boolean = false) {
+    if (compact) {
+        Text("${label.take(3)} $value", color = accent, fontSize = 11.sp, maxLines = 1)
+        return
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, color = accent, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Text(label, color = Mist, fontSize = 8.sp)
@@ -215,6 +224,7 @@ internal fun BattlePreparationSummary(state: GameState, battle: BattleSession) {
     PremiumPanel {
         Text("VERSORGUNG & FESTUNG", color = Color.White, fontWeight = FontWeight.Bold)
         Text(if (shooters == 0) "Keine Bogenschützen aufgestellt" else "${battle.battleArrowsRemaining} Pfeile · voraussichtlich $exchanges Austausche mit Normalfeuer", color = if (shooters > 0 && exchanges < 3) Danger else Mist)
+        Text("Artillerie: ${battle.battleArtilleryRemaining} Ladungen · Gegen-Tunnel ${if (battle.counterTunnelUnlocked) "freigeschaltet" else "benötigt Belagerungsforschung oder erfahrene Führung"}", color = Mist, fontSize = 12.sp)
         Text("Lazarett ${state.war.wounded.sumOf { it.soldiers }}/${WarEngine.hospitalCapacity(state)} · ${state.militaryStock.medicine} Heilmittel", color = Mist, fontSize = 12.sp)
         Text("${state.awayArmySize} Soldaten fehlen zu Hause · Reserve ${battle.fighting(BattleSection.RESERVE)}", color = Mist, fontSize = 12.sp)
         if (state.resources.food == 0) Text("Hunger: weniger Kampfkraft, Moral und Kohäsion gefährdet", color = Danger)
@@ -234,6 +244,8 @@ private fun BattleAfterAction(state: GameState, battle: BattleSession) {
         }
         Text("Belagerungsgeräte: ${battle.siegeDevices.count { it.disabled }} ausgeschaltet / ${battle.siegeDevices.count { !it.disabled }} verbleiben", color = Mist, fontSize = 12.sp)
         Text("Kriegsmüdigkeit ${state.society.warExhaustion}% · Zufriedenheit ${state.city.satisfaction}%", color = ModernBlue, fontSize = 12.sp)
+        Text("${battle.battleArtilleryLoaded - battle.battleArtilleryRemaining} Artillerieladungen verbraucht", color = Mist, fontSize = 12.sp)
+        state.war.history.lastOrNull { it.seed == battle.seed && it.day == state.day }?.aftermath?.forEach { Text(it, color = ModernBlue, fontSize = 12.sp) }
         battle.commanderEvents.forEach { Text(it, color = Mist, fontSize = 12.sp) }
     }
 }
@@ -243,7 +255,7 @@ private fun BattleOrderExplanation(order: BattleDecision): String = when (order)
     BattleDecision.NORMAL_FIRE -> "Schützen nehmen Normalfeuer wieder auf."
     BattleDecision.ARROW_VOLLEY -> "Lokaler Burst; dreifacher Pfeilverbrauch und Moralwirkung."
     BattleDecision.FOCUS_FIRE, BattleDecision.FOCUS_ARCHERS -> "Konzentriert lokale Schützen; höherer Verbrauch bei Fokusfeuer."
-    BattleDecision.PRIORITIZE_DEVICES -> "Mauerwaffen zielen zuerst auf Geräte in diesem Abschnitt."
+    BattleDecision.PRIORITIZE_DEVICES -> "Schützen und Mauerwaffen zielen auf lokale Geräte; weniger Beschuss auf Infanterie."
     BattleDecision.REPEL_LADDERS -> "Bremst Leitern und Kletterer an der Mauer."
     BattleDecision.FIRE_OIL -> "Verbraucht reale Ölladungen; wirkt nur in Mauernähe."
     BattleDecision.COUNTER_TUNNEL -> "Personal beschädigt einen entdeckten Tunnel."
@@ -252,6 +264,6 @@ private fun BattleOrderExplanation(order: BattleDecision): String = when (order)
     BattleDecision.FALL_BACK_COURTYARD -> "Verlässt die Mauer; Straßenengpässe bleiben erhalten."
     BattleDecision.ORDERED_RETREAT -> "Beendet den Kampf; weniger Vermisste und Gefangene."
     BattleDecision.RESCUE_COMMANDER -> "20 Reservisten bergen den lokal verwundeten Anführer."
-    BattleDecision.ARTILLERY_TARGET -> "Beschädigt ein tatsächliches Gerät; braucht lokale Artillerie."
+    BattleDecision.ARTILLERY_TARGET -> "Beschädigt ein tatsächliches Gerät; braucht lokale Artillerie und reale Ladungen."
     else -> "${order.label} am gewählten Abschnitt."
 }

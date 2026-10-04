@@ -22,8 +22,12 @@ object SiegeEngine {
         }
         val crewAvailable = fronts.associate { front -> front.section to original.enemyRoster.filter {
             it.section == front.section && it.type.ranged < 8 }.sumOf { it.soldiers } }.toMutableMap()
+        val artilleryTarget = if (decision == BattleDecision.ARTILLERY_TARGET) original.siegeDevices.filter {
+            it.section == target && it.detected && !it.disabled && it.distance <= 320 }.maxByOrNull {
+                when (it.type) { SiegeDevice.TOWER -> 6; SiegeDevice.RAM -> 5; SiegeDevice.CATAPULT -> 4; SiegeDevice.TUNNEL -> 3; else -> 2 } }?.id else null
         var devices = original.siegeDevices.map { device ->
             if (device.disabled || device.integrity <= 0) device.copy(disabled = true)
+            else if (device.type == SiegeDevice.CATAPULT && device.ammunition == 0) device.copy(crew = 0)
             else {
                 val front = fronts.first { it.section == device.section }
                 val crew = minOf(device.crew, crewAvailable[device.section] ?: 0)
@@ -43,7 +47,13 @@ object SiegeEngine {
                         when (decision) {
                             BattleDecision.COUNTER_TUNNEL -> if (device.type == SiegeDevice.TUNNEL && detected) { progress = (progress - 35).coerceAtLeast(0); hp -= 30 + skill / 10 }
                             BattleDecision.REPEL_LADDERS -> if (device.type in listOf(SiegeDevice.LADDERS, SiegeDevice.CLIMBERS) && distance == 0) { progress = (progress - 35).coerceAtLeast(0); hp -= 18 }
-                            BattleDecision.ARTILLERY_TARGET -> { hp -= 25 + original.contingents.filter { it.section == target && it.type == UnitType.DRAGON_ARTILLERY }.sumOf { it.soldiers }.coerceAtMost(150) / 3; events += "Gezieltes Artilleriefeuer trifft ${device.type.label} am ${device.section.label}." }
+                            BattleDecision.ARTILLERY_TARGET -> if (device.id == artilleryTarget) {
+                                val crewCount = original.contingents.filter { it.section == target && it.type == UnitType.DRAGON_ARTILLERY && !it.routed }.sumOf { it.soldiers.toLong() }
+                                val required = ((crewCount + 9) / 10).coerceAtLeast(1)
+                                val supply = minOf(1.0, original.battleArtilleryRemaining.toDouble() / required)
+                                hp -= ((25 + crewCount.coerceAtMost(150) / 3) * supply).toInt()
+                                events += "Gezieltes Artilleriefeuer trifft ${device.type.label} am ${device.section.label}."
+                            }
                             else -> Unit
                         }
                     }
@@ -52,7 +62,7 @@ object SiegeEngine {
                         if (distance == 0) progress = (progress + when (device.type) {
                             SiegeDevice.LADDERS -> 30; SiegeDevice.CLIMBERS -> 45; SiegeDevice.TOWER -> 35; SiegeDevice.TUNNEL -> 15; else -> 0
                         }).coerceAtMost(100)
-                        if (device.type == SiegeDevice.CATAPULT) {
+                        if (device.type == SiegeDevice.CATAPULT && device.ammunition > 0) {
                             structural[device.section] = (structural[device.section] ?: 0) + 3 + crew / 10
                             splash[device.section] = (splash[device.section] ?: 0.0) + crew * .06
                         }
@@ -62,7 +72,8 @@ object SiegeEngine {
                             gateDamage[device.section] = (gateDamage[device.section] ?: 0) + (9 + crew / 10 - protection).coerceAtLeast(1)
                         }
                         if (device.type == SiegeDevice.TUNNEL && progress >= 100) structural[device.section] = (structural[device.section] ?: 0) + 28
-                        device.copy(distance = distance, progress = progress, crew = crew, integrity = hp.coerceIn(0, 100), detected = detected)
+                        device.copy(distance = distance, progress = progress, crew = crew, integrity = hp.coerceIn(0, 100), detected = detected,
+                            ammunition = if (device.type == SiegeDevice.CATAPULT) (device.ammunition - 1).coerceAtLeast(0) else device.ammunition)
                     }
                 }
             }
@@ -76,10 +87,12 @@ object SiegeEngine {
             var open = segment.gateOpen
             var fallenBack = segment.fallenBack
             var order = segment.rangedOrder
+            var priority = segment.devicePriority
             if (focus) {
                 when (decision) {
                     BattleDecision.HOLD_FIRE -> order = RangedOrder.HOLD
-                    BattleDecision.NORMAL_FIRE -> order = RangedOrder.NORMAL
+                    BattleDecision.NORMAL_FIRE -> { order = RangedOrder.NORMAL; priority = false }
+                    BattleDecision.PRIORITIZE_DEVICES -> priority = true
                     BattleDecision.OPEN_GATE -> open = true
                     BattleDecision.HOLD_GATE -> open = false
                     BattleDecision.FALL_BACK_COURTYARD -> fallenBack = true
@@ -94,7 +107,7 @@ object SiegeEngine {
             if (focus && decision == BattleDecision.COUNTERATTACK && front.position >= 50) progress = (progress - 30).coerceAtLeast(0)
             val assaultWidth = maxOf(segment.assaultWidth, assault.filter { it.progress >= 100 }.map {
                 if (it.type == SiegeDevice.TOWER) 45 else if (it.type == SiegeDevice.CLIMBERS) 12 else 8 }.sum())
-            val hasFort = fortified || original.enemyFortification > 0
+            val hasFort = fortified || original.segments.any { it.cover > 0 }
             val breach = if (hasFort && (integrity == 0 || segment.section == BattleSection.CENTER && gate == 0))
                 maxOf(segment.breachWidth, if (integrity == 0) 80 else 28) else segment.breachWidth
             val contact = when {
@@ -112,7 +125,7 @@ object SiegeEngine {
             if (segment.gateIntegrity > 0 && gate == 0 && segment.section == BattleSection.CENTER) events += "Das Tor bricht; nur das Zentrum ist geöffnet."
             if (segment.integrity > 0 && integrity == 0) events += "${segment.section.label}: Mauer bricht; eine Bresche öffnet sich."
             segment.copy(integrity = integrity, gateIntegrity = gate, assaultProgress = progress, assaultWidth = assaultWidth, breachWidth = breach,
-                contactState = contact, rangedOrder = order, gateOpen = open, fallenBack = fallenBack)
+                contactState = contact, rangedOrder = order, gateOpen = open, fallenBack = fallenBack, devicePriority = priority)
         }
         devices = devices.map { it.copy(disabled = it.disabled || it.integrity == 0) }
         val average = segments.sumOf { if (it.section == BattleSection.CENTER) (it.integrity + it.gateIntegrity) / 2 else it.integrity } / 3
