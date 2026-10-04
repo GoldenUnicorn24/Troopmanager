@@ -296,58 +296,85 @@ internal fun CampaignPulseCard(
         pulse.pressure >= 40 -> Gold
         else -> Success
     }
-    CommandCard("Kampagnenpuls", {}) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text("MOMENTUM · ${pulse.momentum}", color = momentumColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+
+    PremiumPanel(emphasized = pulse.pendingDecision != null) {
+        ModernSectionHeader(
+            eyebrow = "Campaign OS",
+            title = "Kampagnenpuls",
+        )
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("MOMENTUM", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("${pulse.momentum}", color = momentumColor, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
                 LinearProgressIndicator(
                     progress = { pulse.momentum / 100f },
-                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
                     color = momentumColor,
+                    trackColor = Color.White.copy(alpha = .07f),
                 )
             }
-            Column(Modifier.weight(1f)) {
-                Text("DRUCK · ${pulse.pressure}", color = pressureColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("DRUCK", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("${pulse.pressure}", color = pressureColor, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                }
                 LinearProgressIndicator(
                     progress = { pulse.pressure / 100f },
-                    modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
                     color = pressureColor,
+                    trackColor = Color.White.copy(alpha = .07f),
                 )
             }
         }
-        Text(
-            "Serie: ${pulse.streak} Tage · Bestwert ${pulse.bestStreak} · Fokus: ${pulse.focus.label}",
-            color = Mist,
-            fontSize = 11.sp,
-        )
 
-        Text("Reichsschwerpunkt", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            ModernPill("Serie ${pulse.streak} T.", ModernBlue)
+            ModernPill("Best ${pulse.bestStreak}", Gold)
+            ModernPill(pulse.focus.label, Success, filled = true)
+        }
+
+        Text("REICHSSCHWERPUNKT", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             CampaignFocus.entries.forEach { focus ->
-                FilterChip(
-                    selected = focus == pulse.focus,
-                    onClick = {
+                val active = focus == pulse.focus
+                Surface(
+                    modifier = Modifier.clickable {
                         val result = CampaignPulseEngine.setFocus(state, focus)
                         onState(result.state)
                         onNotice(result.message)
                     },
-                    label = { Text(focus.label) },
-                )
+                    color = if (active) Color.White else Color(0xFF121A22),
+                    shape = RoundedCornerShape(100.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (active) Color.White else Color.White.copy(alpha = .07f),
+                    ),
+                ) {
+                    Text(
+                        focus.label,
+                        color = if (active) Ink else Mist,
+                        fontSize = 9.sp,
+                        fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
-        Text(pulse.focus.description, color = Mist, fontSize = 11.sp)
+        Text(pulse.focus.description, color = Muted, fontSize = 10.sp)
 
         pulse.pendingDecision?.let { decision ->
-            HorizontalDivider(color = Gold.copy(alpha = .35f))
-            Text(decision.title, color = PaleGold, fontWeight = FontWeight.Bold)
-            Text(decision.text, color = Color.White, fontSize = 13.sp)
-            Text(
-                "Entscheidung bis Tag ${decision.expiresDay} · Druckstufe ${decision.intensity}",
-                color = pressureColor,
-                fontSize = 11.sp,
+            SituationCard(
+                eyebrow = "Entscheidung bis Tag ${decision.expiresDay}",
+                title = decision.title,
+                detail = decision.text,
+                urgent = true,
+                onClick = {},
             )
             CampaignPulseEngine.choices(state, decision).forEach { choice ->
                 SmallAction("${choice.label} · ${choice.detail}") {
@@ -357,21 +384,23 @@ internal fun CampaignPulseCard(
                 }
             }
         } ?: Text(
-            "Der Hof hat gerade keine akute Grundsatzfrage. Alle vier Tage entsteht aus deiner tatsächlichen Reichslage eine neue Entscheidung.",
-            color = Mist,
-            fontSize = 12.sp,
+            "Keine Grundsatzentscheidung offen. Der nächste Impuls entsteht automatisch aus Versorgung, Grenze, Volk und Regierung.",
+            color = Muted,
+            fontSize = 10.sp,
         )
 
-        if (pulse.prosperityDays > 0 || pulse.supplyReliefDays > 0 || pulse.defenseReadinessDays > 0) {
-            val active = buildList {
-                if (pulse.prosperityDays > 0) add("Wohlstand ${pulse.prosperityDays} T.")
-                if (pulse.supplyReliefDays > 0) add("Versorgung ${pulse.supplyReliefDays} T.")
-                if (pulse.defenseReadinessDays > 0) add("Bereitschaft ${pulse.defenseReadinessDays} T.")
-            }
-            Text("Aktive Folgen: ${active.joinToString(" · ")}", color = Success, fontSize = 11.sp)
+        val activeEffects = buildList {
+            if (pulse.prosperityDays > 0) add("Wohlstand ${pulse.prosperityDays} T.")
+            if (pulse.supplyReliefDays > 0) add("Versorgung ${pulse.supplyReliefDays} T.")
+            if (pulse.defenseReadinessDays > 0) add("Bereitschaft ${pulse.defenseReadinessDays} T.")
         }
-        pulse.recentOutcomes.lastOrNull()?.let {
-            Text("Zuletzt: $it", color = Gold, fontSize = 11.sp)
+        if (activeEffects.isNotEmpty()) {
+            Text(
+                "AKTIV · ${activeEffects.joinToString(" · ")}",
+                color = Success,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
