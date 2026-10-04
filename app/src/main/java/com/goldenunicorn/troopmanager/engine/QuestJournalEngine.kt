@@ -20,6 +20,16 @@ object QuestJournalEngine {
         state.society.story.pending?.let {
             add("story:${it.id}", it.title, it.text, JournalCategory.OPEN, GameDestination.DECISIONS, it.expiresDay)
         }
+        state.campaign.pendingDecision?.let {
+            add(
+                "campaign:${it.id}",
+                it.title,
+                it.text,
+                JournalCategory.OPEN,
+                GameDestination.DECISIONS,
+                it.expiresDay,
+            )
+        }
         state.pendingRealmEvent?.let {
             add("realm:${it.key}", it.title, it.category, JournalCategory.OPEN, GameDestination.DECISIONS)
         }
@@ -101,6 +111,7 @@ object QuestJournalEngine {
                 task.id.startsWith("wall-weapon:") -> "Mauerwaffe fertiggestellt"
                 task.id.startsWith("unit-training:") -> "Ausbildung abgeschlossen"
                 task.id.startsWith("patrol:") -> "Patrouille beendet"
+                task.id.startsWith("campaign:") -> "Herrscherentscheidung bearbeitet"
                 task.dueDay != null && task.dueDay <= state.day -> "Frist beendet"
                 else -> "Entscheidung bearbeitet"
             }
