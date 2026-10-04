@@ -32,6 +32,10 @@ internal fun ArmyScreen(
 ) {
     var tab by remember { mutableIntStateOf(0) }
     val visibleCultures = ArmyEngine.visibleCultures(state)
+    val dominantCulture =
+        visibleCultures.maxByOrNull { selected ->
+            UnitType.entries.filter { it.culture == selected }.sumOf { state.soldiers(it) }
+        } ?: Culture.HUMAN
     var culture by remember { mutableStateOf(visibleCultures.firstOrNull() ?: Culture.HUMAN) }
     var expandedCulture by remember { mutableStateOf<Culture?>(null) }
 
@@ -55,11 +59,41 @@ internal fun ArmyScreen(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            PageTitle(
-                "ARMEE",
-                "${state.armySize} Soldaten · ${state.trainingQueue.sumOf { it.amount }} in Ausbildung",
-            )
-            TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
+            Box(
+                Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(22.dp))
+            ) {
+                CategoryArt(dominantCulture, Modifier.fillMaxSize())
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            listOf(Color(0x22000000), Color(0xD9080C0F))
+                        )
+                    )
+                )
+                Column(
+                    Modifier.align(Alignment.BottomStart).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text("STREITKRÄFTE", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.8.sp)
+                    Text(
+                        "${state.armySize} Soldaten",
+                        color = Color.White,
+                        fontSize = 25.sp,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        "${state.homeArmySize} einsatzbereit · ${state.awayArmySize} unterwegs · ${state.war.wounded.sumOf { it.soldiers }} verwundet",
+                        color = Mist,
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+            TabRow(
+                selectedTabIndex = tab,
+                containerColor = Color.Transparent,
+                contentColor = Gold,
+                divider = { HorizontalDivider(color = Color.White.copy(alpha = .06f)) },
+            ) {
                 listOf("Übersicht", "Ausbildung", "Kommandanten").forEachIndexed { index, label ->
                     Tab(
                         selected = tab == index,
