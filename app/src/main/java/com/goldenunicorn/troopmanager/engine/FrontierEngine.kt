@@ -640,23 +640,35 @@ object FrontierEngine {
         val reports = updated.wallWeaponReports.toMutableMap()
         val charges = updated.weaponChargesUsed.toMutableMap()
         val weapons = state.frontier.weapons.map { original ->
-            val stock = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section)
-                original.copy(priority = WallWeaponPriority.DEVICES) else original
+            val plan = updated.plan
+            val priority = when (plan.wallWeaponPriority) {
+                WallTargetPriority.DEVICES -> WallWeaponPriority.DEVICES
+                WallTargetPriority.DENSE_GROUP -> WallWeaponPriority.INFANTRY
+                WallTargetPriority.HEAVY, WallTargetPriority.MONSTERS -> WallWeaponPriority.ELITES
+                else -> original.priority
+            }
+            val stock = original.copy(priority = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section)
+                WallWeaponPriority.DEVICES else priority)
             val front = updated.fronts.firstOrNull { it.section == stock.section }
             val range = when (stock.type) { WallWeaponType.BALLISTA -> 320; WallWeaponType.REPEATER -> 220; WallWeaponType.BLACK_POWDER -> 260; else -> 25 }
             val local = updated.siegeDevices.filter { it.section == stock.section && !it.disabled && it.detected && it.crew > 0 && it.distance <= range }
             val close = local.any { it.distance <= 25 } || (front?.enemyDistance ?: 400) <= 25
             val guards = updated.contingents.filter { it.section == stock.section && it.type == UnitType.CRANE_GUARD && it.soldiers > 0 && !it.routed }
             val manual = decision == BattleDecision.FIRE_OIL && section == stock.section && stock.type == WallWeaponType.FIRE_OIL
-            val blocked = updated.segment(stock.section)?.rangedOrder == RangedOrder.HOLD && !manual
-            if (stock.reloadRounds > 0) stock.copy(reloadRounds = stock.reloadRounds - 1)
+            val blocked = (updated.segment(stock.section)?.rangedOrder == RangedOrder.HOLD && !manual) ||
+                front?.intent == BattleAiIntent.WITHDRAW ||
+                (plan.wallWeaponPriority == WallTargetPriority.FRONT && stock.section != plan.wallWeaponFront) ||
+                (plan.doctrine == BattleDoctrine.KILL_ZONE && (front?.enemyDistance ?: 400) > 110 && !manual) ||
+                (plan.ammunitionPolicy == AmmunitionPolicy.SPARING && updated.step % 2 == 1 && !manual)
+            val resultStock = if (stock.reloadRounds > 0) stock.copy(reloadRounds = stock.reloadRounds - 1)
             else if (stock.count <= 0 || stock.ammunition <= 0 || stock.integrity <= 0 || front == null || front.enemySoldiers == 0 || blocked ||
                 (!stock.automatic && !manual) || ((front.enemyDistance > range) && local.isEmpty()) ||
                 (stock.type in listOf(WallWeaponType.FIRE_OIL, WallWeaponType.CRANE_WINCH) && !close) ||
                 (stock.type == WallWeaponType.CRANE_WINCH && guards.isEmpty()) ||
                 (stock.priority == WallWeaponPriority.DEVICES && local.isEmpty())) stock
             else {
-                val shots = minOf(stock.count, stock.ammunition, if (stock.type == WallWeaponType.CRANE_WINCH) (guards.sumOf { it.soldiers } / 5).coerceAtLeast(1) else Int.MAX_VALUE)
+                val volume = if (plan.ammunitionPolicy == AmmunitionPolicy.VOLLEY && stock.type in listOf(WallWeaponType.BALLISTA, WallWeaponType.REPEATER, WallWeaponType.BLACK_POWDER)) 2 else 1
+                val shots = minOf((stock.count.toLong() * volume).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), stock.ammunition, if (stock.type == WallWeaponType.CRANE_WINCH) (guards.sumOf { it.soldiers } / 5).coerceAtLeast(1) else Int.MAX_VALUE)
                 val raw = shots.toDouble() * stock.type.defense * stock.integrity / 200.0
                 val prefersDevice = stock.priority == WallWeaponPriority.DEVICES ||
                     stock.priority == WallWeaponPriority.AUTO && stock.type in listOf(WallWeaponType.BALLISTA, WallWeaponType.BLACK_POWDER, WallWeaponType.FIRE_OIL)
@@ -675,11 +687,11 @@ object FrontierEngine {
                 val dealt = minOf(front.enemySoldiers, BattleResolutionEngine.stochasticRound(infantryPower, rng))
                 val fronts = updated.fronts.map { if (it.section == stock.section) it.copy(enemySoldiers = it.enemySoldiers - dealt,
                     morale = (it.morale - if (stock.type == WallWeaponType.BLACK_POWDER && dealt > 0) 4 else 0).coerceAtLeast(0)) else it }
-                val enemyRoster = if (stock.priority == WallWeaponPriority.ELITES) {
+                val enemyRoster = if (stock.priority == WallWeaponPriority.ELITES || plan.wallWeaponPriority == WallTargetPriority.DENSE_GROUP) {
                     val localUnits = updated.enemyRoster.filter { it.section == stock.section }
                     val allocation = BattleResolutionEngine.allocate(dealt, localUnits.map { it.soldiers }, localUnits.map {
-                        val quality = (it.type.attack + it.type.defense + it.type.ranged).toDouble()
-                        it.soldiers * quality * quality
+                        BattleResolutionEngine.targetWeight(it.type, it.soldiers,
+                            when (plan.wallWeaponPriority) { WallTargetPriority.MONSTERS -> TargetPriority.MONSTERS; WallTargetPriority.DENSE_GROUP -> TargetPriority.LARGEST; else -> TargetPriority.ELITE }, updated.enemy)
                     })
                     updated.enemyRoster.map { unit ->
                         val index = localUnits.indexOf(unit)
@@ -699,8 +711,11 @@ object FrontierEngine {
                     } else updated.contingents,
                     log = (updated.log + BattleLogEntry(updated.minute + 5, text, enemyLosses = dealt)).takeLast(60),
                     lastSounds = (updated.lastSounds + if (stock.type == WallWeaponType.FIRE_OIL) BattleSoundCue.FIRE else BattleSoundCue.ARTILLERY).distinct())
-                stock.copy(ammunition = stock.ammunition - shots, reloadRounds = if (stock.type == WallWeaponType.REPEATER) 1 else 2)
+                original.copy(ammunition = stock.ammunition - shots, reloadRounds = if (stock.type == WallWeaponType.REPEATER) 1 else 2,
+                    priority = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section) WallWeaponPriority.DEVICES else original.priority)
             }
+            resultStock.copy(priority = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section)
+                WallWeaponPriority.DEVICES else original.priority)
         }
         updated = updated.copy(wallWeapons = weapons.filter { it.count > 0 }, wallWeaponReports = reports, weaponChargesUsed = charges)
         return WallVolleyResult(state.copy(frontier = state.frontier.copy(weapons = weapons)), updated)

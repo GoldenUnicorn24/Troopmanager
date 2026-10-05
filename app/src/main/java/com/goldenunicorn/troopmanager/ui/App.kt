@@ -444,6 +444,7 @@ private fun GameShell(
     var worldPage by rememberSaveable { mutableStateOf(0) }
     var showMore by rememberSaveable { mutableStateOf(false) }
     var showCensus by rememberSaveable { mutableStateOf(false) }
+    var showDefense by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = showMore || screen != GameDestination.COMMAND) {
         if (showMore) showMore = false else screen = GameDestination.COMMAND
     }
@@ -515,6 +516,8 @@ private fun GameShell(
                         "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
                     nearestThreat != null ->
                         "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
+                    state.invasion != null ->
+                        "${state.invasion.enemy.label} · ${(state.invasion.arrivalDay - state.day).coerceAtLeast(0)} T. · ${state.invasionStrengthEstimate()}"
                     state.war.wounded.isNotEmpty() ->
                         "${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
                     EconomyEngine.production(state).net.food < 0 ->
@@ -523,8 +526,10 @@ private fun GameShell(
                 }
                 if (warningText != null) {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).clickable {
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).heightIn(min = 48.dp).clickable {
                             showMore = false
+                            if (pendingCampaignDecision == null && (nearestThreat != null || state.invasion != null)) showDefense = true
+                            else
                             screen = when {
                                 pendingCampaignDecision != null -> GameDestination.DECISIONS
                                 nearestThreat != null -> GameDestination.FRONTIER
@@ -548,7 +553,7 @@ private fun GameShell(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f),
-                                maxLines = 1,
+                                maxLines = 2,
                             )
                             Text("›", color = Gold, fontSize = 18.sp)
                         }
@@ -632,6 +637,7 @@ private fun GameShell(
         },
     ) { padding ->
         if (showCensus) PopulationDialog(state, onState, onNotice) { showCensus = false }
+        if (showDefense) DefenseDashboard(state, onState, onNotice) { showDefense = false }
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (showMore) {
                 MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination ->

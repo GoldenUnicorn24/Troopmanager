@@ -6,6 +6,37 @@ import kotlin.random.Random
 
 /** War logistics own aggregate quantities; wounded and captives never remain in an army pool. */
 object WarEngine {
+    data class DefenseReadiness(val garrison: Int, val reserve: Int, val wallArchers: Int, val arrows: Int,
+        val wall: Int, val gate: Int, val tower: Int, val activeWeapons: Int, val warnings: List<String>)
+
+    /** A projection of the same deployment, wall capacity and stocks used by BattleEngine. */
+    fun defenseReadiness(state: GameState): DefenseReadiness {
+        val battle = state.battleSession?.takeIf { it.isActive && FrontierEngine.isHomeFortifiedBattle(state, it) }
+        val deployments = if (battle == null) BattleEngine.defaultDeployments(state) else emptyList()
+        val capacity = BattleResolutionEngine.shootingCapacity(state, true, BattleTerrain.WALL)
+        val archers = BattleStateEngine.sections.sumOf { section -> minOf(capacity, if (battle != null)
+            battle.contingents.filter { it.section == section && !it.routed && it.type.ranged >= 8 && it.type != UnitType.DRAGON_ARTILLERY }.sumOf { it.soldiers }
+            else deployments.filter { it.section == section }.sumOf { d -> d.units.filter { it.type.ranged >= 8 && it.type != UnitType.DRAGON_ARTILLERY }.sumOf { it.amount } }) }
+        val arrows = battle?.battleArrowsRemaining ?: state.militaryStock.arrows
+        val reserve = battle?.fighting(BattleSection.RESERVE) ?: deployments.filter { it.section == BattleSection.RESERVE }.sumOf { d -> d.units.sumOf { it.amount } }
+        val wall = battle?.wallIntegrity ?: state.realm.wallIntegrity
+        val gate = battle?.segment(BattleSection.CENTER)?.gateIntegrity ?: state.realm.wallIntegrity
+        val tower = effectiveLevel(state, BuildingType.TOWER)
+        val weapons = battle?.wallWeapons ?: state.frontier.weapons
+        val active = weapons.filter { it.integrity > 0 && it.ammunition > 0 && it.automatic }.sumOf { it.count }
+        val warnings = buildList {
+            if (archers == 0) add("Keine Bogenschützen auf der Mauer")
+            if (arrows < archers * 3L) add("Zu wenig Pfeile für drei volle Austausche")
+            if (wall < 60) add("Mauer beschädigt: weniger Schutz und Höhenvorteil")
+            if (gate < 65) add("Tor beschädigt")
+            if (tower == 0) add("Kein funktionsfähiger Turm")
+            if (state.commanders.any { state.commanderAway(it.id) }) add("Kommandant abwesend")
+            if (state.war.wounded.sumOf { it.soldiers } * 5L >= hospitalCapacity(state) * 4L) add("Lazarett fast voll")
+            if (weapons.any { it.count > 0 && it.ammunition == 0 }) add("Mauerwaffen ohne Munition")
+            if (state.resources.food == 0) add("Keine Nahrung: Moral und Kampfkraft sinken")
+        }
+        return DefenseReadiness(state.homeArmySize, reserve, archers, arrows, wall, gate, tower, active, warnings)
+    }
     private fun sum(a: Int, b: Int) = (a.toLong() + b).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
     fun afterCombatLosses(before: GameState, after: GameState): GameState = FrontierEngine.afterTroopLosses(before, after.copy(war = after.war.copy(eliteUnits = after.war.eliteUnits.map { elite ->
         val original = before.soldiers(elite.type)
@@ -47,12 +78,14 @@ object WarEngine {
         UnitType.entries.forEach { type -> require(war.eliteUnits.filter { it.type == type }.sumOf { it.soldiers.toLong() } <= state.soldiers(type)) { "Eliteverbände übersteigen den Armeepool." } }
         require(war.history.map { it.id }.distinct().size == war.history.size) { "Ungültige Schlachthistorie." }
         war.history.forEach { record ->
-            require(record.ownStart >= 0 && record.enemyStart > 0 && record.ownRemaining in 0..record.ownStart && record.enemyRemaining in 0..record.enemyStart && record.minute in 0..95 && record.inputs.size <= 40) { "Ungültiger Schlachtbericht." }
+            require(record.ownStart >= 0 && record.enemyStart > 0 && record.ownRemaining in 0..record.ownStart && record.enemyRemaining in 0..record.enemyStart && record.minute in 0..95 && record.inputs.size <= 160 && BattleEngine.validPlan(record.plan)) { "Ungültiger Schlachtbericht." }
+            require(record.replay == null || record.replay.rulesVersion in 1..2) { "Unbekannte Replay-Regeln." }
             require(listOf(record.casualties.dead, record.casualties.wounded, record.casualties.missing, record.casualties.captured).all { it >= 0 } && listOf(record.casualties.dead, record.casualties.wounded, record.casualties.missing, record.casualties.captured).sumOf { it.toLong() } == record.ownStart.toLong() - record.ownRemaining) { "Ungültige Verlustbilanz." }
         }
         state.battleSession?.let { battle ->
             BattleStateEngine.validate(battle)
-            require(battle.commandPoints in 0..battle.maxCommandPoints && battle.maxCommandPoints in 1..100 && battle.inputs.size <= 40 && battle.enemyFortification in 0..100 && (battle.deployedMorale == null || battle.deployedMorale in 0..100) && battle.enemyExperience in 0..10000) { "Ungültige Befehlspunkte." }
+            require(battle.replayStart == null || battle.replayStart.rulesVersion in 1..2) { "Unbekannte Replay-Regeln." }
+            require(battle.commandPoints in 0..battle.maxCommandPoints && battle.maxCommandPoints in 1..100 && battle.inputs.size <= 160 && battle.inputs.all { it.plan == null || BattleEngine.validPlan(it.plan) } && battle.enemyFortification in 0..100 && (battle.deployedMorale == null || battle.deployedMorale in 0..100) && battle.enemyExperience in 0..10000) { "Ungültige Befehlspunkte." }
             require(battle.rangedWeather.isFinite() && battle.cavalryWeather.isFinite() && battle.seasonPenalty.isFinite() && battle.rangedWeather in 0.25..1.5 && battle.cavalryWeather in 0.25..1.5 && battle.seasonPenalty in 0.5..1.5) { "Ungültige Schlachtbedingungen." }
         }
         Culture.entries.forEach { culture ->
@@ -414,7 +447,10 @@ object WarEngine {
         val record = BattleRecord(id, state.day, session.location ?: state.realm.settlementName, session.enemy, session.seed, session.tactic, session.ownStart, session.enemyStart, session.ownRemaining, session.enemyRemaining, victory, session.minute, casualties, session.contingents.mapNotNull { it.commanderId }.distinct(), session.log.filter { it.text.contains("Kommandant") || it.text.contains("bricht") || it.text.contains("Rückzug") }.map { it.text }.takeLast(12), session.terrain, session.participation, session.replayStart, session.inputs, session.enemyFactionName, session.enemyUnits, session.enemyFactionId, session.enemyArmyName,
             outcomeGrade = session.outcomeGrade, segments = session.segments, siegeDevices = session.siegeDevices,
             exchanges = session.exchanges, arrowsUsed = (session.battleArrowsLoaded - session.battleArrowsRemaining).coerceAtLeast(0),
-            weaponChargesUsed = session.weaponChargesUsed)
+            weaponChargesUsed = session.weaponChargesUsed, plan = session.plan,
+            enemyCasualties = BattleReportEngine.enemyCasualties(session),
+            enemyFled = if (victory) session.enemyRemaining else session.fronts.filter { it.intent == BattleAiIntent.WITHDRAW }.sumOf { it.enemySoldiers },
+            ownFled = session.contingents.filter { it.routed }.sumOf { it.soldiers })
         val records = state.war.history + record
         val history = records.mapIndexed { index, entry ->
             if (index < records.size - 24 && entry.replay != null) entry.copy(replay = null, inputs = emptyList()) else entry

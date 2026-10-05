@@ -89,6 +89,10 @@ data class FrontExchangeReport(
     val enemyArrowsUsed: Int = 0,
     val deviceDamage: Int = 0,
     val artilleryChargesUsed: Int = 0,
+    val suppression: Int = 0,
+    val targetType: UnitType? = null,
+    val targetDeviceId: String? = null,
+    val volleys: Double = 0.0,
 )
 
 @Serializable

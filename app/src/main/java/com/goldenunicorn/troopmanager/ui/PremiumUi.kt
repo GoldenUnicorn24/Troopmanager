@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -145,14 +149,19 @@ internal fun ModernTabStrip(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
+    val list = rememberLazyListState()
+    LaunchedEffect(selected, labels) {
+        if (labels.isNotEmpty()) list.animateScrollToItem(selected.coerceIn(0, labels.lastIndex))
+    }
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+      val itemWidth = maxWidth - 8.dp
+      LazyRow(state = list, modifier = Modifier.fillMaxWidth().testTag("adaptive_tabs"),
+        contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        itemsIndexed(labels) { index, label ->
             val active = index == selected
             Surface(
-                modifier = Modifier.heightIn(min = 48.dp).clickable { onSelect(index) },
+                modifier = Modifier.widthIn(min = 48.dp, max = itemWidth).heightIn(min = 48.dp)
+                    .testTag("tab_$index").semantics { this.selected = active }.clickable { onSelect(index) },
                 color = if (active) Color.White else Color(0xFF111820),
                 shape = RoundedCornerShape(100.dp),
                 border = BorderStroke(
@@ -166,10 +175,11 @@ internal fun ModernTabStrip(
                     fontSize = 12.sp,
                     fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-                    maxLines = 1,
+                    maxLines = 2,
                 )
             }
         }
+      }
     }
 }
 

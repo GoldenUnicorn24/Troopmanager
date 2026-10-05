@@ -21,11 +21,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.BattleEngine
 import com.goldenunicorn.troopmanager.engine.BattleStateEngine
 import com.goldenunicorn.troopmanager.model.*
+
+internal enum class BattleBackdropSlot(val file: String) { FIELD("field.webp"), FOREST("forest.webp"), PASS("pass.webp"), FORTRESS("fortress.webp"), NIGHT("night.webp") }
 
 /** Bounded formation rendering. Position and attack effects use persisted engine state only. */
 @Composable
@@ -42,8 +47,21 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
     }
     val groups = remember(session.contingents, session.fronts) { BattleEngine.visualGroups(session) }
     val fort = session.tactic == Tactic.FORTIFY || session.segments.any { it.cover > 0 }
+    val context = LocalContext.current
+    val slot = when {
+        session.night -> BattleBackdropSlot.NIGHT
+        fort -> BattleBackdropSlot.FORTRESS
+        session.terrain.values.count { it == BattleTerrain.FOREST } >= 2 -> BattleBackdropSlot.FOREST
+        session.terrain.values.any { it == BattleTerrain.PASS } -> BattleBackdropSlot.PASS
+        else -> BattleBackdropSlot.FIELD
+    }
+    val backdrop = remember(context, slot) {
+        context.assets.list("battle-backdrops")?.takeIf { slot.file in it }?.let { "file:///android_asset/battle-backdrops/${slot.file}" }
+    }
     val frame = pulse.value
     Box(modifier.clip(RoundedCornerShape(22.dp)).background(Brush.verticalGradient(listOf(Color(0xFF172B31), Color(0xFF111A21), Ink)))) {
+        if (backdrop != null) AsyncImage(model = backdrop, contentDescription = null,
+            contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
@@ -53,8 +71,13 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
             // not from decorative sprites. Front lines, roads and terrain all share this space.
             drawRect(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF25383B), Color(0xFF2D3830), Color(0xFF161D1B))
-                )
+                    when {
+                        session.night -> listOf(Color(0xFF101923), Color(0xFF18232A), Color(0xFF0C1319))
+                        session.season == Season.WINTER -> listOf(Color(0xFF52606A), Color(0xFF7B857C), Color(0xFF40483E))
+                        session.season == Season.AUTUMN -> listOf(Color(0xFF4A3B31), Color(0xFF4C4331), Color(0xFF26251D))
+                        else -> listOf(Color(0xFF25383B), Color(0xFF2D3830), Color(0xFF161D1B))
+                    }
+                ), alpha = if (backdrop == null) 1f else .45f
             )
             drawOval(
                 Color(0x221A120D),
@@ -94,7 +117,8 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                     }
                     else -> Unit
                 }
-                val ownY = if (fort && session.tactic == Tactic.FORTIFY) wallY + if (contact) h * .025f else h * .075f else h * .66f
+                val ownY = if (segment?.fallenBack == true) h * .79f else if (fort && session.tactic == Tactic.FORTIFY)
+                    wallY + if (contact) h * .025f else h * .075f else h * (.66f + (50 - (front?.position ?: 50)) / 250f)
                 val enemyY = when (segment?.contactState) {
                     BattleContactState.COURTYARD -> h * .72f
                     BattleContactState.BREACHED -> wallY + h * .025f
@@ -117,6 +141,15 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                         drawRect(if (open) Ink else Color(0xFF80684B), center - Offset(14.dp.toPx(), 13.dp.toPx()), Size(28.dp.toPx(), 26.dp.toPx()))
                         if (!open) repeat(3) { n -> drawLine(Gold.copy(alpha = .45f), center + Offset(-12.dp.toPx(), (n - 1) * 7.dp.toPx()), center + Offset(12.dp.toPx(), (n - 1) * 7.dp.toPx()), 2.dp.toPx()) }
                     }
+                    if (integrity < 65) repeat(3) { smoke ->
+                        val damage = (100 - integrity) / 100f
+                        drawCircle(Color(0xFF776F61).copy(alpha = damage * .35f), (5 + smoke * 3).dp.toPx(),
+                            center + Offset((smoke - 1) * 12.dp.toPx(), -(18 + smoke * 9).dp.toPx()))
+                    }
+                    if (section == BattleSection.CENTER && !((segment?.gateOpen == true) || segment?.gateIntegrity == 0) && (segment?.gateIntegrity ?: 100) < 60) {
+                        val crack = Path().apply { moveTo(center.x - 6.dp.toPx(), center.y - 10.dp.toPx()); lineTo(center.x + 2.dp.toPx(), center.y); lineTo(center.x - 3.dp.toPx(), center.y + 10.dp.toPx()) }
+                        drawPath(crack, Ink, style = Stroke(2.dp.toPx()))
+                    }
                     drawLine(if (integrity < 30) Danger else Success, Offset(x0 + 10.dp.toPx(), wallY + 18.dp.toPx()),
                         Offset(x0 + 10.dp.toPx() + (w / 3 - 20.dp.toPx()) * integrity / 100f, wallY + 18.dp.toPx()), 3.dp.toPx())
                 }
@@ -137,7 +170,7 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                             size = Size(20.dp.toPx(), 7.dp.toPx()),
                         )
                         formation(position, if (enemy) Danger else if (group.type?.culture == Culture.WOOD_ELF) Success else Gold,
-                            group.type == UnitType.KNIGHT, group.routed, 5.dp.toPx())
+                            group.type == UnitType.KNIGHT, group.routed, 5.dp.toPx(), group.type, group.enemy && session.enemy == EnemyType.TAO_TEI)
                         if (!enemy && session.participation == BattleParticipation.PERSONAL && session.personalSection == section && n == 0)
                             drawCircle(Color.White, 10.dp.toPx(), position, style = Stroke(1.5.dp.toPx()))
                     }
@@ -168,7 +201,11 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                     }
                     if (report.arrowsUsed > 0) repeat(5) { n ->
                         val start = Offset(x0 + w / 3 * (.18f + n * .145f), ownY - (n % 2) * 5.dp.toPx())
-                        val end = Offset(x0 + w / 3 * (.2f + n * .14f), enemyY)
+                        val targetFormation = groups.filter { it.enemy && it.section == section }.take(12).indexOfFirst { it.type == report.targetType }
+                        val targetDevice = devices.firstOrNull { it.id == report.targetDeviceId }
+                        val targetX = if (targetDevice != null) x0 + w / 3 * (.2f + devices.indexOf(targetDevice) * .12f)
+                            else if (targetFormation >= 0) x0 + w / 3 * (.17f + (targetFormation % 4) * .2f) else x0 + w / 3 * (.2f + n * .14f)
+                        val end = Offset(targetX + (n - 2) * 2.dp.toPx(), if (targetDevice != null) wallY - h * .43f * targetDevice.distance / 400f else enemyY)
                         val travel = frame.coerceIn(0f, 1f)
                         val arc = kotlin.math.sin(travel * kotlin.math.PI.toFloat()) * 24.dp.toPx()
                         val p = start + (end - start) * travel - Offset(0f, arc)
@@ -176,6 +213,8 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                         val length = kotlin.math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(1f)
                         val dir = Offset(tangent.x / length, tangent.y / length)
                         drawLine(Gold, p - dir * 7.dp.toPx(), p + dir * 2.dp.toPx(), 1.3.dp.toPx())
+                        if (travel > .72f && report.enemyDamage.total + report.deviceDamage > 0) drawCircle(
+                            Color(0xFFD8BB8A).copy(alpha = (1f - travel) * .8f), (2f + travel * 5f).dp.toPx(), end)
                     }
                     if (report.enemyArrowsUsed > 0) repeat(4) { n ->
                         val start = Offset(x0 + w / 3 * (.21f + n * .17f), enemyY)
@@ -214,7 +253,12 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
                 }
             }
             groups.filter { it.section == BattleSection.RESERVE && !it.enemy }.take(12).forEachIndexed { n, group ->
-                formation(Offset(w * (.2f + (n % 6) * .12f), h * .90f + (n / 6) * 13.dp.toPx()), ModernBlue, group.type == UnitType.KNIGHT, group.routed, 4.dp.toPx())
+                formation(Offset(w * (.2f + (n % 6) * .12f), h * .90f + (n / 6) * 13.dp.toPx()), ModernBlue, group.type == UnitType.KNIGHT, group.routed, 4.dp.toPx(), group.type)
+            }
+            session.reserveReinforcement?.let { move ->
+                val end = Offset(w * (move.section.ordinal + .5f) / 3f, h * .76f)
+                drawLine(ModernBlue, Offset(w / 2, h * .9f), end, 2.dp.toPx())
+                drawCircle(ModernBlue, 4.dp.toPx(), end, style = Stroke(1.5.dp.toPx()))
             }
             drawLine(ModernBlue.copy(alpha = .25f), Offset(w * .12f, h * .84f), Offset(w * .88f, h * .84f), 1.dp.toPx())
         }
@@ -227,7 +271,7 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
             }
         }
         androidx.compose.material3.Text(
-            if (compactLegend) "■ Heer  ◆ Reiter  ▰ Gerät  ━ Reserve" else "■ Heer   ◆ Reiter   ▰ Geräte   Blau: Reserve",
+            if (compactLegend) "Bogen · Speer · Reiter · Geschütz" else "Bogen · Klinge · Speer · Reiter · Gerät",
             color = Mist,
             fontSize = if (compactLegend) 7.sp else 9.sp,
             maxLines = 1,
@@ -236,13 +280,29 @@ internal fun SessionBattleField(session: BattleSession, animations: Boolean, bat
     }
 }
 
-private fun DrawScope.formation(position: Offset, color: Color, cavalry: Boolean, routed: Boolean, extent: Float) {
+private fun DrawScope.formation(position: Offset, color: Color, cavalry: Boolean, routed: Boolean, extent: Float,
+    kind: UnitType? = null, monster: Boolean = false) {
     val tint = if (routed) color.copy(alpha = .34f) else color
     val scale = extent / 5.dp.toPx().coerceAtLeast(1f)
     val soldierRadius = 1.7.dp.toPx() * scale
     val spacingX = 4.2.dp.toPx() * scale
     val spacingY = 4.6.dp.toPx() * scale
 
+    if (monster) {
+        drawOval(tint, position - Offset(8.dp.toPx(), 5.dp.toPx()), Size(16.dp.toPx(), 10.dp.toPx()))
+        repeat(3) { n ->
+            val head = position + Offset((n - 1) * 5.dp.toPx(), -7.dp.toPx())
+            drawCircle(tint, 3.dp.toPx(), head)
+            drawLine(tint, head, head + Offset(2.dp.toPx(), -5.dp.toPx()), 1.5.dp.toPx())
+            drawLine(tint, position + Offset((n - 1) * 5.dp.toPx(), 2.dp.toPx()), position + Offset((n - 1) * 7.dp.toPx(), 9.dp.toPx()), 2.dp.toPx())
+        }
+        return
+    }
+    if (kind == UnitType.DRAGON_ARTILLERY) {
+        siegeDevice(SiegeDevice.CATAPULT, position, tint)
+        drawCircle(tint, 2.dp.toPx(), position + Offset(-10.dp.toPx(), 4.dp.toPx()))
+        return
+    }
     if (cavalry) {
         // Two readable cavalry silhouettes instead of one abstract diamond.
         repeat(2) { row ->
@@ -270,12 +330,17 @@ private fun DrawScope.formation(position: Offset, color: Color, cavalry: Boolean
                 drawLine(tint, p, p + Offset(0f, 4.dp.toPx() * scale), 2.1.dp.toPx() * scale)
                 drawLine(tint, p + Offset(-1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(-3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
                 drawLine(tint, p + Offset(1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
-                drawLine(
-                    Color(0xFFB8C0B8).copy(alpha = tint.alpha),
-                    p + Offset(3.dp.toPx() * scale, 3.dp.toPx() * scale),
-                    p + Offset(3.dp.toPx() * scale, -6.dp.toPx() * scale),
-                    .8.dp.toPx(),
-                )
+                val weapon = Color(0xFFB8C0B8).copy(alpha = tint.alpha)
+                if ((kind?.ranged ?: 0) >= 8) {
+                    drawArc(weapon, -85f, 170f, false, p + Offset(2.dp.toPx() * scale, -5.dp.toPx() * scale),
+                        Size(5.dp.toPx() * scale, 10.dp.toPx() * scale), style = Stroke(1.dp.toPx()))
+                } else {
+                    val spear = kind in listOf(UnitType.GOLD_SPEAR, UnitType.CRANE_GUARD, UnitType.DEER_CORPS)
+                    drawLine(weapon, p + Offset(3.dp.toPx() * scale, 3.dp.toPx() * scale),
+                        p + Offset(3.dp.toPx() * scale, (if (spear) -12 else -6).dp.toPx() * scale), 1.dp.toPx())
+                    if (spear) drawCircle(weapon, 1.4.dp.toPx() * scale, p + Offset(3.dp.toPx() * scale, -12.dp.toPx() * scale))
+                    else drawLine(weapon, p + Offset(1.dp.toPx() * scale, -2.dp.toPx() * scale), p + Offset(5.dp.toPx() * scale, -2.dp.toPx() * scale), 1.dp.toPx())
+                }
             }
         }
     }

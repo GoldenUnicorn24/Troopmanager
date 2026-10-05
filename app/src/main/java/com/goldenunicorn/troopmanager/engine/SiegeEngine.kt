@@ -15,9 +15,17 @@ object SiegeEngine {
         val splash = mutableMapOf<BattleSection, Double>()
         val fronts = original.fronts.map { front ->
             val intent = BattleAiEngine.intent(original, front)
+            val troops = original.contingents.filter { it.section == front.section && it.soldiers > 0 && !it.routed }
+            val count = troops.sumOf { it.soldiers }.coerceAtLeast(1)
+            val morale = troops.sumOf { it.soldiers.toLong() * it.morale }.div(count).toInt()
+            val cohesion = troops.sumOf { it.soldiers.toLong() * it.cohesion }.div(count).toInt()
+            val fallback = !fortified && original.segment(front.section)?.let {
+                it.contactState == BattleContactState.FIELD_CONTACT && !it.fallenBack } == true &&
+                (morale < original.plan.fallbackPolicy.moraleThreshold || cohesion < original.plan.fallbackPolicy.cohesionThreshold)
             val speed = if (original.enemy == EnemyType.TAO_TEI) 60 else 40
-            val movement = when (intent) { BattleAiIntent.WITHDRAW -> -45; BattleAiIntent.MISSILES -> 10; else -> speed }
-            front.copy(intent = intent, enemyDistance = (front.enemyDistance - movement -
+            val movement = when (intent) { BattleAiIntent.WITHDRAW -> -45; BattleAiIntent.MISSILES -> 10
+                else -> (speed * (.55 + front.cohesion / 180.0) * (1 - front.fatigue / 300.0)).toInt().coerceAtLeast(15) }
+            front.copy(intent = intent, enemyDistance = (front.enemyDistance - movement + (if (fallback) 80 else 0) -
                 if (decision == BattleDecision.ADVANCE && target == front.section && !fortified) 40 else 0).coerceIn(0, 400))
         }
         val crewAvailable = fronts.associate { front -> front.section to original.enemyRoster.filter {
@@ -68,6 +76,7 @@ object SiegeEngine {
                         }
                         if (device.type == SiegeDevice.RAM && distance == 0) {
                             val protection = state.war.gateReinforcement / 5 +
+                                (if (original.plan.gatePolicy == GatePolicy.GATE_DEFENSE) 3 else 0) +
                                 if (decision == BattleDecision.HOLD_GATE && target == device.section) 5 else 0
                             gateDamage[device.section] = (gateDamage[device.section] ?: 0) + (9 + crew / 10 - protection).coerceAtLeast(1)
                         }
@@ -88,6 +97,21 @@ object SiegeEngine {
             var fallenBack = segment.fallenBack
             var order = segment.rangedOrder
             var priority = segment.devicePriority
+            val defenders = original.contingents.filter { it.section == segment.section && !it.routed && it.soldiers > 0 }
+            val ownCount = defenders.sumOf { it.soldiers }
+            val ownMorale = if (ownCount == 0) 0 else defenders.sumOf { it.soldiers.toLong() * it.morale }.div(ownCount).toInt()
+            val cohesion = if (ownCount == 0) 0 else defenders.sumOf { it.soldiers.toLong() * it.cohesion }.div(ownCount).toInt()
+            if (segment.contactState.allowsMelee && !fallenBack &&
+                (ownMorale < original.plan.fallbackPolicy.moraleThreshold || cohesion < original.plan.fallbackPolicy.cohesionThreshold)) {
+                fallenBack = true
+                events += "${segment.section.label}: Rückfall auf die zweite Linie (${original.plan.fallbackPolicy.label}); Moral $ownMorale%, Kohäsion $cohesion%."
+            }
+            if (fortified && original.plan.gatePolicy == GatePolicy.CONTROLLED_SORTIE &&
+                original.plan.doctrine == BattleDoctrine.COUNTERATTACK && segment.section == BattleSection.CENTER &&
+                front.enemyDistance <= 45 && ownCount > front.enemySoldiers * 2L && ownMorale >= 65 && cohesion >= 60 && !open) {
+                open = true
+                events += "Ein kontrollierter Ausfall öffnet das Tor bei klarer lokaler Überlegenheit."
+            }
             if (focus) {
                 when (decision) {
                     BattleDecision.HOLD_FIRE -> order = RangedOrder.HOLD
@@ -112,7 +136,7 @@ object SiegeEngine {
                 maxOf(segment.breachWidth, if (integrity == 0) 80 else 28) else segment.breachWidth
             val inside = segment.contactState in listOf(BattleContactState.BREACHED, BattleContactState.COURTYARD)
             val contact = when {
-                front.enemySoldiers == 0 -> BattleContactState.DISTANT
+                front.enemySoldiers == 0 || front.intent == BattleAiIntent.WITHDRAW -> BattleContactState.DISTANT
                 !hasFort && front.enemyDistance == 0 -> BattleContactState.FIELD_CONTACT
                 hasFort && front.enemyDistance == 0 && fallenBack && (breach > 0 || open || progress >= 100 || inside) -> BattleContactState.COURTYARD
                 hasFort && front.enemyDistance == 0 && (breach > 0 || open || inside) -> BattleContactState.BREACHED

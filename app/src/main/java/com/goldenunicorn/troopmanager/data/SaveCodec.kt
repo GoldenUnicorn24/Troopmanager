@@ -277,6 +277,7 @@ object SaveCodec {
     }
 
     private fun validate(state: GameState) {
+        require(BattleEngine.validPlan(state.defensePlan)) { "Ungültiger gespeicherter Verteidigungsplan." }
         require(state.day >= 1 && state.player.name.isNotBlank()) { "Ungültiger Spieler oder Tag." }
         require(
             state.relationship.actionDay in 0..state.day && state.relationship.spentActions in 0..2

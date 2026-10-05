@@ -1,6 +1,19 @@
-# Realm of the Last Wall — Troopmanager v0.96.0
+# Realm of the Last Wall — Troopmanager v0.97.0
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v0.97: battle plans, fortress tactics and compact Android UI
+
+- A persisted battle plan covers six tactic profiles, ranged and wall-weapon targets, finite ammunition, reserve rules, gate/sortie policy, breach reserves, fallback thresholds and pursuit. Preparation opens before the first exchange; changes during battle use command points and replay inputs.
+- Local contact states remain authoritative. Distant melee cannot cause personnel damage. Range, wall height, tower firing capacity, target armor/shields, density, visibility/night, weather, fatigue, morale, equipment and command affect real shooting. Salvos suppress and can rout a small assault before contact. A large siege force still reaches the wall.
+- Automatic reserves arrive after a deployment exchange; manual reserve orders retain their command-point cost. Gate defense, fallback and controlled sorties affect contact and frontage.
+- The battlefield renders actual cohorts by role, focused curved volleys, siege devices, wall/gate damage, breaches, fleeing fronts and reserve movement. Optional neutral terrain assets have a complete procedural fallback.
+- Compact unit cards expose counts, availability, quality, roles and commanders. Resources show complete adaptive cards and an explicit paging control; selected tabs are brought into view. Attack warnings open a defense dashboard with actual garrison, ammunition, weapons, damage and warnings.
+- Reports separate losses by source/contact phase, wounded/dead/captured/fled troops, stocks used, first front break and observed tactic effects.
+
+Version 0.97.0 uses versionCode 45 and remains on save schema 4 with additive defaults. Existing archived battle reports remain intact; replays without a v0.97 plan use the safe defensive defaults under the current combat rules.
+
+See [v0.97 implementation and verification](docs/V0.97-BATTLE-TACTICS.md).
 
 ## v0.96: visual world, city and battle overhaul
 

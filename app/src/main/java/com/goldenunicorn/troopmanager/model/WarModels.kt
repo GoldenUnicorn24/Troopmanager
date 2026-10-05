@@ -112,10 +112,16 @@ data class BattleReplayStart(
     val artilleryLoaded: Int = -1,
     val enemyArtilleryLoaded: Int = -1,
     val counterTunnelUnlocked: Boolean = false,
+    val plan: BattlePlan = BattlePlan(),
+    val season: Season = Season.SPRING,
+    val night: Boolean = false,
+    val visibility: Double = 1.0,
+    // Missing in v0.96: old inputs can outlive an assault under the new morale rules.
+    val rulesVersion: Int = 1,
 )
 
 @Serializable
-data class BattleInput(val decision: BattleDecision? = null, val event: BattleEvent? = null)
+data class BattleInput(val decision: BattleDecision? = null, val event: BattleEvent? = null, val plan: BattlePlan? = null)
 
 @Serializable
 data class BattleRecord(
@@ -149,6 +155,10 @@ data class BattleRecord(
     val arrowsUsed: Int = 0,
     val weaponChargesUsed: Map<WallWeaponType, Int> = emptyMap(),
     val aftermath: List<String> = emptyList(),
+    val plan: BattlePlan = BattlePlan(),
+    val enemyCasualties: CasualtyReport = CasualtyReport(),
+    val enemyFled: Int = 0,
+    val ownFled: Int = 0,
 )
 
 @Serializable

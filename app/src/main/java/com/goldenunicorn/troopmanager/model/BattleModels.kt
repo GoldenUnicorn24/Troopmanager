@@ -20,6 +20,12 @@ enum class BattlePhase(val label: String) {
     CRITICAL("Kritische Phase"),
     DECISION("Entscheidung"),
     PURSUIT("Flucht / Verfolgung"),
+    SCOUTING("Aufklärung / Entdeckung"),
+    APPROACH("Annäherung"),
+    SIEGE("Belagerungskontakt"),
+    WALL("Mauer- / Torkampf"),
+    BREACH("Bresche"),
+    COURTYARD("Innenhof"),
 }
 
 @Serializable
@@ -208,6 +214,11 @@ data class BattleSession(
     val battleArtilleryLoaded: Int = 0,
     val enemyArtilleryRemaining: Int = -1,
     val counterTunnelUnlocked: Boolean = false,
+    val plan: BattlePlan = BattlePlan(),
+    val reserveReinforcement: ReserveReinforcement? = null,
+    val season: Season = Season.SPRING,
+    val night: Boolean = false,
+    val visibility: Double = 1.0,
 ) {
     val tacticalStageLabel: String
         get() = when {
@@ -218,16 +229,20 @@ data class BattleSession(
             segments.any { it.contactState == BattleContactState.FIELD_CONTACT } -> "Feldkontakt"
             segments.any { it.contactState == BattleContactState.SIEGE_CONTACT } -> "Belagerungsgeräte"
             minute == 0 -> "Aufstellung"
-            else -> "Anmarsch & Fernkampf"
+            segments.all { it.contactState == BattleContactState.DISTANT } -> "Aufklärung / Entdeckung"
+            segments.any { it.contactState == BattleContactState.MISSILE_RANGE } -> "Fernkampfzone"
+            else -> "Annäherung"
         }
 
     val tacticalStageIndex: Int
-        get() = if (tactic != Tactic.FORTIFY) phase.ordinal.coerceAtMost(6) else when (tacticalStageLabel) {
-            "Anmarsch & Fernkampf" -> 1
+        get() = when (tacticalStageLabel) {
+            "Aufstellung", "Aufklärung / Entdeckung" -> 0
+            "Annäherung", "Fernkampfzone" -> 1
             "Belagerungsgeräte" -> 2
             "Sturm auf die Mauer" -> 3
             "Mauerbruch & Tor" -> 4
             "Innenhof & Entscheidung" -> 5
+            "Feldkontakt" -> 3
             else -> 6
         }
 

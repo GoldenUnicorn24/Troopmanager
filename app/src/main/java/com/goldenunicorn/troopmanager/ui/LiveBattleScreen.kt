@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,7 +29,7 @@ import com.goldenunicorn.troopmanager.model.*
 internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     val battle = state.battleSession ?: return
     var selected by rememberSaveable { mutableStateOf(BattleSection.CENTER) }
-    var sheet by rememberSaveable { mutableStateOf<String?>(null) }
+    var sheet by rememberSaveable(battle.seed) { mutableStateOf<String?>(if (battle.step == 0 && battle.isActive) "plan" else null) }
     var setup by rememberSaveable { mutableStateOf(false) }
     var detailTab by rememberSaveable { mutableIntStateOf(0) }
     fun apply(result: GameEngine.ActionResult) { onState(result.state); onNotice(result.message) }
@@ -39,7 +40,10 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
     if (setup) BattleSetupDialog(state, { setup = false }, onState, onNotice)
     if (sheet != null) ModalBottomSheet(onDismissRequest = { sheet = null }, containerColor = Panel,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        if (sheet == "orders") {
+        if (sheet in listOf("plan", "reserve", "targets")) {
+            BattlePlanPanel(state, mode = sheet ?: "plan", onApply = { result -> apply(result); sheet = null },
+                onDeploy = if (battle.step == 0 && state.world.encounter == null) ({ sheet = null; setup = true }) else null)
+        } else if (sheet == "orders") {
             val section = battle.pendingEvent?.section ?: selected
             val orders = battle.pendingEvent?.options ?: BattleEngine.contextualOrders(battle, section)
             LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(.85f).padding(horizontal = 16.dp),
@@ -48,7 +52,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                 items(orders) { order ->
                     val cost = BattleEngine.orderCost(battle, order)
                     OutlinedButton(onClick = { execute(order) }, enabled = battle.commandPoints >= cost && BattleEngine.canOrder(battle, order, section),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(18.dp)) {
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("battle_order_${order.name}"), shape = RoundedCornerShape(18.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(order.label, color = Color.White, fontWeight = FontWeight.SemiBold)
                             Text(BattleOrderExplanation(order), color = Mist, fontSize = 11.sp)
@@ -70,6 +74,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                     report.fronts.forEach { front ->
                                         Text("${front.section.label} · ${front.contactState.label}", color = ModernBlue, fontSize = 12.sp)
                                         Text("−${front.ownDamage.total} eigene / −${front.enemyDamage.total} Gegner · aktive Linie ${front.ownActive}/${front.enemyActive} · Breite ${front.frontage}", color = Mist, fontSize = 12.sp)
+                                        Text("Ziel: ${front.targetType?.label ?: front.targetDeviceId ?: "lokale Front"} · Unterdrückung ${front.suppression}", color = Gold, fontSize = 12.sp)
                                         Text("Eigene Ausfälle: ${front.ownDamage.ranged} Pfeile · ${front.ownDamage.melee} Nahkampf · ${front.ownDamage.splash} Splitter", color = Mist, fontSize = 12.sp)
                                         Text("Deckung verhinderte rechnerisch ${String.format(java.util.Locale.GERMAN, "%.1f", front.preventedLosses)} weitere Ausfälle · ${front.arrowsUsed} Pfeile verbraucht", color = Success, fontSize = 12.sp)
                                         if (front.deviceDamage + front.artilleryChargesUsed > 0) Text("Geräteschaden ${front.deviceDamage} · Artillerieladungen ${front.artilleryChargesUsed}", color = ModernBlue, fontSize = 12.sp)
@@ -133,29 +138,21 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
         }
     }
     BoxWithConstraints(Modifier.fillMaxSize().background(Ink).testTag("battle_screen")) {
-        val compact = maxHeight < 450.dp || LocalDensity.current.fontScale >= 1.3f
+        val landscape = maxWidth > maxHeight
+        val compact = landscape || LocalDensity.current.fontScale >= 1.3f
         Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
-            Row(
-                Modifier.fillMaxWidth().height(if (compact) 28.dp else 54.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                if (compact) {
-                    Text(
-                        "H ${battle.ownRemaining}  •  G ${battle.enemyRemaining}  •  ${battle.minute}′  •  M ${battle.morale}%  •  ${battle.commandPoints} BP",
-                        color = Color.White,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            Column(Modifier.fillMaxWidth().height(if (landscape) 28.dp else 54.dp), verticalArrangement = Arrangement.Center) {
+                if (landscape) {
+                    Text("H ${battle.ownRemaining} · G ${battle.enemyRemaining} · ${battle.minute}′ · M ${battle.morale}% · ${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel}",
+                        color = Color.White, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
+                        modifier = Modifier.testTag("battle_doctrine"))
                 } else {
-                    BattleHudValue("HEER", battle.ownRemaining.toString(), Gold)
-                    BattleHudValue("GEGNER", battle.enemyRemaining.toString(), Danger)
-                    BattleHudValue("MIN", "${battle.minute}′", Color.White)
-                    BattleHudValue("MORAL", "${battle.morale}%", Success)
-                    BattleHudValue("BEFEHLE", "${battle.commandPoints} BP", ModernBlue)
+                    Text("Heer ${battle.ownRemaining} · Gegner ${battle.enemyRemaining} · ${battle.minute}′", color = Color.White,
+                        fontSize = if (compact) 11.sp else 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag("battle_hud"))
+                    Text("Moral ${battle.morale}% · ${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel}", color = Gold,
+                        fontSize = if (compact) 10.sp else 12.sp, lineHeight = 14.sp,
+                        modifier = Modifier.testTag("battle_doctrine"))
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -163,17 +160,43 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     val segment = battle.segment(section)
                     val front = battle.fronts.firstOrNull { it.section == section }
                     val highlighted = selected == section
-                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(48.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
+                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(if (landscape) 48.dp else 72.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
                         color = if (selected == section) Panel2 else Panel, shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(if (selected == section) 2.dp else 0.dp, if (selected == section) ModernBlue else Color.Transparent)) {
                         Column(Modifier.padding(horizontal = 6.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                            Text(when (section) { BattleSection.LEFT -> "LINKS"; BattleSection.RIGHT -> "RECHTS"; else -> "TOR / MITTE" }, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(if (battle.tactic == Tactic.FORTIFY) "${segment?.integrity ?: battle.wallIntegrity}% · ${segment?.contactState?.label ?: "Anmarsch"}" else segment?.contactState?.label ?: "Anmarsch",
-                                color = if (segment?.contactState?.allowsMelee == true) Danger else Mist, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (!landscape) Text(when (section) { BattleSection.LEFT -> "LINKS"; BattleSection.RIGHT -> "RECHTS"; else -> "MITTE" }, color = Color.White, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            val own = battle.contingents.filter { it.section == section && !it.routed && it.soldiers > 0 }
+                            val soldiers = own.sumOf { it.soldiers }.coerceAtLeast(1)
+                            val morale = own.sumOf { it.soldiers.toLong() * it.morale }.div(soldiers).toInt()
+                            val cohesion = own.sumOf { it.soldiers.toLong() * it.cohesion }.div(soldiers).toInt()
+                            val contactLabel = when (segment?.contactState) {
+                                BattleContactState.DISTANT -> if (front?.intent == BattleAiIntent.WITHDRAW) "Flucht" else "Distanz"
+                                BattleContactState.APPROACH -> "Anmarsch"
+                                BattleContactState.MISSILE_RANGE -> "Fernkampf"
+                                BattleContactState.SIEGE_CONTACT -> "Geräte"
+                                BattleContactState.WALL_ASSAULT -> "Mauersturm"
+                                BattleContactState.BREACHED -> "Bresche"
+                                BattleContactState.COURTYARD -> "Innenhof"
+                                else -> "Kontakt"
+                            }
+                            val integrity = if (section == BattleSection.CENTER) segment?.gateIntegrity else segment?.integrity
+                            val status = if (landscape) "${when (section) { BattleSection.LEFT -> "Links"; BattleSection.RIGHT -> "Rechts"; else -> "Mitte" }} · $contactLabel"
+                                else if (compact) contactLabel.take(4) else contactLabel
+                            Text("$status${if (compact && !landscape) " " else " · "}$integrity%",
+                                color = if (segment?.contactState?.allowsMelee == true) Danger else Mist,
+                                fontSize = if (compact && !landscape) 8.5.sp else 9.sp, lineHeight = 11.sp, maxLines = 1,
+                                modifier = Modifier.testTag("battle_contact_${section.name}").semantics {
+                                    contentDescription = "$contactLabel, ${if (section == BattleSection.CENTER) "Tor" else "Mauer"} $integrity Prozent"
+                                })
+                            Text("M$morale K$cohesion${if (landscape) " · H${battle.fighting(section)} G${front?.enemySoldiers ?: 0}" else ""}", color = if (morale < 35 || cohesion < 35) Danger else Success, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1,
+                                modifier = Modifier.testTag("battle_cohesion_${section.name}").semantics {
+                                    contentDescription = "Moral $morale Prozent, Kohäsion $cohesion Prozent"
+                                })
+                            if (!compact) Text("${battle.fighting(section)} / ${front?.enemySoldiers ?: 0}", color = Mist, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1)
                             LinearProgressIndicator(
-                                progress = { (front?.cohesion ?: 0).coerceIn(0, 100) / 100f },
+                                progress = { cohesion.coerceIn(0, 100) / 100f },
                                 modifier = Modifier.fillMaxWidth().height(2.dp),
-                                color = if ((front?.cohesion ?: 0) < 35) Danger else Success,
+                                color = if (cohesion < 35) Danger else Success,
                                 trackColor = Color.White.copy(alpha = .08f),
                             )
                         }
@@ -196,6 +219,14 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                         Column(Modifier.padding(if (compact) 10.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(event.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
                             if (!compact) Text(event.text, color = Mist, fontSize = 12.sp, maxLines = 3)
+                            if (landscape) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                val order = event.options.first()
+                                OutlinedButton(onClick = { execute(order) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("battle_react_${order.name}"),
+                                    enabled = battle.commandPoints >= BattleEngine.orderCost(battle, order) && BattleEngine.canOrder(battle, order, event.section)) {
+                                    Text("${order.label} · ${BattleEngine.orderCost(battle, order)} BP", fontSize = 12.sp)
+                                }
+                                TextButton(onClick = { sheet = "orders" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Weitere Reaktionen", fontSize = 12.sp) }
+                            } else {
                             event.options.take(if (compact) 1 else 2).forEach { order ->
                                 OutlinedButton(onClick = { execute(order) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                                     enabled = battle.commandPoints >= BattleEngine.orderCost(battle, order) && BattleEngine.canOrder(battle, order, event.section)) {
@@ -203,62 +234,43 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                 }
                             }
                             if (event.options.size > if (compact) 1 else 2) TextButton(onClick = { sheet = "orders" }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Weitere Reaktionen") }
+                            }
                         }
                     }
                 }
             }
-            Surface(color = Panel, shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)) {
-                Column(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 0.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    val report = battle.lastReport(selected)
-                    val segment = battle.segment(selected)
-                    val active = report?.ownActive ?: 0
-                    val secondLine = (battle.fighting(selected) - active).coerceAtLeast(0)
-                    if (!compact) Text(if (!battle.isActive) battle.outcomeGrade?.label ?: "Schlacht beendet" else
-                        "${selected.label} · $active aktiv · $secondLine zweite Linie · ${battle.battleArrowsRemaining} Pfeile", color = Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (!compact) Text(if (report == null) "${segment?.contactState?.label ?: battle.tacticalStageLabel} · Reserve ${battle.fighting(BattleSection.RESERVE)}" else
-                        "−${report.ownDamage.total} eigene / −${report.enemyDamage.total} Gegner · Deckung verhinderte ≈${report.preventedLosses.toInt()} Ausfälle", color = Mist, fontSize = 11.sp, maxLines = 1)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        if (battle.isActive) {
-                            OutlinedButton(onClick = { if (battle.minute == 0 && state.world.encounter == null) setup = true else sheet = "orders" },
-                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
-                                Text(
-                                    if (battle.minute == 0 && state.world.encounter == null) "Aufstellung" else "Befehle",
-                                    fontSize = if (compact) 8.sp else 12.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+            Surface(color = Panel, shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)) {
+                Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    if (battle.isActive) {
+                        val actions = listOf("Befehle", if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren", "Taktik", "Reserve", "Ziele", "Details")
+                        actions.chunked(if (landscape) 6 else 3).forEach { row ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                row.forEach { label ->
+                                    val tag = when (label) { "Befehle" -> "orders"; "+5 Minuten", "Reagieren" -> "advance"; "Taktik" -> "plan"; "Reserve" -> "reserve"; "Ziele" -> "targets"; else -> "details" }
+                                    Button(onClick = {
+                                        when (tag) {
+                                            "advance" -> if (battle.pendingEvent == null) apply(BattleEngine.advance(state)) else sheet = "orders"
+                                            "details" -> { detailTab = if (battle.minute == 0) 3 else 0; sheet = "details" }
+                                            else -> sheet = tag
+                                        }
+                                    }, modifier = Modifier.weight(1f).height(48.dp).testTag("battle_$tag"),
+                                        contentPadding = PaddingValues(2.dp), shape = RoundedCornerShape(14.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = if (tag == "advance") Gold else Panel2,
+                                            contentColor = if (tag == "advance") Ink else Color.White)) {
+                                        Text(label, fontSize = 11.sp, lineHeight = 13.sp, maxLines = 2,
+                                            modifier = Modifier.testTag("battle_label_$tag"))
+                                    }
+                                }
                             }
-                            Button(onClick = { if (battle.pendingEvent == null) apply(BattleEngine.advance(state)) else sheet = "orders" },
-                                modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-                                Text(
-                                    if (battle.pendingEvent == null) "+5 Minuten" else "Reagieren",
-                                    fontSize = if (compact) 8.sp else 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        } else Button(onClick = { onState(state.copy(battleSession = null)); onNotice("Bericht und Replay bleiben in der Chronik.") }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Zur Welt") }
-                        TextButton(onClick = { detailTab = if (battle.minute == 0) 3 else 0; sheet = "details" },
-                            modifier = Modifier.height(48.dp), contentPadding = PaddingValues(horizontal = 6.dp)) {
-                            Text("Details", color = ModernBlue, fontSize = if (compact) 8.sp else 12.sp, maxLines = 1)
                         }
+                    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Button(onClick = { onState(state.copy(battleSession = null)); onNotice("Bericht und Replay bleiben in der Chronik.") },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("battle_close")) { Text("Zur Welt") }
+                        TextButton(onClick = { detailTab = 0; sheet = "details" }, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("battle_details")) { Text("Bericht") }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun BattleHudValue(label: String, value: String, accent: Color, compact: Boolean = false) {
-    if (compact) {
-        Text("${label.take(3)} $value", color = accent, fontSize = 11.sp, maxLines = 1)
-        return
-    }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, color = accent, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = Mist, fontSize = 8.sp)
     }
 }
 
@@ -282,6 +294,13 @@ private fun BattleAfterAction(state: GameState, battle: BattleSession) {
     PremiumPanel(emphasized = true) {
         Text(battle.outcomeGrade?.label ?: "Schlacht beendet", color = if (battle.status == BattleStatus.VICTORY) Success else Danger, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("${battle.casualties.dead} gefallen · ${battle.casualties.wounded} verwundet · ${battle.casualties.missing} vermisst · ${battle.casualties.captured} gefangen", color = Mist)
+        val enemy = BattleReportEngine.enemyCasualties(battle)
+        Text("Gegner: ${enemy.dead} Tote · ${enemy.wounded} Verwundete · ${enemy.captured} Gefangene · ${if (battle.status == BattleStatus.VICTORY) battle.enemyRemaining else battle.fronts.filter { it.intent == BattleAiIntent.WITHDRAW }.sumOf { it.enemySoldiers }} Geflohene", color = Mist)
+        Text("Eigene geflohene Überlebende: ${battle.contingents.filter { it.routed }.sumOf { it.soldiers }}", color = Mist, fontSize = 12.sp)
+        BattleReportEngine.lossesByPhase(battle).forEach { Text("${it.label}: ${it.own} eigene / ${it.enemy} gegnerische Ausfälle", color = Mist, fontSize = 12.sp) }
+        Text(BattleReportEngine.tacticEffect(battle), color = Gold, fontSize = 12.sp)
+        val firstBreak = battle.exchanges.firstNotNullOfOrNull { it.events.firstOrNull { event -> event.contains("bricht") || event.contains("fliehen") } }
+        Text("Erster Bruch: ${firstBreak ?: "Keine Front ist gebrochen; die Stellung hielt."}", color = ModernBlue, fontSize = 12.sp)
         Text("${battle.battleArrowsLoaded - battle.battleArrowsRemaining} Pfeile verbraucht · +${battle.xpReward} XP · +${battle.renownReward} Ruhm", color = Gold, fontSize = 12.sp)
         battle.weaponChargesUsed.forEach { (type, count) -> Text("${type.label}: $count Ladungen", color = Mist, fontSize = 12.sp) }
         battle.segments.forEach { segment ->

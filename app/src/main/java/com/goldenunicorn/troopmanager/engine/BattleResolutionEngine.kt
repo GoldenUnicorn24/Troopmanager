@@ -2,6 +2,7 @@ package com.goldenunicorn.troopmanager.engine
 
 import com.goldenunicorn.troopmanager.model.*
 import kotlin.math.floor
+import kotlin.math.ceil
 import kotlin.random.Random
 
 /** Aggregate attack pools followed by one casualty budget per side and front. */
@@ -47,6 +48,27 @@ object BattleResolutionEngine {
         return BattleDamageSources(parts[0], parts[1], parts[2])
     }
 
+    fun targetWeight(type: UnitType, soldiers: Int, priority: TargetPriority, enemy: EnemyType): Double =
+        soldiers.toDouble() * when (priority) {
+            TargetPriority.LIGHT_INFANTRY -> if (type.ranged < 8 && type.defense <= 7) 5.0 else 1.0
+            TargetPriority.RANGED -> if (type.ranged >= 8) 6.0 else 1.0
+            TargetPriority.ELITE -> if (type.defense >= 9 || type.attack >= 9) 5.0 else 1.0
+            TargetPriority.MONSTERS -> if (enemy == EnemyType.TAO_TEI && type in listOf(UnitType.TIGER_CORPS, UnitType.BEAR_CORPS)) 6.0 else 1.0
+            TargetPriority.LARGEST -> soldiers.toDouble().coerceAtLeast(1.0)
+            else -> 1.0
+        }
+
+    private fun effectiveRange(battle: BattleSession, type: UnitType, segment: FortificationSegmentState, own: Boolean): Double {
+        val base = when (type) { UnitType.DRAGON_ARTILLERY -> 320.0; UnitType.GOLD_ARCHER -> 270.0; UnitType.WOOD_RANGER -> 250.0; else -> 220.0 }
+        val height = if (own && battle.tactic == Tactic.FORTIFY || !own && battle.enemyFortification > 0) 40 * segment.integrity / 100.0 else 0.0
+        return minOf(base + height, 350 * battle.visibility * if (battle.night) .65 else 1.0)
+    }
+
+    fun shootingCapacity(state: GameState, fortified: Boolean, terrain: BattleTerrain): Int =
+        if (fortified) 140 + WarEngine.effectiveLevel(state, BuildingType.WALL).coerceAtMost(4) * 20 +
+            WarEngine.effectiveLevel(state, BuildingType.TOWER).coerceAtMost(4) * 15
+        else if (terrain == BattleTerrain.FOREST) 65 else 180
+
     fun resolve(state: GameState, battle: BattleSession, siege: SiegeEngine.Result,
         decision: BattleDecision?, target: BattleSection?): Result {
         val changed = battle.contingents.toMutableList()
@@ -75,23 +97,27 @@ object BattleResolutionEngine {
                 units.map { if (it.type == UnitType.DRAGON_ARTILLERY) 0 else it.soldiers }, units.map { it.soldiers * if (it.type.ranged >= 8) .45 else 1.5 })
             val operators = battle.siegeDevices.filter { it.section == front.section && !it.disabled && it.type in listOf(SiegeDevice.RAM, SiegeDevice.CATAPULT, SiegeDevice.TUNNEL) }.sumOf { it.crew }
             val assignedCrew = allocate(operators, enemyUnits.map { if (it.type.ranged < 8) it.soldiers else 0 }, enemyUnits.map { if (it.type.ranged < 8) it.soldiers.toDouble() else 0.0 })
-            val enemyActive = allocate(if (contact) minOf(width, enemyCount) else 0,
+            val enemyActive = allocate(if (contact && front.intent != BattleAiIntent.WITHDRAW) minOf(width, enemyCount) else 0,
                 enemyUnits.mapIndexed { i, c -> if (c.type == UnitType.DRAGON_ARTILLERY) 0 else c.soldiers - assignedCrew[i] }, enemyUnits.map { it.soldiers * if (it.type.ranged >= 8) .45 else 1.5 })
-            val missileRange = front.enemyDistance <= 220 && enemyCount > 0
+            val missileRange = enemyCount > 0 && front.intent != BattleAiIntent.WITHDRAW
+            val killZoneReady = battle.plan.doctrine != BattleDoctrine.KILL_ZONE || front.enemyDistance <= 110
             val aimedArtillery = focus && decision == BattleDecision.ARTILLERY_TARGET
-            val shootingSlots = if (battle.tactic == Tactic.FORTIFY) 140 else if (battle.terrain[front.section] == BattleTerrain.FOREST) 65 else 180
-            val shooters = allocate(if (missileRange || aimedArtillery) shootingSlots else 0,
+            val shootingSlots = shootingCapacity(state, battle.tactic == Tactic.FORTIFY, battle.terrain[front.section] ?: BattleTerrain.PLAIN)
+            val shooters = allocate(if (missileRange && killZoneReady || aimedArtillery) shootingSlots else 0,
                 units.mapIndexed { index, c -> if (c.type.ranged >= 8 &&
                     (segment.rangedOrder != RangedOrder.HOLD || aimedArtillery && c.type == UnitType.DRAGON_ARTILLERY) &&
-                    (missileRange || c.type == UnitType.DRAGON_ARTILLERY)) c.soldiers - active[index] else 0 },
+                    (missileRange || c.type == UnitType.DRAGON_ARTILLERY) &&
+                    front.enemyDistance <= effectiveRange(battle, c.type, segment, true)) c.soldiers - active[index] else 0 },
                 units.map { if (it.type.ranged >= 8) it.soldiers.toDouble() else 0.0 })
             val enemyShooters = allocate(if (missileRange && front.intent != BattleAiIntent.WITHDRAW) shootingSlots else 0,
-                enemyUnits.mapIndexed { index, c -> if (c.type.ranged >= 8) c.soldiers - enemyActive[index] else 0 },
+                enemyUnits.mapIndexed { index, c -> if (c.type.ranged >= 8 &&
+                    front.enemyDistance <= effectiveRange(battle, c.type, segment, false)) c.soldiers - enemyActive[index] else 0 },
                 enemyUnits.map { if (it.type.ranged >= 8) it.soldiers.toDouble() else 0.0 })
             val arrowShooters = shooters.indices.sumOf { if (units[it].type == UnitType.DRAGON_ARTILLERY) 0 else shooters[it] }
-            val firingCost = if (focus && decision == BattleDecision.ARROW_VOLLEY) 3 else if (focus && decision == BattleDecision.FOCUS_FIRE) 2 else 1
-            val ammoCost = minOf(arrows, (arrowShooters.toLong() * firingCost * DoctrineEngine.arrowConsumptionFactor(state)).toLong().coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
-            val required = (arrowShooters.toLong() * firingCost * DoctrineEngine.arrowConsumptionFactor(state)).coerceAtLeast(1.0)
+            val firingCost = if (focus && decision == BattleDecision.ARROW_VOLLEY) 3.0 else
+                battle.plan.ammunitionPolicy.consumption * if (focus && decision == BattleDecision.FOCUS_FIRE) 2.0 else 1.0
+            val required = ceil(arrowShooters.toLong() * firingCost * DoctrineEngine.arrowConsumptionFactor(state)).coerceAtLeast(1.0)
+            val ammoCost = if (arrowShooters == 0) 0 else minOf(arrows, required.coerceAtMost(Int.MAX_VALUE.toDouble()).toInt())
             val ammoFactor = if (arrowShooters == 0) 1.0 else ammoCost / required
             arrows -= ammoCost
             val enemyArrowShooters = enemyShooters.indices.sumOf { if (enemyUnits[it].type == UnitType.DRAGON_ARTILLERY) 0 else enemyShooters[it] }
@@ -108,21 +134,33 @@ object BattleResolutionEngine {
             val enemyCharges = minOf(enemyArtillery, enemyChargesRequired)
             val enemyArtilleryFactor = if (enemyChargesRequired == 0) 0.0 else enemyCharges.toDouble() / enemyChargesRequired
             enemyArtillery -= enemyCharges
-            val rangedCommand = if (focus && decision == BattleDecision.ARROW_VOLLEY) 1.65 else if (focus && decision in listOf(BattleDecision.FOCUS_ARCHERS, BattleDecision.FOCUS_FIRE)) 1.30 else 1.0
+            val rangedCommand = if (focus && decision == BattleDecision.ARROW_VOLLEY) 1.65 else
+                battle.plan.ammunitionPolicy.fireRate * if (focus && decision in listOf(BattleDecision.FOCUS_ARCHERS, BattleDecision.FOCUS_FIRE)) 1.30 else 1.0
+            val heightBonus = if (battle.tactic == Tactic.FORTIFY) 1 + segment.integrity / 500.0 +
+                WarEngine.effectiveLevel(state, BuildingType.TOWER).coerceAtMost(4) * .025 else 1.0
+            val doctrineRanged = when (battle.plan.doctrine) {
+                BattleDoctrine.RANGED_SUPERIORITY -> 1.18
+                BattleDoctrine.KILL_ZONE -> 1.4
+                BattleDoctrine.PRESERVE_TROOPS -> .90
+                BattleDoctrine.COUNTERATTACK -> .95
+                else -> 1.0
+            }
             val ownRangedPower = units.indices.sumOf { index ->
                 val c = units[index]
                 shooters[index] * c.type.ranged * 2.0 * ownQuality(state, battle, c, true) *
-                    (if (c.type == UnitType.DRAGON_ARTILLERY) artilleryFactor else ammoFactor)
-            } * rangedCommand
+                    (if (c.type == UnitType.DRAGON_ARTILLERY) artilleryFactor else ammoFactor) *
+                    (.55 + .45 * (1 - front.enemyDistance / effectiveRange(battle, c.type, segment, true)).coerceIn(0.0, 1.0))
+            } * rangedCommand * heightBonus * doctrineRanged
             val terrain = battle.terrain[front.section] ?: BattleTerrain.PLAIN
             val enemyRangedPower = enemyUnits.indices.sumOf { index ->
                 val c = enemyUnits[index]
                 enemyShooters[index] * c.type.ranged * 2.0 * enemyQuality(c, front) * battle.rangedWeather *
                     BattleEngine.terrainMultiplier(terrain, c.type, BattlePhase.RANGED) *
-                    (if (c.type == UnitType.DRAGON_ARTILLERY) enemyArtilleryFactor else enemyAmmoFactor)
+                    (if (c.type == UnitType.DRAGON_ARTILLERY) enemyArtilleryFactor else enemyAmmoFactor) *
+                    (.55 + .45 * (1 - front.enemyDistance / effectiveRange(battle, c.type, segment, false)).coerceIn(0.0, 1.0))
             }
-            val targetIndex = if (segment.devicePriority) devices.indices.filter { devices[it].section == front.section &&
-                !devices[it].disabled && devices[it].detected && devices[it].crew > 0 && devices[it].distance <= 220 }.minByOrNull { devices[it].distance } else null
+            val targetIndex = if (segment.devicePriority || battle.plan.rangedPriority == TargetPriority.DEVICES) devices.indices.filter { devices[it].section == front.section &&
+                !devices[it].disabled && devices[it].detected && devices[it].crew > 0 && devices[it].distance <= 260 }.minByOrNull { devices[it].distance } else null
             val artilleryPower = units.indices.sumOf { index -> if (units[index].type != UnitType.DRAGON_ARTILLERY) 0.0 else
                 shooters[index] * units[index].type.ranged * 2.0 * ownQuality(state, battle, units[index], true) * artilleryFactor } * rangedCommand
             val aimedPower = if (aimedArtillery) artilleryPower else if (targetIndex == null) 0.0 else ownRangedPower * .65
@@ -145,7 +183,7 @@ object BattleResolutionEngine {
                 val c = units[index]
                 active[index] * (c.type.attack + c.type.defense * (if (defensible || hold) .75 else .35)) *
                     ownQuality(state, battle, c, false) * if (c.type.ranged >= 8) .55 else 1.0
-            } * meleeCommand
+            } * meleeCommand * if (battle.plan.doctrine == BattleDoctrine.COUNTERATTACK) 1.2 else 1.0
             val enemyMeleePower = enemyUnits.indices.sumOf { index ->
                 val c = enemyUnits[index]
                 enemyActive[index] * (c.type.attack + c.type.defense * .35) * enemyQuality(c, front) *
@@ -154,13 +192,17 @@ object BattleResolutionEngine {
                     (if (c.type.ranged >= 8) .55 else 1.0)
             }
             val ownDefense = if (count == 0) 1.0 else units.sumOf { it.soldiers * (.55 + it.type.defense / 15.0) * (.45 + it.equipment / 180.0) } / count *
-                (if (state.resources.food == 0) .70 else 1.0) * (if (hold) 1.18 else 1.0)
+                (if (state.resources.food == 0) .70 else 1.0) * (if (hold) 1.18 else 1.0) *
+                (if (battle.plan.doctrine in listOf(BattleDoctrine.HOLD_WALL, BattleDoctrine.PRESERVE_TROOPS)) 1.12 else
+                    if (battle.plan.doctrine == BattleDoctrine.COUNTERATTACK) .88 else 1.0) *
+                (if (front.section == BattleSection.CENTER && battle.plan.gatePolicy == GatePolicy.GATE_DEFENSE) 1.18 else 1.0)
             val enemyDefense = if (enemyCount == 0) 1.0 else enemyUnits.sumOf { it.soldiers * (.55 + it.type.defense / 15.0) * (.45 + it.equipment / 180.0) } / enemyCount
             val coverOwn = if (battle.tactic == Tactic.FORTIFY) SiegeEngine.exposure(segment) else 1.0
             val coverEnemy = if (battle.tactic != Tactic.FORTIFY && segment.cover > 0) SiegeEngine.exposure(segment) else 1.0
             val rawRangedOwn = if (count > 0) enemyRangedPower / 115.0 / ownDefense.coerceAtLeast(.2) else 0.0
             val rangedOwn = rawRangedOwn * coverOwn
-            val rangedEnemy = if (enemyCount > 0) (ownRangedPower - aimedPower) / 115.0 / enemyDefense.coerceAtLeast(.2) * coverEnemy else 0.0
+            val density = (.75 + enemyCount / SiegeEngine.terrainFrontage(terrain).toDouble() * .20).coerceIn(.75, 1.35)
+            val rangedEnemy = if (enemyCount > 0) (ownRangedPower - aimedPower).coerceAtLeast(0.0) / 115.0 / enemyDefense.coerceAtLeast(.2) * coverEnemy * density else 0.0
             val lineDefense = if (defensible) 1.45 else 1.0
             val meleeOwn = if (contact && count > 0) enemyMeleePower / 95.0 / ownDefense.coerceAtLeast(.2) / lineDefense else 0.0
             val meleeEnemy = if (contact && enemyCount > 0) ownMeleePower / 95.0 / enemyDefense.coerceAtLeast(.2) else 0.0
@@ -174,11 +216,16 @@ object BattleResolutionEngine {
                 val exposure = if (contact) active[index] + shooters[index] * .5 + c.soldiers * .05 else shooters[index] + c.soldiers * .2
                 exposure / (.5 + c.type.defense / 12.0) / (.5 + c.equipment / 200.0)
             })
-            val enemyAllocation = allocate(enemyBudget, enemyUnits.map { it.soldiers }, enemyUnits.indices.map { index ->
+            val rangedBudget = sources(enemyBudget, rangedEnemy, meleeEnemy, 0.0).ranged
+            val rangedAllocation = allocate(rangedBudget, enemyUnits.map { it.soldiers }, enemyUnits.map {
+                targetWeight(it.type, it.soldiers, battle.plan.rangedPriority, battle.enemy) / (.5 + it.type.defense / 12.0)
+            })
+            val closeAllocation = allocate(enemyBudget - rangedBudget, enemyUnits.mapIndexed { index, c -> c.soldiers - rangedAllocation[index] }, enemyUnits.indices.map { index ->
                 val c = enemyUnits[index]
                 val exposure = if (contact) enemyActive[index] + enemyShooters[index] * .5 + c.soldiers * .05 else c.soldiers.toDouble()
                 exposure / (.5 + c.type.defense / 12.0)
             })
+            val enemyAllocation = enemyUnits.indices.map { rangedAllocation[it] + closeAllocation[it] }
             indices.forEachIndexed { index, troopIndex ->
                 val c = units[index]
                 val lost = ownAllocation[index]
@@ -203,15 +250,24 @@ object BattleResolutionEngine {
             val stalled = front.enemyDistance == 0 && !contact && battle.tactic == Tactic.FORTIFY &&
                 battle.siegeDevices.none { it.section == front.section && !it.disabled && it.crew > 0 }
             val shock = (enemyBudget * 100.0 / enemyCount.coerceAtLeast(1) / 3).toInt()
-            val morale = (front.morale - shock - (if (stalled) 4 else if (enemyBudget > ownBudget) 2 else 0) -
+            val discipline = enemyUnits.sumOf { it.soldiers.toLong() * (it.experience + it.type.defense * 3) }.toDouble() / enemyCount.coerceAtLeast(1)
+            val suppression = if (rangedEnemy > 0 || (battle.wallWeaponReports[front.section] ?: 0) > 0)
+                ((rangedEnemy + (battle.wallWeaponReports[front.section] ?: 0)) * 30 / enemyCount.coerceAtLeast(1) * density *
+                    (if (battle.plan.doctrine == BattleDoctrine.RANGED_SUPERIORITY) 1.25 else 1.0) *
+                    (1 - discipline / 180).coerceIn(.35, 1.0)).toInt().coerceIn(1, 30) else 0
+            val morale = (front.morale - shock - suppression - (if (stalled) 4 else if (enemyBudget > ownBudget) 2 else 0) -
                 (if (focus && decision == BattleDecision.ARROW_VOLLEY && enemyBudget > 0) 3 else 0)).coerceIn(0, 100)
             val position = (front.position + if (!contact) 0 else if (count == 0) -15 else if (ownBudget > enemyBudget * 2) -6 else if (enemyBudget > ownBudget * 2) 3 else 0).coerceIn(0, 100)
+            if (front.morale >= 22 && morale < 22) events += "${front.section.label} bricht: Verluste und $suppression Unterdrückung senken die Moral auf $morale%."
             reports += FrontExchangeReport(front.section, segment.contactState, width, active.sum(), enemyActive.sum(),
                 shooters.sum(), enemyShooters.sum(), sources(ownBudget, rangedOwn, meleeOwn, splashOwn),
                 sources(enemyBudget, rangedEnemy, meleeEnemy, 0.0).copy(wallWeapons = battle.wallWeaponReports[front.section] ?: 0),
-                rawRangedOwn - rangedOwn, siege.structural[front.section] ?: 0, siege.gateDamage[front.section] ?: 0, ammoCost, enemyAmmoCost, deviceDamage, ownCharges)
+                rawRangedOwn - rangedOwn, siege.structural[front.section] ?: 0, siege.gateDamage[front.section] ?: 0, ammoCost, enemyAmmoCost, deviceDamage, ownCharges,
+                suppression = suppression, targetType = enemyUnits.indices.filter { rangedAllocation[it] > 0 }.maxByOrNull { rangedAllocation[it] }?.let { enemyUnits[it].type },
+                targetDeviceId = targetIndex?.let { devices[it].id }, volleys = if (arrowShooters > 0) ammoFactor * rangedCommand else 0.0)
             front.copy(enemySoldiers = enemyCount - enemyBudget, morale = morale, position = position,
-                cohesion = (front.cohesion - shock - if (position < 25) 3 else 0).coerceIn(0, 100),
+                intent = if (morale < 22 || front.cohesion - shock - suppression < 15) BattleAiIntent.WITHDRAW else front.intent,
+                cohesion = (front.cohesion - shock - suppression - if (position < 25) 3 else 0).coerceIn(0, 100),
                 fatigue = (front.fatigue + if (contact || enemyShooters.sum() > 0) 5 else 2).coerceAtMost(100))
         }
         val report = BattleExchangeReport(battle.minute + 5, reports.sortedBy { it.section.ordinal }, events)

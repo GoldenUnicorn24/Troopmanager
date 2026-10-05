@@ -12,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,208 +22,150 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldenunicorn.troopmanager.engine.WarEngine
 import com.goldenunicorn.troopmanager.engine.ArmyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.CampaignInsightsEngine
 import com.goldenunicorn.troopmanager.engine.MilitaryEconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
-@Composable
-internal fun ArmyScreen(
-    state: GameState,
-    onState: (GameState) -> Unit,
-    onNotice: (String) -> Unit,
-) {
-    var tab by remember { mutableIntStateOf(0) }
-    val visibleCultures = ArmyEngine.visibleCultures(state)
-    val dominantCulture =
-        visibleCultures.maxByOrNull { selected ->
-            UnitType.entries.filter { it.culture == selected }.sumOf { state.soldiers(it) }
-        } ?: Culture.HUMAN
-    var culture by remember { mutableStateOf(visibleCultures.firstOrNull() ?: Culture.HUMAN) }
-    var expandedCulture by remember { mutableStateOf<Culture?>(null) }
+private enum class ArmyFilter(val label: String) {
+    ALL("Alle Einheiten"), MELEE("Nahkampf"), RANGED("Fernkampf"), CAVALRY("Kavallerie"),
+    ELITE("Elite"), SIEGE("Belagerung"), RECRUITS("Rekruten"),
+}
 
-    LaunchedEffect(visibleCultures) {
-        if (culture !in visibleCultures) {
-            culture = visibleCultures.firstOrNull() ?: Culture.HUMAN
-        }
-        if (expandedCulture != null && expandedCulture !in visibleCultures) {
-            expandedCulture = null
-        }
-    }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun ArmyScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val visibleCultures = ArmyEngine.visibleCultures(state)
+    var culture by remember { mutableStateOf(visibleCultures.firstOrNull() ?: Culture.HUMAN) }
+    var filterCulture by remember { mutableStateOf<Culture?>(null) }
+    var filter by remember { mutableStateOf(ArmyFilter.ALL) }
     var commanderId by remember { mutableStateOf<Long?>(null) }
+    var unitDetails by remember { mutableStateOf<UnitType?>(null) }
     val selectedCommander = state.commanders.firstOrNull { it.id == commanderId }
     if (selectedCommander != null) {
         CommanderProfileScreen(state, selectedCommander, { commanderId = null }, onState, onNotice)
         return
     }
-    BackHandler(expandedCulture != null) { expandedCulture = null }
-    Column(Modifier.fillMaxSize()) {
-        Column(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Box(
-                Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))
-            ) {
-                CategoryArt(dominantCulture, Modifier.fillMaxSize())
-                Box(
-                    Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(
-                            listOf(Color(0x22000000), Color(0x55080C0F), Color(0xEC080C10))
-                        )
-                    )
-                )
-                Column(
-                    Modifier.align(Alignment.BottomStart).padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    ModernPill("Streitkräfte", Gold, filled = true)
-                    Text(
-                        "${state.armySize} Soldaten",
-                        color = Color.White,
-                        fontSize = 29.sp,
-                        fontWeight = FontWeight.Black,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        ModernPill("${state.homeArmySize} bereit", Success)
-                        ModernPill("${state.awayArmySize} unterwegs", ModernBlue)
-                        if (state.war.wounded.sumOf { it.soldiers } > 0)
-                            ModernPill("${state.war.wounded.sumOf { it.soldiers }} verwundet", Danger)
+    LaunchedEffect(visibleCultures) {
+        if (culture !in visibleCultures) culture = visibleCultures.firstOrNull() ?: Culture.HUMAN
+        if (filterCulture != null && filterCulture !in visibleCultures) filterCulture = null
+    }
+    unitDetails?.let { type ->
+        ModalBottomSheet(onDismissRequest = { unitDetails = null }, containerColor = Panel,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            LazyColumn(Modifier.fillMaxWidth().fillMaxHeight(.85f), contentPadding = PaddingValues(12.dp, 4.dp, 12.dp, 32.dp)) {
+                item { ArmyUnitCard(state, type, false, onState, onNotice) }
+                item {
+                    state.commanderAssignments.filter { a -> a.units.any { it.type == type } }.forEach { assignment ->
+                        val amount = assignment.units.filter { it.type == type }.sumOf { it.amount }
+                        Text("${state.commanders.firstOrNull { it.id == assignment.commanderId }?.name ?: "Führung"}: $amount Soldaten", color = Mist)
                     }
                 }
             }
-            ModernTabStrip(
-                labels = listOf("Übersicht", "Ausbildung", "Kommandanten"),
-                selected = tab,
-                onSelect = { tab = it },
-            )
         }
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    }
+    Column(Modifier.fillMaxSize().testTag("army_screen")) {
+        ModernTabStrip(listOf("Übersicht", "Ausbildung", "Kommandanten"), tab, { tab = it },
+            Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+        LazyColumn(modifier = Modifier.weight(1f).testTag("army_list"),
+            contentPadding = PaddingValues(12.dp, 0.dp, 12.dp, 88.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item { ArmyTopSummary(state) }
             when (tab) {
                 0 -> {
-                    item {
-                        ArmyMetrics(
-                            listOf(
-                                "Gesamt" to state.armySize,
-                                "Einsatzbereit zuhause" to state.homeArmySize,
-                                "Auf Mission" to state.awayArmySize,
-                                "Verwundet" to state.war.wounded.sumOf { it.soldiers },
-                                "In Ausbildung" to state.trainingQueue.sumOf { it.amount },
-                                "Zugewiesen" to UnitType.entries.sumOf { state.assigned(it) },
-                            )
-                        )
+                    if (state.invasion != null || state.frontier.hordes.any { it.discovered }) item {
+                        val ready = WarEngine.defenseReadiness(state)
+                        Text("Mauer: ${ready.wallArchers} Schützen · ${ready.arrows} Pfeile · ${ready.activeWeapons} aktive Mauerwaffen",
+                            color = if (ready.arrows < ready.wallArchers * 3L) Danger else Gold, fontSize = 12.sp)
                     }
-                    item { PersonalCommandCard(state) }
-                    items(visibleCultures) { selected ->
-                        ArmyCultureCard(state, selected, expandedCulture == selected) {
-                            expandedCulture = if (expandedCulture == selected) null else selected
+                    item {
+                        SelectionMenu("Einheiten filtern", filter.label, ArmyFilter.entries, { it.label }) { filter = it }
+                        SelectionMenu("Kultur / Volk", filterCulture?.label ?: "Alle Völker", listOf<Culture?>(null) + visibleCultures,
+                            { it?.label ?: "Alle Völker" }) { filterCulture = it }
+                    }
+                    val types = UnitType.entries.filter { type ->
+                        (filterCulture == null || type.culture == filterCulture) && when (filter) {
+                            ArmyFilter.ALL -> state.soldiers(type) > 0
+                            ArmyFilter.MELEE -> state.soldiers(type) > 0 && type.ranged < 8 && type != UnitType.KNIGHT
+                            ArmyFilter.RANGED -> state.soldiers(type) > 0 && type.ranged >= 8 && type != UnitType.DRAGON_ARTILLERY
+                            ArmyFilter.CAVALRY -> state.soldiers(type) > 0 && type == UnitType.KNIGHT
+                            ArmyFilter.ELITE -> state.soldiers(type) > 0 && (type.attack >= 9 || type.defense >= 9)
+                            ArmyFilter.SIEGE -> state.soldiers(type) > 0 && type == UnitType.DRAGON_ARTILLERY
+                            ArmyFilter.RECRUITS -> false
                         }
-                        if (expandedCulture == selected) {
-                            Column(
-                                Modifier.padding(top = 10.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                UnitType.entries
-                                    .filter { it.culture == selected }
-                                    .forEach { type ->
-                                        ArmyUnitCard(state, type, false, onState, onNotice)
-                                    }
-                                OutlinedButton(
-                                    onClick = {
-                                        culture = selected
-                                        tab = 1
-                                    },
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                                ) {
-                                    Text("${selected.label}: Ausbildung öffnen", fontSize = 13.sp)
-                                }
-                            }
+                    }
+                    if (filter == ArmyFilter.RECRUITS) {
+                        items(visibleCultures.filter { filterCulture == null || it == filterCulture }) { selected ->
+                            Text("${selected.label}: ${state.population.recruits(selected)} Rekruten", color = Gold)
                         }
+                        items(state.trainingQueue.filter { filterCulture == null || it.type.culture == filterCulture }) {
+                            Text("${it.amount} ${it.type.label} · noch ${it.daysRemaining} Tage Ausbildung", color = Mist)
+                        }
+                    } else if (types.isEmpty()) item { EmptyCard("Keine Einheiten für diesen Filter.") }
+                    items(types, key = { it.name }) { type ->
+                        CompactArmyUnit(state, type) { unitDetails = type }
                     }
                 }
                 1 -> {
-                    item {
-                        Row(
-                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            visibleCultures.forEach { selected ->
-                                FilterChip(
-                                    selected = culture == selected,
-                                    onClick = { culture = selected },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                    label = { Text(selected.label, fontSize = 13.sp) },
-                                )
-                            }
-                        }
-                    }
-                    if (visibleCultures.isEmpty()) {
-                        item { EmptyCard("Keine aktive Kultur im Reich verfügbar.") }
-                    } else {
-                        item { ArmyCultureCard(state, culture, true, interactive = false) {} }
-                    }
+                    item { SelectionMenu("Ausbildungskultur", culture.label, visibleCultures, { it.label }) { culture = it } }
                     val orders = state.trainingQueue.filter { it.type.culture == culture }
-                    if (orders.isNotEmpty()) {
-                        item {
-                            Surface(color = Panel2, shape = RoundedCornerShape(16.dp)) {
-                                Column(
-                                    Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(7.dp),
-                                ) {
-                                    Text(
-                                        "Laufende Ausbildung",
-                                        color = PaleGold,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                    orders.forEach { order ->
-                                        Text(
-                                            "${order.amount} ${order.type.label} · noch ${order.daysRemaining} Tage",
-                                            color = Mist,
-                                            fontSize = 13.sp,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    items(
-                        UnitType.entries.filter {
-                            it.culture == culture && culture in visibleCultures
-                        }
-                    ) { type ->
+                    items(orders) { Text("${it.amount} ${it.type.label} · noch ${it.daysRemaining} Tage", color = Gold) }
+                    items(UnitType.entries.filter { it.culture == culture && culture in visibleCultures }) { type ->
                         ArmyUnitCard(state, type, true, onState, onNotice)
                     }
                 }
                 2 -> {
                     item {
-                        OutlinedButton(
-                            onClick = {
-                                val result = GameEngine.promoteCommander(state)
-                                onState(result.state)
-                                onNotice(result.message)
-                            },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            enabled = state.battleSession?.isActive != true,
-                        ) {
+                        OutlinedButton(onClick = {
+                            val result = GameEngine.promoteCommander(state); onState(result.state); onNotice(result.message)
+                        }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), enabled = state.battleSession?.isActive != true) {
                             Text("Kommandant befördern · 250 Gold", fontSize = 13.sp)
                         }
                     }
-                    if (state.commanders.isEmpty())
-                        item {
-                            EmptyCard(
-                                "Ab 100 aktiven Soldaten kannst du eine Führungskraft befördern und ihr Truppen zuweisen."
-                            )
-                        }
-                    items(state.commanders, key = { it.id }) { commander ->
-                        ArmyCommanderCard(state, commander) { commanderId = commander.id }
+                    if (state.commanders.isEmpty()) item { EmptyCard("Ab 100 aktiven Soldaten kannst du Führungskräfte befördern.") }
+                    items(state.commanders, key = { it.id }) { commander -> ArmyCommanderCard(state, commander) { commanderId = commander.id } }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArmyTopSummary(state: GameState) {
+    PremiumPanel {
+        Text("${state.armySize} Soldaten", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        val values = listOf("Gesamt" to state.armySize, "Bereit" to state.homeArmySize, "Garnison" to state.homeArmySize,
+            "Unterwegs" to state.awayArmySize, "Verwundet" to state.war.wounded.sumOf { it.soldiers }, "Rekruten" to state.population.totalRecruits)
+        values.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { (label, amount) ->
+                    Column(Modifier.weight(1f)) {
+                        Text(amount.toString(), color = Gold, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(label, color = Mist, fontSize = 11.sp)
                     }
                 }
             }
+        }
+        val ranged = UnitType.entries.filter { it.ranged >= 8 }.sumOf { state.homeSoldiers(it) }
+        Text("Zuhause: ${state.homeArmySize - ranged} Nahkampf · $ranged Fernkampf · ${state.trainingSize} in Ausbildung",
+            color = ModernBlue, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun CompactArmyUnit(state: GameState, type: UnitType, onClick: () -> Unit) {
+    val pool = state.armyPools.firstOrNull { it.type == type } ?: return
+    val assignments = state.commanderAssignments.filter { a -> a.units.any { it.type == type } }
+    val commander = assignments.firstOrNull()?.commanderId?.let { id -> state.commanders.firstOrNull { it.id == id }?.name } ?: state.player.name
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("army_unit_${type.name}"),
+        color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, ModernLine)) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("${pool.soldiers} · ${type.label}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("${state.homeSoldiers(type)} zuhause · ${state.away(type)} unterwegs", color = Gold, fontSize = 12.sp)
+            Text("Moral ${pool.morale}% · Ausrüstung ${pool.equipment}% · Erfahrung ${pool.experience}", color = Mist, fontSize = 11.sp)
+            Text("${CampaignInsightsEngine.unitRole(type)} · Führung: $commander${if (assignments.size > 1) " +${assignments.size - 1}" else ""}", color = ModernBlue, fontSize = 11.sp)
         }
     }
 }

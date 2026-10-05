@@ -46,7 +46,10 @@ internal fun CourtHubScreen(state: GameState, onState: (GameState) -> Unit, onNo
 internal fun ArmyHubScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit, initialPage: Int = 0) {
     var page by remember(initialPage) { mutableStateOf(initialPage) }
     Column(Modifier.fillMaxSize()) {
-        HubTabs(listOf("Armee", "Kommandanten", "Missionen", "Lazarett", "Arsenal & Doktrinen"), page) { page = it }
+        val sections = listOf("Heer", "Kommandanten", "Missionen", "Lazarett", "Arsenal & Doktrinen")
+        Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+            SelectionMenu("Militärbereich", sections[page], sections.indices.toList(), { sections[it] }) { page = it }
+        }
         ContextTutorialCard(state, "army", onState)
         Box(Modifier.weight(1f)) {
             when (page) {

@@ -19,6 +19,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -153,56 +157,39 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
 
 @Composable
 internal fun ResourceStrip(r: Resources, production: Resources? = null) {
-    Row(
-        Modifier.fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 10.dp, vertical = 5.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        listOf(
-            Triple("Gold", r.gold, production?.gold),
-            Triple("Nahrung", r.food, production?.food),
-            Triple("Holz", r.wood, production?.wood),
-            Triple("Stein", r.stone, production?.stone),
-            Triple("Eisen", r.iron, production?.iron),
-        ).forEach { (label, value, gain) ->
-            val accent = when {
-                gain == null -> Gold
-                gain < 0 -> Danger
-                else -> Success
-            }
-            Surface(
-                color = Color(0xFF111820),
-                shape = RoundedCornerShape(100.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(Modifier.size(6.dp).background(accent, RoundedCornerShape(10.dp)))
-                    Column {
-                        Text(
-                            label.uppercase(),
-                            color = Color(0xFF8F9BA4),
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = .8.sp,
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(value.toString(), color = Color.White, fontWeight = FontWeight.Black, fontSize = 11.sp)
-                            if (gain != null) {
-                                Text(
-                                    "${if (gain >= 0) "+" else ""}$gain",
-                                    color = accent,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val resources = listOf(
+        Triple("Gold", r.gold, production?.gold), Triple("Nahrung", r.food, production?.food),
+        Triple("Holz", r.wood, production?.wood), Triple("Stein", r.stone, production?.stone),
+        Triple("Eisen", r.iron, production?.iron),
+    )
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("resource_strip")) {
+        val columns = if (maxWidth >= 600.dp) 5 else 2
+        val cardWidth = (maxWidth - 48.dp - 16.dp - 7.dp * (columns - 1)) / columns
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.foundation.lazy.LazyRow(state = list, modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp),
+                flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(list)) {
+                items(resources.size) { index ->
+                    val (label, value, gain) = resources[index]
+                    val accent = if (gain != null && gain < 0) Danger else Success
+                    Surface(color = Color(0xFF111820), shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
+                        modifier = Modifier.width(cardWidth).heightIn(min = 48.dp).testTag("resource_$index")) {
+                        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                            Text(label, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Text(value.toString(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            if (gain != null) Text("${if (gain >= 0) "+" else ""}$gain / Tag", color = accent, fontSize = 10.sp)
                         }
                     }
                 }
+            }
+            IconButton(onClick = { scope.launch {
+                list.animateScrollToItem(if (list.canScrollForward) (list.firstVisibleItemIndex + columns).coerceAtMost(resources.lastIndex) else 0)
+            } }, modifier = Modifier.size(48.dp).testTag("resource_next")) {
+                Text(if (list.canScrollForward) "›" else "‹", color = Gold, fontSize = 28.sp,
+                    modifier = Modifier.semantics { contentDescription = "Weitere Ressourcen; horizontal scrollbar" })
             }
         }
     }

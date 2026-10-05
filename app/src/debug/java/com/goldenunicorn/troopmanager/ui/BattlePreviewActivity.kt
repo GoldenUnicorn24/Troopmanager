@@ -2,10 +2,12 @@ package com.goldenunicorn.troopmanager.ui
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.MaterialTheme
@@ -20,19 +22,42 @@ import com.goldenunicorn.troopmanager.model.*
 
 /** Non-exported debug harness renders the real battle screen with bounded, deterministic fixtures. */
 class BattlePreviewActivity : ComponentActivity() {
-    data class Viewport(val width: Int = 320, val height: Int = 568, val fontScale: Float = 1f, val pending: Boolean = false)
-    companion object { var viewport by mutableStateOf(Viewport()) }
+    data class Viewport(val width: Int = 320, val height: Int = 568, val fontScale: Float = 1f, val pending: Boolean = false, val page: String = "battle")
+    companion object {
+        var viewport by mutableStateOf(Viewport())
+        var latestState: GameState? = null
+        var latestNotice: String = ""
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val view = viewport
             SideEffect { requestedOrientation = if (view.width > view.height) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
-            var state by remember(view.pending) { mutableStateOf(fixture(view.pending)) }
+            var state by remember(view.pending, view.page) { mutableStateOf(fixture(view.pending)) }
+            SideEffect { latestState = state }
+            fun update(next: GameState) {
+                state = next
+                latestState = next
+                Log.i("BattlePreview", "State: battle=${next.battleSession?.plan?.doctrine}, defense=${next.defensePlan.doctrine}")
+            }
+            fun notice(message: String) {
+                latestNotice = message
+                Log.i("BattlePreview", message)
+            }
             val density = LocalDensity.current
             Box(Modifier.fillMaxSize().background(Ink), contentAlignment = Alignment.Center) {
                 Box(Modifier.requiredSize(view.width.dp, view.height.dp)) {
                     CompositionLocalProvider(LocalDensity provides Density(density.density, view.fontScale)) {
-                        MaterialTheme { LiveBattleScreen(state, { state = it }, {}) }
+                        MaterialTheme {
+                            when (view.page) {
+                                "army" -> Column(Modifier.fillMaxSize()) {
+                                    ResourceStrip(state.resources)
+                                    Box(Modifier.weight(1f)) { ArmyHubScreen(state.copy(battleSession = null), ::update, ::notice) }
+                                }
+                                "defense" -> DefenseDashboard(state.copy(battleSession = null), ::update, ::notice) {}
+                                else -> LiveBattleScreen(state, ::update, ::notice)
+                            }
+                        }
                     }
                 }
             }

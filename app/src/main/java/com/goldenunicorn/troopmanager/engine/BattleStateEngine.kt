@@ -111,6 +111,8 @@ object BattleStateEngine {
     fun migrate(state: GameState): GameState = state.battleSession?.let { state.copy(battleSession = initialize(state, it)) } ?: state
 
     fun validate(battle: BattleSession) {
+        require(BattleEngine.validPlan(battle.plan) && battle.visibility.isFinite() && battle.visibility in .25..1.0) { "Ungültiger Schlachtplan oder Sicht." }
+        battle.reserveReinforcement?.let { require(it.section in sections && it.soldiers > 0 && it.readyStep in battle.step..(battle.step + 1)) { "Ungültige Reservebewegung." } }
         require(battle.combatVersion in 1..2) { "Unbekannte Kampfversion." }
         if (battle.combatVersion < 2) return
         require(battle.segments.map { it.section }.toSet() == sections.toSet() && battle.segments.size == 3 &&
@@ -127,6 +129,8 @@ object BattleStateEngine {
         battle.fronts.forEach { front -> require(battle.enemyRoster.filter { it.section == front.section }.sumOf { it.soldiers.toLong() } == front.enemySoldiers.toLong()) { "Gegnerformationen stimmen nicht mit der Front überein." } }
         require(battle.exchanges.size <= 20 && battle.exchanges.all { report -> report.minute in 0..95 &&
             report.fronts.all { it.preventedLosses.isFinite() && it.preventedLosses >= 0 && it.frontage >= 0 && it.ownActive >= 0 && it.enemyActive >= 0 &&
+                (it.contactState.allowsMelee || it.ownDamage.melee + it.enemyDamage.melee == 0) &&
+                it.suppression in 0..30 && it.volleys.isFinite() && it.volleys in 0.0..4.0 &&
                 it.arrowsUsed >= 0 && it.enemyArrowsUsed >= 0 && it.deviceDamage >= 0 && it.artilleryChargesUsed >= 0 && listOf(it.ownDamage.ranged, it.ownDamage.melee, it.ownDamage.splash, it.enemyDamage.ranged,
                     it.enemyDamage.melee, it.enemyDamage.splash, it.enemyDamage.wallWeapons).all { value -> value >= 0 } } }) { "Ungültiger Austauschbericht." }
     }

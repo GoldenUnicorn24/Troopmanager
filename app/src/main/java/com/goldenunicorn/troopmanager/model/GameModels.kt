@@ -277,6 +277,7 @@ data class GameState(
     val commanderAssignments: List<CommanderAssignment> = emptyList(),
     val activeMissions: List<ActiveMission> = emptyList(),
     val battleSession: BattleSession? = null,
+    val defensePlan: BattlePlan = BattlePlan(),
     val invasion: Invasion? = null,
     val relationship: RelationshipState = RelationshipState(),
     val pendingRealmEvent: RealmEvent? = null,
