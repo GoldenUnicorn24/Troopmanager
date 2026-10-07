@@ -12,7 +12,7 @@
   },
   "command": "gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain --max-workers=2",
   "build_result": "BUILD SUCCESSFUL",
-  "build_duration": "4m 45s",
+  "build_duration": "4m 51s",
   "unit_tests": {
     "tests": 426,
     "failures": 0,
@@ -35,8 +35,8 @@
   },
   "apk": {
     "path": "app/build/outputs/apk/debug/app-debug.apk",
-    "bytes": 32606061,
-    "sha256": "fa6695c63fba1fcf5851d52bcf7b70cbe556b419e3184b9e4ddf40ef8d105154",
+    "bytes": 32606286,
+    "sha256": "ca47c49672f41192c719662bc6b876d6188d6f44d0a730e01a4cf3a726f20ef2",
     "signature_v2_verified": true,
     "signers": 1,
     "min_sdk": 26,
@@ -46,5 +46,6 @@
     "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
     "built": true,
     "runtime_tests_executed": false
-  }
+  },
+  "verification_scope": "Local checks after the large-font UI correction; GitHub UI run results are recorded in Issue #9."
 }

@@ -161,7 +161,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                     val segment = battle.segment(section)
                     val front = battle.fronts.firstOrNull { it.section == section }
                     val highlighted = selected == section
-                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(if (landscape) 48.dp else 72.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
+                    Surface(onClick = { selected = section }, modifier = Modifier.weight(1f).height(if (landscape) 48.dp else if (compact) 88.dp else 72.dp).testTag("battle_front_${section.name}").semantics { this.selected = highlighted },
                         color = if (selected == section) Panel2 else Panel, shape = RoundedCornerShape(14.dp),
                         border = androidx.compose.foundation.BorderStroke(if (selected == section) 2.dp else 0.dp, if (selected == section) ModernBlue else Color.Transparent)) {
                         Column(Modifier.padding(horizontal = 6.dp, vertical = 3.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -189,7 +189,12 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                 modifier = Modifier.testTag("battle_contact_${section.name}").semantics {
                                     contentDescription = "$contactLabel, ${if (section == BattleSection.CENTER) "Tor" else "Mauer"} $integrity Prozent"
                                 })
-                            Text("M$morale K$cohesion · ${front?.enemyDistance ?: 0}m${if (landscape) " · H${battle.fighting(section)} G${front?.enemySoldiers ?: 0}" else ""}", color = if (morale < 35 || cohesion < 35) Danger else Success, fontSize = if (compact) 8.sp else 9.sp, lineHeight = 11.sp, maxLines = 1,
+                            val frontSummary = "M$morale K$cohesion" + when {
+                                landscape -> " · ${front?.enemyDistance ?: 0}m · H${battle.fighting(section)} G${front?.enemySoldiers ?: 0}"
+                                compact -> "\n${front?.enemyDistance ?: 0}m"
+                                else -> " · ${front?.enemyDistance ?: 0}m"
+                            }
+                            Text(frontSummary, color = if (morale < 35 || cohesion < 35) Danger else Success, fontSize = if (compact) 8.sp else 9.sp, lineHeight = 11.sp, maxLines = if (compact && !landscape) 2 else 1,
                                 modifier = Modifier.testTag("battle_cohesion_${section.name}").semantics {
                                     contentDescription = "Moral $morale Prozent, Kohäsion $cohesion Prozent, Distanz ${front?.enemyDistance ?: 0} Meter, eigene ${battle.fighting(section)}, Gegner ${front?.enemySoldiers ?: 0}"
                                 })

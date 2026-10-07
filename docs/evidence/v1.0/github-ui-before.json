@@ -1,0 +1,25 @@
+{
+  "run_id": 37610352205,
+  "head_sha": "373918b71ba7e353beea1b277bb84150242a8227",
+  "tests": {
+    "tests": 7,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "case": "largerFontsRemainUsableOnSmallPortrait",
+      "message": null,
+      "trace": [
+        "java.lang.AssertionError: Text battle_cohesion_LEFT must not be clipped: [232 x 49 / 232.0\u00d749.0]",
+        "at org.junit.Assert.fail(Assert.java:89)",
+        "at org.junit.Assert.assertTrue(Assert.java:42)",
+        "at com.goldenunicorn.troopmanager.ui.BattleLayoutTest.verifyFieldAndTouchTargets$verifyText(BattleLayoutTest.kt:50)",
+        "at com.goldenunicorn.troopmanager.ui.BattleLayoutTest.verifyFieldAndTouchTargets(BattleLayoutTest.kt:61)"
+      ]
+    }
+  ],
+  "run_url": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/37610352205",
+  "correction": "At large portrait fonts, retain morale, cohesion and distance in a two-line front label and increase the front card from 72 to 88 dp. Existing test assertions are unchanged."
+}

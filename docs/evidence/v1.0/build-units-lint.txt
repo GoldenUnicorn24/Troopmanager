@@ -67,11 +67,11 @@ w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanag
 w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/CityScene.kt:1036:13 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
 
 > Task :app:compileDebugJavaWithJavac UP-TO-DATE
-> Task :app:bundleDebugClassesToCompileJar
 > Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:processDebugJavaRes UP-TO-DATE
 > Task :app:compileDebugUnitTestKotlin UP-TO-DATE
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
-> Task :app:processDebugJavaRes UP-TO-DATE
 > Task :app:processDebugUnitTestJavaRes UP-TO-DATE
 > Task :app:testDebugUnitTest
 > Task :app:dexBuilderDebug
@@ -100,5 +100,5 @@ w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanag
 > Task :app:lintReportDebug UP-TO-DATE
 > Task :app:lintDebug
 
-BUILD SUCCESSFUL in 4m 45s
+BUILD SUCCESSFUL in 4m 51s
 80 actionable tasks: 14 executed, 66 up-to-date
