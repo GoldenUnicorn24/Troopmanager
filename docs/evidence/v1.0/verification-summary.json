@@ -1,0 +1,50 @@
+{
+  "branch": "codex/v1.0-realm-war-overhaul",
+  "app_version": "1.0.0",
+  "version_code": 46,
+  "save_schema": 5,
+  "combat_rules": 3,
+  "toolchain": {
+    "jdk": 17,
+    "gradle": "8.9",
+    "android_sdk": 35,
+    "build_tools": "35.0.0"
+  },
+  "command": "gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain --max-workers=2",
+  "build_result": "BUILD SUCCESSFUL",
+  "build_duration": "4m 45s",
+  "unit_tests": {
+    "tests": 426,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 17,
+    "information": 20,
+    "issue_ids": {
+      "VectorRaster": 5,
+      "GradleDependency": 7,
+      "LockedOrientationActivity": 1,
+      "ModifierParameter": 2,
+      "DiscouragedApi": 1,
+      "ObsoleteSdkInt": 1,
+      "AutoboxingStateCreation": 20
+    }
+  },
+  "apk": {
+    "path": "app/build/outputs/apk/debug/app-debug.apk",
+    "bytes": 32606061,
+    "sha256": "fa6695c63fba1fcf5851d52bcf7b70cbe556b419e3184b9e4ddf40ef8d105154",
+    "signature_v2_verified": true,
+    "signers": 1,
+    "min_sdk": 26,
+    "target_sdk": 35
+  },
+  "android_test_apk": {
+    "path": "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk",
+    "built": true,
+    "runtime_tests_executed": false
+  }
+}

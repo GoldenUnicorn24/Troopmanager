@@ -129,7 +129,9 @@ class V06WarTest {
         assertFalse(BattleEngine.canOrder(session, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))
         val contact = session.copy(segments = session.segments.map { it.copy(contactState = BattleContactState.FIELD_CONTACT) })
         assertTrue(BattleEngine.canOrder(contact, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))
-        val reinforced = BattleEngine.order(state, BattleDecision.SEND_RESERVE, BattleSection.CENTER).state.battleSession!!
+        val queued = BattleEngine.order(state, BattleDecision.SEND_RESERVE, BattleSection.CENTER).state
+        assertEquals(session.soldiers(BattleSection.RESERVE), queued.battleSession!!.soldiers(BattleSection.RESERVE))
+        val reinforced = BattleEngine.advance(queued).state.battleSession!!
         assertEquals(0, reinforced.soldiers(BattleSection.RESERVE))
         assertEquals(2, BattleEngine.orderCost(session, BattleDecision.SEND_RESERVE))
         assertFalse(BattleEngine.canOrder(BattleEngine.start(army(), EnemyType.URUK, Tactic.HOLD).state.battleSession!!, BattleDecision.FEIGNED_RETREAT, BattleSection.CENTER))

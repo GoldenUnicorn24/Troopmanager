@@ -71,11 +71,12 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                             items(battle.exchanges.asReversed()) { report ->
                                 PremiumPanel {
                                     Text("Austausch ${report.minute}′ · −${report.ownLosses} / −${report.enemyLosses}", color = Color.White, fontWeight = FontWeight.Bold)
+                                    if (report.causes.isNotEmpty()) Text("Eigene: ${report.ownCasualties.dead} Gefallene · ${report.ownCasualties.wounded} Verwundete; Lazarettaufnahme nach Schlachtende", color = Mist, fontSize = 12.sp)
                                     report.fronts.forEach { front ->
                                         Text("${front.section.label} · ${front.contactState.label}", color = ModernBlue, fontSize = 12.sp)
                                         Text("−${front.ownDamage.total} eigene / −${front.enemyDamage.total} Gegner · aktive Linie ${front.ownActive}/${front.enemyActive} · Breite ${front.frontage}", color = Mist, fontSize = 12.sp)
                                         Text("Ziel: ${front.targetType?.label ?: front.targetDeviceId ?: "lokale Front"} · Unterdrückung ${front.suppression}", color = Gold, fontSize = 12.sp)
-                                        Text("Eigene Ausfälle: ${front.ownDamage.ranged} Pfeile · ${front.ownDamage.melee} Nahkampf · ${front.ownDamage.splash} Splitter", color = Mist, fontSize = 12.sp)
+                                        Text("Eigene Ausfälle: ${front.ownDamage.ranged} Pfeile · ${front.ownDamage.melee} Nahkampf · ${front.ownDamage.artillery + front.ownDamage.splash} Artillerie · ${front.ownDamage.collapse} Einsturz · ${front.ownDamage.pursuit} Flucht", color = Mist, fontSize = 12.sp)
                                         Text("Deckung verhinderte rechnerisch ${String.format(java.util.Locale.GERMAN, "%.1f", front.preventedLosses)} weitere Ausfälle · ${front.arrowsUsed} Pfeile verbraucht", color = Success, fontSize = 12.sp)
                                         if (front.deviceDamage + front.artilleryChargesUsed > 0) Text("Geräteschaden ${front.deviceDamage} · Artillerieladungen ${front.artilleryChargesUsed}", color = ModernBlue, fontSize = 12.sp)
                                         if (front.structuralDamage + front.gateDamage > 0) Text("Mauer −${front.structuralDamage} · Tor −${front.gateDamage}", color = Danger, fontSize = 12.sp)
@@ -143,16 +144,16 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
         Column(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp)) {
             Column(Modifier.fillMaxWidth().height(if (landscape) 28.dp else 54.dp), verticalArrangement = Arrangement.Center) {
                 if (landscape) {
-                    Text("H ${battle.ownRemaining} · G ${battle.enemyRemaining} · ${battle.minute}′ · M ${battle.morale}% · ${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel}",
+                    Text("H ${battle.ownRemaining} · G ${battle.enemyRemaining} · ${battle.minute}′ · M ${battle.morale}% · ${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel} · P${battle.battleArrowsRemaining} R${battle.fighting(BattleSection.RESERVE)}",
                         color = Color.White, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1,
                         modifier = Modifier.testTag("battle_doctrine"))
                 } else {
                     Text("Heer ${battle.ownRemaining} · Gegner ${battle.enemyRemaining} · ${battle.minute}′", color = Color.White,
                         fontSize = if (compact) 11.sp else 13.sp, lineHeight = 15.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.testTag("battle_hud"))
-                    Text("Moral ${battle.morale}% · ${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel}", color = Gold,
-                        fontSize = if (compact) 10.sp else 12.sp, lineHeight = 14.sp,
-                        modifier = Modifier.testTag("battle_doctrine"))
+                    Text("${battle.commandPoints} BP · ${battle.plan.doctrine.shortLabel} · P${battle.battleArrowsRemaining} R${battle.fighting(BattleSection.RESERVE)}${if (battle.reserveReinforcement != null) " →${battle.reserveReinforcement.soldiers}" else ""}", color = Gold,
+                        fontSize = if (compact) 9.sp else 11.sp, lineHeight = 14.sp,
+                        modifier = Modifier.testTag("battle_doctrine").semantics { contentDescription = "${battle.plan.doctrine.label}, ${battle.commandPoints} Befehlspunkte, ${battle.battleArrowsRemaining} Pfeile, ${battle.fighting(BattleSection.RESERVE)} Reserve" })
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -188,9 +189,9 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                 modifier = Modifier.testTag("battle_contact_${section.name}").semantics {
                                     contentDescription = "$contactLabel, ${if (section == BattleSection.CENTER) "Tor" else "Mauer"} $integrity Prozent"
                                 })
-                            Text("M$morale K$cohesion${if (landscape) " · H${battle.fighting(section)} G${front?.enemySoldiers ?: 0}" else ""}", color = if (morale < 35 || cohesion < 35) Danger else Success, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1,
+                            Text("M$morale K$cohesion · ${front?.enemyDistance ?: 0}m${if (landscape) " · H${battle.fighting(section)} G${front?.enemySoldiers ?: 0}" else ""}", color = if (morale < 35 || cohesion < 35) Danger else Success, fontSize = if (compact) 8.sp else 9.sp, lineHeight = 11.sp, maxLines = 1,
                                 modifier = Modifier.testTag("battle_cohesion_${section.name}").semantics {
-                                    contentDescription = "Moral $morale Prozent, Kohäsion $cohesion Prozent"
+                                    contentDescription = "Moral $morale Prozent, Kohäsion $cohesion Prozent, Distanz ${front?.enemyDistance ?: 0} Meter, eigene ${battle.fighting(section)}, Gegner ${front?.enemySoldiers ?: 0}"
                                 })
                             if (!compact) Text("${battle.fighting(section)} / ${front?.enemySoldiers ?: 0}", color = Mist, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1)
                             LinearProgressIndicator(
@@ -284,6 +285,15 @@ internal fun BattlePreparationSummary(state: GameState, battle: BattleSession) {
         Text("Artillerie: ${battle.battleArtilleryRemaining} Ladungen · Gegen-Tunnel ${if (battle.counterTunnelUnlocked) "freigeschaltet" else "benötigt Belagerungsforschung oder erfahrene Führung"}", color = Mist, fontSize = 12.sp)
         Text("Lazarett ${state.war.wounded.sumOf { it.soldiers }}/${WarEngine.hospitalCapacity(state)} · ${state.militaryStock.medicine} Heilmittel", color = Mist, fontSize = 12.sp)
         Text("${state.awayArmySize} Soldaten fehlen zu Hause · Reserve ${battle.fighting(BattleSection.RESERVE)}", color = Mist, fontSize = 12.sp)
+        battle.reserveReinforcement?.let { move ->
+            Text("${move.soldiers} Reservisten zu ${move.section.label}: noch ${(move.readyStep - battle.step + 1).coerceAtLeast(1) * 5} Minuten bis Frontbeginn", color = ModernBlue)
+        }
+        BattleStateEngine.sections.filter { battle.segment(it) != null }.forEach { section ->
+            val front = BattleStateEngine.frontStatus(battle, section)
+            Text("${section.label}: ${front.stage.label} · ${front.distance} m · H${front.ownSoldiers}/G${front.enemySoldiers} · Breite ${front.frontage}", color = Gold, fontSize = 12.sp)
+            Text("${front.terrain.label} · ${front.formation.label} · Deckung ${(front.cover * 100).toInt()}% · Moral ${front.morale}/${front.enemyMorale} · Kohäsion ${front.cohesion} · Müdigkeit ${front.fatigue} · Sicht ${(front.visibility * 100).toInt()}%", color = Mist, fontSize = 12.sp)
+            Text("Mauer ${front.wallIntegrity}% · Tor ${front.gateIntegrity}% · Bresche ${front.breachWidth} · Ziel ${battle.plan.priority(section).label}", color = Mist, fontSize = 12.sp)
+        }
         if (state.resources.food == 0) Text("Hunger: weniger Kampfkraft, Moral und Kohäsion gefährdet", color = Danger)
         battle.segments.forEach { Text("${it.section.label}: Mauer ${it.integrity}% · ${if (it.section == BattleSection.CENTER) "Tor ${it.gateIntegrity}% · " else ""}Deckung ${(it.cover * 100).toInt()}%", color = Mist, fontSize = 12.sp) }
     }

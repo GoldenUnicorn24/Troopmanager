@@ -5,7 +5,8 @@ import com.goldenunicorn.troopmanager.model.*
 /** The same distances, docking progress and local breaches drive combat and the Canvas. */
 object SiegeEngine {
     data class Result(val battle: BattleSession, val structural: Map<BattleSection, Int>,
-        val gateDamage: Map<BattleSection, Int>, val splash: Map<BattleSection, Double>, val events: List<String>)
+        val gateDamage: Map<BattleSection, Int>, val splash: Map<BattleSection, Double>, val events: List<String>,
+        val collapsed: Set<BattleSection> = emptySet())
 
     fun advance(state: GameState, original: BattleSession, decision: BattleDecision?, target: BattleSection?): Result {
         val fortified = original.tactic == Tactic.FORTIFY
@@ -21,11 +22,14 @@ object SiegeEngine {
             val cohesion = troops.sumOf { it.soldiers.toLong() * it.cohesion }.div(count).toInt()
             val fallback = !fortified && original.segment(front.section)?.let {
                 it.contactState == BattleContactState.FIELD_CONTACT && !it.fallenBack } == true &&
-                (morale < original.plan.fallbackPolicy.moraleThreshold || cohesion < original.plan.fallbackPolicy.cohesionThreshold)
+                (morale < original.plan.moraleFallback || cohesion < original.plan.cohesionFallback)
             val speed = if (original.enemy == EnemyType.TAO_TEI) 60 else 40
             val movement = when (intent) { BattleAiIntent.WITHDRAW -> -45; BattleAiIntent.MISSILES -> 10
                 else -> (speed * (.55 + front.cohesion / 180.0) * (1 - front.fatigue / 300.0)).toInt().coerceAtLeast(15) }
-            front.copy(intent = intent, enemyDistance = (front.enemyDistance - movement + (if (fallback) 80 else 0) -
+            val preferred = original.plan.preferredEngagementDistance
+            val ownMovement = if (fortified || preferred == 0 || intent == BattleAiIntent.WITHDRAW) 0
+                else (front.enemyDistance - preferred).coerceIn(-20, 20)
+            front.copy(intent = intent, enemyDistance = (front.enemyDistance - movement - ownMovement + (if (fallback) 80 else 0) -
                 if (decision == BattleDecision.ADVANCE && target == front.section && !fortified) 40 else 0).coerceIn(0, 400))
         }
         val crewAvailable = fronts.associate { front -> front.section to original.enemyRoster.filter {
@@ -59,8 +63,10 @@ object SiegeEngine {
                                 val crewCount = original.contingents.filter { it.section == target && it.type == UnitType.DRAGON_ARTILLERY && !it.routed }.sumOf { it.soldiers.toLong() }
                                 val required = ((crewCount + 9) / 10).coerceAtLeast(1)
                                 val supply = minOf(1.0, original.battleArtilleryRemaining.toDouble() / required)
-                                hp -= ((25 + crewCount.coerceAtMost(150) / 3) * supply).toInt()
-                                events += "Gezieltes Artilleriefeuer trifft ${device.type.label} am ${device.section.label}."
+                                if (crewCount > 0) {
+                                    hp -= ((25 + crewCount.coerceAtMost(150) / 3) * supply).toInt()
+                                    events += "Gezieltes Artilleriefeuer trifft ${device.type.label} am ${device.section.label}."
+                                }
                             }
                             else -> Unit
                         }
@@ -70,7 +76,7 @@ object SiegeEngine {
                         if (distance == 0) progress = (progress + when (device.type) {
                             SiegeDevice.LADDERS -> 30; SiegeDevice.CLIMBERS -> 45; SiegeDevice.TOWER -> 35; SiegeDevice.TUNNEL -> 15; else -> 0
                         }).coerceAtMost(100)
-                        if (device.type == SiegeDevice.CATAPULT && device.ammunition > 0) {
+                        if (device.type == SiegeDevice.CATAPULT && device.ammunition > 0 && distance <= 320) {
                             structural[device.section] = (structural[device.section] ?: 0) + 3 + crew / 10
                             splash[device.section] = (splash[device.section] ?: 0.0) + crew * .06
                         }
@@ -102,7 +108,7 @@ object SiegeEngine {
             val ownMorale = if (ownCount == 0) 0 else defenders.sumOf { it.soldiers.toLong() * it.morale }.div(ownCount).toInt()
             val cohesion = if (ownCount == 0) 0 else defenders.sumOf { it.soldiers.toLong() * it.cohesion }.div(ownCount).toInt()
             if (segment.contactState.allowsMelee && !fallenBack &&
-                (ownMorale < original.plan.fallbackPolicy.moraleThreshold || cohesion < original.plan.fallbackPolicy.cohesionThreshold)) {
+                (ownMorale < original.plan.moraleFallback || cohesion < original.plan.cohesionFallback)) {
                 fallenBack = true
                 events += "${segment.section.label}: Rückfall auf die zweite Linie (${original.plan.fallbackPolicy.label}); Moral $ownMorale%, Kohäsion $cohesion%."
             }
@@ -128,6 +134,7 @@ object SiegeEngine {
             val local = devices.filter { it.section == segment.section && !it.disabled && it.crew > 0 }
             val assault = local.filter { it.type in listOf(SiegeDevice.LADDERS, SiegeDevice.TOWER, SiegeDevice.CLIMBERS) && it.distance == 0 }
             if (fortified) progress = if (segment.assaultProgress >= 100) 100 else assault.maxOfOrNull { it.progress } ?: 0
+            if (focus && decision == BattleDecision.REPEL_LADDERS) progress = (progress - 35).coerceAtLeast(0)
             if (focus && decision == BattleDecision.COUNTERATTACK && front.position >= 50) progress = (progress - 30).coerceAtLeast(0)
             val assaultWidth = maxOf(segment.assaultWidth, assault.filter { it.progress >= 100 }.map {
                 if (it.type == SiegeDevice.TOWER) 45 else if (it.type == SiegeDevice.CLIMBERS) 12 else 8 }.sum())
@@ -149,8 +156,21 @@ object SiegeEngine {
             if (!segment.contactState.allowsMelee && contact.allowsMelee) events += "${segment.section.label}: ${contact.label}; lokaler Nahkontakt ist möglich."
             if (segment.gateIntegrity > 0 && gate == 0 && segment.section == BattleSection.CENTER) events += "Das Tor bricht; nur das Zentrum ist geöffnet."
             if (segment.integrity > 0 && integrity == 0) events += "${segment.section.label}: Mauer bricht; eine Bresche öffnet sich."
+            val stage = when {
+                front.intent == BattleAiIntent.WITHDRAW || front.enemySoldiers == 0 -> SiegeStage.WITHDRAWAL
+                contact == BattleContactState.COURTYARD -> SiegeStage.COURTYARD
+                contact == BattleContactState.BREACHED -> SiegeStage.BREACH
+                contact == BattleContactState.WALL_ASSAULT -> SiegeStage.ASSAULT
+                segment.assaultProgress > progress && focus -> SiegeStage.REPULSED
+                contact in listOf(BattleContactState.SIEGE_CONTACT, BattleContactState.FIELD_CONTACT) -> SiegeStage.CONTACT
+                local.any { it.detected && it.distance <= 320 } -> SiegeStage.DEVICES_IN_RANGE
+                contact == BattleContactState.MISSILE_RANGE -> SiegeStage.MISSILE_FIRE
+                contact == BattleContactState.DISTANT -> SiegeStage.SCOUTING
+                else -> SiegeStage.APPROACH
+            }
+            if (stage != segment.siegeStage) events += "${segment.section.label}: ${stage.label} (${front.enemyDistance} m)."
             segment.copy(integrity = integrity, gateIntegrity = gate, assaultProgress = progress, assaultWidth = assaultWidth, breachWidth = breach,
-                contactState = contact, rangedOrder = order, gateOpen = open, fallenBack = fallenBack, devicePriority = priority)
+                contactState = contact, rangedOrder = order, gateOpen = open, fallenBack = fallenBack, devicePriority = priority, siegeStage = stage)
         }
         devices = devices.map { it.copy(disabled = it.disabled || it.integrity == 0) }
         val average = segments.sumOf { if (it.section == BattleSection.CENTER) (it.integrity + it.gateIntegrity) / 2 else it.integrity } / 3
@@ -158,7 +178,10 @@ object SiegeEngine {
             devices = devices.filterNot { it.disabled }.map { it.type }.distinct(),
             wallIntegrity = if (fortified) average else original.wallIntegrity,
             enemyFortification = if (!fortified && original.enemyFortification > 0) segments.sumOf { it.integrity } / 3 else original.enemyFortification),
-            structural, gateDamage, splash, events)
+            structural, gateDamage, splash, events, segments.filter { changed ->
+                val before = original.segment(changed.section)!!
+                before.integrity > 0 && changed.integrity == 0 || before.gateIntegrity > 0 && changed.gateIntegrity == 0
+            }.map { it.section }.toSet())
     }
 
     fun frontage(battle: BattleSession, section: BattleSection): Int {

@@ -1,6 +1,14 @@
-# Realm of the Last Wall — Troopmanager v0.97.0
+# Realm of the Last Wall — Troopmanager v1.0.0 — Sprint A
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
+
+## v1.0 Sprint A: Combat Engine 3.0 and save schema 5
+
+Sprint A extends the existing v0.97 combat, siege, wall weapons and hospital systems. It adds editable engagement/fire distances, targets and formations per front, commander reaction and reserve coordination, timed manual reinforcements, siege stages, visibility-dependent accuracy and exact losses by arrows, artillery, wall weapons, melee, breaches, pursuit and collapse. Battle details expose the full front state; the compact command layout remains in place.
+
+Version **1.0.0 / 46**, save schema **5**. Schema-4 campaigns migrate without reinitializing the world or charging ammunition again; each slot keeps a protected byte-exact v0.97 backup. Historical reports remain unchanged, and older replays run safely under current combat rules. The realm/world overhaul beyond Sprint A remains planned in Sprints B–E.
+
+See [Sprint A implementation, acceptance evidence and risks](docs/V1.0-SPRINT-A.md) and [the complete v1.0 specification](docs/V1.0-REALM-WAR-OVERHAUL.md).
 
 ## v0.97: battle plans, fortress tactics and compact Android UI
 

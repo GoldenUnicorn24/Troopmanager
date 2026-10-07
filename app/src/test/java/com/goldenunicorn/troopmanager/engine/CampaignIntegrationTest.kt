@@ -161,7 +161,7 @@ class CampaignIntegrationTest {
                 BattleEngine.advance(state, state.battleSession!!.pendingEvent?.options?.first())
                     .state
             val raw = SaveCodec.encode(state)
-            assertTrue("Save should contain aggregate quantities", raw.length < 100000)
+            assertTrue("Save should contain aggregate quantities (${raw.length} bytes)", raw.length < 100000)
             state = SaveCodec.decode(raw)
         }
         assertEquals(13, state.armyPools.size)

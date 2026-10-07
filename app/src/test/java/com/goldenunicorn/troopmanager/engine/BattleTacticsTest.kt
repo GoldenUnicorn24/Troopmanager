@@ -145,6 +145,7 @@ class BattleTacticsTest {
         val original = start()
         val root = Json.parseToJsonElement(SaveCodec.encode(original)).jsonObject.toMutableMap()
         root.remove("_checksum")
+        root["version"] = JsonPrimitive(4)
         root.remove("defensePlan")
         val savedBattle = root.getValue("battleSession").jsonObject.filterKeys {
             it !in setOf("plan", "reserveReinforcement", "night", "visibility", "season")
@@ -158,7 +159,7 @@ class BattleTacticsTest {
             .joinToString("") { "%02x".format(it) }
         root["_checksum"] = JsonPrimitive(checksum)
         val decoded = SaveCodec.decode(JsonObject(root).toString())
-        assertEquals(4, decoded.version)
+        assertEquals(5, decoded.version)
         assertEquals(BattlePlan(), decoded.defensePlan)
         assertEquals(BattlePlan(), decoded.battleSession!!.plan)
         assertEquals(1, decoded.battleSession.replayStart!!.rulesVersion)

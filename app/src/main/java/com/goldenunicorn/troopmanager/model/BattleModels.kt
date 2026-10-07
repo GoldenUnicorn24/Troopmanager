@@ -1,6 +1,9 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.goldenunicorn.troopmanager.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class BattleSection(val label: String) {
@@ -112,6 +115,12 @@ data class BattleContingent(
     val designId: Long? = null,
     val cohesion: Int = 80,
     val fatigue: Int = 0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val formation: BattleFormation = BattleFormation.LINE,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val pendingFormation: BattleFormation? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val formationReadyStep: Int? = null,
 )
 
 @Serializable
@@ -219,6 +228,8 @@ data class BattleSession(
     val season: Season = Season.SPRING,
     val night: Boolean = false,
     val visibility: Double = 1.0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val causes: List<BattleCauseBreakdown> = emptyList(),
 ) {
     val tacticalStageLabel: String
         get() = when {

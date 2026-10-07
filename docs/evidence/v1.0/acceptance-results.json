@@ -1,0 +1,58 @@
+{
+  "required_scenarios": 8,
+  "acceptance_tests": 11,
+  "failures": 0,
+  "fortress_runs": [
+    {
+      "scenario": "small_horde",
+      "seed": 1,
+      "own": 1000,
+      "enemy": 0,
+      "minute": 10,
+      "contact": false
+    },
+    {
+      "scenario": "small_horde",
+      "seed": 971,
+      "own": 1000,
+      "enemy": 0,
+      "minute": 10,
+      "contact": false
+    },
+    {
+      "scenario": "small_horde",
+      "seed": 2026,
+      "own": 1000,
+      "enemy": 0,
+      "minute": 10,
+      "contact": false
+    },
+    {
+      "scenario": "strong_siege",
+      "seed": 1,
+      "own": 808,
+      "enemy": 957,
+      "minute": 90,
+      "gate": 0,
+      "contact": true
+    },
+    {
+      "scenario": "strong_siege",
+      "seed": 971,
+      "own": 803,
+      "enemy": 958,
+      "minute": 90,
+      "gate": 0,
+      "contact": true
+    },
+    {
+      "scenario": "strong_siege",
+      "seed": 2026,
+      "own": 810,
+      "enemy": 957,
+      "minute": 90,
+      "gate": 0,
+      "contact": true
+    }
+  ]
+}

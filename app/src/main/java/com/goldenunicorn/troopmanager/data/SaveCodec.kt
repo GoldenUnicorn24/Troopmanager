@@ -9,7 +9,7 @@ import java.security.MessageDigest
 
 /** Android-independent, versioned save format. Invalid data is never silently a new game. */
 object SaveCodec {
-    const val CURRENT_VERSION = 4
+    const val CURRENT_VERSION = 5
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -40,8 +40,8 @@ object SaveCodec {
                     true,
                 )
             if (version < 1) throw SaveFormatException("Die Spielstandversion ist ungültig.")
-            require(version < CURRENT_VERSION || root["_checksum"] != null) {
-                "Die Prüfsumme des v0.6-Spielstands fehlt. Der Originalspielstand bleibt erhalten."
+            require(version < 4 || root["_checksum"] != null) {
+                "Die Prüfsumme des Spielstands fehlt. Der Originalspielstand bleibt erhalten."
             }
             root["_checksum"]?.let { stored ->
                 require((stored as? JsonPrimitive)?.content == checksum(JsonObject(root - "_checksum").toString())) {
@@ -50,8 +50,14 @@ object SaveCodec {
             }
             requireCoreStructure(root, version)
             val previous = if (version == 1) migrate(root) else json.decodeFromJsonElement<GameState>(root)
-            var state = if (version <= 2) previous.copy(version = CURRENT_VERSION, city = CityEngine.migrationDefaults(previous)) else previous.copy(version = CURRENT_VERSION)
-            if (version < CURRENT_VERSION) {
+            var state = when (version) {
+                1, 2 -> previous.copy(version = CURRENT_VERSION, city = CityEngine.migrationDefaults(previous))
+                4 -> migrateSchemaFour(previous)
+                else -> previous.copy(version = CURRENT_VERSION)
+            }
+            // Schema 4 already has a complete world/character/diplomacy context. Never grant or
+            // reinitialize campaign content merely because the combat schema changed.
+            if (version < 4) {
                 state = WorldEngine.initialize(state)
                 state = CharacterEngine.initialize(state)
                 state = DiplomacyEngine.initialize(state)
@@ -71,6 +77,8 @@ object SaveCodec {
 
     private fun checksum(payload: String): String = MessageDigest.getInstance("SHA-256")
         .digest(payload.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+
+    private fun migrateSchemaFour(previous: GameState): GameState = previous.copy(version = 5)
 
     private fun requireCoreStructure(root: JsonObject, version: Int) {
         require(root["day"] is JsonPrimitive) { "Tag fehlt." }

@@ -30,6 +30,19 @@ class V045BattleTest {
             pendingEvent = BattleEvent("Test", "Konkreter Befehl", section, listOf(decision))))
     }
 
+    private fun arrive(queued: GameState): GameState {
+        var state = queued
+        repeat(4) {
+            if (state.battleSession!!.reserveReinforcement != null && state.battleSession!!.status == BattleStatus.ACTIVE) {
+                state = BattleEngine.advance(state, state.battleSession!!.pendingEvent?.options?.let {
+                    if (BattleDecision.HOLD in it) BattleDecision.HOLD else it.first()
+                }).state
+            }
+        }
+        assertNull(state.battleSession!!.reserveReinforcement)
+        return state
+    }
+
     @Test
     fun orderedRetreatEndsImmediatelyWithLimitedAdditionalLossesAndRealPoolWear() {
         val started = BattleEngine.start(army(), EnemyType.URUK, Tactic.HOLD, seed = 27, enemyStrength = 1200).state
@@ -73,10 +86,12 @@ class V045BattleTest {
         val held = BattleEngine.advance(event(started, BattleDecision.HOLD_GATE), BattleDecision.HOLD_GATE).state.battleSession!!
         val ordinary = BattleEngine.advance(event(started, BattleDecision.HOLD), BattleDecision.HOLD).state.battleSession!!
         assertTrue(held.segment(BattleSection.CENTER)!!.gateIntegrity > ordinary.segment(BattleSection.CENTER)!!.gateIntegrity)
-        val open = BattleEngine.advance(event(started, BattleDecision.OPEN_GATE), BattleDecision.OPEN_GATE).state.battleSession!!
+        val queued = BattleEngine.advance(event(started, BattleDecision.OPEN_GATE), BattleDecision.OPEN_GATE).state
+        assertEquals(400, queued.battleSession!!.soldiers(BattleSection.RESERVE))
+        assertTrue(queued.battleSession.log.last().text.contains("Kavallerieausfall"))
+        val open = arrive(queued).battleSession!!
         assertEquals(0, open.soldiers(BattleSection.RESERVE))
         assertTrue(open.contingents.any { it.type == UnitType.KNIGHT && it.section == BattleSection.CENTER })
-        assertTrue(open.log.last().text.contains("Kavallerieausfall"))
         val field = BattleEngine.start(army(), EnemyType.URUK, Tactic.HOLD, seed = 53).state
         val illegal = event(field, BattleDecision.OPEN_GATE)
         assertEquals(illegal, BattleEngine.advance(illegal, BattleDecision.OPEN_GATE).state)
@@ -85,7 +100,9 @@ class V045BattleTest {
     @Test
     fun reserveRelocationHasLimitedMovementAndNeverLosesInitialTotals() {
         val before = event(BattleEngine.start(army(), EnemyType.ORC, Tactic.HOLD, seed = 15).state, BattleDecision.RELOCATE_RESERVE)
-        val after = BattleEngine.advance(before, BattleDecision.RELOCATE_RESERVE).state.battleSession!!
+        val queued = BattleEngine.advance(before, BattleDecision.RELOCATE_RESERVE).state
+        assertEquals(400, queued.battleSession!!.soldiers(BattleSection.RESERVE))
+        val after = arrive(queued).battleSession!!
         assertEquals(300, after.soldiers(BattleSection.RESERVE))
         assertEquals(before.battleSession!!.ownStart, after.contingents.sumOf { it.startSoldiers })
         assertTrue(after.contingents.any { it.type == UnitType.KNIGHT && it.section == BattleSection.CENTER && it.morale > 80 })
@@ -101,7 +118,10 @@ class V045BattleTest {
         val wounded = started.copy(battleSession = started.battleSession!!.copy(
             contingents = started.battleSession!!.contingents.map { if (it.commanderId == 1L && it.type == UnitType.HUMAN_SWORD) it.copy(commanderWounded = true) else it }))
         val before = event(wounded, BattleDecision.RESCUE_COMMANDER, section = BattleSection.LEFT)
-        val after = BattleEngine.advance(before, BattleDecision.RESCUE_COMMANDER).state.battleSession!!
+        val queued = BattleEngine.advance(before, BattleDecision.RESCUE_COMMANDER).state
+        assertEquals(400, queued.battleSession!!.soldiers(BattleSection.RESERVE))
+        assertFalse(queued.battleSession.contingents.any { it.commanderRescued })
+        val after = arrive(queued).battleSession!!
         assertEquals(380, after.soldiers(BattleSection.RESERVE))
         assertTrue(after.contingents.filter { it.commanderId == 1L }.all { it.commanderRescued && it.commanderWounded })
         assertTrue(after.commanderEvents.single().contains("Marcus"))

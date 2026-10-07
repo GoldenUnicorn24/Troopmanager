@@ -1,3 +1,13 @@
+# Aktueller Arbeitsstand: v1.0 Sprint A
+
+Arbeitsbranch: `codex/v1.0-realm-war-overhaul`, Basis v0.97 `8359712`.
+Version: **1.0.0 / 46**, Save-Schema **5** mit Schema-4-Migration.
+Zuerst `docs/V1.0-REALM-WAR-OVERHAUL.md`, `docs/V0.97-BATTLE-TACTICS.md`
+und `docs/V1.0-SPRINT-A.md` lesen. Die vorhandenen Engines und Saves erhalten;
+Sprint B–E benötigen eigene Aufträge. Tests, Assemble und Lint prüfen.
+
+Die folgenden v0.82-Notizen sind historisch; ihre Branch-Anweisungen sind überholt.
+
 # Realm of the Last Wall 0.82.0
 
 Stand vom 3. Oktober 2026. Entwicklungsbranch: `codex/v0.82-overhaul`. APK-Metadaten: versionCode 38, versionName 0.82.0, Paket `com.goldenunicorn.troopmanager`.

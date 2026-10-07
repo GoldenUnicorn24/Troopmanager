@@ -95,7 +95,10 @@ class BattleEngineTest {
         repeat(2) { state = BattleEngine.advance(state).state }
         assertEquals(30, state.battleSession!!.soldiers(BattleSection.RESERVE))
         val section = state.battleSession!!.pendingEvent!!.section
-        val after = BattleEngine.advance(state, BattleDecision.SEND_RESERVE).state.battleSession!!
+        val queued = BattleEngine.advance(state, BattleDecision.SEND_RESERVE).state
+        assertEquals(30, queued.battleSession!!.soldiers(BattleSection.RESERVE))
+        assertNotNull(queued.battleSession.reserveReinforcement)
+        val after = BattleEngine.advance(queued).state.battleSession!!
         assertEquals(0, after.soldiers(BattleSection.RESERVE))
         assertTrue(after.contingents.any { it.type == UnitType.KNIGHT && it.section == section })
         assertEquals(state.battleSession!!.ownStart, after.contingents.sumOf { it.startSoldiers })

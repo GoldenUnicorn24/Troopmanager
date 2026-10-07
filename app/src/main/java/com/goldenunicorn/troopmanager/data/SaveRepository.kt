@@ -34,7 +34,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
         }
     }
 
-    fun hasSave(): Boolean = storage.contains(KEY) || storage.contains(BACKUP_KEY) || storage.contains(MIGRATION_BACKUP_KEY) || storage.contains(LEGACY_MIGRATION_BACKUP_KEY) || storage.contains(V045_BACKUP_KEY)
+    fun hasSave(): Boolean = storage.contains(KEY) || storage.contains(BACKUP_KEY) || storage.contains(MIGRATION_BACKUP_KEY) || storage.contains(LEGACY_MIGRATION_BACKUP_KEY) || storage.contains(V045_BACKUP_KEY) || storage.contains(V097_BACKUP_KEY)
 
     @Synchronized
     fun save(state: GameState) {
@@ -82,7 +82,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
                 lastError = "Der Ironman-Spielstand ist beschädigt. Er bleibt zur manuellen Wiederherstellung erhalten."
                 return null
             }
-            for (key in listOf(BACKUP_KEY, V045_BACKUP_KEY, MIGRATION_BACKUP_KEY, LEGACY_MIGRATION_BACKUP_KEY)) {
+            for (key in listOf(BACKUP_KEY, V097_BACKUP_KEY, V045_BACKUP_KEY, MIGRATION_BACKUP_KEY, LEGACY_MIGRATION_BACKUP_KEY)) {
                 val backup = read(key) ?: continue
                 val recovered = try { SaveCodec.decode(backup) } catch (error: SaveFormatException) {
                     if (error.futureVersion) throw error
@@ -104,13 +104,13 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
     /** Only explicit new-game deletion removes the protected rollback copy. */
     @Synchronized
     fun delete() {
-        lastError = if (storage.commit(mapOf(KEY to null, BACKUP_KEY to null, MIGRATION_BACKUP_KEY to null, LEGACY_MIGRATION_BACKUP_KEY to null, V045_BACKUP_KEY to null, METADATA_KEY to null))) null
+        lastError = if (storage.commit(mapOf(KEY to null, BACKUP_KEY to null, MIGRATION_BACKUP_KEY to null, LEGACY_MIGRATION_BACKUP_KEY to null, V045_BACKUP_KEY to null, V097_BACKUP_KEY to null, METADATA_KEY to null))) null
         else "Der Spielstand konnte nicht gelöscht werden."
     }
 
     private fun protectMigration(raw: String, writes: MutableMap<String, String?>) {
         val version = Json.parseToJsonElement(raw).jsonObject["version"]?.jsonPrimitive?.intOrNull ?: 1
-        val key = when (version) { 3 -> V045_BACKUP_KEY; 2 -> MIGRATION_BACKUP_KEY; 1 -> LEGACY_MIGRATION_BACKUP_KEY; else -> return }
+        val key = when (version) { 4 -> V097_BACKUP_KEY; 3 -> V045_BACKUP_KEY; 2 -> MIGRATION_BACKUP_KEY; 1 -> LEGACY_MIGRATION_BACKUP_KEY; else -> return }
         // An autosave may rotate the regular backup; this key is written only once.
         if (!storage.contains(key)) writes[key] = raw
     }
@@ -150,6 +150,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
     private val MIGRATION_BACKUP_KEY get() = slotKey("migration_backup_v2")
     private val LEGACY_MIGRATION_BACKUP_KEY get() = slotKey("migration_backup_v1")
     private val V045_BACKUP_KEY get() = slotKey("migration_backup_v3")
+    private val V097_BACKUP_KEY get() = slotKey("migration_backup_v4")
     private val METADATA_KEY get() = slotKey("slot_metadata")
 }
 

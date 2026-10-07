@@ -650,15 +650,17 @@ object FrontierEngine {
             val stock = original.copy(priority = if (decision == BattleDecision.PRIORITIZE_DEVICES && original.section == section)
                 WallWeaponPriority.DEVICES else priority)
             val front = updated.fronts.firstOrNull { it.section == stock.section }
-            val range = when (stock.type) { WallWeaponType.BALLISTA -> 320; WallWeaponType.REPEATER -> 220; WallWeaponType.BLACK_POWDER -> 260; else -> 25 }
+            val baseRange = when (stock.type) { WallWeaponType.BALLISTA -> 320; WallWeaponType.REPEATER -> 220; WallWeaponType.BLACK_POWDER -> 260; else -> 25 }
+            val range = minOf(baseRange, (350 * updated.visibility * if (updated.night) .65 else 1.0).toInt())
             val local = updated.siegeDevices.filter { it.section == stock.section && !it.disabled && it.detected && it.crew > 0 && it.distance <= range }
             val close = local.any { it.distance <= 25 } || (front?.enemyDistance ?: 400) <= 25
             val guards = updated.contingents.filter { it.section == stock.section && it.type == UnitType.CRANE_GUARD && it.soldiers > 0 && !it.routed }
             val manual = decision == BattleDecision.FIRE_OIL && section == stock.section && stock.type == WallWeaponType.FIRE_OIL
             val blocked = (updated.segment(stock.section)?.rangedOrder == RangedOrder.HOLD && !manual) ||
-                front?.intent == BattleAiIntent.WITHDRAW ||
+                front?.intent == BattleAiIntent.WITHDRAW || (front?.morale ?: 0) < 22 ||
+                updated.contingents.none { it.section == stock.section && BattleStateEngine.canFight(it) } ||
                 (plan.wallWeaponPriority == WallTargetPriority.FRONT && stock.section != plan.wallWeaponFront) ||
-                (plan.doctrine == BattleDoctrine.KILL_ZONE && (front?.enemyDistance ?: 400) > 110 && !manual) ||
+                ((front?.enemyDistance ?: 400) > plan.releaseDistance && !manual) ||
                 (plan.ammunitionPolicy == AmmunitionPolicy.SPARING && updated.step % 2 == 1 && !manual)
             val resultStock = if (stock.reloadRounds > 0) stock.copy(reloadRounds = stock.reloadRounds - 1)
             else if (stock.count <= 0 || stock.ammunition <= 0 || stock.integrity <= 0 || front == null || front.enemySoldiers == 0 || blocked ||
@@ -669,7 +671,8 @@ object FrontierEngine {
             else {
                 val volume = if (plan.ammunitionPolicy == AmmunitionPolicy.VOLLEY && stock.type in listOf(WallWeaponType.BALLISTA, WallWeaponType.REPEATER, WallWeaponType.BLACK_POWDER)) 2 else 1
                 val shots = minOf((stock.count.toLong() * volume).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(), stock.ammunition, if (stock.type == WallWeaponType.CRANE_WINCH) (guards.sumOf { it.soldiers } / 5).coerceAtLeast(1) else Int.MAX_VALUE)
-                val raw = shots.toDouble() * stock.type.defense * stock.integrity / 200.0
+                val raw = shots.toDouble() * stock.type.defense * stock.integrity / 200.0 *
+                    (.4 + .6 * updated.visibility * if (updated.night) .65 else 1.0)
                 val prefersDevice = stock.priority == WallWeaponPriority.DEVICES ||
                     stock.priority == WallWeaponPriority.AUTO && stock.type in listOf(WallWeaponType.BALLISTA, WallWeaponType.BLACK_POWDER, WallWeaponType.FIRE_OIL)
                 val target = if (prefersDevice) local.sortedBy { when (it.type) {
@@ -705,6 +708,10 @@ object FrontierEngine {
                 val text = "${stock.type.label} am ${stock.section.label}: $dealt Gegner ausgeschaltet" +
                     (if (target != null) "; ${target.type.label} −$damage Zustand" else "") + "; $shots Ladungen verbraucht."
                 updated = updated.copy(fronts = fronts, enemyRoster = enemyRoster,
+                    causes = BattleReportEngine.addCauses(updated.causes, updated.enemyRoster.mapIndexedNotNull { index, unit ->
+                        val lost = unit.soldiers - enemyRoster[index].soldiers
+                        if (lost == 0) null else BattleCauseBreakdown(unit.section, unit.type, BattleDamageCause.WALL_WEAPONS, enemy = lost)
+                    }),
                     siegeDevices = devices, devices = devices.filterNot { it.disabled }.map { it.type }.distinct(),
                     contingents = if (stock.type == WallWeaponType.CRANE_WINCH) updated.contingents.map { c ->
                         if (c in guards) c.copy(fatigue = (c.fatigue + 10).coerceAtMost(100), cohesion = (c.cohesion - 4).coerceAtLeast(0)) else c

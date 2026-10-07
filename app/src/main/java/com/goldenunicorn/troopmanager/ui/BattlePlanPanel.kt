@@ -42,19 +42,45 @@ internal fun BattlePlanPanel(state: GameState, mode: String = "plan", onApply: (
             }
             SelectionMenu("Munition / Schussdisziplin", draft.ammunitionPolicy.label, AmmunitionPolicy.entries, { it.label }) { draft = draft.copy(ammunitionPolicy = it) }
             Text("Feuerrate ×${draft.ammunitionPolicy.fireRate}, Pfeilverbrauch ×${draft.ammunitionPolicy.consumption}. Leere Vorräte stoppen das Feuer.", color = Mist, fontSize = 12.sp)
+            PlanNumberField("Feuerfreigabe bis Distanz (m; 0 = Profil)", draft.fireReleaseDistance, 0..350) { draft = draft.copy(fireReleaseDistance = it) }
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Switch(draft.holdFire, { draft = draft.copy(holdFire = it) })
+                Text("Feuer zunächst halten", color = Mist)
+            }
+            SelectionMenu("Artilleriefokus", draft.artilleryPriority.label, TargetPriority.entries, { it.label }) { draft = draft.copy(artilleryPriority = it) }
+            BattleStateEngine.sections.forEach { section ->
+                SelectionMenu("Fernkampf · ${section.label}", draft.priority(section).label, TargetPriority.entries, { it.label }) {
+                    draft = draft.copy(frontPriorities = draft.frontPriorities + (section to it))
+                }
+            }
         }
         if (mode != "targets") item {
             SelectionMenu("Reserveverhalten", draft.reservePolicy.label, ReservePolicy.entries, { it.label }) { draft = draft.copy(reservePolicy = it) }
-            Text("Automatische Verstärkung benötigt einen 5-Minuten-Einsatzschritt. Manuelle Befehle verbrauchen BP.", color = Mist, fontSize = 12.sp)
+            Text("Reserven benötigen mindestens einen 5-Minuten-Einsatzschritt. Gelände und Führung beeinflussen die Ankunft; manuelle Befehle kosten BP.", color = Mist, fontSize = 12.sp)
+            PlanNumberField("Reserve bei lokaler Gegnerstärke (% der eigenen Front)", draft.reserveThreshold, 1..300) { draft = draft.copy(reserveThreshold = it) }
+            PlanNumberField("Torreserve je Einsatz (%)", draft.gateReservePercent, 1..100) { draft = draft.copy(gateReservePercent = it) }
             SelectionMenu("Tor / Ausfall", draft.gatePolicy.label, GatePolicy.entries, { it.label }) { draft = draft.copy(gatePolicy = it) }
             SelectionMenu("Breschenreserve zuerst", draft.breachReserveSection.label, BattleStateEngine.sections, { it.label }) { draft = draft.copy(breachReserveSection = it) }
-            SelectionMenu("Reserve je Breschen-Einsatz", "${draft.breachReservePercent}%", listOf(10, 30, 50, 100), { "$it%" }) { draft = draft.copy(breachReservePercent = it) }
+            PlanNumberField("Reserve je Breschen-Einsatz (%)", draft.breachReservePercent, 10..100) { draft = draft.copy(breachReservePercent = it) }
             SelectionMenu("Rückfallregel", draft.fallbackPolicy.label, FallbackPolicy.entries, { it.label }) { draft = draft.copy(fallbackPolicy = it) }
+            PlanNumberField("Rückfallgrenze Moral/Kohäsion (0 = Profil)", draft.fallbackThreshold, 0..100) { draft = draft.copy(fallbackThreshold = it) }
             SelectionMenu("Verfolgung nach Moralbruch", draft.pursuitPolicy.label, PursuitPolicy.entries, { it.label }) { draft = draft.copy(pursuitPolicy = it) }
+        }
+        if (mode == "plan") item {
+            PlanNumberField("Bevorzugte Engagement-Distanz (m; 0 = automatisch)", draft.preferredEngagementDistance, 0..350) { draft = draft.copy(preferredEngagementDistance = it) }
+            BattleStateEngine.sections.forEach { section ->
+                SelectionMenu("Formation · ${section.label}", (draft.formations[section] ?: BattleFormation.LINE).label,
+                    BattleFormation.entries, { it.label }) { draft = draft.copy(formations = draft.formations + (section to it)) }
+            }
+            SelectionMenu("Risiko des Kommandanten", draft.commanderRisk.label, CommanderRisk.entries, { it.label }) { draft = draft.copy(commanderRisk = it) }
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Switch(draft.protectValuableUnits, { draft = draft.copy(protectValuableUnits = it) })
+                Text("Veteranen und wertvolle Einheiten schützen", color = Mist)
+            }
         }
         item {
             Button(onClick = { onApply(BattleEngine.configurePlan(state, draft)) },
-                enabled = battle == null || battle.isActive && battle.commandPoints >= cost,
+                enabled = BattleEngine.validPlan(draft) && (battle == null || battle.isActive && battle.commandPoints >= cost),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("battle_plan_apply"),
                 colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
                 Text(if (cost == 0) "Plan speichern" else "Anwenden · $cost BP")
@@ -63,6 +89,15 @@ internal fun BattlePlanPanel(state: GameState, mode: String = "plan", onApply: (
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("battle_deploy")) { Text("Aufstellung ändern") }
         }
     }
+}
+
+@Composable
+private fun PlanNumberField(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+    var input by remember(label) { mutableStateOf(value.toString()) }
+    LaunchedEffect(value) { if (value >= 0 && input.toIntOrNull() != value) input = value.toString() }
+    OutlinedTextField(input, { input = it; onChange(it.toIntOrNull() ?: -1) },
+        label = { Text(label) }, singleLine = true, isError = input.toIntOrNull()?.let { it !in range } != false,
+        supportingText = { Text("${range.first}–${range.last}") }, modifier = Modifier.fillMaxWidth())
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

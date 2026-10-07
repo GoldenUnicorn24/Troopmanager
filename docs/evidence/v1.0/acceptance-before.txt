@@ -1,0 +1,65 @@
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:compileDebugKotlin
+w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/App.kt:503:45 'val Icons.Outlined.HelpOutline: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Outlined.HelpOutline.
+w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/CampaignMapScreen.kt:808:25 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/CityScene.kt:498:13 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/CityScene.kt:730:13 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+w: file:///workspace/Troopmanager/app/src/main/java/com/goldenunicorn/troopmanager/ui/CityScene.kt:1036:13 'fun quadraticBezierTo(x1: Float, y1: Float, x2: Float, y2: Float): Unit' is deprecated. Use quadraticTo() for consistency with cubicTo().
+
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:processDebugJavaRes UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///workspace/Troopmanager/app/src/test/java/com/goldenunicorn/troopmanager/data/SaveCodecTest.kt:386:23 Redundant creation of Json format. Creating instances for each usage can be slow.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest FAILED
+
+RealmWarAcceptanceTest > manualReserveTravelsForARealExchangeAndSurvivesSaveAndLoadInTransit FAILED
+    java.lang.AssertionError at RealmWarAcceptanceTest.kt:95
+
+RealmWarAcceptanceTest > twoHundredOrcsBreakBeforeContactAgainstOneThousandPreparedDefenders FAILED
+    java.lang.AssertionError at RealmWarAcceptanceTest.kt:40
+
+RealmWarAcceptanceTest > aBreachChangesLocalFrontageButDoesNotCreateDistantMelee FAILED
+    java.lang.AssertionError at RealmWarAcceptanceTest.kt:118
+
+RealmWarAcceptanceTest > pursuitHasItsOwnCauseAndExchangeRatherThanRegularMelee FAILED
+    java.lang.AssertionError at RealmWarAcceptanceTest.kt:128
+
+8 tests completed, 4 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///workspace/Troopmanager/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 2m 52s
+24 actionable tasks: 6 executed, 18 up-to-date

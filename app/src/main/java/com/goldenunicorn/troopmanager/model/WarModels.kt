@@ -1,6 +1,9 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.goldenunicorn.troopmanager.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class BattleTerrain(val label: String, val explanation: String) {
@@ -159,6 +162,8 @@ data class BattleRecord(
     val enemyCasualties: CasualtyReport = CasualtyReport(),
     val enemyFled: Int = 0,
     val ownFled: Int = 0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val causes: List<BattleCauseBreakdown> = emptyList(),
 )
 
 @Serializable

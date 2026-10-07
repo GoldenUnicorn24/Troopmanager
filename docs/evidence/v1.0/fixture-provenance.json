@@ -1,0 +1,20 @@
+{
+  "production_baseline_commit": "83597128234645d2f8f5abb6c400e74a32fc0169",
+  "capture_checkout_commit": "b8f6d5f90398d418a66a5783a7c5b4da1110cdd5",
+  "schema": 4,
+  "combat_rules": 2,
+  "captured_before_production_changes": true,
+  "capture_test": "V097FixtureCaptureTest (temporary; removed after capture)",
+  "files": [
+    {
+      "path": "app/src/test/resources/actual-v097-running-save.json",
+      "bytes": 43847,
+      "sha256": "c68306b8aced585d82365307235bcadd0dab94bf8fd798bb8e734c75cf39f2f7"
+    },
+    {
+      "path": "app/src/test/resources/actual-v097-history-save.json",
+      "bytes": 116210,
+      "sha256": "2fc3733c319cbcd95803e9f8cc4ec47c5b6ca3c5de8d86c637f45e28915cc975"
+    }
+  ]
+}

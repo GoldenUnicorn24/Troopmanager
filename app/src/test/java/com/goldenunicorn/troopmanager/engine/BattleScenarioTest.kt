@@ -189,7 +189,7 @@ class BattleScenarioTest {
         val fields = setOf("combatVersion", "segments", "siegeDevices", "enemyRoster", "battleArrowsRemaining", "battleArrowsLoaded", "enemyArrowsRemaining", "exchanges", "wallWeapons")
         root["battleSession"] = JsonObject(root.getValue("battleSession").jsonObject.filterKeys { it !in fields })
         val migrated = SaveCodec.decode(JsonObject(root).toString())
-        assertEquals(2, migrated.battleSession!!.combatVersion)
+        assertEquals(3, migrated.battleSession!!.combatVersion)
         assertEquals(3, migrated.battleSession!!.segments.size)
         assertEquals(state.militaryStock.arrows, migrated.militaryStock.arrows)
         assertEquals(migrated, SaveCodec.decode(SaveCodec.encode(migrated)))

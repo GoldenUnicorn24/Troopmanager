@@ -1,6 +1,9 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.goldenunicorn.troopmanager.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
 
 @Serializable
 enum class BattleDoctrine(val label: String, val description: String) {
@@ -58,7 +61,12 @@ enum class PursuitPolicy(val label: String) {
     HOLD("Stellung halten"), LIMITED("Begrenzte Verfolgung"), AGGRESSIVE("Aggressiver Ausfall"),
 }
 
-/** Additive schema-4 defaults preserve the defensive behavior of existing campaigns. */
+@Serializable
+enum class CommanderRisk(val label: String) {
+    CAUTIOUS("Vorsichtig"), BALANCED("Abgewogen"), BOLD("Risikobereit"),
+}
+
+/** Zero distance/threshold overrides keep the existing profile's automatic rules. */
 @Serializable
 data class BattlePlan(
     val doctrine: BattleDoctrine = BattleDoctrine.HOLD_WALL,
@@ -72,7 +80,34 @@ data class BattlePlan(
     val breachReservePercent: Int = 30,
     val fallbackPolicy: FallbackPolicy = FallbackPolicy.HOLD_LINE,
     val pursuitPolicy: PursuitPolicy = PursuitPolicy.HOLD,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val preferredEngagementDistance: Int = 0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val fireReleaseDistance: Int = 0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val holdFire: Boolean = false,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val frontPriorities: Map<BattleSection, TargetPriority> = emptyMap(),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val formations: Map<BattleSection, BattleFormation> = emptyMap(),
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val reserveThreshold: Int = 100,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val gateReservePercent: Int = 100,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val fallbackThreshold: Int = 0,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val artilleryPriority: TargetPriority = TargetPriority.NEAREST,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val protectValuableUnits: Boolean = false,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val commanderRisk: CommanderRisk = CommanderRisk.BALANCED,
 ) {
+    fun priority(section: BattleSection): TargetPriority = frontPriorities[section] ?: rangedPriority
+    val releaseDistance: Int get() = if (fireReleaseDistance > 0) fireReleaseDistance
+        else if (doctrine == BattleDoctrine.KILL_ZONE) 110 else 350
+    val moraleFallback: Int get() = if (fallbackThreshold > 0) fallbackThreshold else fallbackPolicy.moraleThreshold
+    val cohesionFallback: Int get() = if (fallbackThreshold > 0) fallbackThreshold else fallbackPolicy.cohesionThreshold
     companion object {
         fun profile(doctrine: BattleDoctrine): BattlePlan = when (doctrine) {
             BattleDoctrine.HOLD_WALL -> BattlePlan()
@@ -92,4 +127,5 @@ data class BattlePlan(
 }
 
 @Serializable
-data class ReserveReinforcement(val section: BattleSection, val soldiers: Int, val readyStep: Int)
+data class ReserveReinforcement(val section: BattleSection, val soldiers: Int, val readyStep: Int,
+    val order: BattleDecision? = null)
