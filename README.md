@@ -10,6 +10,11 @@ Version **1.0.0 / 46**, save schema **5**. Schema-4 campaigns migrate without re
 
 See [Sprint A implementation, acceptance evidence and risks](docs/V1.0-SPRINT-A.md) and [the complete v1.0 specification](docs/V1.0-REALM-WAR-OVERHAUL.md).
 
+The next battle-visual milestone adds actual formation rows, separate weapon
+silhouettes, local masonry/gate damage and finite, ammunition-backed volleys.
+The renderer projects Combat Engine 3.0 without changing combat rules or saves.
+See [implementation, artwork budget and verification](docs/BATTLE-VISUALS-PHASE-1.md).
+
 ## v0.97: battle plans, fortress tactics and compact Android UI
 
 - A persisted battle plan covers six tactic profiles, ranged and wall-weapon targets, finite ammunition, reserve rules, gate/sortie policy, breach reserves, fallback thresholds and pursuit. Preparation opens before the first exchange; changes during battle use command points and replay inputs.

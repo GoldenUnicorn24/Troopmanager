@@ -22,7 +22,8 @@ import com.goldenunicorn.troopmanager.model.*
 
 /** Non-exported debug harness renders the real battle screen with bounded, deterministic fixtures. */
 class BattlePreviewActivity : ComponentActivity() {
-    data class Viewport(val width: Int = 320, val height: Int = 568, val fontScale: Float = 1f, val pending: Boolean = false, val page: String = "battle")
+    data class Viewport(val width: Int = 320, val height: Int = 568, val fontScale: Float = 1f,
+        val pending: Boolean = false, val page: String = "battle", val scenario: String = "default", val animations: Boolean = false)
     companion object {
         var viewport by mutableStateOf(Viewport())
         var latestState: GameState? = null
@@ -33,7 +34,9 @@ class BattlePreviewActivity : ComponentActivity() {
         setContent {
             val view = viewport
             SideEffect { requestedOrientation = if (view.width > view.height) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
-            var state by remember(view.pending, view.page) { mutableStateOf(fixture(view.pending)) }
+            var state by remember(view.pending, view.page, view.scenario, view.animations) {
+                mutableStateOf(fixture(view.pending, view.scenario, view.animations))
+            }
             SideEffect { latestState = state }
             fun update(next: GameState) {
                 state = next
@@ -63,11 +66,18 @@ class BattlePreviewActivity : ComponentActivity() {
             }
         }
     }
-    private fun fixture(pending: Boolean): GameState {
-        val base = GameState(player = CharacterProfile("Mira"),
+    private fun fixture(pending: Boolean, scenario: String, animations: Boolean): GameState {
+        var base = GameState(player = CharacterProfile("Mira"),
             armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_SWORD, 200), ArmyUnitPool(UnitType.HUMAN_ARCHER, 100)),
-            settings = GameSettings(animations = false))
-        val started = BattleEngine.start(base, EnemyType.URUK, Tactic.FORTIFY, seed = 90, enemyStrength = 300).state
+            settings = GameSettings(animations = animations))
+        if (scenario == "small-assault") base = base.copy(
+            armyPools = listOf(ArmyUnitPool(UnitType.HUMAN_ARCHER, 600, experience = 35, morale = 85),
+                ArmyUnitPool(UnitType.HUMAN_SWORD, 300, experience = 25, morale = 85), ArmyUnitPool(UnitType.KNIGHT, 100, morale = 85)),
+            realm = Realm(buildings = mapOf(BuildingType.WALL to 4, BuildingType.TOWER to 4)),
+            militaryStock = MilitaryStock(arrows = 8000))
+        val started = if (scenario == "small-assault") BattleEngine.start(base, EnemyType.ORC, Tactic.FORTIFY,
+            seed = 971, enemyStrength = 200, enemyUnits = listOf(UnitAllocation(UnitType.HUMAN_SWORD, 200))).state
+            else BattleEngine.start(base, EnemyType.URUK, Tactic.FORTIFY, seed = 90, enemyStrength = 300).state
         return if (!pending) started else started.copy(battleSession = started.battleSession!!.copy(pendingEvent =
             BattleEvent("Das Tor steht unter Druck", "Die Rammbockbesatzung rückt vor.", BattleSection.CENTER,
                 listOf(BattleDecision.HOLD, BattleDecision.SEND_RESERVE, BattleDecision.HOLD_GATE))))

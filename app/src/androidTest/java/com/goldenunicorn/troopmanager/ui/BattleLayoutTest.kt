@@ -23,8 +23,10 @@ import java.io.File
 class BattleLayoutTest {
     @get:Rule val rule = createAndroidComposeRule<BattlePreviewActivity>()
     @Before fun reset() { rule.runOnIdle { BattlePreviewActivity.viewport = BattlePreviewActivity.Viewport() } }
-    private fun viewport(width: Int, height: Int, scale: Float = 1f, pending: Boolean = false) {
-        rule.runOnIdle { BattlePreviewActivity.viewport = BattlePreviewActivity.Viewport(width, height, scale, pending) }
+    private fun viewport(width: Int, height: Int, scale: Float = 1f, pending: Boolean = false,
+        scenario: String = "default", animations: Boolean = false) {
+        rule.runOnIdle { BattlePreviewActivity.viewport = BattlePreviewActivity.Viewport(width, height, scale, pending,
+            scenario = scenario, animations = animations) }
         val orientation = if (width > height) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
         rule.waitUntil(10_000) { rule.activity.resources.configuration.orientation == orientation }
         rule.waitForIdle()
@@ -53,6 +55,7 @@ class BattleLayoutTest {
                     (0 until it.lineCount).all { line -> it.getLineLeft(line) >= -1 && it.getLineRight(line) <= it.size.width + 1 } })
         }
         verifyText("battle_doctrine")
+        verifyText("battle_scene_caption")
         listOf("LEFT", "CENTER", "RIGHT").forEach {
             val node = rule.onNodeWithTag("battle_front_$it").assertIsDisplayed().fetchSemanticsNode()
             assertTrue(node.boundsInRoot.height >= 48 * density - 1)
@@ -102,6 +105,29 @@ class BattleLayoutTest {
         viewport(320, 568, 1.6f)
         verifyFieldAndTouchTargets("portrait-320x568-font160")
         rule.onNodeWithText("+5 Minuten").assertIsDisplayed()
+    }
+
+    @Test fun actualFortressVolleyAnimatesOnceThenRestsWithoutInventedLosses() {
+        viewport(320, 568, scenario = "small-assault", animations = true)
+        saveScreenshot("fortress-formation-1000-vs-200")
+        rule.mainClock.autoAdvance = false
+        try {
+            rule.onNodeWithTag("battle_advance").performClick()
+            rule.mainClock.advanceTimeBy(800)
+            saveScreenshot("fortress-volley-in-flight")
+            rule.runOnIdle {
+                val battle = BattlePreviewActivity.latestState!!.battleSession!!
+                assertEquals(1000, battle.ownRemaining)
+                assertTrue(battle.exchanges.last().fronts.sumOf { it.arrowsUsed } > 0)
+                assertTrue(battle.exchanges.last().fronts.all { !it.contactState.allowsMelee && it.ownDamage.total == 0 })
+            }
+            rule.mainClock.advanceTimeBy(2200)
+            saveScreenshot("fortress-volley-completed")
+            val resting = rule.onNodeWithTag("battle_field").captureToImage().asAndroidBitmap()
+            rule.mainClock.advanceTimeBy(500)
+            val later = rule.onNodeWithTag("battle_field").captureToImage().asAndroidBitmap()
+            assertTrue("No looping arrows or damage after the exchange", resting.sameAs(later))
+        } finally { rule.mainClock.autoAdvance = true }
     }
     @Test fun compactPendingEventLeavesItsReactionsReachable() {
         viewport(640, 280, 1.3f, pending = true)
