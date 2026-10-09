@@ -34,9 +34,8 @@ state and past actions; do not require scripted quests or prescribed chapters.
   `gradle :app:assembleDebug` when changing executable code.
 - Visual changes need before/after screenshots, 320×568 and enlarged-font
   checks, as well as memory/performance consideration.
-- Parallel Codex/Claude agents may work in separate scoped branches but should
-  not edit the same files concurrently. Claude must be started and connected
-  separately; a collaboration note does not activate it.
+- ChatGPT and OpenAI Codex handle all game direction, artwork specifications, Kotlin code, gameplay, integration and verification.
+- Do not delegate any part of this project to a third-party AI. Work in reviewed feature branches without conflicting edits.
 - Don't merge to an obsolete base; never overwrite valuable player data.
 
 ## Immediate first technical target
