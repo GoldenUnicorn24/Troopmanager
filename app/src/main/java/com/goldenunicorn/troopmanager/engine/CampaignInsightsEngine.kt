@@ -10,6 +10,87 @@ object CampaignInsightsEngine {
     data class Situation(val category: String, val title: String, val detail: String,
         val destination: GameDestination, val urgency: Int)
 
+    /** Campaign-backed recommendation, always routed to the relevant playable screen. */
+    data class NextAction(
+        val title: String,
+        val reason: String,
+        val button: String,
+        val destination: GameDestination,
+        val priority: Int,
+    )
+
+    fun nextAction(state: GameState): NextAction {
+        state.invasion?.takeIf { it.arrivalDay <= state.day + 2 }?.let {
+            val remaining = (it.arrivalDay - state.day).coerceAtLeast(0)
+            return NextAction(
+                "Verteidigung vorbereiten",
+                "Die ${it.enemy.label} erreicht deine Festung in $remaining Tagen. Prüfe Mauer, Munition und Garnison.",
+                "Stadtverteidigung öffnen", GameDestination.CITY, 110,
+            )
+        }
+        state.frontier.hordes.filter { it.discovered && it.daysToArrival <= 3 }
+            .minByOrNull { it.daysToArrival }?.let {
+                return NextAction(
+                    "Grenze sichern: ${it.name}",
+                    "Noch ${it.daysToArrival} Tage bis zum Angriff. Stelle Truppen und Vorräte bereit.",
+                    "Grenzlage öffnen", GameDestination.FRONTIER, 105,
+                )
+            }
+        state.campaign.pendingDecision?.let {
+            return NextAction(
+                it.title,
+                "Dein Rat erwartet eine Entscheidung bis Tag ${it.expiresDay}. Die Folgen wirken auf dein Reich.",
+                "Entscheidung prüfen", GameDestination.DECISIONS, 95,
+            )
+        }
+        val unsupplied = state.world.playerFieldArmies.count { it.supplyDays < 3 }
+        if (unsupplied > 0) return NextAction(
+            "Feldheere benötigen Nachschub",
+            "$unsupplied Feldheere verfügen über weniger als drei Tage Versorgung.",
+            "Weltkarte und Versorgung", GameDestination.WORLD, 92,
+        )
+        val foodNet = EconomyEngine.production(state).net.food
+        if (foodNet < 0 && state.resources.food.toLong() <= -foodNet.toLong() * 7L) {
+            return NextAction(
+                "Nahrungsengpass verhindern",
+                "Vorrat ${state.resources.food}; täglicher Fehlbetrag ${-foodNet.toLong()}. Verbessere die Produktion.",
+                "Stadtwirtschaft öffnen", GameDestination.CITY, 90,
+            )
+        }
+        val wounded = state.war.wounded.sumOf { it.soldiers }
+        val hospital = WarEngine.hospitalCapacity(state)
+        if (wounded > hospital) return NextAction(
+            "Lazarett überlastet",
+            "$wounded Verwundete bei $hospital Behandlungsplätzen. Ausbau und Medizin werden benötigt.",
+            "Lazarett und Heer öffnen", GameDestination.MILITARY, 87,
+        )
+        if (state.realm.wallIntegrity < 80) return NextAction(
+            "Die Stadtmauer ist beschädigt",
+            "Mauerzustand ${state.realm.wallIntegrity} %. Reparaturen verbessern deine Verteidigung.",
+            "Stadt und Mauer öffnen", GameDestination.CITY, 75,
+        )
+        if (state.population.total >= state.city.housingCapacity) return NextAction(
+            "Mehr Wohnraum schaffen",
+            "${state.population.total} Einwohner teilen sich ${state.city.housingCapacity} Wohnplätze.",
+            "Wohnviertel ausbauen", GameDestination.CITY, 70,
+        )
+        if (state.armyPools.any { it.equipment < 70 }) return NextAction(
+            "Truppenausrüstung verbessern",
+            "Mindestens ein Regiment ist schlecht ausgerüstet. Prüfe Arsenal und Truppen.",
+            "Armee und Arsenal öffnen", GameDestination.MILITARY, 65,
+        )
+        if (state.player.skillPoints > 0) return NextAction(
+            "Herrscher weiterentwickeln",
+            "${state.player.skillPoints} Fertigkeitspunkte warten auf ihre Verteilung.",
+            "Herrscherprofil öffnen", GameDestination.COURT, 45,
+        )
+        return NextAction(
+            "Initiative im Reich übernehmen",
+            "Deine unmittelbare Lage ist stabil. Plane Aufklärung, einen Ausbau oder einen sicheren Feldzug.",
+            "Weltkarte öffnen", GameDestination.WORLD, 20,
+        )
+    }
+
     fun forecast(state: GameState, days: Int): Forecast {
         require(days in 1..14)
         var expected = state.resources
