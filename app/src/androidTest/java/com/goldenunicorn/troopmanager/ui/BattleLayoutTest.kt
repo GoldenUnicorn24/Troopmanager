@@ -4,13 +4,16 @@ import android.content.res.Configuration
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
+import android.provider.Settings
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -108,13 +111,22 @@ class BattleLayoutTest {
     }
 
     @Test fun actualFortressVolleyAnimatesOnceThenRestsWithoutInventedLosses() {
-        viewport(320, 568, scenario = "small-assault", animations = true)
-        saveScreenshot("fortress-formation-1000-vs-200")
-        rule.mainClock.autoAdvance = false
+        val resolver = rule.activity.contentResolver
+        val previousScale = Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+        fun animationScale(value: Float) {
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation
+                .executeShellCommand("settings put global animator_duration_scale $value")).use { it.readBytes() }
+        }
+        // CI disables system animations by default. This one test explicitly exercises an enabled animation.
+        animationScale(1f)
         try {
+            viewport(320, 568, scenario = "small-assault", animations = true)
+            saveScreenshot("fortress-formation-1000-vs-200")
+            rule.mainClock.autoAdvance = false
             rule.onNodeWithTag("battle_advance").performClick()
             rule.mainClock.advanceTimeBy(800)
             saveScreenshot("fortress-volley-in-flight")
+            val flight = rule.onNodeWithTag("battle_field").captureToImage().asAndroidBitmap()
             rule.runOnIdle {
                 val battle = BattlePreviewActivity.latestState!!.battleSession!!
                 assertEquals(1000, battle.ownRemaining)
@@ -124,10 +136,14 @@ class BattleLayoutTest {
             rule.mainClock.advanceTimeBy(2200)
             saveScreenshot("fortress-volley-completed")
             val resting = rule.onNodeWithTag("battle_field").captureToImage().asAndroidBitmap()
+            assertFalse("Enabled volleys must visibly advance to their completed state", flight.sameAs(resting))
             rule.mainClock.advanceTimeBy(500)
             val later = rule.onNodeWithTag("battle_field").captureToImage().asAndroidBitmap()
             assertTrue("No looping arrows or damage after the exchange", resting.sameAs(later))
-        } finally { rule.mainClock.autoAdvance = true }
+        } finally {
+            rule.mainClock.autoAdvance = true
+            animationScale(previousScale)
+        }
     }
     @Test fun compactPendingEventLeavesItsReactionsReachable() {
         viewport(640, 280, 1.3f, pending = true)
