@@ -2,6 +2,8 @@
 
 Arbeitsbranch: `codex/v1.0-realm-war-overhaul`, Basis v0.97 `8359712`.
 Version: **1.0.0 / 46**, Save-Schema **5** mit Schema-4-Migration.
+Erster visueller Folgeschritt: `codex/battle-formations-and-wall-defense`;
+Umfang und Prüfnachweise in `docs/BATTLE-VISUALS-PHASE-1.md`.
 Zuerst `docs/V1.0-REALM-WAR-OVERHAUL.md`, `docs/V0.97-BATTLE-TACTICS.md`
 und `docs/V1.0-SPRINT-A.md` lesen. Die vorhandenen Engines und Saves erhalten;
 Sprint B–E benötigen eigene Aufträge. Tests, Assemble und Lint prüfen.

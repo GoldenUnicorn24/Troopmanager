@@ -1,14 +1,15 @@
 package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -18,358 +19,218 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.layout.ContentScale
-import coil.compose.AsyncImage
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.goldenunicorn.troopmanager.engine.BattleEngine
-import com.goldenunicorn.troopmanager.engine.BattleStateEngine
+import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.model.*
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
-internal enum class BattleBackdropSlot(val file: String) { FIELD("field.webp"), FOREST("forest.webp"), PASS("pass.webp"), FORTRESS("fortress.webp"), NIGHT("night.webp") }
+internal enum class BattleBackdropSlot(val file: String) {
+    FIELD("field.webp"), FOREST("forest.webp"), PASS("pass.webp"), FORTRESS("fortress.webp"), NIGHT("night.webp")
+}
+private data class BattalionMotion(val before: BattleBattalion?, val after: BattleBattalion?)
+private data class ExchangeDrawing(
+    val front: BattleSceneFront, val effects: BattleExchangeEffects,
+    val ownBow: BattlePoint, val enemyBow: BattlePoint, val ownTarget: BattlePoint,
+    val enemyTarget: BattlePoint, val artillery: BattlePoint, val deviceTarget: BattlePoint?,
+)
 
-/** Bounded formation rendering. Position and attack effects use persisted engine state only. */
+/** One finite animation per new exchange. Loading a save and editing a plan never replay damage. */
 @Composable
 internal fun SessionBattleField(session: BattleSession, animations: Boolean, battleSpeed: Float,
     wallWeapons: List<WallWeaponStock> = emptyList(), modifier: Modifier = Modifier.fillMaxWidth().height(300.dp),
     selected: BattleSection = BattleSection.CENTER, compactLegend: Boolean = false,
     onSelect: (BattleSection) -> Unit = {}) {
-    val pulse = remember { Animatable(1f) }
-    LaunchedEffect(session.step, animations) {
-        if (animations && session.step > 0) {
+    val scene = remember(session) { BattleSceneProjection.project(session) }
+    val pulse = remember(session.seed) { Animatable(1f) }
+    var lastScene by remember(session.seed) { mutableStateOf(scene) }
+    var previous by remember(session.seed) { mutableStateOf(scene) }
+    LaunchedEffect(scene, animations) {
+        val newExchange = scene.step == lastScene.step + 1 && scene.minute > lastScene.minute
+        previous = if (newExchange) lastScene else scene
+        lastScene = scene
+        if (animations && newExchange) {
             pulse.snapTo(0f)
-            pulse.animateTo(1f, tween((260 / battleSpeed.coerceIn(.5f, 3f)).toInt().coerceIn(100, 300)))
+            pulse.animateTo(1f, tween((1800 / battleSpeed.coerceIn(.5f, 3f)).toInt(), easing = LinearEasing))
         } else pulse.snapTo(1f)
     }
-    val groups = remember(session.contingents, session.fronts) { BattleEngine.visualGroups(session) }
-    val fort = session.tactic == Tactic.FORTIFY || session.segments.any { it.cover > 0 }
+    val motions = remember(scene, previous) {
+        val old = previous.battalions.toMutableList()
+        val next = scene.battalions.map { after ->
+            val before = old.firstOrNull { it.key == after.key } ?: old.firstOrNull {
+                it.key.section == after.key.section && it.key.type == after.key.type && it.key.enemy == after.key.enemy
+            }
+            old.remove(before)
+            BattalionMotion(before, after)
+        }
+        (next + old.map { BattalionMotion(it, null) })
+            .sortedBy { (it.after ?: it.before)!!.position.y }
+    }
+    val volleys = remember(scene, previous) {
+        scene.fronts.map { front ->
+            fun anchor(enemy: Boolean, role: BattleRole? = null, target: UnitType? = null, current: Boolean = false): BattlePoint {
+                // A shooter or target may have died in this exchange; retain its pre-step position.
+                val groups = (if (current) scene.battalions + previous.battalions else previous.battalions + scene.battalions)
+                    .filter { it.key.section == front.section && it.key.enemy == enemy && !it.key.routed }
+                val candidates = groups.filter { (role == null || it.role == role) && (target == null || it.key.type == target) }
+                return candidates.ifEmpty { groups }.firstOrNull()?.position
+                    ?: BattlePoint((front.section.ordinal + .5f) / 3f, if (scene.defender(enemy)) .68f else .40f)
+            }
+            val device = scene.devices.firstOrNull { it.id == front.report?.targetDeviceId }
+            ExchangeDrawing(front, BattleSceneProjection.effects(front), anchor(false, BattleRole.ARCHERS),
+                anchor(true, BattleRole.ARCHERS), anchor(false, current = true), anchor(true, target = front.report?.targetType, current = true),
+                anchor(false, BattleRole.ARTILLERY), device?.let { devicePoint(it, scene) })
+        }
+    }
+    val deviceMotions = remember(scene, previous) {
+        scene.devices.map { it to (previous.devices.firstOrNull { old -> old.id == it.id } ?: it) }
+    }
+    val weapons = remember(wallWeapons, scene.fortified, scene.defenderEnemy) {
+        wallWeapons.filter { it.count > 0 }.take(15).takeIf { scene.fortified && !scene.defenderEnemy }.orEmpty()
+    }
     val context = LocalContext.current
     val slot = when {
         session.night -> BattleBackdropSlot.NIGHT
-        fort -> BattleBackdropSlot.FORTRESS
+        scene.fortified -> BattleBackdropSlot.FORTRESS
         session.terrain.values.count { it == BattleTerrain.FOREST } >= 2 -> BattleBackdropSlot.FOREST
         session.terrain.values.any { it == BattleTerrain.PASS } -> BattleBackdropSlot.PASS
         else -> BattleBackdropSlot.FIELD
     }
     val backdrop = remember(context, slot) {
-        context.assets.list("battle-backdrops")?.takeIf { slot.file in it }?.let { "file:///android_asset/battle-backdrops/${slot.file}" }
+        val files = context.assets.list("battle-backdrops").orEmpty()
+        val file = if (slot.file in files) slot.file else "ground.webp".takeIf { it in files }
+        file?.let { "file:///android_asset/battle-backdrops/$it" }
     }
-    val frame = pulse.value
-    Box(modifier.clip(RoundedCornerShape(22.dp)).background(Brush.verticalGradient(listOf(Color(0xFF172B31), Color(0xFF111A21), Ink)))) {
+    Column(modifier.clip(RoundedCornerShape(22.dp)).background(Color(0xFF1B2423))) {
+        Box(Modifier.weight(1f).fillMaxWidth()) {
         if (backdrop != null) AsyncImage(model = backdrop, contentDescription = null,
             contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         Canvas(Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
-            val wallY = h * .62f
-
-            // v0.96 visual pass: battlefield depth is generated from the actual combat canvas,
-            // not from decorative sprites. Front lines, roads and terrain all share this space.
-            drawRect(
-                Brush.verticalGradient(
-                    when {
-                        session.night -> listOf(Color(0xFF101923), Color(0xFF18232A), Color(0xFF0C1319))
-                        session.season == Season.WINTER -> listOf(Color(0xFF52606A), Color(0xFF7B857C), Color(0xFF40483E))
-                        session.season == Season.AUTUMN -> listOf(Color(0xFF4A3B31), Color(0xFF4C4331), Color(0xFF26251D))
-                        else -> listOf(Color(0xFF25383B), Color(0xFF2D3830), Color(0xFF161D1B))
-                    }
-                ), alpha = if (backdrop == null) 1f else .45f
-            )
-            drawOval(
-                Color(0x221A120D),
-                topLeft = Offset(-w * .15f, h * .68f),
-                size = Size(w * 1.3f, h * .38f),
-            )
-            repeat(9) { n ->
-                val y = h * (.18f + n * .075f)
-                drawLine(
-                    Color.White.copy(alpha = .025f + (n % 2) * .012f),
-                    Offset(0f, y),
-                    Offset(w, y + (n % 3 - 1) * 5.dp.toPx()),
-                    1.dp.toPx(),
-                )
+            // Clock is read in draw only: projection and grouping do not run at animation framerate.
+            val frame = pulse.value
+            val unit = minOf(size.width / 150f, size.height / 92f)
+            battleGround(session, scene, selected, backdrop != null)
+            if (scene.fortified) scene.fronts.forEach { battleRampart(it, unit) }
+            weapons.forEachIndexed { index, weapon ->
+                val p = point(BattlePoint((weapon.section.ordinal + .22f + index % 3 * .22f) / 3f, BattleSceneProjection.WALL_Y - .035f))
+                battleDevice(SiegeDevice.CATAPULT, p, unit * .65f, weapon.integrity, weapon.ammunition > 0)
             }
-
-            BattleStateEngine.sections.forEachIndexed { index, section ->
-                val x0 = w * index / 3f
-                val x1 = w * (index + 1) / 3f
-                val segment = session.segment(section)
-                val front = session.fronts.firstOrNull { it.section == section }
-                val enemyDistance = front?.enemyDistance ?: 180
-                val contact = segment?.contactState?.allowsMelee == true
-                drawRect(if (selected == section) ModernBlue.copy(alpha = .08f) else Color.Transparent,
-                    Offset(x0, 0f), Size(w / 3f, h))
-                if (index > 0) drawLine(Mist.copy(alpha = .12f), Offset(x0, 0f), Offset(x0, h), 1.dp.toPx())
-                when (session.terrain[section]) {
-                    BattleTerrain.FOREST -> repeat(10) { n ->
-                        drawCircle(Color(0xFF284638).copy(alpha = .45f), 8.dp.toPx(), Offset(x0 + w / 3 * ((n * 17 % 93) / 100f), h * (.1f + (n % 4) * .1f)))
-                    }
-                    BattleTerrain.RIVER, BattleTerrain.BRIDGE -> {
-                        drawRect(ModernBlue.copy(alpha = .18f), Offset(x0, h * .42f), Size(w / 3, h * .09f))
-                        if (session.terrain[section] == BattleTerrain.BRIDGE) drawRect(Color(0xFF80664B), Offset(x0 + w / 9, h * .39f), Size(w / 9, h * .15f))
-                    }
-                    BattleTerrain.HILL, BattleTerrain.PASS -> repeat(3) { n ->
-                        drawArc(Mist.copy(alpha = .09f), 190f, 160f, false, Offset(x0 + w / 12, h * (.1f + n * .15f)), Size(w / 5, h * .15f), style = Stroke(2.dp.toPx()))
-                    }
-                    else -> Unit
-                }
-                val ownY = if (segment?.fallenBack == true) h * .79f else if (fort && session.tactic == Tactic.FORTIFY)
-                    wallY + if (contact) h * .025f else h * .075f else h * (.66f + (50 - (front?.position ?: 50)) / 250f)
-                val enemyY = when (segment?.contactState) {
-                    BattleContactState.COURTYARD -> h * .72f
-                    BattleContactState.BREACHED -> wallY + h * .025f
-                    BattleContactState.WALL_ASSAULT -> wallY - h * .025f
-                    else -> (if (fort) wallY - h * .035f else h * .60f) - h * .43f * (enemyDistance / 400f).coerceIn(0f, 1f)
-                }
-                if (fort) {
-                    val integrity = segment?.integrity ?: session.wallIntegrity
-                    val center = Offset(x0 + w / 6, wallY)
-                    drawRoundRect(if (integrity < 30) Color(0xFF6B4038) else Color(0xFF59606A),
-                        Offset(x0 + 5.dp.toPx(), wallY - 9.dp.toPx()), Size(w / 3 - 10.dp.toPx(), 18.dp.toPx()), 4.dp.toPx().let { androidx.compose.ui.geometry.CornerRadius(it) })
-                    repeat(6) { n -> drawRect(Color(0xFF7D8890), Offset(x0 + 12.dp.toPx() + n * (w / 3 - 25.dp.toPx()) / 6, wallY - 15.dp.toPx()), Size(7.dp.toPx(), 7.dp.toPx())) }
-                    if (integrity == 0 || (segment?.breachWidth ?: 0) > 0) {
-                        val gap = w / 3 * ((segment?.breachWidth ?: 50) / 180f).coerceIn(.18f, .6f)
-                        drawRect(Ink, center - Offset(gap / 2, 18.dp.toPx()), Size(gap, 36.dp.toPx()))
-                        repeat(4) { n -> drawCircle(Color(0xFF987862), 3.dp.toPx(), center + Offset((n - 1.5f) * 7.dp.toPx(), (n % 2 - .5f) * 12.dp.toPx())) }
-                    }
-                    if (section == BattleSection.CENTER) {
-                        val open = segment?.gateOpen == true || segment?.gateIntegrity == 0
-                        drawRect(if (open) Ink else Color(0xFF80684B), center - Offset(14.dp.toPx(), 13.dp.toPx()), Size(28.dp.toPx(), 26.dp.toPx()))
-                        if (!open) repeat(3) { n -> drawLine(Gold.copy(alpha = .45f), center + Offset(-12.dp.toPx(), (n - 1) * 7.dp.toPx()), center + Offset(12.dp.toPx(), (n - 1) * 7.dp.toPx()), 2.dp.toPx()) }
-                    }
-                    if (integrity < 65) repeat(3) { smoke ->
-                        val damage = (100 - integrity) / 100f
-                        drawCircle(Color(0xFF776F61).copy(alpha = damage * .35f), (5 + smoke * 3).dp.toPx(),
-                            center + Offset((smoke - 1) * 12.dp.toPx(), -(18 + smoke * 9).dp.toPx()))
-                    }
-                    if (section == BattleSection.CENTER && !((segment?.gateOpen == true) || segment?.gateIntegrity == 0) && (segment?.gateIntegrity ?: 100) < 60) {
-                        val crack = Path().apply { moveTo(center.x - 6.dp.toPx(), center.y - 10.dp.toPx()); lineTo(center.x + 2.dp.toPx(), center.y); lineTo(center.x - 3.dp.toPx(), center.y + 10.dp.toPx()) }
-                        drawPath(crack, Ink, style = Stroke(2.dp.toPx()))
-                    }
-                    drawLine(if (integrity < 30) Danger else Success, Offset(x0 + 10.dp.toPx(), wallY + 18.dp.toPx()),
-                        Offset(x0 + 10.dp.toPx() + (w / 3 - 20.dp.toPx()) * integrity / 100f, wallY + 18.dp.toPx()), 3.dp.toPx())
-                }
-                fun formations(enemy: Boolean, y: Float) {
-                    val rows = groups.filter { it.section == section && it.enemy == enemy }.take(12)
-                    rows.forEachIndexed { n, group ->
-                        val contactMotion =
-                            if (contact && animations) kotlin.math.sin(frame * kotlin.math.PI.toFloat()) * 5.dp.toPx()
-                            else 0f
-                        val direction = if (enemy) 1f else -1f
-                        val position = Offset(
-                            x0 + w / 3 * (.17f + (n % 4) * .2f),
-                            y + (n / 4 - 1) * 16.dp.toPx() + contactMotion * direction,
-                        )
-                        drawOval(
-                            Color.Black.copy(alpha = if (group.routed) .12f else .25f),
-                            topLeft = position + Offset(-10.dp.toPx(), 5.dp.toPx()),
-                            size = Size(20.dp.toPx(), 7.dp.toPx()),
-                        )
-                        formation(position, if (enemy) Danger else if (group.type?.culture == Culture.WOOD_ELF) Success else Gold,
-                            group.type == UnitType.KNIGHT, group.routed, 5.dp.toPx(), group.type, group.enemy && session.enemy == EnemyType.TAO_TEI)
-                        if (!enemy && session.participation == BattleParticipation.PERSONAL && session.personalSection == section && n == 0)
-                            drawCircle(Color.White, 10.dp.toPx(), position, style = Stroke(1.5.dp.toPx()))
-                    }
-                }
-                formations(true, enemyY)
-                formations(false, ownY)
-                val devices = session.siegeDevices.filter { it.section == section && it.detected }.take(6)
-                devices.forEachIndexed { n, device ->
-                    val position = Offset(x0 + w / 3 * (.2f + n * .12f), wallY - h * .43f * (device.distance / 400f).coerceIn(0f, 1f))
-                    siegeDevice(device.type, position, if (device.disabled) Mist.copy(alpha = .4f) else Color(0xFFC29762))
-                    drawLine(if (device.disabled) Mist else Danger, position + Offset(-8.dp.toPx(), 16.dp.toPx()),
-                        position + Offset(-8.dp.toPx() + 16.dp.toPx() * device.integrity / 100f, 16.dp.toPx()), 2.dp.toPx())
-                }
-                wallWeapons.filter { it.section == section && it.count > 0 }.take(5).forEachIndexed { n, weapon ->
-                    val position = Offset(x0 + w / 3 * (.15f + n * .16f), wallY - 5.dp.toPx())
-                    val ready = weapon.ammunition > 0 && weapon.integrity > 0 && weapon.reloadRounds == 0
-                    drawCircle(if (ready) Gold else Mist, 4.dp.toPx(), position)
-                    drawLine(if (ready) Gold else Mist, position, position + Offset(0f, -12.dp.toPx()), 3.dp.toPx())
-                }
-                val report = session.lastReport(section)
-                if (animations && frame < 1f && report != null) {
-                    if (report.artilleryChargesUsed > 0) {
-                        val start = Offset(x0 + w / 6, ownY)
-                        val device = session.siegeDevices.firstOrNull { it.section == section && it.detected }
-                        val targetY = if (report.deviceDamage > 0 && device != null) wallY - (device.distance / 400f) * h * .42f else enemyY
-                        val end = Offset(start.x, targetY)
-                        drawCircle(Gold, 3.dp.toPx(), start + (end - start) * frame)
-                    }
-                    if (report.arrowsUsed > 0) repeat(5) { n ->
-                        val start = Offset(x0 + w / 3 * (.18f + n * .145f), ownY - (n % 2) * 5.dp.toPx())
-                        val targetFormation = groups.filter { it.enemy && it.section == section }.take(12).indexOfFirst { it.type == report.targetType }
-                        val targetDevice = devices.firstOrNull { it.id == report.targetDeviceId }
-                        val targetX = if (targetDevice != null) x0 + w / 3 * (.2f + devices.indexOf(targetDevice) * .12f)
-                            else if (targetFormation >= 0) x0 + w / 3 * (.17f + (targetFormation % 4) * .2f) else x0 + w / 3 * (.2f + n * .14f)
-                        val end = Offset(targetX + (n - 2) * 2.dp.toPx(), if (targetDevice != null) wallY - h * .43f * targetDevice.distance / 400f else enemyY)
-                        val travel = frame.coerceIn(0f, 1f)
-                        val arc = kotlin.math.sin(travel * kotlin.math.PI.toFloat()) * 24.dp.toPx()
-                        val p = start + (end - start) * travel - Offset(0f, arc)
-                        val tangent = (end - start)
-                        val length = kotlin.math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(1f)
-                        val dir = Offset(tangent.x / length, tangent.y / length)
-                        drawLine(Gold, p - dir * 7.dp.toPx(), p + dir * 2.dp.toPx(), 1.3.dp.toPx())
-                        if (travel > .72f && report.enemyDamage.total + report.deviceDamage > 0) drawCircle(
-                            Color(0xFFD8BB8A).copy(alpha = (1f - travel) * .8f), (2f + travel * 5f).dp.toPx(), end)
-                    }
-                    if (report.enemyArrowsUsed > 0) repeat(4) { n ->
-                        val start = Offset(x0 + w / 3 * (.21f + n * .17f), enemyY)
-                        val end = Offset(x0 + w / 3 * (.23f + n * .16f), ownY)
-                        val travel = frame.coerceIn(0f, 1f)
-                        val arc = kotlin.math.sin(travel * kotlin.math.PI.toFloat()) * 21.dp.toPx()
-                        val p = start + (end - start) * travel - Offset(0f, arc)
-                        val tangent = (end - start)
-                        val length = kotlin.math.sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(1f)
-                        val dir = Offset(tangent.x / length, tangent.y / length)
-                        drawLine(Danger, p - dir * 7.dp.toPx(), p + dir * 2.dp.toPx(), 1.3.dp.toPx())
-                    }
-                    if (contact && report.ownDamage.melee + report.enemyDamage.melee > 0) {
-                        val clash = Offset(x0 + w / 6, (ownY + enemyY) / 2)
-                        drawCircle(
-                            Color.White.copy(alpha = (1f - frame) * .52f),
-                            (7 + frame * 13).dp.toPx(),
-                            clash,
-                            style = Stroke(2.dp.toPx()),
-                        )
-                        repeat(5) { spark ->
-                            val angle = (spark * 1.23f + frame * 2f) * kotlin.math.PI.toFloat()
-                            val radius = (5f + frame * 18f).dp.toPx()
-                            val end = clash + Offset(kotlin.math.cos(angle) * radius, kotlin.math.sin(angle) * radius)
-                            drawLine(Gold.copy(alpha = 1f - frame), clash, end, 1.dp.toPx())
-                        }
-                        repeat(3) { dust ->
-                            val dx = (dust - 1) * 11.dp.toPx()
-                            drawCircle(
-                                Color(0xFFB9A68A).copy(alpha = (1f - frame) * .18f),
-                                (6 + dust * 2).dp.toPx(),
-                                clash + Offset(dx, 5.dp.toPx()),
-                            )
-                        }
-                    }
-                }
+            deviceMotions.forEach { (device, old) ->
+                val from = point(devicePoint(old, previous))
+                val to = point(devicePoint(device, scene))
+                battleDevice(device.type, from + (to - from) * movement(frame), unit, device.integrity, !device.disabled && device.crew > 0)
             }
-            groups.filter { it.section == BattleSection.RESERVE && !it.enemy }.take(12).forEachIndexed { n, group ->
-                formation(Offset(w * (.2f + (n % 6) * .12f), h * .90f + (n / 6) * 13.dp.toPx()), ModernBlue, group.type == UnitType.KNIGHT, group.routed, 4.dp.toPx(), group.type)
+            motions.forEach { motion ->
+                val troop = if (frame < .72f) motion.before ?: return@forEach else motion.after ?: return@forEach
+                val from = point((motion.before ?: troop).position)
+                val to = point((motion.after ?: troop).position)
+                battleBattalion(troop, from + (to - from) * movement(frame), unit, scene.defender(troop.key.enemy), frame,
+                    motion.before != null && motion.after != null && motion.before.position != motion.after.position)
             }
-            session.reserveReinforcement?.let { move ->
-                val end = Offset(w * (move.section.ordinal + .5f) / 3f, h * .76f)
-                drawLine(ModernBlue, Offset(w / 2, h * .9f), end, 2.dp.toPx())
-                drawCircle(ModernBlue, 4.dp.toPx(), end, style = Stroke(1.5.dp.toPx()))
+            scene.hero?.let { drawCircle(Color.White, unit * 4f, point(it), style = Stroke(unit * .6f)) }
+            scene.reserve?.let { reserve ->
+                val from = point(BattlePoint(.5f, if (scene.defender(false)) .88f else .08f))
+                val to = point(BattlePoint((reserve.section.ordinal + .5f) / 3f, if (scene.defender(false)) .76f else .23f))
+                repeat(7) { index ->
+                    val p = from + (to - from) * (index / 7f)
+                    drawLine(ModernBlue.copy(alpha = .7f), p, p + (to - from) / 14f, unit * .65f)
+                }
+                // Route markers are not extra soldiers. Troops stay in reserve until the engine moves them.
+                drawCircle(ModernBlue, unit * 2f, to, style = Stroke(unit * .6f))
             }
-            drawLine(ModernBlue.copy(alpha = .25f), Offset(w * .12f, h * .84f), Offset(w * .88f, h * .84f), 1.dp.toPx())
+            if (animations && frame < 1f) volleys.forEach { exchange(it, frame, unit) }
+            drawRect(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .08f), Color.Transparent, Color.Black.copy(alpha = .16f))))
         }
         Row(Modifier.matchParentSize()) {
-            BattleStateEngine.sections.forEach { section ->
-                val segment = session.segment(section)
-                Box(Modifier.weight(1f).fillMaxHeight().semantics {
-                    contentDescription = "${section.label}: ${session.soldiers(section)} eigene, ${session.fronts.firstOrNull { it.section == section }?.enemySoldiers ?: 0} Gegner. ${segment?.contactState?.label}. Mauer ${segment?.integrity ?: 0} Prozent."
-                }.clickable(role = Role.Button, onClickLabel = "Abschnitt auswählen") { onSelect(section) })
+            scene.fronts.forEach { front ->
+                val formations = scene.battalions.filter { it.key.section == front.section && !it.key.enemy }
+                    .map { it.key.formation.label }.distinct().joinToString()
+                Box(Modifier.weight(1f).fillMaxHeight().testTag("battle_scene_${front.section.name}").semantics {
+                    contentDescription = "${front.section.label}: ${front.own} eigene, ${front.enemy} Gegner. $formations. " +
+                        "${front.distance} Meter, ${front.contact.label}. " +
+                        (if (scene.fortified) "Mauer ${front.segment?.integrity ?: 0} Prozent, Bresche ${front.segment?.breachWidth ?: 0}." else "Feldschlacht.")
+                }.clickable(role = Role.Button, onClickLabel = "Abschnitt auswählen") { onSelect(front.section) })
             }
         }
-        androidx.compose.material3.Text(
-            if (compactLegend) "Bogen · Speer · Reiter · Geschütz" else "Bogen · Klinge · Speer · Reiter · Gerät",
-            color = Mist,
-            fontSize = if (compactLegend) 7.sp else 9.sp,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 8.dp, vertical = if (compactLegend) 4.dp else 8.dp),
-        )
+        }
+        val front = scene.fronts.firstOrNull { it.section == selected }
+        val formations = scene.battalions.filter { !it.key.enemy && it.key.section == selected }.map { it.key.formation }.distinct()
+        val formation = when (formations.size) { 0 -> "Keine Truppen"; 1 -> formations.single().label; else -> "Gemischte Formation" }
+        val fire = when {
+            front?.segment?.rangedOrder == RangedOrder.HOLD -> "Feuer halten"
+            session.battleArrowsRemaining == 0 -> "Pfeile erschöpft"
+            (front?.report?.arrowsUsed ?: 0) > 0 -> "${front!!.report!!.arrowsUsed} Pfeile abgefeuert"
+            else -> front?.contact?.label ?: "Aufstellung"
+        }
+        Text("$formation · $fire", color = Color(0xFFE0D7C2), fontSize = if (compactLegend) 10.sp else 11.sp,
+            lineHeight = 13.sp, modifier = Modifier.fillMaxWidth()
+                .background(Color(0xE611191C)).padding(horizontal = 10.dp, vertical = 5.dp).testTag("battle_scene_caption"))
     }
 }
+private fun movement(frame: Float) = (frame / .72f).coerceIn(0f, 1f)
+private fun DrawScope.point(p: BattlePoint) = Offset(size.width * p.x, size.height * p.y)
+private fun devicePoint(d: SiegeDeviceState, scene: BattleScene) = BattlePoint(
+    (d.section.ordinal + when (d.type) {
+        SiegeDevice.RAM, SiegeDevice.TUNNEL -> .5f; SiegeDevice.TOWER -> .8f; SiegeDevice.CATAPULT -> .22f; else -> .15f
+    }) / 3f,
+    if (scene.defenderEnemy) .68f + .24f * d.distance / 400f
+    else BattleSceneProjection.WALL_Y - .045f - .40f * d.distance / 400f)
 
-private fun DrawScope.formation(position: Offset, color: Color, cavalry: Boolean, routed: Boolean, extent: Float,
-    kind: UnitType? = null, monster: Boolean = false) {
-    val tint = if (routed) color.copy(alpha = .34f) else color
-    val scale = extent / 5.dp.toPx().coerceAtLeast(1f)
-    val soldierRadius = 1.7.dp.toPx() * scale
-    val spacingX = 4.2.dp.toPx() * scale
-    val spacingY = 4.6.dp.toPx() * scale
-
-    if (monster) {
-        drawOval(tint, position - Offset(8.dp.toPx(), 5.dp.toPx()), Size(16.dp.toPx(), 10.dp.toPx()))
-        repeat(3) { n ->
-            val head = position + Offset((n - 1) * 5.dp.toPx(), -7.dp.toPx())
-            drawCircle(tint, 3.dp.toPx(), head)
-            drawLine(tint, head, head + Offset(2.dp.toPx(), -5.dp.toPx()), 1.5.dp.toPx())
-            drawLine(tint, position + Offset((n - 1) * 5.dp.toPx(), 2.dp.toPx()), position + Offset((n - 1) * 7.dp.toPx(), 9.dp.toPx()), 2.dp.toPx())
-        }
-        return
-    }
-    if (kind == UnitType.DRAGON_ARTILLERY) {
-        siegeDevice(SiegeDevice.CATAPULT, position, tint)
-        drawCircle(tint, 2.dp.toPx(), position + Offset(-10.dp.toPx(), 4.dp.toPx()))
-        return
-    }
-    if (cavalry) {
-        // Two readable cavalry silhouettes instead of one abstract diamond.
-        repeat(2) { row ->
-            val p = position + Offset((row - .5f) * 7.dp.toPx() * scale, (row % 2) * 2.dp.toPx() * scale)
-            val horse = Path().apply {
-                moveTo(p.x - 5.dp.toPx() * scale, p.y + 2.dp.toPx() * scale)
-                lineTo(p.x - 1.dp.toPx() * scale, p.y - 3.dp.toPx() * scale)
-                lineTo(p.x + 5.dp.toPx() * scale, p.y - 1.dp.toPx() * scale)
-                lineTo(p.x + 4.dp.toPx() * scale, p.y + 4.dp.toPx() * scale)
-                lineTo(p.x - 4.dp.toPx() * scale, p.y + 4.dp.toPx() * scale)
-                close()
-            }
-            drawPath(horse, tint)
-            drawCircle(Color(0xFFCDB18A).copy(alpha = tint.alpha), soldierRadius, p + Offset(0f, -5.dp.toPx() * scale))
-            drawLine(tint, p + Offset(2.dp.toPx() * scale, -5.dp.toPx() * scale), p + Offset(7.dp.toPx() * scale, -11.dp.toPx() * scale), 1.2.dp.toPx())
-        }
-    } else {
-        repeat(2) { row ->
-            repeat(3) { col ->
-                val p = position + Offset(
-                    (col - 1) * spacingX + if (row == 1) spacingX * .45f else 0f,
-                    (row - .5f) * spacingY,
-                )
-                drawCircle(Color(0xFFCDB18A).copy(alpha = tint.alpha), soldierRadius, p - Offset(0f, 2.5.dp.toPx() * scale))
-                drawLine(tint, p, p + Offset(0f, 4.dp.toPx() * scale), 2.1.dp.toPx() * scale)
-                drawLine(tint, p + Offset(-1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(-3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
-                drawLine(tint, p + Offset(1.dp.toPx() * scale, 1.dp.toPx() * scale), p + Offset(3.dp.toPx() * scale, 5.dp.toPx() * scale), 1.dp.toPx())
-                val weapon = Color(0xFFB8C0B8).copy(alpha = tint.alpha)
-                if ((kind?.ranged ?: 0) >= 8) {
-                    drawArc(weapon, -85f, 170f, false, p + Offset(2.dp.toPx() * scale, -5.dp.toPx() * scale),
-                        Size(5.dp.toPx() * scale, 10.dp.toPx() * scale), style = Stroke(1.dp.toPx()))
-                } else {
-                    val spear = kind in listOf(UnitType.GOLD_SPEAR, UnitType.CRANE_GUARD, UnitType.DEER_CORPS)
-                    drawLine(weapon, p + Offset(3.dp.toPx() * scale, 3.dp.toPx() * scale),
-                        p + Offset(3.dp.toPx() * scale, (if (spear) -12 else -6).dp.toPx() * scale), 1.dp.toPx())
-                    if (spear) drawCircle(weapon, 1.4.dp.toPx() * scale, p + Offset(3.dp.toPx() * scale, -12.dp.toPx() * scale))
-                    else drawLine(weapon, p + Offset(1.dp.toPx() * scale, -2.dp.toPx() * scale), p + Offset(5.dp.toPx() * scale, -2.dp.toPx() * scale), 1.dp.toPx())
-                }
-            }
+private fun DrawScope.exchange(e: ExchangeDrawing, frame: Float, u: Float) {
+    val effects = e.effects
+    fun volley(count: Int, start: BattlePoint, end: BattlePoint, tint: Color) {
+        repeat(minOf(12, count)) { i ->
+            val t = BattleSceneProjection.flightProgress(frame, i) ?: return@repeat
+            val from = point(start) + Offset((i % 6 - 2.5f) * u * 1.5f, (i / 6) * u)
+            val to = point(end) + Offset((i * 7 % 9 - 4) * u, (i * 3 % 5 - 2) * u)
+            val delta = to - from
+            val height = minOf(size.height * .09f, u * 18f)
+            val p = from + delta * t - Offset(0f, sin(t * PI.toFloat()) * height)
+            val tangent = delta - Offset(0f, cos(t * PI.toFloat()) * PI.toFloat() * height)
+            val dir = tangent / tangent.getDistance().coerceAtLeast(1f)
+            drawLine(Color.Black.copy(alpha = .4f), p - dir * u * 3f + Offset(u * .4f, u * .4f), p, u * .8f)
+            drawLine(tint, p - dir * u * 3f, p, u * .55f)
+            drawCircle(BattleSteel, u * .4f, p)
         }
     }
-
-    // Unit banner remains the quick identity cue at zoomed-out scale.
-    drawLine(tint, position + Offset(extent, extent), position + Offset(extent, -extent * 2.6f), 1.4.dp.toPx())
-    val banner = Path().apply {
-        moveTo(position.x + extent, position.y - extent * 2.6f)
-        lineTo(position.x + extent * 2.4f, position.y - extent * 2.1f)
-        lineTo(position.x + extent, position.y - extent * 1.6f)
-        close()
+    if (effects.arrows > 0) {
+        val markers = minOf(12, effects.arrows)
+        // Device damage is ambiguous when artillery also fired. Do not attribute it to arrows then.
+        val deviceMarkers = if (e.deviceTarget != null && effects.deviceDamage > 0 && effects.artillery == 0)
+            if (effects.arrowHits == 0) markers else markers / 2 else 0
+        volley(markers - deviceMarkers, e.ownBow, e.enemyTarget, Color(0xFFEDCD87))
+        if (deviceMarkers > 0) volley(deviceMarkers, e.ownBow, e.deviceTarget!!, Color(0xFFEDCD87))
     }
-    drawPath(banner, tint)
-}
-
-private fun DrawScope.siegeDevice(type: SiegeDevice, position: Offset, color: Color) {
-    val r = 8.dp.toPx()
-    when (type) {
-        SiegeDevice.TOWER -> {
-            drawRect(color, position - Offset(r, r * 1.8f), Size(r * 2, r * 3))
-            repeat(3) { n -> drawLine(Ink, position + Offset(-r, (n - 1) * r), position + Offset(r, (n - 1) * r), 2.dp.toPx()) }
-        }
-        SiegeDevice.RAM -> { drawRect(color, position - Offset(r * 1.5f, r * .4f), Size(r * 3, r * .8f)); drawLine(color, position + Offset(0f, -r), position + Offset(0f, r), 2.dp.toPx()) }
-        SiegeDevice.LADDERS, SiegeDevice.CLIMBERS -> {
-            drawLine(color, position + Offset(-r * .4f, -r), position + Offset(-r * .4f, r), 2.dp.toPx())
-            drawLine(color, position + Offset(r * .4f, -r), position + Offset(r * .4f, r), 2.dp.toPx())
-            repeat(4) { n -> drawLine(color, position + Offset(-r * .4f, (n / 2f - 1) * r), position + Offset(r * .4f, (n / 2f - 1) * r), 1.dp.toPx()) }
-        }
-        SiegeDevice.CATAPULT -> { drawCircle(color, r * .8f, position, style = Stroke(2.dp.toPx())); drawLine(color, position + Offset(-r, r), position + Offset(r, -r), 3.dp.toPx()) }
-        SiegeDevice.TUNNEL -> { drawCircle(color, r, position, style = Stroke(2.dp.toPx())); drawLine(color, position + Offset(-r, r), position + Offset(r, -r), 2.dp.toPx()) }
+    if (effects.enemyArrows > 0) volley(effects.enemyArrows, e.enemyBow, e.ownTarget, Color(0xFFD88A73))
+    if (effects.artillery > 0) BattleSceneProjection.flightProgress(frame, 0)?.let { t ->
+        val from = point(e.artillery)
+        val to = point(if (effects.artilleryHits > 0) e.enemyTarget else e.deviceTarget ?: e.enemyTarget)
+        drawCircle(BattleEarth, u * 1.5f, from + (to - from) * t - Offset(0f, sin(t * PI.toFloat()) * size.height * .13f))
     }
+    val impact = ((frame - .70f) / .30f).takeIf { it in 0f..1f } ?: return
+    fun hit(where: BattlePoint, strength: Int, color: Color) {
+        if (strength <= 0) return
+        val p = point(where)
+        drawCircle(color.copy(alpha = (1 - impact) * .38f), u * (2f + impact * 5f), p, style = Stroke(u * .6f))
+        repeat(minOf(5, strength)) { i ->
+            val direction = Offset(cos(i * 1.27f * PI.toFloat()), sin(i * 1.27f * PI.toFloat()))
+            drawLine(color.copy(alpha = 1 - impact), p + direction * u * (1 + impact * 3), p + direction * u * (2 + impact * 6), u * .55f)
+        }
+    }
+    hit(e.enemyTarget, effects.arrowHits, Gold)
+    hit(e.ownTarget, effects.enemyArrowHits, Color(0xFFD88A73))
+    hit(e.enemyTarget, effects.artilleryHits, BattleEarth)
+    hit(e.enemyTarget, effects.wallWeaponHits, BattleEarth)
+    e.deviceTarget?.let { hit(it, effects.deviceDamage, BattleEarth) }
+    hit(BattlePoint((e.front.section.ordinal + .5f) / 3f, BattleSceneProjection.WALL_Y), effects.wallDamage + effects.gateDamage, BattleStone)
+    if (effects.meleeHits > 0)
+        hit(BattlePoint((e.ownTarget.x + e.enemyTarget.x) / 2, (e.ownTarget.y + e.enemyTarget.y) / 2), effects.meleeHits, BattleSteel)
 }

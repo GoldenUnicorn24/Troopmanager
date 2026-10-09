@@ -1,0 +1,67 @@
+{
+  "source_commit": "06737076106b1daa8c98664e6fe7c7ae28af6285",
+  "base_commit": "07b525a7194fa8b9ff4bdf1dab9d45dbde8bb31b",
+  "command": "gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain --max-workers=2",
+  "exit_code": 0,
+  "tools": {
+    "jdk": "17",
+    "gradle": "8.9",
+    "android_sdk": 35
+  },
+  "unit_tests": {
+    "tests": 435,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "Warning": 17,
+    "Information": 20
+  },
+  "apk": {
+    "path": "app/build/outputs/apk/debug/app-debug.apk",
+    "bytes": 32881776,
+    "sha256": "5e20da32886038fda85fd85099ed5280e58c1cc8336f3240de7a35f4ba49f9d4",
+    "package": "com.goldenunicorn.troopmanager",
+    "version_name": "1.0.0",
+    "version_code": 46,
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "signature": "v2 verified",
+    "internet_permission": false
+  },
+  "runtime_ui": {
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 49.802,
+    "device": "Android 35 / x86_64 / google_apis / Pixel 4, KVM",
+    "workflow_run": 37931782752,
+    "artifact": 11616199282,
+    "source_commit": "06737076106b1daa8c98664e6fe7c7ae28af6285",
+    "screenshots": {
+      "fortress-formation-1000-vs-200.png": "bc82336699798bbda8614cf7e6e476dacf54ee2f4b0985376e846296b307bb71",
+      "fortress-volley-completed.png": "619f4f2a7c3ead037d1e261303d3e55bc0fa5869d182d6a347fb43249884acf7",
+      "fortress-volley-in-flight.png": "15dbdb119e3892cb724d0073ed4faf3c5d3831f26856c54d6d2408697e171d80",
+      "landscape-640x280-font130.png": "5cbdb9f74c20e7e06ad43d017244d2a7b535e8041b31a8bd67b3e0d29956d6d1",
+      "landscape-pending-event.png": "b9e167066c177a3599d620bf5e64d23e504e8247f888e32bfedb3c535c0c6e89",
+      "portrait-320x568-font160.png": "fb1887c7ac203bb4cc6b2b02d11db945fb8c56838ecbe11446badbde955d2853",
+      "portrait-320x568.png": "fd33ce391551665991ec6e89e04c4fbcbea383412788fad8b10b3613fc442196"
+    }
+  },
+  "before_screenshots": {
+    "workflow_run": 37890030066,
+    "artifact": 11597469329,
+    "branch": "feature/next-level-gameplay-ux",
+    "source_battle_code": "same as 07b525a"
+  },
+  "ci": {
+    "conclusion": "success",
+    "run": 37931782752,
+    "url": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/37931782752",
+    "apk_artifact": 11617026608
+  },
+  "local_emulator_limitation": "Software emulator without KVM had phone/Bluetooth/System UI startup ANRs. First instrumentation startup crashed; a second run was stopped after three passing tests. Complete acceptance and screenshots use the successful KVM CI run above."
+}
