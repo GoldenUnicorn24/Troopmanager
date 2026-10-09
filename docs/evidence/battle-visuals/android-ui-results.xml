@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuite name="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" tests="8" failures="0" errors="0" skipped="0" time="49.802" timestamp="2026-10-09T12:53:34" hostname="localhost">
+  <properties>
+    <property name="device" value="emulator-5554 - 15" />
+    <property name="flavor" value="" />
+    <property name="project" value=":app" />
+  </properties>
+  <testcase name="preparationAndLivePlanChangesUpdateTheRealBattleState" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="11.828" />
+  <testcase name="resourcesAndSelectedArmyTabsRemainFullyVisibleAtLargeFonts" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="2.545" />
+  <testcase name="actualFortressVolleyAnimatesOnceThenRestsWithoutInventedLosses" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="6.048" />
+  <testcase name="landscapeKeepsTheFieldAbove52Percent" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="6.394" />
+  <testcase name="invasionDashboardStoresTheDefensePlan" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="6.032" />
+  <testcase name="smallPortraitKeepsTheFieldAndActionsVisible" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="4.462" />
+  <testcase name="compactPendingEventLeavesItsReactionsReachable" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="5.58" />
+  <testcase name="largerFontsRemainUsableOnSmallPortrait" classname="com.goldenunicorn.troopmanager.ui.BattleLayoutTest" time="5.074" />
+</testsuite>

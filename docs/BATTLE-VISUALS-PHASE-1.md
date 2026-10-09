@@ -48,7 +48,9 @@ bestanden und liefert den Vorher-Vergleich der unveränderten Schlachtansicht.
 - `BattleSceneDrawing.kt` zeichnet Steinlagen, Zinnen, Seitentürme, das
   tatsächliche Tor, lokale Breschen, Trümmer, Geräte und zustandsabhängiges
   Feuer. Schützen stehen nur auf einer erhaltenen, tatsächlich verteidigten
-  Mauer; Rückfall oder lokale Bresche entfernen diese Position.
+  Mauer; Rückfall oder lokale Bresche entfernen diese Position. Der schmale
+  Wehrgang verwendet höchstens zwei repräsentative Reihen; die tatsächliche
+  Truppenzahl bleibt auch bei großen Schützenkontingenten vollständig erhalten.
 - Der Reservemarsch erscheint als Route. Soldaten bleiben bis zur echten
   Engine-Ankunft im Reservekontingent. Sichtbare Reihen erzeugen keine
   zusätzlichen Truppen. Die Auswahl einer Front verwendet weiterhin die
@@ -127,21 +129,101 @@ Animationstakt und unverändertes Speichern/Laden. Die bestehenden
 Akzeptanztests für 200 Orks gegen 1.000 Verteidiger und für 1.500 starke
 Belagerer werden weiter ausgeführt.
 
+Die bestehenden Balancefälle wurden mit Seeds 1, 971 und 2026 erneut geprüft:
+Die kleine Horde verursacht bei intakter Festung keine Verteidigerverluste und
+erreicht keinen Nahkontakt. Die erfahrenen, gepanzerten 1.500 Angreifer mit
+Geräten erreichen Kontakt und zerstören das Tor; nach 90 Simulationsminuten
+verbleiben je nach Seed 803–810 Verteidiger. Das ist erhaltenes Verhalten von
+Combat Engine 3.0, kein neu eingeführter Sonderbonus für die Darstellung.
+
 Die sieben vorhandenen Android-Tests bleiben bestehen und prüfen zusätzlich
 die neue Bildunterschrift. Ein gezielter achter Test zeigt das echte
 1.000-gegen-200-Szenario vor/während/nach einer Salve und vergleicht zwei
 ruhende Bilder, um fortlaufende Kampfanimationen auszuschließen.
 
-Aktuelle Prüfergebnisse und Screenshots werden nach abgeschlossenen Läufen
-in `docs/evidence/battle-visuals/` ergänzt. Dieser Text allein ist kein
-Build-, Laufzeit- oder Leistungsnachweis.
+Abgeschlossene lokale Prüfung des Quellstands `0673707`:
+
+```sh
+gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest --console=plain --max-workers=2
+```
+
+- 435 Unit-Tests: 426 vorhandene und 9 neue; 0 fehlgeschlagen, 0 Fehler,
+  0 ausgelassen. Dazu gehören unverändert die Save-Migrationen, Replay-,
+  Reserve-, Verwundeten-, Truppen- und Festungs-Akzeptanztests.
+- Lint: 0 Fehler, 17 Warnungen und 20 Hinweise, wie auf der v1.0-Basis.
+- Debug- und Test-APK gebaut. Alle vier Aufgaben waren nach der abschließenden
+  Wehrgang-Korrektur in 3m 47s erfolgreich.
+- Android 35: alle 8 Instrumentierungstests bestanden, 0 Fehler/ausgelassen,
+  Laufzeit 49,802 s. Geprüft auf Pixel-4-Emulator (x86_64, Google APIs, KVM).
+  Die Animation wird ausdrücklich eingeschaltet: Das Salvenbild muss sich vom
+  Endzustand unterscheiden; danach müssen zwei Bilder pixelgleich ruhen.
+- [GitHub Actions 37931782752](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/37931782752):
+  Build/Unit/Lint/Signatur und Android-UI beide erfolgreich für `0673707`.
+- `apksigner verify --verbose --print-certs`: v2-Signatur verifiziert.
+  Paket `com.goldenunicorn.troopmanager`, Version 1.0.0/46, minSdk 26,
+  targetSdk 35. Lokale APK 32.881.776 Bytes, SHA-256
+  `5e20da32886038fda85fd85099ed5280e58c1cc8336f3240de7a35f4ba49f9d4`.
+  Keine Internet-Berechtigung im APK-Manifest.
+  Die APK verwendet den lokalen Debugschlüssel. Ein Update einer bereits
+  installierten, anders signierten Version benötigt deren bisherigen Schlüssel;
+  Spielstände dürfen nicht durch Löschen der App-Daten umgangen werden.
+  Die separat in CI gebaute Debug-APK ist als
+  [Actions-Artefakt](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/37931782752/artifacts/11617026608)
+  verfügbar; wegen des eigenen CI-Debugschlüssels ist sie nicht bytegleich.
+
+Nachweise: [Manifest](evidence/battle-visuals/verification.json),
+[Unit-Tests](evidence/battle-visuals/unit-test-results.json),
+[Balancefälle](evidence/battle-visuals/balance-acceptance.txt),
+[Build](evidence/battle-visuals/final-verification.log),
+[Android-Tests](evidence/battle-visuals/android-ui-results.xml),
+[CI-Ergebnis](evidence/battle-visuals/ci-final-run.json),
+[Lint](evidence/battle-visuals/lint-results-debug.xml),
+[Signatur](evidence/battle-visuals/apk-signature.txt),
+[Paketdaten](evidence/battle-visuals/apk-badging.txt),
+[Quell-/Asset-Fingerprints](evidence/battle-visuals/source-fingerprints.json).
+
+Der lokale Softwareemulator ohne KVM hatte beim Kaltstart ANRs in Telefon-,
+Bluetooth- und System-UI-Diensten; der erste Instrumentierungsstart wurde
+dadurch beendet. Ein weiterer Lauf wurde nach drei bestandenen Tests zugunsten
+des beschleunigten CI-Geräts gestoppt. Er wird nicht als vollständiger Testlauf
+gezählt. Die oben verlinkte vollständige Android-Abnahme stammt aus CI.
+Reale Geräte-FPS, Langzeit-Speicherverhalten und API-26-Geräte bleiben separat
+zu messen; die Zeichnungsbudgets sind keine Hardware-Benchmark-Ergebnisse.
+
+## Sichtprüfung und Screenshots
+
+Unveränderte PNG-Aufnahmen aus den Android-Tests. Die Größen bezeichnen
+Compose-dp; die CI-Aufnahmen enthalten 2,75 Bildpixel je dp. Nachher-Artefakt:
+`11616199282` aus dem oben genannten Lauf, exakt für den geprüften Quellstand.
+Die sieben Aufnahmen wurden visuell geprüft: erreichbare Aktionen, lesbare
+Legende, getrennte Waffenrollen, korrekte Mauerreihen und sichtbare Salve.
+
+| Ansicht | Vorher | Nachher |
+| --- | --- | --- |
+| 320×568 | [PNG](evidence/battle-visuals/before/portrait-320x568.png) | [PNG](evidence/battle-visuals/after/portrait-320x568.png) |
+| 320×568, Schrift 160 % | [PNG](evidence/battle-visuals/before/portrait-320x568-font160.png) | [PNG](evidence/battle-visuals/after/portrait-320x568-font160.png) |
+| 640×280, Schrift 130 % | [PNG](evidence/battle-visuals/before/landscape-640x280-font130.png) | [PNG](evidence/battle-visuals/after/landscape-640x280-font130.png) |
+
+Echte Festungssequenz mit 1.000 Verteidigern gegen 200 Orks:
+[Aufstellung](evidence/battle-visuals/after/fortress-formation-1000-vs-200.png),
+[Pfeile im Flug](evidence/battle-visuals/after/fortress-volley-in-flight.png),
+[abgeschlossener Austausch](evidence/battle-visuals/after/fortress-volley-completed.png).
+Zusätzlich: [Ereignisreaktionen im Querformat](evidence/battle-visuals/after/landscape-pending-event.png).
+
+![Salve auf dem echten Schlachtfeld](evidence/battle-visuals/after/fortress-volley-in-flight.png)
 
 ## Nächste vollständige Abschnitte
 
-1. Stadtansicht: sichtbare Ausbau-/Schadenszustände und passende Gebäudeaktionen
+1. Figuren-Grafik: konsistente, animierbare Kultur-/Einheitengrafiken für die
+   vorhandenen Rollen. Produktionsziel pro Rolle: transparente 256×256-Pixel-
+   Frames in hoher schräger Aufsicht, acht Blickrichtungen, Zustände Warten,
+   Marsch, Angriff, Treffer und Rückzug; Export in gepackte WebP-Atlanten mit
+   Pivot-/Frame-Metadaten. Kontakt und Treffer werden weiterhin von den
+   vorhandenen Austauschberichten ausgelöst. Diese Atlanten sind noch nicht erstellt.
+2. Stadtansicht: sichtbare Ausbau-/Schadenszustände und passende Gebäudeaktionen
    in der bestehenden Stadtgeometrie; vorher/nachher mit zwei Ausbaustufen.
-2. Weltkarte: tatsächliche Armeemärsche, Grenzen, Aufklärung und Handelsrouten.
-3. Sandbox-KI/Wirtschaft und danach Mitregentin/Hof: echte Entscheidungen aus
+3. Weltkarte: tatsächliche Armeemärsche, Grenzen, Aufklärung und Handelsrouten.
+4. Sandbox-KI/Wirtschaft und danach Mitregentin/Hof: echte Entscheidungen aus
    bestehenden Ressourcen, Erinnerungen und Präsenz; keine Pflichtkampagne.
 
 Dieser PR liefert den ersten Schlachtenschnitt, keine abgeschlossene

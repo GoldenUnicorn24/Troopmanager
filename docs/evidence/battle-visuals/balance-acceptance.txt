@@ -1,0 +1,6 @@
+V10_ACCEPT small_horde seed=1 own=1000 enemy=0 minute=10 contact=false
+V10_ACCEPT small_horde seed=971 own=1000 enemy=0 minute=10 contact=false
+V10_ACCEPT small_horde seed=2026 own=1000 enemy=0 minute=10 contact=false
+V10_ACCEPT strong_siege seed=1 own=808 enemy=957 minute=90 gate=0 contact=true
+V10_ACCEPT strong_siege seed=971 own=803 enemy=958 minute=90 gate=0 contact=true
+V10_ACCEPT strong_siege seed=2026 own=810 enemy=957 minute=90 gate=0 contact=true
