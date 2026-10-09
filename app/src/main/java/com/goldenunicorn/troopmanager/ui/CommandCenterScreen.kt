@@ -37,7 +37,7 @@ internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit,
                 0 -> CommandOverview(state, onNavigate, onAdvanceDay, onState, onNotice)
                 1 -> RealmDashboard(state, onState, onNotice, { onNavigate(GameDestination.CITY) },
                     { onNavigate(GameDestination.WORLD) }, { onNavigate(GameDestination.MILITARY) },
-                    { onNavigate(GameDestination.COURT) }, onAdvanceDay)
+                    { onNavigate(GameDestination.COURT) }, onAdvanceDay, onNavigate)
                 2 -> QuestJournalScreen(state, onNavigate)
                 3 -> LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     item { PageTitle("TAGESBERICHT · TAG ${state.day}", "Entscheidungen, Herkunft und Folgen deiner Tageslage.") }
@@ -137,6 +137,8 @@ private fun CommandOverview(
                 )
             }
         }
+
+        item { NextMoveCard(state, onNavigate) }
 
         item {
             ModernSectionHeader(

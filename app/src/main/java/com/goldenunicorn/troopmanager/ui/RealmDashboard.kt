@@ -23,6 +23,7 @@ internal fun RealmDashboard(
     onArmy: () -> Unit,
     onCourt: () -> Unit,
     onAdvanceDay: () -> Unit,
+    onNavigate: (GameDestination) -> Unit,
 ) {
     fun apply(result: GameEngine.ActionResult) {
         onState(result.state)
@@ -41,6 +42,7 @@ internal fun RealmDashboard(
             )
         }
         item { EconomyStrip(state) }
+        item { NextMoveCard(state, onNavigate) }
         item { CampaignPulseCard(state, onState, onNotice) }
         item {
             val production = EconomyEngine.production(state)
@@ -270,19 +272,6 @@ internal fun RealmDashboard(
             }
         }
         item {
-            DashboardCard(
-                "Dein nächster Schritt",
-                if (state.realm.wallIntegrity < 80) "Die Mauer braucht Reparaturen."
-                else if (state.population.total >= state.city.housingCapacity)
-                    "Wohnraum ist voll. Baue ein Wohnviertel."
-                else if (state.armyPools.any { it.equipment < 70 })
-                    "Erneuere die Ausrüstung deiner Truppen."
-                else "Baue deine Wirtschaft aus und plane einen sicheren Einsatz.",
-                "Truppen & Kommandanten",
-                onArmy,
-            )
-        }
-        item {
             StatGrid(
                 listOf(
                     "Bevölkerung" to "${state.population.total}/${state.city.housingCapacity}",
@@ -305,5 +294,28 @@ private fun DashboardCard(title: String, text: String, action: String, onClick: 
             Text(text, color = Mist)
             SmallAction(action, onClick)
         }
+    }
+}
+
+/** Consistent, navigable recommendation used in the daily center and realm dashboard. */
+@Composable
+internal fun NextMoveCard(state: GameState, onNavigate: (GameDestination) -> Unit) {
+    val next = androidx.compose.runtime.remember(state) { CampaignInsightsEngine.nextAction(state) }
+    PremiumPanel(emphasized = next.priority >= 80) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text("DEIN NÄCHSTER ZUG", color = Gold, fontSize = 10.sp,
+                fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            ModernPill(
+                if (next.priority >= 80) "Dringend" else if (next.priority >= 60) "Empfohlen" else "Optional",
+                if (next.priority >= 80) Danger else Gold,
+            )
+        }
+        Text(next.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+        Text(next.reason, color = Mist, fontSize = 13.sp, lineHeight = 19.sp)
+        GoldButton(next.button, { onNavigate(next.destination) }, Modifier.fillMaxWidth())
     }
 }
