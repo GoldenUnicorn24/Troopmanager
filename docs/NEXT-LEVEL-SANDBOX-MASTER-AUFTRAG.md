@@ -5,11 +5,11 @@
 
 **Produkt-/Entwicklungsbasis:**
 - Repository: https://github.com/GoldenUnicorn24/Troopmanager
-- Verbindliche Basis: \`codex/v1.0-realm-war-overhaul\` (v1.0.0 / versionCode 46 / Save-Schema 5 / Combat Engine 3.0, Sprint A).
-- Bereits separat erarbeiteter UX-Zweig: \`feature/next-level-gameplay-ux\`, PR #10. Diesen nach CI-Prüfung berücksichtigen; keine identischen Features parallel neu erfinden.
-- Veraltetes \`main\` NICHT als Spielbasis nehmen.
+- Verbindliche Basis: `codex/v1.0-realm-war-overhaul` (v1.0.0 / versionCode 46 / Save-Schema 5 / Combat Engine 3.0, Sprint A).
+- Bereits separat erarbeiteter UX-Zweig: `feature/next-level-gameplay-ux`, PR #10. Diesen nach CI-Prüfung berücksichtigen; keine identischen Features parallel neu erfinden.
+- Veraltetes `main` NICHT als Spielbasis nehmen.
 - Implementierung: Android, Kotlin, Jetpack Compose, JDK 17, minSdk 26, compile/target SDK 35; bestehende lokale Saves, Assets und Engines weiterverwenden.
-- Zuerst lesen: \`README.md\`, \`CODEX.md\`, \`CLAUDE.md\` (falls vorhanden), \`docs/V1.0-REALM-WAR-OVERHAUL.md\`, \`docs/V1.0-SPRINT-A.md\` sowie die betroffenen Engines, Models, Tests und UI-Screens.
+- Zuerst lesen: `README.md`, `CODEX.md`, `CLAUDE.md` (falls vorhanden), `docs/V1.0-REALM-WAR-OVERHAUL.md`, `docs/V1.0-SPRINT-A.md` sowie die betroffenen Engines, Models, Tests und UI-Screens.
 - Frühere Planungen sind technische Dokumentation, **keine Pflicht zur linearen Story**. Die nachfolgende Sandbox-Definition hat für neue Spielgestaltung Vorrang.
 
 # 0. ROLLE UND ARBEITSMODUS
@@ -21,7 +21,7 @@ Du bist nicht nur Berater, sondern verantwortlicher Senior-Game-Director, Androi
 2. deterministischen Engine-Tests, Lint und Android-Debug-Build,
 3. Prüfung des lokalen Speicherstands und bei UI-Änderungen geeigneten Screenshots,
 4. präziser Beschreibung, was wirklich fertig ist, was offen ist und welche Risiken verbleiben,
-5. Pull Request auf den aktuellen v1.0-Basiszweig, **nicht auf \`main\`**.
+5. Pull Request auf den aktuellen v1.0-Basiszweig, **nicht auf `main`**.
 
 Falls ein Arbeitspaket zu groß ist: zuerst den kleinsten vollständigen vertikalen Schnitt bauen (Simulation → ViewModel/State → Darstellung → Bedienung → Test), statt zehn halbfertiger Systemansätze. Keine Fortschrittsbehauptungen ohne Prüfbelege. Keine APK als erfolgreich bezeichnen, solange sie nicht gebaut und signaturgeprüft ist.
 
@@ -52,7 +52,7 @@ Unbedingt erhalten: **100 frei verteilbare Start-Attributpunkte**, **30 Start-Fe
 
 Save-Schema 5 ist aktueller Zielstand. Schema-4-Migration und geschützte Alt-Backups nicht verändern oder zerstören. Keine bestehenden Schlachtberichte überschreiben; Replays wiederholbar halten. **Nicht still vorhandene Truppen, Pfeile, Gold oder Charaktere vervielfachen oder löschen.** Beim Übergang neue Save-Modelle nur additiv mit Defaultwerten; Migrationen und Backups explizit prüfen.
 
-Bestehende Engines vor Modifikation verstehen: \`BattleEngine\`, \`BattleResolutionEngine\`, \`BattleStateEngine\`, \`SiegeEngine\`, \`BattleAiEngine\`, \`BattleReportEngine\`, \`WorldEngine\`, \`WarEngine\`, \`FrontierEngine\`, \`CityEngine\`, \`EconomyEngine\`, \`ArmyEngine\`, \`GameEngine\`, \`DiplomacyEngine\`, \`RelationshipEngine\`, \`CoRulerEngine\`, \`DynastyEngine\`, \`SaveCodec\`, \`SaveRepository\`, \`CampaignInsightsEngine\`. Keine zweite „God Engine“ einführen.
+Bestehende Engines vor Modifikation verstehen: `BattleEngine`, `BattleResolutionEngine`, `BattleStateEngine`, `SiegeEngine`, `BattleAiEngine`, `BattleReportEngine`, `WorldEngine`, `WarEngine`, `FrontierEngine`, `CityEngine`, `EconomyEngine`, `ArmyEngine`, `GameEngine`, `DiplomacyEngine`, `RelationshipEngine`, `CoRulerEngine`, `DynastyEngine`, `SaveCodec`, `SaveRepository`, `CampaignInsightsEngine`. Keine zweite „God Engine“ einführen.
 
 # 3. VISUELLER QUALITÄTSSPRUNG — HÖCHSTE PRIORITÄT
 
@@ -68,7 +68,7 @@ Bestehende Engines vor Modifikation verstehen: \`BattleEngine\`, \`BattleResolut
 - Qualitätskontrolle für menschliche Anatomie, korrekte Waffenhaltung, glaubwürdige Rüstung, unverzerrte Hände und gesichts-/kulturkonsistente Porträts.
 
 ## 3.2 Stadt: wirkliche interaktive Spielwelt
-Bestehende \`CityScene.kt\` / \`CityScreen.kt\` weiterentwickeln, nicht auf ein statisches Stadtbild zurückgehen.
+Bestehende `CityScene.kt` / `CityScreen.kt` weiterentwickeln, nicht auf ein statisches Stadtbild zurückgehen.
 - Einheitliche 2.5D-/isometrische Szene mit gemeinsamem Koordinatensystem für Boden, Gebäude, Straße, Mauern, Tor, Markt, Residenz, Fabrikation, Felder, Bevölkerung.
 - Jedes tatsächlich gebaute/verbesserte Gebäude sichtbar. Ausbau verändert Stufe, Silhouette, Baustellenzustand und Umgebung; zerstörte Mauern sind **erkennbar** beschädigt.
 - Tag/Nacht, Jahreszeiten, Versorgungsknappheit, Wohlstand, Feuer, Rauch, zivile Bewegung, Marktbelebung, Wachposten; nur Effekte, die aus vorhandenem/ergänztem State herleitbar sind.
@@ -77,7 +77,7 @@ Bestehende \`CityScene.kt\` / \`CityScreen.kt\` weiterentwickeln, nicht auf ein 
 - Performance: Layering, Bitmap-Caching, Keine Decode-Arbeit in jedem Compose-Recompose/Canvas-Frame, klare Animationsbudgets und Qualitätseinstellungen.
 
 ## 3.3 Weltkarte: lebendige statt dekorative Karte
-Bestehende \`CampaignMapScreen.kt\`, \`WorldEngine.kt\` und Raum-/Reise-Geometrie **in einem Koordinatensystem** halten.
+Bestehende `CampaignMapScreen.kt`, `WorldEngine.kt` und Raum-/Reise-Geometrie **in einem Koordinatensystem** halten.
 - Gelände, Regionengrenzen, begehbare Wege, Armeen, Handelszüge, Wetter, Fronten, Sicht/Nebel und Eigentum konsistent.
 - Armeen zeigen tatsächliche Position, Marschrichtung, Ankunftsprognose, bekannte Stärke und Versorgungsstatus; Unbekanntes wird nur bei ausreichender Aufklärung sichtbar.
 - Eigene Taktikentscheidungen (patrouillieren, abfangen, belagern, sich zurückziehen, schützen, eskortieren, umgruppieren) als intuitiv auswählbare Aktionen.
@@ -93,7 +93,7 @@ Bestehende \`CampaignMapScreen.kt\`, \`WorldEngine.kt\` und Raum-/Reise-Geometri
 # 4. SCHLACHTEN 3.0 → SPIELERISCHES HIGHLIGHT — HÖCHSTE PRIORITÄT
 
 ## 4.1 Visualisierung echter Kampfsituationen
-Nutze bestehende \`LiveBattleScreen.kt\`, \`TacticalBattleField.kt\`, \`BattlePlanPanel.kt\` und Combat Engine 3.0. Erstelle **keine dekorative Ersatzsimulation**.
+Nutze bestehende `LiveBattleScreen.kt`, `TacticalBattleField.kt`, `BattlePlanPanel.kt` und Combat Engine 3.0. Erstelle **keine dekorative Ersatzsimulation**.
 - Klar unterscheidbare Bataillone und Kontingente mit Formationen; Einheitenpositionen und Schusslinien an echte Front-Distanz/Formation koppeln.
 - Bogenschützen schießen sichtbare Salven; Pfeilflug, Ankunft und Trefferreaktion müssen aus dem echten Kampftakt/Schaden folgen.
 - Nahkampf beginnt **erst bei physischem Kontakt**. Schildwälle, Speerkampf, Ansturm, Gegenstoß und Rückzug sind durch Animation/Silhouetten klar unterscheidbar.
@@ -231,15 +231,15 @@ Claude und Codex können über **GitHub-Arbeitsteilung** kooperieren, wenn beide
 - **Codex / GPT-6 Astra als verantwortlicher Integrator:** Architekturentscheidungen, Kampfengine-/UI-Integration, Android-Build, CI-Tests, PR Reviews, Releasequalität.
 - **Claude Code auf eigenem Branch (optional):** Gameplay-Reaktivität, Gegner-KI, Dialog-/Hoflogik und überprüfbare autonome Module; oder Art-Direction/Asset-Katalog. Keine parallelen Änderungen an denselben Dateien.
 - Jede KI liest Basis-Branch + vorhandene PRs. Niemals PRs „blind“ zusammenführen. Bei Konflikten entscheidet Tests + Spielverhalten.
-- Kein Agent darf ungefragt \`main\` überschreiben, alte Spielstände verwerfen oder die Strategie-Engine durch Demo-Screens ersetzen.
+- Kein Agent darf ungefragt `main` überschreiben, alte Spielstände verwerfen oder die Strategie-Engine durch Demo-Screens ersetzen.
 - Klare Änderungs- und Testberichte nach jedem Abschnitt; unvollständige Ergebnisse ehrlich kennzeichnen.
 
 # 11. TECHNISCHE GATES / AUTOMATISIERBARE ABNAHME
 
 Für jeden relevanten PR:
-1. \`gradle :app:testDebugUnitTest\` **grün**, zusätzliche Regressionstests für Änderungen.
-2. \`gradle :app:lintDebug\` ohne neue Fehler.
-3. \`gradle :app:assembleDebug\`; Package-/Version-Information und APK-Signatur prüfen.
+1. `gradle :app:testDebugUnitTest` **grün**, zusätzliche Regressionstests für Änderungen.
+2. `gradle :app:lintDebug` ohne neue Fehler.
+3. `gradle :app:assembleDebug`; Package-/Version-Information und APK-Signatur prüfen.
 4. Eventuelle UI-Tests gezielt bei kritischen Screens; 320 × 568/160 % Schrift, Standardgerät und passende Landscape-Bildschirme.
 5. Schema-4-Backup erhalten, Schema-5-GameState laden und erneut speichern, aktuelle Saves unverändert, deterministischer Battle-Replay.
 6. Keine Ressourcenverdopplung; Einheitentruppen nach Missionen korrekt zurück.
@@ -250,7 +250,7 @@ Qualitätsmetrik: **spielbar, schön, verständlich, reaktiv, stabil**. Ein tech
 
 # 12. SOFORT NÄCHSTE KONKRETE AKTIONEN FÜR AUSFÜHRENDEN AGENTEN
 
-1. Prüfe die Branches \`codex/v1.0-realm-war-overhaul\` und \`feature/next-level-gameplay-ux\`; nutze eine frische Feature-Branch ab der richtigen Basis und berücksichtige den existierenden PR #10.
+1. Prüfe die Branches `codex/v1.0-realm-war-overhaul` und `feature/next-level-gameplay-ux`; nutze eine frische Feature-Branch ab der richtigen Basis und berücksichtige den existierenden PR #10.
 2. Inventarisiere in wenigen klaren Kategorien die aktuellen grafischen Assets (Menü, City, Map, Units, Battle), verlinke ihre wirklichen Dateipfade.
 3. Lies den tatsächlichen Combat-/City-/World-/UI-Code. Identifiziere **drei wichtigste** für den Spieler sichtbare Defekte oder Qualitätslücken, die du in einem PR vollständig beheben kannst.
 4. Implementiere sofort **einen** vollständigen vertikalen Grafik-/Gameplay-Schnitt (am liebsten Kampfdarstellung bei Fernkampf/Mauer) mit echten Engine-Daten, gezielten Tests und Screenshot.
