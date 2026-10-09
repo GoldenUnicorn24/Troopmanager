@@ -5,6 +5,14 @@ This project is a real offline Android strategy/RPG, not a greenfield prototype.
 Read `docs/V1.0-REALM-WAR-OVERHAUL.md` and `docs/V1.0-SPRINT-A.md` first.
 Never branch from the old `main` or replace a working subsystem with a mock.
 
+## Player's updated game direction
+
+**Important correction:** This must remain a free, reactive sandbox. No forced campaign,
+linear missions, quest-chain gatekeeping, or predetermined sequence of objectives.
+The most urgent changes are significantly better art and much more immersive,
+readable and fun battles. Read `docs/NEXT-LEVEL-SANDBOX-MASTER-AUFTRAG.md` as
+current source of truth for this direction.
+
 ## Shared north star
 
 Make a **coherent playable fantasy strategy game** rather than a collection of menu screens:
@@ -14,7 +22,7 @@ feature-count inflation. Keep the game offline, no P2W, no subscriptions, minSdk
 
 ## Parallel ownership / no conflicting edits
 
-- **Claude — narrative and systemic design:** world-strategy AI, campaigns, co-ruler reactions,
+- **Claude — reactive sandbox and systemic design:** world-strategy AI, emergent events, co-ruler reactions,
   events, economy/gameplay balancing. Start by auditing existing implementations, supply
   reproducible defects and acceptance tests; implement only scoped fixes on a `claude/*` branch.
 - **Claude — asset art direction (separate branch/PR):** propose a practical, unified art bible;
@@ -49,7 +57,7 @@ on its assigned branch.
 
 ## Delivery order
 
-1. **Reality check:** Inventory concrete defects and baseline screenshots on the v1.0 branch.
+1. **Reality check:** Read `docs/NEXT-LEVEL-SANDBOX-MASTER-AUFTRAG.md`, then inventory concrete defects and baseline screenshots on the v1.0 branch.
 2. **First playable polish:** resolve misleading navigation, improve shared HUD consistency,
    ensure text scaling and touch targets remain readable; keep all current information accessible.
 3. **World campaign pass:** make rival armies, scouting, supply lines, raids, relief and
