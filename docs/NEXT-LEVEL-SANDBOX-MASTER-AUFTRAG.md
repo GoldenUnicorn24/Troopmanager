@@ -1,4 +1,4 @@
-# TROOPMANAGER — MASTER-AUFTRAG FÜR CODEX + CLAUDE
+# TROOPMANAGER — MASTER-AUFTRAG FÜR CHATGPT / CODEX
 ## Realm of the Last Wall · Next-Level Sandbox & Visual Overhaul
 
 **Auftraggeber-Ziel:** Eine deutlich hochwertigere, spaßigere, vollständig offline nutzbare Android-Fantasy-Strategie/RPG-Sandbox mit offenen Entscheidungen, interaktiver Welt, lebendiger Stadt, nachvollziehbaren Kriegen und außergewöhnlich viel besseren Schlachten und Grafiken. **Keine lineare Kampagne. Keine reine Text-/Menü-Simulation. Keine wertlosen Feature-Listen anstelle von Code.**
@@ -9,7 +9,7 @@
 - Bereits separat erarbeiteter UX-Zweig: `feature/next-level-gameplay-ux`, PR #10. Diesen nach CI-Prüfung berücksichtigen; keine identischen Features parallel neu erfinden.
 - Veraltetes `main` NICHT als Spielbasis nehmen.
 - Implementierung: Android, Kotlin, Jetpack Compose, JDK 17, minSdk 26, compile/target SDK 35; bestehende lokale Saves, Assets und Engines weiterverwenden.
-- Zuerst lesen: `README.md`, `CODEX.md`, `CLAUDE.md` (falls vorhanden), `docs/V1.0-REALM-WAR-OVERHAUL.md`, `docs/V1.0-SPRINT-A.md` sowie die betroffenen Engines, Models, Tests und UI-Screens.
+- Zuerst lesen: `README.md`, `CODEX.md`, `AGENTS.md`, `docs/V1.0-REALM-WAR-OVERHAUL.md`, `docs/V1.0-SPRINT-A.md` sowie die betroffenen Engines, Models, Tests und UI-Screens.
 - Frühere Planungen sind technische Dokumentation, **keine Pflicht zur linearen Story**. Die nachfolgende Sandbox-Definition hat für neue Spielgestaltung Vorrang.
 
 # 0. ROLLE UND ARBEITSMODUS
@@ -225,14 +225,17 @@ Technisches UI-Ziel: Jetpack Compose auf Android-Telefonen, insbesondere hohe DP
 
 **Prioritäten bei wenig Zeit/Budget:** 1. Schlachtbild und Entscheidungen, 2. Stadtbild, 3. Weltkarte, 4. Navigation, 5. KI/Reichstiefe, 6. Narrative. Nicht „alles ein bisschen“.
 
-# 10. CLAUDE + CODEX ZUSAMMENARBEIT
+# 10. VERANTWORTUNG: CHATGPT / OPENAI CODEX ALLEIN
 
-Claude und Codex können über **GitHub-Arbeitsteilung** kooperieren, wenn beide extern gestartet/angeschlossen werden. Diese Datei aktiviert **keinen** fremden Agenten von selbst.
-- **Codex / GPT-6 Astra als verantwortlicher Integrator:** Architekturentscheidungen, Kampfengine-/UI-Integration, Android-Build, CI-Tests, PR Reviews, Releasequalität.
-- **Claude Code auf eigenem Branch (optional):** Gameplay-Reaktivität, Gegner-KI, Dialog-/Hoflogik und überprüfbare autonome Module; oder Art-Direction/Asset-Katalog. Keine parallelen Änderungen an denselben Dateien.
-- Jede KI liest Basis-Branch + vorhandene PRs. Niemals PRs „blind“ zusammenführen. Bei Konflikten entscheidet Tests + Spielverhalten.
-- Kein Agent darf ungefragt `main` überschreiben, alte Spielstände verwerfen oder die Strategie-Engine durch Demo-Screens ersetzen.
-- Klare Änderungs- und Testberichte nach jedem Abschnitt; unvollständige Ergebnisse ehrlich kennzeichnen.
+Der Nutzer hat die Zusammenarbeit mit Claude ausdrücklich verworfen. Dieses Projekt wird ausschließlich durch ChatGPT mit den verfügbaren OpenAI-Werkzeugen, GitHub und bei Bedarf separat gestarteten Cloud-Codex-Aufgaben bearbeitet. **Keine Claude-Delegation, keine Anthropic-API, keine externen Zweitagenten als Voraussetzung.**
+
+- **ChatGPT / Codex übernimmt alle Rollen:** Spielkonzeption, Grafik- und Art-Direction, Asset-Spezifikation bzw. Bilderzeugung, Kotlin-Code, Gameplay-, Battle-, World-, Economy-, Relationship- und KI-Systeme, UI/UX, Tests, Performance, Builds, Releases und Review.
+- **Ein verantwortlicher Entwicklungsfluss:** getrennte, überprüfbare Feature-Branches pro Meilenstein; keine konkurrierenden Änderungen an denselben Dateien; PRs und CI als Abnahme.
+- **Keine behauptete Autonomie:** Ein GitHub-Dokument startet keine Cloud-Codex-Aufgabe. Agenten-/Bildwerkzeuge werden nur eingesetzt, sofern sie in der jeweiligen Sitzung tatsächlich verfügbar sind. Ergebnisse werden nicht vorgetäuscht.
+- **Prioritäten:** (1) glaubwürdige, optisch bessere Schlachten und Taktik; (2) einheitliche hochwertige Stadt-/Weltbilder; (3) deutlicher Spielspaß und offene, reaktive Sandbox; (4) Stabilität und Android-Performance.
+- **Die gesamte Überarbeitung ist offen und optional spielergesteuert:** keine linearen Pflichtkampagnen, keine externen Dienste zur Laufzeit, keine Zahlenspiel-Demos.
+
+---
 
 # 11. TECHNISCHE GATES / AUTOMATISIERBARE ABNAHME
 
