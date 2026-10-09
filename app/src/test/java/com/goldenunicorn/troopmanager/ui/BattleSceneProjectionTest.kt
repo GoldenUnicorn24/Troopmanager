@@ -38,10 +38,13 @@ class BattleSceneProjectionTest {
         val ownFort = BattleSceneProjection.project(battle)
         assertTrue(ownFort.battalions.any { !it.key.enemy && it.role == BattleRole.ARCHERS && it.onWall })
         assertTrue(ownFort.battalions.filter { it.key.enemy }.none { it.onWall })
+        assertEquals(600, ownFort.battalions.filter { !it.key.enemy && it.role == BattleRole.ARCHERS }.sumOf { it.soldiers })
+        assertTrue(ownFort.battalions.filter { it.onWall }.all { it.ranks <= 2 })
         val assault = BattleSceneProjection.project(battle.copy(tactic = Tactic.AGGRESSIVE, enemyFortification = 100,
             enemyRoster = battle.enemyRoster.map { it.copy(type = UnitType.GOLD_ARCHER) }))
         assertTrue(assault.battalions.filterNot { it.key.enemy }.none { it.onWall })
         assertTrue(assault.battalions.filter { it.key.enemy }.all { it.onWall })
+        assertTrue(assault.battalions.filter { it.onWall }.all { it.ranks <= 2 })
     }
 
     @Test fun localBreachAndFallbackRemoveOnlyTheirOwnWallPositions() {

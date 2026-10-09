@@ -109,8 +109,11 @@ internal object BattleSceneProjection {
                             (if (ranged && !contact) .065f else 0f) - row * .03f
                     }
                 }
-                val markers = minOf(troop.soldiers, perBattalion, ceil(sqrt(troop.soldiers.toDouble()) * 1.5).toInt())
-                val files = minOf(markers, when (key.formation) {
+                // The narrow wall walk can hold two representative ranks. Keep the actual
+                // soldier count unchanged; extra markers must not float down the masonry.
+                val markers = minOf(troop.soldiers, perBattalion, if (onWall) 12 else MAX_MARKERS_PER_BATTALION,
+                    ceil(sqrt(troop.soldiers.toDouble()) * 1.5).toInt())
+                val files = minOf(markers, if (onWall) (markers + 1) / 2 else when (key.formation) {
                     BattleFormation.LINE, BattleFormation.SHIELD_WALL -> 6
                     BattleFormation.DENSE -> 4
                     BattleFormation.LOOSE -> 5
