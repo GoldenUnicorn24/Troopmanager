@@ -465,6 +465,9 @@ class GameEngineTest {
     fun relationshipLimitsTwoSmallOrOneLargeActionPerDay() {
         var state = human()
         repeat(4) { state = GameEngine.advanceDay(state).state }
+        // v1.1: the companion is no longer handed out on day 5; she is met and recruited in the heroine saga.
+        assertFalse(state.companion.met)
+        state = HeroineSagaEngine.recruitImmediately(state, "alina")
         assertTrue(state.companion.met)
         assertTrue(state.commanders.any { it.id == COMPANION_COMMANDER_ID })
         state = GameEngine.companionAction(state, "talk").state

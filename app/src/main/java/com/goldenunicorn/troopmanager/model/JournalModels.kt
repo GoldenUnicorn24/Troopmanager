@@ -12,7 +12,8 @@ enum class GameDestination(val label: String) {
     COMMAND("Kommandozentrale"), DECISIONS("Offene Reichsentscheidungen"), CITY("Stadt"), MILITARY("Militär"), WORLD("Welt"), COURT("Hof"),
     RULERS("Herrscherpaar"), FAMILY("Familie"), CHARACTER("Charakter"), FRONTIER("Frontier / Mauer"),
     COUNCIL("Rat"), PALACE("Palast"), JOURNAL("Aufgabenjournal"), CHRONICLE("Chronik"),
-    RESEARCH("Forschung"), MISSIONS("Missionen"), HOSPITAL("Lazarett")
+    RESEARCH("Forschung"), MISSIONS("Missionen"), HOSPITAL("Lazarett"),
+    KINGDOM("Krone & Kronlande")
 }
 
 @Serializable

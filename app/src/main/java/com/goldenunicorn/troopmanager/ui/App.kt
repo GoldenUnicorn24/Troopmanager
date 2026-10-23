@@ -449,7 +449,7 @@ private fun GameShell(
         if (showMore) showMore = false else screen = GameDestination.COMMAND
     }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
-    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
+    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT && screen != GameDestination.KINGDOM
     Scaffold(
         containerColor = Ink,
         topBar = {
@@ -511,7 +511,10 @@ private fun GameShell(
 
                 val pendingCampaignDecision = state.campaign.pendingDecision
                 val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+                val sagaScene = state.crown.saga.pendingScene
                 val warningText = when {
+                    state.crown.duel != null -> "Duell gegen ${state.crown.duel.opponentName} wartet"
+                    sagaScene != null -> "${sagaScene.title} · ${sagaScene.location}"
                     pendingCampaignDecision != null ->
                         "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
                     nearestThreat != null ->
@@ -528,7 +531,8 @@ private fun GameShell(
                     Surface(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).heightIn(min = 48.dp).clickable {
                             showMore = false
-                            if (pendingCampaignDecision == null && (nearestThreat != null || state.invasion != null)) showDefense = true
+                            if (state.crown.duel != null || sagaScene != null) screen = GameDestination.KINGDOM
+                            else if (pendingCampaignDecision == null && (nearestThreat != null || state.invasion != null)) showDefense = true
                             else
                             screen = when {
                                 pendingCampaignDecision != null -> GameDestination.DECISIONS
@@ -564,7 +568,7 @@ private fun GameShell(
         bottomBar = {
             val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
             val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
-            val moreSelected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD))
+            val crownSelected = !showMore && screen == GameDestination.KINGDOM
             val itemColors = NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
                 selectedTextColor = Color.White,
@@ -600,35 +604,39 @@ private fun GameShell(
                             selected = !showMore && realmSelected,
                             onClick = { showMore = false; screen = GameDestination.COMMAND },
                             icon = { Icon(Icons.Outlined.Castle, null) },
-                            label = { Text("Reich", fontSize = 9.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Black else FontWeight.Medium) },
+                            label = { Text("Reich", fontSize = 10.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Black else FontWeight.Medium) },
                             colors = itemColors,
                         )
                         NavigationBarItem(
                             selected = !showMore && screen == GameDestination.CITY,
                             onClick = { showMore = false; screen = GameDestination.CITY },
                             icon = { Icon(Icons.Outlined.LocationCity, null) },
-                            label = { Text("Stadt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.CITY) FontWeight.Black else FontWeight.Medium) },
+                            label = { Text("Stadt", fontSize = 10.sp, fontWeight = if (!showMore && screen == GameDestination.CITY) FontWeight.Black else FontWeight.Medium) },
                             colors = itemColors,
                         )
                         NavigationBarItem(
                             selected = !showMore && armySelected,
                             onClick = { showMore = false; screen = GameDestination.MILITARY },
                             icon = { Icon(Icons.Outlined.Shield, null) },
-                            label = { Text("Heer", fontSize = 9.sp, fontWeight = if (!showMore && armySelected) FontWeight.Black else FontWeight.Medium) },
+                            label = { Text("Heer", fontSize = 10.sp, fontWeight = if (!showMore && armySelected) FontWeight.Black else FontWeight.Medium) },
                             colors = itemColors,
                         )
                         NavigationBarItem(
                             selected = !showMore && screen == GameDestination.WORLD,
                             onClick = { showMore = false; screen = GameDestination.WORLD },
                             icon = { Icon(Icons.Outlined.Public, null) },
-                            label = { Text("Welt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.WORLD) FontWeight.Black else FontWeight.Medium) },
+                            label = { Text("Welt", fontSize = 10.sp, fontWeight = if (!showMore && screen == GameDestination.WORLD) FontWeight.Black else FontWeight.Medium) },
                             colors = itemColors,
                         )
                         NavigationBarItem(
-                            selected = moreSelected,
-                            onClick = { showMore = true },
-                            icon = { Icon(Icons.Outlined.MoreVert, null) },
-                            label = { Text("Mehr", fontSize = 9.sp, fontWeight = if (moreSelected) FontWeight.Black else FontWeight.Medium) },
+                            selected = crownSelected,
+                            onClick = { showMore = false; screen = GameDestination.KINGDOM },
+                            icon = {
+                                BadgedBox(badge = {
+                                    if (state.crown.saga.pendingScene != null || state.crown.duel != null) Badge(containerColor = Danger)
+                                }) { Icon(Icons.Outlined.Crown, null) }
+                            },
+                            label = { Text("Krone", fontSize = 10.sp, fontWeight = if (crownSelected) FontWeight.Black else FontWeight.Medium) },
                             colors = itemColors,
                         )
                     }
@@ -645,7 +653,7 @@ private fun GameShell(
                     screen = destination
                 }
             } else if (
-                state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
+                state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT && screen != GameDestination.KINGDOM
             ) {
                 LiveBattleScreen(
                     state,
@@ -690,6 +698,7 @@ private fun GameShell(
                     GameDestination.JOURNAL -> QuestJournalScreen(state) { screen = it }
                     GameDestination.CHRONICLE -> ChronicleScreen(state)
                     GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
+                    GameDestination.KINGDOM -> CrownScreen(state, onState, onNotice)
                 }
         }
     }

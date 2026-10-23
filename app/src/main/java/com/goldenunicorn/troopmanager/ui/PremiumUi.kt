@@ -103,7 +103,7 @@ internal fun ModernPill(
         Text(
             text.uppercase(),
             color = accent,
-            fontSize = 9.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = .8.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -128,7 +128,7 @@ internal fun ModernSectionHeader(
             Text(
                 eyebrow.uppercase(),
                 color = Gold,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp,
             )
@@ -213,7 +213,7 @@ internal fun ModernActionTile(
     ) {
         Box(Modifier.width(24.dp).height(3.dp).background(accent, RoundedCornerShape(10.dp)))
         Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Black, maxLines = 1)
-        Text(subtitle, color = Muted, fontSize = 9.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(subtitle, color = Muted, fontSize = 11.sp, lineHeight = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -380,7 +380,7 @@ internal fun StatusMetric(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box(Modifier.width(26.dp).height(3.dp).background(accent, RoundedCornerShape(6.dp)))
-            Text(label.uppercase(), color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = .9.sp)
+            Text(label.uppercase(), color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = .9.sp)
             Text(value, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black, maxLines = 1)
             supporting?.let {
                 Text(it, color = accent, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)

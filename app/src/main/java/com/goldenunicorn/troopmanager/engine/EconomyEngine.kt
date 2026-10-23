@@ -69,7 +69,7 @@ object EconomyEngine {
             else 0
         val companion = if (kind == ResourceKind.GOLD && c.met && c.role == "Mitregentin") c.diplomacy / 2 else 0
         val embassy = if (kind == ResourceKind.GOLD) r.level(BuildingType.EMBASSY) * 25 else 0
-        val event = safe(trade.toLong() + companion + embassy + CharacterEngine.bonuses(state).gold)
+        val event = safe(trade.toLong() + companion + embassy + CharacterEngine.bonuses(state).gold + CrownEngine.provinceYield(state, kind))
         val untaxed = safe(base.toLong() + ((building.toLong() + territory) * worker).toLong() + event)
         val socialFactor = if (kind == ResourceKind.GOLD) (1.0 + (state.city.prosperity - 50) / 500.0 + (state.city.satisfaction - 50) / 1000.0) else 1.0
         val seasonFactor = if (kind == ResourceKind.FOOD) Season.forDay(state.day).harvestFactor else 1.0

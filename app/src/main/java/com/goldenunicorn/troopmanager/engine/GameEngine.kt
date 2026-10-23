@@ -100,7 +100,7 @@ object GameEngine {
             armyPools = units.map { ArmyUnitPool(it.type, it.amount) },
             commanders = listOf(commander),
         )
-        return DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state)))
+        return CrownEngine.initialize(DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state))))
     }
 
     private fun balancedStartingForces(cultures: Set<Culture>): Pair<Population, List<UnitAllocation>> {
@@ -228,7 +228,7 @@ object GameEngine {
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
         val before = state
-        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(state)))
+        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(CrownEngine.initialize(state))))
         next = ResearchEngine.tick(next)
         next = MilitaryEconomyEngine.tick(next)
         next = WorldEngine.tick(next)
@@ -249,6 +249,7 @@ object GameEngine {
         next = EventEngine.day(next)
         next = InvasionEngine.day(next)
         next = FrontierEngine.tick(next)
+        next = CrownEngine.tick(next)
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
         next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
@@ -272,7 +273,7 @@ object GameEngine {
         val barracks = state.realm.level(BuildingType.BARRACKS)
         val stable = if (type == UnitType.KNIGHT) state.realm.level(BuildingType.STABLES).coerceAtMost(2) else 0
         val base = maxOf(2, type.trainingDays - barracks - stable)
-        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state)).toInt().coerceAtLeast(2)
+        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state) * CrownEngine.trainingFactor(state)).toInt().coerceAtLeast(if (CrownEngine.has(state, CrownEdict.WAR_ECONOMY)) 1 else 2)
     }
 
     fun recruit(state: GameState, type: UnitType, percent: Int): ActionResult {
@@ -286,7 +287,7 @@ object GameEngine {
         val available = ArmyEngine.recruitable(state, type.culture)
         if (available <= 0) return ActionResult(state, "Keine passenden Rekruten verfügbar.")
         val amount = ceil(available * percent / 100.0).toInt()
-        val gold = amount.toLong() * type.goldCost
+        val gold = ceil(amount.toLong() * type.goldCost * CrownEngine.recruitCostFactor(state)).toLong()
         if (gold > state.resources.gold)
             return ActionResult(state, "Benötigt: $gold Gold.")
         val goods = MilitaryEconomyEngine.requirements(type, amount)

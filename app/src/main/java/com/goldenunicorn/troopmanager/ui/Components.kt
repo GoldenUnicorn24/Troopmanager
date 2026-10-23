@@ -145,7 +145,7 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(label, color = Color(0xFFA3ADB4), fontSize = 10.sp)
+                            Text(label, color = Color(0xFFA3ADB4), fontSize = 11.sp)
                         }
                     }
                 }

@@ -54,7 +54,7 @@ object ProgressionEngine {
                 else -> SettlementTier.BORDER_KEEP
             }
         val title =
-            when {
+            CrownEngine.imperialTitle(state) ?: when {
                 r.territory >= 8 && state.armySize >= 10000 && r.level(BuildingType.WALL) >= 5 ->
                     "Hochkönig"
                 r.territory >= 5 -> "König"
@@ -76,7 +76,7 @@ object ProgressionEngine {
                 title = title,
                 rank = rank,
                 realm = r.copy(settlementTier = tier),
-                completedRealm = state.completedRealm || title == "Hochkönig",
+                completedRealm = state.completedRealm || title in setOf("Hochkönig", "Großkönig", "Kaiser der Kronlande"),
             )
         if (!state.completedRealm && next.completedRealm)
             next =

@@ -54,6 +54,7 @@ internal fun MoreScreen(
                 item { HelpCard("Reichsbereiche", "Seltener benötigte Bereiche liegen hier statt dauerhaft in der Hauptnavigation. Warnungen oben führen direkt zu dringenden Orten.") }
                 items(
                     listOf(
+                        "Krone, Kronlande & Heldinnen" to GameDestination.KINGDOM,
                         "Grenze & Mauer" to GameDestination.FRONTIER,
                         "Hof & Ämter" to GameDestination.COURT,
                         "Herrscherpaar" to GameDestination.RULERS,
