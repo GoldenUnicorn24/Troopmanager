@@ -200,6 +200,19 @@ data class SagaScene(
     val options: List<SagaOption>,
 )
 
+/** The future partner the player designs at character creation. She is met after about a week. */
+@Serializable
+data class PartnerProfile(
+    val name: String,
+    val age: Int,
+    val species: Species,
+    /** Heroine template whose path, place and story she follows: alina, seraphine, liang or ithiliel. */
+    val background: String,
+    val portraitUri: String? = null,
+    val weapon: String? = null,
+    val armorStyle: String? = null,
+)
+
 @Serializable
 data class HeroineSagaState(
     /** False for campaigns whose companion was met by the old fixed day-5 arrival. */
@@ -212,7 +225,11 @@ data class HeroineSagaState(
     val chapterStartVictories: Int = 0,
     val pendingScene: SagaScene? = null,
     val lastOutcome: String? = null,
-)
+    /** Custom partner from character creation; replaces the heroine of the same background. */
+    val partner: PartnerProfile? = null,
+) {
+    val partnerId: String? get() = partner?.background
+}
 
 @Serializable
 data class CrownState(

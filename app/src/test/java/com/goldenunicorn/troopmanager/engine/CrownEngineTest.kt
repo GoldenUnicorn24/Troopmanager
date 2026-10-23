@@ -222,4 +222,35 @@ class CrownEngineTest {
         repeat(3) { state = GameEngine.advanceDay(state).state }
         SaveCodec.decode(SaveCodec.encode(state))
     }
+
+    @Test
+    fun customPartnerIsMetAfterAWeekAndIsTheOnlyPossibleCompanion() {
+        var state = HeroineSagaEngine.setPartner(game(), PartnerProfile("Mira", 24, Species.HUMAN, "seraphine", null))
+        assertEquals("Mira", HeroineSagaEngine.def(state, "seraphine")!!.name)
+        assertEquals(HeroineStage.TRAVELING, state.crown.heroine("seraphine")!!.stage)
+        state = HeroineSagaEngine.tick(state.copy(day = 6))
+        assertNull(state.crown.saga.pendingScene)
+        state = HeroineSagaEngine.tick(state.copy(day = 7))
+        val scene = state.crown.saga.pendingScene!!
+        assertTrue(scene.text.contains("Woche"))
+        assertFalse(scene.text.contains("Seraphine"))
+        assertEquals(state, SaveCodec.decode(SaveCodec.encode(state)))
+        state = HeroineSagaEngine.choose(state, "talk").state
+        assertTrue(state.crown.heroine("seraphine")!!.firstImpression.contains("Mira"))
+        // Another heroine never takes the partner's place as companion.
+        state = HeroineSagaEngine.recruitImmediately(state, "alina")
+        assertEquals(HeroineStage.GENERAL, state.crown.heroine("alina")!!.stage)
+        assertFalse(state.companion.met)
+        state = HeroineSagaEngine.recruitImmediately(state, "seraphine")
+        assertTrue(state.companion.met)
+        assertEquals("Mira", state.companion.name)
+        assertEquals(Species.HUMAN, state.companion.species)
+        assertEquals(24, state.companion.age)
+    }
+
+    @Test
+    fun partnerMustBeAnAdult() {
+        val state = HeroineSagaEngine.setPartner(game(), PartnerProfile("Mira", 15, Species.ELF, "ithiliel", null))
+        assertEquals(18, state.crown.saga.partner!!.age)
+    }
 }

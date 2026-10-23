@@ -23,7 +23,52 @@ object HeroineSagaEngine {
     fun generalId(heroineId: String): Long =
         GENERAL_ID_BASE - CrownCatalog.heroines.indexOfFirst { it.id == heroineId }.coerceAtLeast(0)
 
-    fun companionDef(state: GameState): CrownCatalog.HeroineDef? = saga(state).companionId?.let { CrownCatalog.heroine(it) }
+    fun companionDef(state: GameState): CrownCatalog.HeroineDef? = saga(state).companionId?.let { def(state, it) }
+
+    const val PARTNER_MEET_DAY = 7
+
+    fun isPartner(state: GameState, heroineId: String): Boolean = saga(state).partnerId == heroineId
+
+    /** Replaces the template heroine's names with the player's own partner. */
+    fun personalize(state: GameState, heroineId: String, text: String): String {
+        val partner = saga(state).partner ?: return text
+        if (partner.background != heroineId) return text
+        val template = CrownCatalog.heroine(heroineId) ?: return text
+        val first = partner.name.substringBefore(' ')
+        return text.replace(template.name, partner.name)
+            .replace(template.name.substringBefore(' ') + " Mei", first)
+            .replace(template.name.substringBefore(' '), first)
+            .replace("eine Halbelbin", speciesNoun(partner.species))
+    }
+
+    private fun speciesNoun(species: Species): String = when (species) {
+        Species.HUMAN -> "eine junge Frau"
+        Species.ELF -> "eine Elbin"
+        Species.HALF_ELF -> "eine Halbelbin"
+    }
+
+    /** Heroine definition; for the custom partner the template is personalized. */
+    fun def(state: GameState, heroineId: String): CrownCatalog.HeroineDef? {
+        val template = CrownCatalog.heroine(heroineId) ?: return null
+        val partner = saga(state).partner?.takeIf { it.background == heroineId } ?: return template
+        fun p(text: String) = personalize(state, heroineId, text)
+        return template.copy(
+            name = partner.name, species = partner.species, age = partner.age,
+            weapon = partner.weapon ?: template.weapon, armor = partner.armorStyle ?: template.armor,
+            epithet = "Deine zukünftige Partnerin · ${template.epithet}",
+            rumor = p(template.rumor), trialText = p(template.trialText), personalQuestText = p(template.personalQuestText),
+        )
+    }
+
+    /** Called right after character creation: the partner arrives at her place in about a week. */
+    fun setPartner(state: GameState, partner: PartnerProfile?): GameState {
+        if (partner == null || CrownCatalog.heroine(partner.background) == null) return state
+        val ready = initialize(CrownEngine.initialize(state))
+        val safe = partner.copy(name = partner.name.trim().ifBlank { "Alina" }.take(24), age = partner.age.coerceIn(18, 120))
+        val withPartner = withSaga(ready, saga(ready).copy(partner = safe))
+        val h = withPartner.crown.heroine(safe.background) ?: return withPartner
+        return withHeroine(withPartner, h.copy(stage = HeroineStage.TRAVELING, arrivalDay = maxOf(PARTNER_MEET_DAY, ready.day + 1), favor = 30))
+    }
 
     private fun victoryCount(state: GameState) = state.victories + state.crown.campaignVictories
 
@@ -83,9 +128,10 @@ object HeroineSagaEngine {
 
         val arrived = saga(next).heroines.firstOrNull { it.stage == HeroineStage.TRAVELING && (it.arrivalDay ?: Int.MAX_VALUE) <= next.day }
         if (arrived != null) {
-            val def = CrownCatalog.heroine(arrived.id) ?: return next
+            val def = def(next, arrived.id) ?: return next
             next = withSaga(next, saga(next).copy(pendingScene = meetingScene(next, def)))
-            return CrownEngine.chronicle(next, "Ankunft: ${def.location}", "Du erreichst ${def.location}. Dort wartet eine Begegnung, die alles verändern kann.")
+            return if (isPartner(next, def.id)) CrownEngine.chronicle(next, "Eine schicksalhafte Begegnung", "Eine Woche nach deinem Amtsantritt führt dich der Weg nach ${def.location}. Dort begegnest du ${def.name}.")
+                else CrownEngine.chronicle(next, "Ankunft: ${def.location}", "Du erreichst ${def.location}. Dort wartet eine Begegnung, die alles verändern kann.")
         }
         val s = saga(next)
         if (s.companionId != null && next.companion.met && s.chapter < FINAL_CHAPTER && chapterReady(next).first) {
@@ -97,7 +143,7 @@ object HeroineSagaEngine {
     // ------------------------------------------------------------ meeting
 
     fun travel(state: GameState, heroineId: String): GameEngine.ActionResult {
-        val def = CrownCatalog.heroine(heroineId) ?: return ok(state, "Unbekannt.")
+        val def = def(state, heroineId) ?: return ok(state, "Unbekannt.")
         val h = state.crown.heroine(heroineId) ?: return ok(state, "Unbekannt.")
         if (h.stage != HeroineStage.RUMOR) return ok(state, "Ihr seid euch bereits begegnet oder du bist unterwegs.")
         if (!available(state, def)) return ok(state, def.unlockHint)
@@ -113,6 +159,16 @@ object HeroineSagaEngine {
     }
 
     private fun meetingScene(state: GameState, def: CrownCatalog.HeroineDef): SagaScene {
+        val scene = templateMeetingScene(state, def)
+        if (!isPartner(state, def.id)) return scene
+        fun p(text: String) = personalize(state, def.id, text)
+        return scene.copy(
+            text = "Eine Woche nach deinem Amtsantritt führt dich eine Grenzreise nach ${def.location}. " + p(scene.text),
+            options = scene.options.map { it.copy(label = p(it.label), hint = p(it.hint)) },
+        )
+    }
+
+    private fun templateMeetingScene(state: GameState, def: CrownCatalog.HeroineDef): SagaScene {
         val ruler = state.player.name
         return when (def.id) {
             "alina" -> SagaScene("meet_alina", def.id, "Pfeile im Nebel", def.location,
@@ -152,7 +208,7 @@ object HeroineSagaEngine {
     data class TrialProgress(val current: Int, val target: Int, val done: Boolean, val text: String)
 
     fun trialProgress(state: GameState, heroineId: String): TrialProgress {
-        val def = CrownCatalog.heroine(heroineId) ?: return TrialProgress(0, 1, false, "")
+        val def = def(state, heroineId) ?: return TrialProgress(0, 1, false, "")
         val h = state.crown.heroine(heroineId) ?: return TrialProgress(0, 1, false, "")
         val (current, target) = when (def.trial) {
             CrownCatalog.TrialKind.OWN_PROVINCES -> state.crown.ownedProvinces.size to def.trialAmount
@@ -166,34 +222,39 @@ object HeroineSagaEngine {
 
     fun startTrial(state: GameState, heroineId: String): GameEngine.ActionResult {
         val h = state.crown.heroine(heroineId) ?: return ok(state, "Unbekannt.")
-        val def = CrownCatalog.heroine(heroineId) ?: return ok(state, "Unbekannt.")
+        val def = def(state, heroineId) ?: return ok(state, "Unbekannt.")
         if (h.stage != HeroineStage.MET) return ok(state, "Dafür müsst ihr euch zuerst begegnen.")
         val next = withHeroine(state, h.copy(stage = HeroineStage.TRIAL, trialStartDay = state.day, trialStartVictories = victoryCount(state)))
         return ok(next, "${def.name}: ${def.trialText}")
     }
 
     fun challenge(state: GameState, heroineId: String): GameEngine.ActionResult {
-        val def = CrownCatalog.heroine(heroineId) ?: return ok(state, "Unbekannt.")
+        val def = def(state, heroineId) ?: return ok(state, "Unbekannt.")
         if (state.crown.duel != null) return ok(state, "Ein Duell läuft bereits.")
         val next = CombatArtsEngine.startDuel(state, "trial:${def.id}", def.name, def.epithet, def.duelSkill)
         return ok(next, "${def.name} zieht ihre Waffe. Das Duell beginnt!")
     }
 
     fun recruit(state: GameState, heroineId: String, asCompanion: Boolean, force: Boolean = false): GameEngine.ActionResult {
-        val def = CrownCatalog.heroine(heroineId) ?: return ok(state, "Unbekannt.")
+        val def = def(state, heroineId) ?: return ok(state, "Unbekannt.")
         val h = state.crown.heroine(heroineId) ?: return ok(state, "Unbekannt.")
         if (h.stage == HeroineStage.COMPANION || h.stage == HeroineStage.GENERAL) return ok(state, "${def.name} dient dir bereits.")
         if (!force && (h.stage != HeroineStage.TRIAL || !trialProgress(state, heroineId).done))
             return ok(state, "Erfülle zuerst ihre Bewährungsprobe.")
-        val companionFree = saga(state).companionId == null && !state.companion.met
+        val companionFree = canBecomeCompanion(state, heroineId)
         return if (asCompanion && companionFree) becomeCompanion(state, def, h) else becomeGeneral(state, def, h)
     }
+
+    /** With a custom partner, only she becomes the companion; the other heroines lead their own armies. */
+    fun canBecomeCompanion(state: GameState, heroineId: String): Boolean =
+        saga(state).companionId == null && !state.companion.met &&
+            (saga(state).partner == null || isPartner(state, heroineId))
 
     private fun becomeCompanion(state: GameState, def: CrownCatalog.HeroineDef, h: HeroineState): GameEngine.ActionResult {
         val favor = h.favor.coerceIn(20, 100)
         val companion = CompanionProfile(
-            met = true, name = def.name.substringBefore(' '), age = def.age, species = def.species,
-            portraitUri = state.companion.portraitUri, armorStyle = def.armor, weapon = def.weapon, level = 3,
+            met = true, name = if (isPartner(state, def.id)) def.name else def.name.substringBefore(' '), age = def.age, species = def.species,
+            portraitUri = saga(state).partner?.takeIf { it.background == def.id }?.portraitUri ?: state.companion.portraitUri, armorStyle = def.armor, weapon = def.weapon, level = 3,
             sword = def.sword, bow = def.bow, riding = def.riding, leadership = def.leadership,
             tactics = def.tactics, diplomacy = def.diplomacy,
             trust = (20 + favor / 3).coerceAtMost(100), respect = (25 + favor / 3).coerceAtMost(100),
@@ -303,7 +364,9 @@ object HeroineSagaEngine {
         else -> "Herrscherpaar"
     }
 
-    private fun flavor(state: GameState): String = when (saga(state).companionId) {
+    private fun flavor(state: GameState): String = personalize(state, saga(state).companionId ?: "", baseFlavor(state))
+
+    private fun baseFlavor(state: GameState): String = when (saga(state).companionId) {
         "alina" -> "Alina streicht über die Befiederung ihrer Pfeile, wie sie es immer tut, wenn sie nachdenkt."
         "seraphine" -> "Seraphine poliert die Scharten aus ihrem Schwert, ohne den Blick von dir zu nehmen."
         "liang" -> "Liang Mei schiebt Holzfiguren über eine Karte, als spiele sie ein Spiel, das nur sie versteht."
@@ -369,7 +432,7 @@ object HeroineSagaEngine {
     }
 
     private fun meetingChoice(state: GameState, scene: SagaScene, option: String): GameEngine.ActionResult {
-        val def = CrownCatalog.heroine(scene.heroineId) ?: return ok(state, "Unbekannt.")
+        val def = def(state, scene.heroineId) ?: return ok(state, "Unbekannt.")
         val h = state.crown.heroine(scene.heroineId) ?: return ok(state, "Unbekannt.")
         var next = state
         var favor = h.favor
@@ -407,10 +470,11 @@ object HeroineSagaEngine {
             }
             else -> { favor += 10; impression = "Ihr begegnet euch zum ersten Mal." }
         }
-        next = withHeroine(next, h.copy(stage = HeroineStage.MET, metDay = state.day, favor = favor.coerceIn(0, 100), firstImpression = impression))
-        next = withSaga(next, saga(next).copy(lastOutcome = impression))
-        next = CrownEngine.chronicle(next, "Begegnung mit ${def.name}", impression)
-        return ok(next, impression)
+        val personal = personalize(state, def.id, impression)
+        next = withHeroine(next, h.copy(stage = HeroineStage.MET, metDay = state.day, favor = favor.coerceIn(0, 100), firstImpression = personal))
+        next = withSaga(next, saga(next).copy(lastOutcome = personal))
+        next = CrownEngine.chronicle(next, "Begegnung mit ${def.name}", personal)
+        return ok(next, personal)
     }
 
     private fun adjust(state: GameState, trust: Int = 0, respect: Int = 0, affection: Int = 0): GameState {
@@ -539,7 +603,7 @@ object HeroineSagaEngine {
     /** Called by [CombatArtsEngine] when a saga or trial duel ends. */
     fun duelFinished(state: GameState, heroineId: String, won: Boolean): GameState {
         val h = state.crown.heroine(heroineId) ?: return state
-        val def = CrownCatalog.heroine(heroineId) ?: return state
+        val def = def(state, heroineId) ?: return state
         val trialWin = won && (def.trial == CrownCatalog.TrialKind.DUEL || heroineId == "ithiliel")
         val next = withHeroine(state, h.copy(
             favor = (h.favor + if (won) 20 else 6).coerceIn(0, 100),
@@ -556,7 +620,7 @@ object HeroineSagaEngine {
         val ready = initialize(CrownEngine.initialize(state))
         val h = ready.crown.heroine(heroineId) ?: return ready
         val met = withHeroine(ready, h.copy(stage = HeroineStage.TRIAL, metDay = ready.day, favor = maxOf(h.favor, 70)))
-        val asCompanion = saga(met).companionId == null && !met.companion.met
+        val asCompanion = canBecomeCompanion(met, heroineId)
         return recruit(met, heroineId, asCompanion, force = true).state
     }
 }

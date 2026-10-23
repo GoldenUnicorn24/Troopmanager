@@ -434,9 +434,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 ) {
     if (state.companion.met) item(key = "companion_story") { CompanionStoryCard(state, onState) }
     item {
-        Text("Vier Heldinnen leben in den Kronlanden. Reise zu ihnen, gewinne ihren Respekt und besteht ihre Bewährungsprobe. Die erste wird deine persönliche Feldherrin, die anderen führen eigene Heere.", color = Mist, fontSize = 13.sp)
+        Text(
+            if (state.crown.saga.partner != null) "Deine Partnerin triffst du nach etwa einer Woche. Gewinne sie als persönliche Feldherrin – die anderen Heldinnen kannst du als Feldherrinnen eigener Heere anwerben."
+            else "Vier Heldinnen leben in den Kronlanden. Reise zu ihnen, gewinne ihren Respekt und besteht ihre Bewährungsprobe. Die erste wird deine persönliche Feldherrin, die anderen führen eigene Heere.",
+            color = Mist, fontSize = 13.sp,
+        )
     }
-    items(CrownCatalog.heroines, key = { it.id }) { def -> HeroineCard(state, def, apply) }
+    items(CrownCatalog.heroines.mapNotNull { HeroineSagaEngine.def(state, it.id) }, key = { it.id }) { def -> HeroineCard(state, def, apply) }
 }
 
 @Composable
@@ -478,10 +482,11 @@ private fun CompanionStoryCard(state: GameState, onState: (GameState) -> Unit) {
 @Composable
 private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (GameEngine.ActionResult) -> Unit) {
     val h = state.crown.heroine(def.id) ?: return
-    val available = HeroineSagaEngine.available(state, def)
+    val partner = HeroineSagaEngine.isPartner(state, def.id)
+    val available = partner || HeroineSagaEngine.available(state, def)
     CrownCard(emphasized = h.stage == HeroineStage.COMPANION) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Portrait(def.portraitKey, if (h.stage == HeroineStage.COMPANION) state.companion.portraitUri else null)
+            Portrait(def.portraitKey, partnerPortrait(state, def.id) ?: if (h.stage == HeroineStage.COMPANION) state.companion.portraitUri else null)
             Column(Modifier.weight(1f)) {
                 Text(if (h.stage == HeroineStage.RUMOR && !available) "Unbekannte Heldin" else def.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
                 Text("${def.epithet} · ${def.location}", color = Muted, fontSize = 12.sp)
@@ -501,7 +506,11 @@ private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (
                     PrimaryAction("Aufbrechen · ${def.travelDays} Tage · ${cost.gold} Gold, ${cost.food} Nahrung") { apply(HeroineSagaEngine.travel(state, def.id)) }
                 }
             }
-            HeroineStage.TRAVELING -> Text("Du bist unterwegs nach ${def.location}. Ankunft an Tag ${h.arrivalDay}.", color = Mist, fontSize = 13.sp)
+            HeroineStage.TRAVELING -> Text(
+                if (partner) "Euer Schicksal kreuzt sich bald: An Tag ${h.arrivalDay} begegnest du ihr bei ${def.location}. Noch kennt sie dich nicht."
+                else "Du bist unterwegs nach ${def.location}. Ankunft an Tag ${h.arrivalDay}.",
+                color = Mist, fontSize = 13.sp,
+            )
             HeroineStage.MET -> {
                 Text(h.firstImpression, color = Mist, fontSize = 13.sp, fontStyle = FontStyle.Italic)
                 Meter("Ihr Eindruck von dir", h.favor, color = Crimson)
@@ -515,8 +524,7 @@ private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (
                 if (def.trial == CrownCatalog.TrialKind.DUEL && !progress.done)
                     PrimaryAction("${def.name.substringBefore(' ')} zum Duell fordern") { apply(HeroineSagaEngine.challenge(state, def.id)) }
                 if (progress.done) {
-                    val companionFree = state.crown.saga.companionId == null && !state.companion.met
-                    if (companionFree) PrimaryAction("An deine Seite: persönliche Feldherrin") { apply(HeroineSagaEngine.recruit(state, def.id, true)) }
+                    if (HeroineSagaEngine.canBecomeCompanion(state, def.id)) PrimaryAction("An deine Seite: persönliche Feldherrin") { apply(HeroineSagaEngine.recruit(state, def.id, true)) }
                     SmallAction("Feldherrin eines eigenen Heeres") { apply(HeroineSagaEngine.recruit(state, def.id, false)) }
                 }
             }
@@ -529,10 +537,10 @@ private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (
 
 @Composable
 private fun SagaSceneCard(state: GameState, scene: SagaScene, apply: (GameEngine.ActionResult) -> Unit) {
-    val def = CrownCatalog.heroine(scene.heroineId)
+    val def = HeroineSagaEngine.def(state, scene.heroineId)
     PremiumPanel(emphasized = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Portrait(def?.portraitKey ?: "companion", if (state.crown.saga.companionId == scene.heroineId) state.companion.portraitUri else null, 56)
+            Portrait(def?.portraitKey ?: "companion", partnerPortrait(state, scene.heroineId) ?: if (state.crown.saga.companionId == scene.heroineId) state.companion.portraitUri else null, 56)
             Column(Modifier.weight(1f)) {
                 Text(scene.location.uppercase(), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                 Text(scene.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
@@ -666,3 +674,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.edictsTab(state: Game
         }
     }
 }
+
+private fun partnerPortrait(state: GameState, heroineId: String): String? =
+    state.crown.saga.partner?.takeIf { it.background == heroineId }?.portraitUri

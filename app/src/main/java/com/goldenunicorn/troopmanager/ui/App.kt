@@ -33,6 +33,7 @@ import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.data.SaveRepository
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.HeroineSagaEngine
 import com.goldenunicorn.troopmanager.model.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -166,6 +167,14 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var startingCultures by remember(species) { mutableStateOf<Set<Culture>>(emptySet()) }
     var ironman by remember { mutableStateOf(false) }
     var portrait by remember { mutableStateOf<String?>(null) }
+    var weapon by remember { mutableStateOf("Langschwert") }
+    var armor by remember { mutableStateOf("Grenzwächter") }
+    // v1.1: the future partner is designed now and met after about a week.
+    var partnerName by remember { mutableStateOf("Alina") }
+    var partnerAge by remember { mutableStateOf("22") }
+    var partnerSpecies by remember { mutableStateOf(Species.HALF_ELF) }
+    var partnerBackground by remember { mutableStateOf("alina") }
+    var partnerPortrait by remember { mutableStateOf<String?>(null) }
     // v0.61 keeps roughly the old total starting power while letting the player shape it.
     var sword by remember { mutableStateOf(30) }
     var bow by remember { mutableStateOf(30) }
@@ -189,6 +198,17 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                 portrait = uri.toString()
             }
         }
+    val partnerPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                partnerPortrait = uri.toString()
+            }
+        }
+    val partnerAgeValue = partnerAge.toIntOrNull() ?: 0
+    val partnerValid = partnerName.isNotBlank() && partnerAgeValue >= 18
 
     Column(
         Modifier.fillMaxSize().background(Ink).verticalScroll(rememberScrollState()).padding(20.dp)
@@ -331,6 +351,56 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             }
         }
 
+        SectionTitle("Ausrüstung")
+        ChoiceRow(listOf("Langschwert", "Bastardschwert", "Streitaxt", "Speer", "Langbogen", "Zwillingsklingen"), weapon) { weapon = it }
+        ChoiceRow(listOf("Grenzwächter", "Schwere Platte", "Kettenhemd", "Elbenschuppen", "Lamellenrüstung", "Leichtes Leder"), armor) { armor = it }
+
+        SectionTitle("Deine zukünftige Partnerin")
+        Text(
+            "Gestalte schon jetzt, wer sie ist. Kennen lernt ihr euch erst nach etwa einer Woche – wo und wie, hängt von ihrem Werdegang ab. Danach entscheidest du, ob sie deine Feldherrin wird und wohin eure Geschichte führt.",
+            color = Mist,
+            fontSize = 13.sp,
+        )
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                modifier = Modifier.size(96.dp).clickable { partnerPicker.launch(arrayOf("image/*")) },
+                color = Panel,
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                if (partnerPortrait != null) AsyncImage(partnerPortrait, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Image(painterResource(portraitResource(partnerPortraitKey(partnerBackground))), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Text("Tippe auf das Bild, um ein eigenes Porträt zu wählen.", color = Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
+        }
+        OutlinedTextField(partnerName, { partnerName = it.take(24) }, label = { Text("Name der Partnerin") },
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+        OutlinedTextField(partnerAge, { partnerAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter (ab 18)") },
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            isError = partnerAgeValue < 18,
+            supportingText = { if (partnerAgeValue < 18) Text("Deine Partnerin muss mindestens 18 Jahre alt sein.") })
+        Text("Volk", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        ChoiceRow(Species.entries.map { it.label }, partnerSpecies.label) { label -> partnerSpecies = Species.entries.first { it.label == label } }
+        Text("Werdegang · Ort eurer Begegnung", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        listOf(
+            Triple("alina", "Grenzläuferin", "Meisterbogenschützin. Ihr begegnet euch im Nebel an der Furt von Rabenfurt."),
+            Triple("seraphine", "Verstoßene Ritterin", "Unbesiegt im Schwertkampf. Ihr begegnet euch beim Turnier von Aldenburg."),
+            Triple("liang", "Strategin", "Brillante Feldherrin der Mauerlegion. Ihr begegnet euch im Kriegsrat am Kranichtor."),
+            Triple("ithiliel", "Klingentänzerin", "Diplomatin und Klingenmeisterin. Ihr begegnet euch am Hof von Sonnenhain."),
+        ).forEach { (id, label, text) ->
+            val selected = partnerBackground == id
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { partnerBackground = id },
+                color = if (selected) Color(0xFF27313A) else Panel,
+                shape = RoundedCornerShape(14.dp),
+                border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null,
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(label, color = if (selected) PaleGold else Color.White, fontWeight = FontWeight.Bold)
+                    Text(text, color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+
         SectionTitle("Attribute · 100 Punkte selbst verteilen")
         Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
             Column(
@@ -377,16 +447,25 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                             diplomacy = diplomacy,
                         ),
                         startingCultures = startingCultures,
-                    ).let { it.copy(settings = it.settings.copy(ironman = ironman)) }
+                    ).let { created ->
+                        HeroineSagaEngine.setPartner(
+                            created.copy(
+                                settings = created.settings.copy(ironman = ironman),
+                                player = created.player.copy(weapon = weapon, armorStyle = armor),
+                            ),
+                            PartnerProfile(partnerName, partnerAgeValue, partnerSpecies, partnerBackground, partnerPortrait),
+                        )
+                    }
                 )
             },
-            enabled = remainingAttributePoints == 0 && startingCultures.isNotEmpty(),
+            enabled = remainingAttributePoints == 0 && startingCultures.isNotEmpty() && partnerValid,
             modifier = Modifier.fillMaxWidth().height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
         ) {
             Text(
                 when {
                     startingCultures.isEmpty() -> "STARTKULTUR AUSWÄHLEN"
+                    !partnerValid -> "PARTNERIN: NAME UND ALTER AB 18"
                     remainingAttributePoints == 0 -> "REICH GRÜNDEN"
                     else -> "NOCH $remainingAttributePoints ATTRIBUTSPUNKTE VERTEILEN"
                 },
@@ -716,5 +795,24 @@ private fun GameShell(
                 onState(GameEngine.markTutorialSeen(state))
             },
         )
+    }
+}
+
+private fun partnerPortraitKey(background: String): String = when (background) {
+    "seraphine" -> "knight"
+    "liang" -> "wall_guard"
+    "ithiliel" -> "gold_elf"
+    else -> "companion"
+}
+
+@Composable
+private fun ChoiceRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        options.forEach { option ->
+            FilterChip(selected = option == selected, onClick = { onSelect(option) }, label = { Text(option) })
+        }
     }
 }
