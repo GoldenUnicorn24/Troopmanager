@@ -137,7 +137,7 @@ object HeroineSagaEngine {
         if (s.companionId != null && next.companion.met && s.chapter < FINAL_CHAPTER && chapterReady(next).first) {
             next = withSaga(next, s.copy(pendingScene = chapterScene(next, s.chapter)))
         }
-        return next
+        return RoyalCourtEngine.tick(next)
     }
 
     // ------------------------------------------------------------ meeting
@@ -427,8 +427,11 @@ object HeroineSagaEngine {
     fun choose(state: GameState, optionId: String): GameEngine.ActionResult {
         val scene = saga(state).pendingScene ?: return ok(state, "Keine offene Szene.")
         val cleared = withSaga(state, saga(state).copy(pendingScene = null))
-        return if (scene.key.startsWith("meet_")) meetingChoice(cleared, scene, optionId)
-        else chapterChoice(cleared, scene, optionId)
+        return when {
+            scene.key.startsWith("meet_") -> meetingChoice(cleared, scene, optionId)
+            scene.key.startsWith("royal_") -> RoyalCourtEngine.choose(cleared, scene, optionId)
+            else -> chapterChoice(cleared, scene, optionId)
+        }
     }
 
     private fun meetingChoice(state: GameState, scene: SagaScene, option: String): GameEngine.ActionResult {

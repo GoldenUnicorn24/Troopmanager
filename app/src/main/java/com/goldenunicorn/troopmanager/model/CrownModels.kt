@@ -97,6 +97,29 @@ data class TradePartnerState(
     val lastIncome: Int = 0,
 )
 
+/** A hostile army marching against one of your crown provinces. */
+@Serializable
+data class CrownThreat(
+    val id: String,
+    val targetId: String,
+    val sourceId: String,
+    val attacker: ProvinceOwner,
+    val soldiers: Int,
+    val quality: Int,
+    val announcedDay: Int,
+    val arrivalDay: Int,
+)
+
+/** A personal wish of the queen with a deadline, e.g. freeing her homeland. */
+@Serializable
+data class RoyalGoal(
+    val title: String,
+    val provinceId: String,
+    val deadlineDay: Int,
+    val rewardGold: Int,
+    val rewardRenown: Int,
+)
+
 @Serializable
 data class CampaignReport(
     val day: Int,
@@ -225,6 +248,9 @@ data class HeroineSagaState(
     val chapterStartVictories: Int = 0,
     val pendingScene: SagaScene? = null,
     val lastOutcome: String? = null,
+    val lastRoyalDay: Int = 0,
+    val royalCount: Int = 0,
+    val goal: RoyalGoal? = null,
     /** Custom partner from character creation; replaces the heroine of the same background. */
     val partner: PartnerProfile? = null,
 ) {
@@ -252,6 +278,9 @@ data class CrownState(
     val lastTradeIncome: Int = 0,
     val lastMercenaryUpkeep: Int = 0,
     val lastSettlers: Int = 0,
+    val threats: List<CrownThreat> = emptyList(),
+    val lastThreatDay: Int = 0,
+    val liveCampaignProvinceId: String? = null,
     val devMode: Boolean = false,
     val devCheatsUsed: Int = 0,
     val godMode: Boolean = false,

@@ -344,7 +344,7 @@ private fun FormationZone(section: BattleSection, deployments: List<BattleDeploy
         Column(Modifier.padding(9.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(section.label, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             Text("$count Soldaten", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            rows.forEach { row -> Text(state.commanders.firstOrNull { it.id == row.commanderId }?.name ?: "Persönliches Kommando", color = Mist, fontSize = 10.sp) }
+            rows.forEach { row -> Text(state.commanders.firstOrNull { it.id == row.commanderId }?.name ?: "Persönliches Kommando", color = Mist, fontSize = 11.sp) }
             if (rows.isEmpty()) Text("Unbesetzt", color = Mist, fontSize = 11.sp)
         }
     }

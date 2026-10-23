@@ -1,4 +1,10 @@
-# Realm of the Last Wall — Troopmanager v1.1.0 — Krone
+# Realm of the Last Wall — Troopmanager v1.2.0
+
+**Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v1.2: neue Oberfläche, lebendige Gegner, Königinnen-Anliegen
+
+Five main areas (Heute, Reich, Heer, Hof, Stadt), an advisor feed, a hex map of the Kronlande, full-screen story scenes, counteroffensives with garrisons and relief armies, live battles for conquests and the queen's own requests after the coronation. See [v1.2](docs/V1.2-NEUE-OBERFLAECHE.md).
 
 ## v1.1: Kronlande, Heerbann, Handel, Heldinnen-Saga und Kampfkünste
 

@@ -228,7 +228,7 @@ object GameEngine {
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
         val before = state
-        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(CrownEngine.initialize(state))))
+        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(CrownWarEngine.reconcile(CrownEngine.initialize(state)))))
         next = ResearchEngine.tick(next)
         next = MilitaryEconomyEngine.tick(next)
         next = WorldEngine.tick(next)

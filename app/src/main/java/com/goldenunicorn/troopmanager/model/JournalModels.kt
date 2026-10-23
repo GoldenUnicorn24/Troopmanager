@@ -13,7 +13,8 @@ enum class GameDestination(val label: String) {
     RULERS("Herrscherpaar"), FAMILY("Familie"), CHARACTER("Charakter"), FRONTIER("Frontier / Mauer"),
     COUNCIL("Rat"), PALACE("Palast"), JOURNAL("Aufgabenjournal"), CHRONICLE("Chronik"),
     RESEARCH("Forschung"), MISSIONS("Missionen"), HOSPITAL("Lazarett"),
-    KINGDOM("Krone & Kronlande")
+    KINGDOM("Krone & Kronlande"),
+    TODAY("Heute")
 }
 
 @Serializable

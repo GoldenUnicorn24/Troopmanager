@@ -440,7 +440,7 @@ private fun FrontierMap(state: GameState, actionsEnabled: Boolean, apply: (GameE
             ) {
                 Column {
                     AsyncImage(art, null, Modifier.fillMaxWidth().height(42.dp), contentScale = ContentScale.Crop)
-                    Text("${banner.kind.label} · ${banner.daysToArrival} T.", color = Color.White, fontSize = 10.sp, modifier = Modifier.padding(5.dp), maxLines = 1)
+                    Text("${banner.kind.label} · ${banner.daysToArrival} T.", color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(5.dp), maxLines = 1)
                 }
             }
         }

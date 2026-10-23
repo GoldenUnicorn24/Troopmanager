@@ -141,7 +141,7 @@ private fun ChronicleTimelineCard(row: ChronicleViewEntry, state: GameState, bat
         Surface(modifier = Modifier.weight(1f).semantics { contentDescription = "Tag ${entry.day}, ${row.kind.label}, ${entry.title}" },
             color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, accent.copy(alpha = .3f))) {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("TAG ${entry.day} · ${row.kind.label.uppercase(Locale.GERMAN)}", color = accent, fontSize = 10.sp, letterSpacing = .8.sp)
+                Text("TAG ${entry.day} · ${row.kind.label.uppercase(Locale.GERMAN)}", color = accent, fontSize = 11.sp, letterSpacing = .8.sp)
                 Text(entry.title, color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 battle?.let { ChronicleBattleHighlight(it, accent) }
                 ChronicleEntryTags(entry, state, battle)
@@ -168,7 +168,7 @@ private fun ChronicleBattleHighlight(battle: BattleRecord, accent: Color) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     pair.forEach { (label, value) -> Column(Modifier.weight(1f)) {
                         Text(value.toString(), color = if (value > 0) Danger else Mist, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Text(label, color = Mist, fontSize = 10.sp)
+                        Text(label, color = Mist, fontSize = 11.sp)
                     } }
                 }
             }
@@ -210,7 +210,7 @@ private fun ChronicleEntryTags(entry: ChronicleEntry, state: GameState, battle: 
 private fun ChronicleTag(icon: ImageVector, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Icon(icon, contentDescription = null, tint = Gold, modifier = Modifier.size(15.dp))
-        Text(label, color = Gold, fontSize = 10.sp)
+        Text(label, color = Gold, fontSize = 11.sp)
     }
 }
 

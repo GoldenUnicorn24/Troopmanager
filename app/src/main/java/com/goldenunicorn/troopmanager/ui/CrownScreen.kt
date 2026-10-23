@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -27,9 +28,11 @@ import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.engine.*
 import com.goldenunicorn.troopmanager.model.*
 
-/** v1.1 crown area: Kronlande, Heerbann, trade, heroines, combat arts and edicts. */
+internal enum class CrownSection { LANDS, LEVY, TRADE, HEROINES, ARTS, EDICTS }
+
+/** v1.2: crown content is embedded into the Reich, Heer and Hof areas as single sections. */
 @Composable
-internal fun CrownScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+internal fun CrownPanel(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit, section: CrownSection) {
     fun apply(result: GameEngine.ActionResult) { onState(result.state); onNotice(result.message) }
     val crown = state.crown
     if (!crown.initialized) {
@@ -37,30 +40,18 @@ internal fun CrownScreen(state: GameState, onState: (GameState) -> Unit, onNotic
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Gold) }
         return
     }
-    crown.duel?.let { duel ->
-        DuelPanel(state, duel, ::apply)
-        return
-    }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val tabs = listOf("Übersicht", "Provinzen", "Heerbann", "Handel", "Heldinnen", "Kampfkunst", "Edikte")
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            PageTitle("KRONE · ${state.title.uppercase()}", "${crown.ownedProvinces.size} Kronprovinzen · ${fmt(state.armySize)} Soldaten")
-        }
-        crown.saga.pendingScene?.let { scene -> item(key = "scene") { SagaSceneCard(state, scene, ::apply) } }
-        item { ModernTabStrip(tabs, tab, { tab = it }) }
-        when (tab) {
-            0 -> overviewTab(state, ::apply) { tab = it }
-            1 -> provincesTab(state, ::apply)
-            2 -> levyTab(state, ::apply)
-            3 -> tradeTab(state, ::apply)
-            4 -> heroinesTab(state, ::apply, onState)
-            5 -> artsTab(state, ::apply)
-            else -> edictsTab(state, ::apply)
+        when (section) {
+            CrownSection.LANDS -> landsTab(state, ::apply)
+            CrownSection.LEVY -> levyTab(state, ::apply)
+            CrownSection.TRADE -> tradeTab(state, ::apply)
+            CrownSection.HEROINES -> heroinesTab(state, ::apply, onState)
+            CrownSection.ARTS -> artsTab(state, ::apply)
+            CrownSection.EDICTS -> edictsTab(state, ::apply)
         }
     }
 }
@@ -115,73 +106,31 @@ private fun costLabel(cost: Resources): String = ResourceKind.entries
     .filter { it.value(cost) > 0 }
     .joinToString(" · ") { "${fmt(it.value(cost))} ${it.label}" }
 
-// ===================================================================== overview
+// ===================================================================== lands (map)
 
-private fun androidx.compose.foundation.lazy.LazyListScope.overviewTab(
-    state: GameState,
-    apply: (GameEngine.ActionResult) -> Unit,
-    openTab: (Int) -> Unit,
-) {
+private fun androidx.compose.foundation.lazy.LazyListScope.landsTab(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
     val crown = state.crown
-    item {
+    item(key = "title") {
         val ladder = CrownCatalog.titleLadder
         val index = ladder.indexOfFirst { it.title == state.title }.coerceAtLeast(0)
         val next = ladder.getOrNull(index + 1)
-        CrownCard(emphasized = true) {
-            Text("DEIN WEG ZUR KRONE", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
-            Text(state.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BigStat("Kronprovinzen", "${crown.ownedProvinces.size}/${crown.provinces.size}", Modifier.weight(1f), Emerald)
+                BigStat("Untertanen", fmt(crown.subjects), Modifier.weight(1f), ModernBlue)
+                BigStat("Feldzüge heute", "${CrownEngine.campaignsLeft(state)}", Modifier.weight(1f), Crimson)
+            }
             if (next != null) Text("Nächster Titel: ${next.title} · ${next.requirement}", color = PaleGold, fontSize = 13.sp)
-            else Text("Du hast den höchsten Titel der Kronlande erreicht.", color = PaleGold, fontSize = 13.sp)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ladder.forEachIndexed { i, step ->
-                    ModernPill(step.title, if (i <= index) Gold else Muted, filled = i <= index)
-                }
-            }
         }
     }
-    item {
-        StatGrid(
-            listOf(
-                "Kronprovinzen" to "${crown.ownedProvinces.size} / ${crown.provinces.size}",
-                "Untertanen" to fmt(crown.subjects),
-                "Gold aus Provinzen/Tag" to "+${fmt(CrownEngine.provinceYield(state, ResourceKind.GOLD))}",
-                "Nahrung aus Provinzen/Tag" to "+${fmt(CrownEngine.provinceYield(state, ResourceKind.FOOD))}",
-                "Neue Rekruten/Tag" to "+${fmt(CrownEngine.dailySettlers(state))}",
-                "Handel gestern" to "+${fmt(crown.lastTradeIncome)} Gold",
-                "Söldnersold/Tag" to "−${fmt(CrownEngine.mercenaryUpkeep(state))} Gold",
-                "Feldzüge heute" to "${CrownEngine.campaignsLeft(state)} frei",
-            )
-        )
-    }
-    item {
-        val companion = HeroineSagaEngine.companionDef(state)
-        CrownCard {
-            if (state.companion.met) {
-                CardTitle(state.companion.name, companion?.epithet ?: state.companion.role, state.companion.role, ModernBlue)
-                val (ready, need) = HeroineSagaEngine.chapterReady(state)
-                Text("Kapitel: ${HeroineSagaEngine.chapterTitle(state.crown.saga.chapter)}", color = PaleGold, fontSize = 13.sp)
-                Text(if (ready) "Eine neue Szene wartet auf euch." else need, color = Mist, fontSize = 13.sp)
-            } else {
-                CardTitle("Noch keine Feldherrin", "Begib dich zu einer Heldin, besteht ihre Probe und gewinne sie für dein Heer.")
-            }
-            SmallAction("Heldinnen öffnen") { openTab(4) }
-        }
-    }
-    item {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModernActionTile("Provinzen", "Erobern, kaufen, ausbauen", Gold, { openTab(1) }, Modifier.weight(1f))
-            ModernActionTile("Heerbann", "Rekruten & Söldner", Crimson, { openTab(2) }, Modifier.weight(1f))
-        }
-    }
-    item {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModernActionTile("Handel", "Routen & Waffen", Emerald, { openTab(3) }, Modifier.weight(1f))
-            ModernActionTile("Kampfkunst", "Training & Turniere", ModernBlue, { openTab(5) }, Modifier.weight(1f))
-        }
+    item(key = "map") { ProvincesPanel(state, apply) }
+    if (crown.threats.isNotEmpty()) {
+        item { Heading("Gegenoffensiven", "Feindliche Heere auf dem Marsch gegen deine Provinzen.") }
+        items(crown.threats, key = { it.id }) { t -> ThreatCard(state, t, apply) }
     }
     if (crown.reports.isNotEmpty()) {
-        item { SectionTitle("Letzte Feldzüge") }
-        items(crown.reports.take(4), key = { "${it.day}_${it.provinceId}_${it.ownLosses}" }) { report ->
+        item { Heading("Letzte Feldzüge") }
+        items(crown.reports.take(4), key = { "${it.day}_${it.provinceId}_${it.ownLosses}_${it.victory}" }) { report ->
             CrownCard {
                 CardTitle(report.provinceName, "Tag ${report.day}", if (report.victory) "Sieg" else "Rückzug", if (report.victory) Emerald else Crimson)
                 Text(report.text, color = Mist, fontSize = 13.sp)
@@ -190,42 +139,60 @@ private fun androidx.compose.foundation.lazy.LazyListScope.overviewTab(
     }
 }
 
-// ===================================================================== provinces
-
-private fun androidx.compose.foundation.lazy.LazyListScope.provincesTab(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
-    item(key = "provinces") { ProvincesPanel(state, apply) }
+@Composable
+private fun ThreatCard(state: GameState, t: CrownThreat, apply: (GameEngine.ActionResult) -> Unit) {
+    val p = CrownEngine.province(state, t.targetId) ?: return
+    val defense = CrownWarEngine.defensePower(p)
+    val attack = CrownWarEngine.attackPower(t)
+    var share by remember { mutableIntStateOf(75) }
+    val preview = CrownWarEngine.relievePreview(state, t.id, share)
+    CrownCard(emphasized = true) {
+        CardTitle("${t.attacker.label} → ${p.name}", "${fmt(t.soldiers)} Krieger · Ankunft Tag ${t.arrivalDay}", if (defense >= attack) "Hält" else "Fällt", if (defense >= attack) Emerald else Crimson)
+        Meter("Verteidigung in % des Angriffs", (defense * 100 / attack.coerceAtLeast(1)).toInt().coerceAtMost(200), 100, if (defense >= attack) Emerald else Crimson)
+        Text("Besatzung ${fmt(p.garrison)} · Miliz ${fmt(CrownWarEngine.militia(p))} · Mauern ${p.fortification}/3", color = Muted, fontSize = 12.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) { SmallAction("+500 Besatzung") { apply(CrownWarEngine.station(state, p.id, 500)) } }
+            Box(Modifier.weight(1f)) { SmallAction("Befestigen") { apply(CrownEngine.fortify(state, p.id)) } }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(25, 50, 75, 100).forEach { s -> FilterChip(selected = share == s, onClick = { share = s }, label = { Text("$s %") }) }
+        }
+        if (preview != null) Text("Entsatz mit ${fmt(preview.ownTroops)} Soldaten: ${preview.label} (${String.format(java.util.Locale.GERMANY, "%.1f", preview.ratio)} : 1), etwa ${fmt(preview.expectedLosses)} Verluste", color = Mist, fontSize = 12.sp)
+        PrimaryAction("Entsatzheer schicken") { apply(CrownWarEngine.relieve(state, t.id, share)) }
+    }
 }
 
 @Composable
 private fun ProvincesPanel(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
-    var land by rememberSaveable { mutableStateOf(CrownLand.GRENZMARK) }
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var campaignTarget by remember { mutableStateOf<String?>(null) }
+    val selected = selectedId?.let { CrownEngine.province(state, it) }
+        ?: state.crown.provinces.firstOrNull { it.owner != ProvinceOwner.PLAYER && CrownEngine.reachable(state, it.land) }
+        ?: state.crown.provinces.first()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            CrownLand.entries.forEach { l ->
-                val owned = state.crown.provinces.count { it.land == l && it.owner == ProvinceOwner.PLAYER }
-                val open = CrownEngine.reachable(state, l)
-                FilterChip(
-                    selected = land == l,
-                    onClick = { land = l },
-                    label = { Text((if (open) "" else "🔒 ") + l.label + if (owned > 0) " · $owned" else "") },
-                )
-            }
+        CrownMap(state, selected.id) { selectedId = it }
+        MapLegend()
+        val reachable = CrownEngine.reachable(state, selected.land)
+        if (!reachable) {
+            val via = (CrownCatalog.neighbors[selected.land] ?: emptySet()).joinToString { it.label }
+            Text("${selected.land.label} ist noch gesperrt. Sichere zuerst eine Provinz in: $via.", color = Muted, fontSize = 13.sp)
         }
-        val reachable = CrownEngine.reachable(state, land)
-        CrownCard {
-            CardTitle(land.label, land.description, if (reachable) "Erreichbar" else "Gesperrt", if (reachable) Emerald else Muted)
-            if (!reachable) {
-                val via = (CrownCatalog.neighbors[land] ?: emptySet()).joinToString { it.label }
-                Text("Sichere zuerst eine Provinz in einem Nachbarland: $via.", color = Mist, fontSize = 13.sp)
-            }
-        }
-        state.crown.provinces.filter { it.land == land }.forEach { p ->
-            ProvinceCard(state, p, reachable, apply) { campaignTarget = p.id }
-        }
+        ProvinceCard(state, selected, reachable, apply) { campaignTarget = selected.id }
     }
     campaignTarget?.let { id ->
         CampaignDialog(state, id, apply) { campaignTarget = null }
+    }
+}
+
+@Composable
+private fun MapLegend() {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf("Dein Reich" to Emerald, "Freies Land" to ModernBlue, "Fremde Krone" to Gold, "Feinde" to Crimson, "Gesperrt" to Steel).forEach { (label, color) ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(color))
+                Text(label, color = Muted, fontSize = 12.sp)
+            }
+        }
     }
 }
 
@@ -258,6 +225,11 @@ private fun ProvinceCard(
             if (p.development < 5) Text("Ausbau: ${costLabel(CrownEngine.developCost(state, p))}", color = Muted, fontSize = 12.sp)
             if (p.fortification < 3) Text("Befestigung: ${costLabel(CrownEngine.fortifyCost(p))}", color = Muted, fontSize = 12.sp)
             SmallAction("Volksfest · ${fmt(CrownEngine.feastCost(state, p))} Gold") { apply(CrownEngine.feast(state, p.id)) }
+            InfoLine("Besatzung · Miliz", "${fmt(p.garrison)} · ${fmt(CrownWarEngine.militia(p))}")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) { SmallAction("+200 Besatzung") { apply(CrownWarEngine.station(state, p.id, 200)) } }
+                if (p.garrison > 0) Box(Modifier.weight(1f)) { SmallAction("Heimholen") { apply(CrownWarEngine.withdraw(state, p.id)) } }
+            }
         } else {
             InfoLine("Verteidiger", "${fmt(p.garrison)} · Kampfwert ${p.garrisonQuality}" + if (p.fortification > 0) " · Mauern ${p.fortification}" else "", Crimson)
             if (p.owner == ProvinceOwner.RIVAL || p.owner == ProvinceOwner.FREE) Meter("Gunst für Anschluss", p.favor, color = ModernBlue)
@@ -283,7 +255,7 @@ private fun CampaignDialog(state: GameState, provinceId: String, apply: (GameEng
         onDismissRequest = onClose,
         title = { Text("Feldzug gegen ${p.name}") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Wie viel deines Heeres daheim rückt aus?", color = Mist, fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(25, 50, 75, 100).forEach { s -> FilterChip(selected = share == s, onClick = { share = s }, label = { Text("$s %") }) }
@@ -302,18 +274,13 @@ private fun CampaignDialog(state: GameState, provinceId: String, apply: (GameEng
                     else -> Text("Fordere vorher den feindlichen Champion zum Duell. Ein Sieg bricht den Mut der Verteidiger.", color = Muted, fontSize = 12.sp)
                 }
                 Text("Feldzüge heute noch: ${CrownEngine.campaignsLeft(state)}", color = Muted, fontSize = 12.sp)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { apply(CrownEngine.conquer(state, provinceId, share)); onClose() }) { Text("Angreifen", color = Gold, fontWeight = FontWeight.Bold) }
-        },
-        dismissButton = {
-            Row {
+                GoldButton("Angreifen · schnell auflösen", { apply(CrownEngine.conquer(state, provinceId, share)); onClose() }, Modifier.fillMaxWidth())
+                if (p.garrison > 0) SmallAction("Als Live-Schlacht selbst führen") { apply(CrownWarEngine.startLiveCampaign(state, provinceId)); onClose() }
                 if (state.crown.championBonusProvinceId != provinceId)
-                    TextButton(onClick = { apply(CombatArtsEngine.championDuel(state, provinceId)); onClose() }) { Text("Champion fordern") }
-                TextButton(onClick = onClose) { Text("Abbrechen") }
+                    SmallAction("Erst den Champion zum Duell fordern") { apply(CombatArtsEngine.championDuel(state, provinceId)); onClose() }
             }
         },
+        confirmButton = { TextButton(onClick = onClose) { Text("Schließen") } },
     )
 }
 
@@ -444,7 +411,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 }
 
 @Composable
-private fun Portrait(key: String, uri: String?, diameter: Int = 64) {
+internal fun Portrait(key: String, uri: String?, diameter: Int = 64) {
     val modifier = Modifier.size(diameter.dp).clip(CircleShape).background(Steel)
     if (uri != null) AsyncImage(uri, null, modifier, contentScale = ContentScale.Crop)
     else Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
@@ -535,34 +502,6 @@ private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (
     }
 }
 
-@Composable
-private fun SagaSceneCard(state: GameState, scene: SagaScene, apply: (GameEngine.ActionResult) -> Unit) {
-    val def = HeroineSagaEngine.def(state, scene.heroineId)
-    PremiumPanel(emphasized = true) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Portrait(def?.portraitKey ?: "companion", partnerPortrait(state, scene.heroineId) ?: if (state.crown.saga.companionId == scene.heroineId) state.companion.portraitUri else null, 56)
-            Column(Modifier.weight(1f)) {
-                Text(scene.location.uppercase(), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
-                Text(scene.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-            }
-        }
-        Text(scene.text, color = Ivory, fontSize = 15.sp, lineHeight = 22.sp)
-        scene.options.forEach { option ->
-            OutlinedButton(
-                onClick = { apply(HeroineSagaEngine.choose(state, option.id)) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Gold.copy(alpha = .35f)),
-            ) {
-                Column(Modifier.fillMaxWidth()) {
-                    Text(option.label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    if (option.hint.isNotBlank()) Text(option.hint, color = Muted, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
-
 // ===================================================================== arts & duels
 
 private fun androidx.compose.foundation.lazy.LazyListScope.artsTab(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
@@ -599,7 +538,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.artsTab(state: GameSt
 }
 
 @Composable
-private fun DuelPanel(state: GameState, duel: DuelSession, apply: (GameEngine.ActionResult) -> Unit) {
+internal fun DuelPanel(state: GameState, duel: DuelSession, apply: (GameEngine.ActionResult) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -635,7 +574,7 @@ private fun DuelPanel(state: GameState, duel: DuelSession, apply: (GameEngine.Ac
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Text(stance.label, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                                        Text(stance.hint, fontSize = 10.sp, lineHeight = 12.sp)
+                                        Text(stance.hint, fontSize = 11.sp, lineHeight = 12.sp)
                                     }
                                 }
                             }
@@ -675,5 +614,5 @@ private fun androidx.compose.foundation.lazy.LazyListScope.edictsTab(state: Game
     }
 }
 
-private fun partnerPortrait(state: GameState, heroineId: String): String? =
+internal fun partnerPortrait(state: GameState, heroineId: String): String? =
     state.crown.saga.partner?.takeIf { it.background == heroineId }?.portraitUri

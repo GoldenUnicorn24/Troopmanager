@@ -157,7 +157,7 @@ private fun DiplomacyMetric(
         modifier,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(label, color = Mist, fontSize = 9.sp, maxLines = 1)
+        Text(label, color = Mist, fontSize = 11.sp, maxLines = 1)
         Text(value.toString(), color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
         LinearProgressIndicator(
             progress = { value.coerceIn(0, 100) / 100f },

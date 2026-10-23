@@ -41,6 +41,7 @@ object CrownEngine {
         next = armouryDay(next)
         next = hordeRaids(next)
         next = edictSideEffects(next)
+        next = CrownWarEngine.tick(next)
         next = HeroineSagaEngine.tick(next)
         return next
     }

@@ -103,7 +103,7 @@ internal fun ModernPill(
         Text(
             text.uppercase(),
             color = accent,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = .8.sp,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -128,7 +128,7 @@ internal fun ModernSectionHeader(
             Text(
                 eyebrow.uppercase(),
                 color = Gold,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp,
             )
@@ -327,7 +327,7 @@ internal fun RealmHero(
                         Text(
                             if (urgency) "JETZT REAGIEREN" else "AKTUELLE LAGE",
                             color = if (urgency) Crimson else Emerald,
-                            fontSize = 9.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.2.sp,
                         )
@@ -342,7 +342,7 @@ internal fun RealmHero(
                             shape = RoundedCornerShape(13.dp),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
                         ) {
-                            Text(if (decision != null) "ENTSCHEIDEN" else "ÖFFNEN", fontWeight = FontWeight.Black, fontSize = 10.sp)
+                            Text(if (decision != null) "ENTSCHEIDEN" else "ÖFFNEN", fontWeight = FontWeight.Black, fontSize = 11.sp)
                         }
                         OutlinedButton(
                             onClick = onSecondary,
@@ -351,7 +351,7 @@ internal fun RealmHero(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp),
                         ) {
-                            Text("REICH", fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                            Text("REICH", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                     }
                 }
@@ -380,10 +380,10 @@ internal fun StatusMetric(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Box(Modifier.width(26.dp).height(3.dp).background(accent, RoundedCornerShape(6.dp)))
-            Text(label.uppercase(), color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = .9.sp)
+            Text(label.uppercase(), color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = .9.sp)
             Text(value, color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black, maxLines = 1)
             supporting?.let {
-                Text(it, color = accent, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(it, color = accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -432,9 +432,9 @@ internal fun SituationCard(
             )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(eyebrow.uppercase(), color = accent, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
+            Text(eyebrow.uppercase(), color = accent, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.1.sp)
             Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(detail, color = Muted, fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(detail, color = Muted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         Text("›", color = Color.White.copy(alpha = .55f), fontSize = 23.sp)
     }
@@ -588,7 +588,7 @@ private fun RulerMiniPortrait(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp, maxLines = 1)
-                Text(subtitle, color = Mist, fontSize = 9.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = Mist, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }

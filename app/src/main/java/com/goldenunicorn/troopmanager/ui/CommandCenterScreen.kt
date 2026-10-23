@@ -184,7 +184,7 @@ private fun CommandOverview(
 
         item {
             PremiumPanel(emphasized = true) {
-                Text("TAGESZIEL", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                Text("TAGESZIEL", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
                 Text(
                     state.frontier.dailyGoal.ifBlank { "Stärke heute eine Säule deines Reiches." },
                     color = Color.White,
@@ -278,7 +278,7 @@ internal fun CampaignPulseCard(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("MOMENTUM", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("MOMENTUM", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     Text("${pulse.momentum}", color = momentumColor, fontSize = 13.sp, fontWeight = FontWeight.Black)
                 }
                 LinearProgressIndicator(
@@ -290,7 +290,7 @@ internal fun CampaignPulseCard(
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("DRUCK", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("DRUCK", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     Text("${pulse.pressure}", color = pressureColor, fontSize = 13.sp, fontWeight = FontWeight.Black)
                 }
                 LinearProgressIndicator(
@@ -308,7 +308,7 @@ internal fun CampaignPulseCard(
             ModernPill(pulse.focus.label, Success, filled = true)
         }
 
-        Text("REICHSSCHWERPUNKT", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text("REICHSSCHWERPUNKT", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -331,14 +331,14 @@ internal fun CampaignPulseCard(
                     Text(
                         focus.label,
                         color = if (active) Ink else Mist,
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
                         modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp),
                     )
                 }
             }
         }
-        Text(pulse.focus.description, color = Muted, fontSize = 10.sp)
+        Text(pulse.focus.description, color = Muted, fontSize = 11.sp)
 
         pulse.pendingDecision?.let { decision ->
             SituationCard(
@@ -358,7 +358,7 @@ internal fun CampaignPulseCard(
         } ?: Text(
             "Keine Grundsatzentscheidung offen. Der nächste Impuls entsteht automatisch aus Versorgung, Grenze, Volk und Regierung.",
             color = Muted,
-            fontSize = 10.sp,
+            fontSize = 11.sp,
         )
 
         val activeEffects = buildList {
@@ -370,7 +370,7 @@ internal fun CampaignPulseCard(
             Text(
                 "AKTIV · ${activeEffects.joinToString(" · ")}",
                 color = Success,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -438,7 +438,7 @@ internal fun PalaceHubScreen(state: GameState, onNavigate: (GameDestination) -> 
         item { RulerPairHero(state) }
         item {
             PremiumPanel(emphasized = true) {
-                Text("PALASTBEZIRK", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                Text("PALASTBEZIRK", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
                 Text(
                     if (state.relationship.romanceStage == RomanceStage.CO_RULERS)
                         "Das politische Herz eurer gemeinsamen Herrschaft."
