@@ -1,4 +1,6 @@
-# Aktueller Arbeitsstand: v1.0 Sprint A
+# Aktueller Arbeitsstand: v1.1 „Krone“ (Branch claude/v1.1-koenigreich-overhaul, Details in docs/V1.1-KRONE.md)
+
+# Vorheriger Stand: v1.0 Sprint A
 
 Arbeitsbranch: `codex/v1.0-realm-war-overhaul`, Basis v0.97 `8359712`.
 Version: **1.0.0 / 46**, Save-Schema **5** mit Schema-4-Migration.
