@@ -169,7 +169,7 @@ internal fun WarManagementPanel(state: GameState, onState: (GameState) -> Unit, 
         SectionTitle("Gefangene")
         state.war.captives.filterNot { it.own }.forEach { group ->
             CompactCard("${group.type?.label ?: group.enemy.label}: ${group.soldiers}", "Gefangen seit Tag ${group.capturedDay}; freiwillige Aufnahme erst nach Bedenkzeit und Diplomatie 40.")
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { CaptiveAction.entries.forEach { action -> TextButton(onClick = { apply(WarEngine.captiveAction(state, group.id, action)) }) { Text(action.label, fontSize = 10.sp) } } }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { CaptiveAction.entries.forEach { action -> TextButton(onClick = { apply(WarEngine.captiveAction(state, group.id, action)) }) { Text(action.label, fontSize = 11.sp) } } }
         }
         SectionTitle("Schlachthistorie und Legenden")
         val pageCount = ((state.war.history.size + 23) / 24).coerceAtLeast(1)
@@ -212,7 +212,7 @@ internal fun WarFormationPanel(state: GameState, onState: (GameState) -> Unit, o
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             BattleSection.entries.forEach { section ->
                 Surface(modifier = Modifier.weight(1f).onGloballyPositioned { targets[section] = it.boundsInRoot() }.border(if (dragging && targetSection == section) 2.dp else 1.dp, if (dragging && targetSection == section) Gold else Mist, RoundedCornerShape(8.dp)), color = Panel2, shape = RoundedCornerShape(8.dp)) {
-                    Column(Modifier.padding(8.dp)) { Text(section.label, color = PaleGold, fontSize = 11.sp); Text("${session.soldiers(section)}", color = Gold); Text(session.terrain[section]?.label ?: "Ebene", color = Mist, fontSize = 10.sp) }
+                    Column(Modifier.padding(8.dp)) { Text(section.label, color = PaleGold, fontSize = 11.sp); Text("${session.soldiers(section)}", color = Gold); Text(session.terrain[section]?.label ?: "Ebene", color = Mist, fontSize = 11.sp) }
                 }
             }
         }
@@ -224,7 +224,7 @@ internal fun WarFormationPanel(state: GameState, onState: (GameState) -> Unit, o
             }.padding(10.dp)) {
                 Text("${contingent.type.label} · ${contingent.soldiers} · ${contingent.section.label}", color = PaleGold, fontSize = 12.sp)
                 if (contingent.commanderId != null) Text("${state.commanders.firstOrNull { it.id == contingent.commanderId }?.name ?: "Kommandant"}: zieht mit seinem gesamten Kommando um", color = Mist, fontSize = 11.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { BattleSection.entries.filterNot { it == contingent.section }.forEach { section -> TextButton(onClick = { move(contingent, section) }) { Text(section.label, fontSize = 10.sp) } } }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { BattleSection.entries.filterNot { it == contingent.section }.forEach { section -> TextButton(onClick = { move(contingent, section) }) { Text(section.label, fontSize = 11.sp) } } }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

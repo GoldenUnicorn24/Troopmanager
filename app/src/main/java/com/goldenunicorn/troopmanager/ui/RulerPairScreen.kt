@@ -113,7 +113,7 @@ internal fun RulerPairScreen(
         } else {
             item {
                 PremiumPanel {
-                    Text("EINE GEMEINSAME GESCHICHTE BEGINNT", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                    Text("EINE GEMEINSAME GESCHICHTE BEGINNT", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black)
                     Text("Ab Tag 5 kann sich eine erfahrene Gefährtin deiner Grenzfeste anschließen.", color = Mist, fontSize = 12.sp)
                 }
             }

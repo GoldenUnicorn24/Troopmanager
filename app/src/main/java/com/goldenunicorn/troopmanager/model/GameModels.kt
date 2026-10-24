@@ -65,9 +65,9 @@ enum class BuildingType(val label: String) {
 
 @Serializable
 enum class EnemyType(val label: String) {
-    ORC("Aschebund-Raubzug"),
-    URUK("Eisenpakt-Kriegsheer"),
-    TAO_TEI("Nebelbrut-Schwarm"),
+    ORC("Ork-Raubzug"),
+    URUK("Uruk-hai-Kriegsheer"),
+    TAO_TEI("Tao-Tei-Schwarm"),
 }
 
 @Serializable
@@ -261,6 +261,8 @@ data class GameState(
     val society: SocietyState = SocietyState(),
     val presentation: PresentationState = PresentationState(),
     val campaign: CampaignPulseState = CampaignPulseState(),
+    /** v1.1 crown layer: provinces, trade, mercenaries, heroines, combat arts. */
+    val crown: CrownState = CrownState(),
     val settings: GameSettings = GameSettings(),
     /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
     val foundingCultures: Set<Culture> = emptySet(),

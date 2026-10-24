@@ -50,6 +50,7 @@ internal fun SettingsPanel(state: GameState, onState: (GameState) -> Unit) {
             Difficulty.VETERAN -> "Schnellere gegnerische Aufklärung, Rekrutierung und Angriffe; riskantere Missionen und stärkere Invasionen."
         }, color = Mist)
         Text(if (settings.ironman) "Ironman · ein fortlaufender Autosave, kein Rückimport" else "Standardkampagne · Autosave mit Sicherungskopie", color = PaleGold)
+        BuildInfoAndDevMenu(state, onState)
     }
 }
 

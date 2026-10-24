@@ -164,13 +164,13 @@ internal fun CityScreen(
                             Text(
                                 "Wohlstand ${state.city.prosperity}% · Zufriedenheit ${state.city.satisfaction}% · Nahrung ${state.resources.food}",
                                 color = Mist,
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                             )
                         }
                         Text(
                             "Zwei Finger: Zoom & Verschieben · Doppeltippen: Übersicht",
                             color = Mist,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                         )
                     }
                 }

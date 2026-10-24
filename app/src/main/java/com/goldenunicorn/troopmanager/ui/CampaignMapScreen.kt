@@ -926,7 +926,7 @@ private fun CampaignMapScene(
                             else -> "Unbekanntes Gebiet"
                         },
                         color = if (selected.owned) Success else if (selected.known) ModernBlue else Mist,
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                     )
                 }
             }
@@ -954,7 +954,7 @@ private fun CampaignMapScene(
         ) {
             Text(
                 "Quadrat: Außenposten · Banner: eigenes Heer · Blau gestrichelt: Nachschub · Gold: Verbündetenhilfe · Rot: Feind · Grau: alter Bericht",
-                color = Mist, fontSize = 10.sp, modifier = Modifier.padding(10.dp),
+                color = Mist, fontSize = 11.sp, modifier = Modifier.padding(10.dp),
             )
         }
     }

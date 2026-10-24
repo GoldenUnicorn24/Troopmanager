@@ -62,7 +62,8 @@ object FrontierEngine {
             grown += HordeBanner("raid-${next.day}", HordeKind.ORC, "Kleine Orkschar", small, "Vorland", 3, discovered = true, estimateMinimum = small - 6, estimateMaximum = small + 8)
             next = log(next, "Späher", "Eine kleine Orkschar ist im Vorland. Noch kein Sturm, aber sie wächst, wenn du sie lässt.")
         }
-        if (next.day > 20 && next.day % 9 == 0 && grown.none { it.jointWith != null }) {
+        // v1.3: joint Orc/Uruk warbands every two weeks instead of every nine days, so the wall breathes between assaults.
+        if (next.day > 20 && next.day % 14 == 0 && grown.none { it.jointWith != null }) {
             grown += HordeBanner("joint-${next.day}", HordeKind.URUK, "Orks und Uruks", 80 + next.day, "Schwarzes Vorland", 5, jointWith = "Orks", discovered = true, estimateMinimum = 70, estimateMaximum = 140)
         }
         // Persist growth/spawns before deriving goals or processing arrivals.

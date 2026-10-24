@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -31,8 +32,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.goldenunicorn.troopmanager.R
 import com.goldenunicorn.troopmanager.data.SaveRepository
+import com.goldenunicorn.troopmanager.engine.CrownEngine
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
+import com.goldenunicorn.troopmanager.engine.HeroineSagaEngine
 import com.goldenunicorn.troopmanager.model.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -47,7 +50,7 @@ fun RealmGameApp(saves: SaveRepository) {
     val systemDensity = LocalDensity.current
     val settings = state?.settings ?: GameSettings()
     CompositionLocalProvider(LocalDensity provides Density(systemDensity.density, systemDensity.fontScale * settings.textScale)) {
-        MaterialTheme(colorScheme = darkColorScheme(primary = Gold, onPrimary = Ink, secondary = Blue,
+        MaterialTheme(typography = AppTypography, colorScheme = darkColorScheme(primary = Gold, onPrimary = Ink, secondary = Blue,
             background = Ink, surface = Panel, onSurface = Mist)) {
             Box(Modifier.fillMaxSize().background(Ink)) {
                 when {
@@ -123,7 +126,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
             )
 
             PremiumPanel(emphasized = ui.hasSave) {
-                Text("KAMPAGNE", color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+                Text("KAMPAGNE", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
                 SaveSlotsPanel(ui, controller)
 
                 if (ui.hasSave) {
@@ -151,7 +154,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
             Text(
                 "100 % offline · kein Pay-to-Win · lokale Spielstände",
                 color = Color(0xFF8D99A2),
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
             )
         }
@@ -160,12 +163,22 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
 
 @Composable
 private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit) {
-    var name by remember { mutableStateOf("Leon") }
+    var name by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("23") }
     var species by remember { mutableStateOf(Species.HALF_ELF) }
     var startingCultures by remember(species) { mutableStateOf<Set<Culture>>(emptySet()) }
     var ironman by remember { mutableStateOf(false) }
     var portrait by remember { mutableStateOf<String?>(null) }
+    var weapon by remember { mutableStateOf("Langschwert") }
+    var armor by remember { mutableStateOf("Grenzwächter") }
+    // v1.1: the future partner is designed now and met after about a week.
+    var partnerName by remember { mutableStateOf("") }
+    var partnerAge by remember { mutableStateOf("22") }
+    var partnerSpecies by remember { mutableStateOf(Species.HALF_ELF) }
+    var partnerBackground by remember { mutableStateOf("alina") }
+    var partnerPortrait by remember { mutableStateOf<String?>(null) }
+    var playerLook by remember { mutableStateOf(PortraitSpec(skin = 1, hairColor = 1, armorColor = 3, background = 3, elfEars = true)) }
+    var partnerLook by remember { mutableStateOf(com.goldenunicorn.troopmanager.model.ActCatalog.heroineLook("alina")) }
     // v0.61 keeps roughly the old total starting power while letting the player shape it.
     var sword by remember { mutableStateOf(30) }
     var bow by remember { mutableStateOf(30) }
@@ -189,6 +202,18 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                 portrait = uri.toString()
             }
         }
+    val partnerPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                partnerPortrait = uri.toString()
+            }
+        }
+    val partnerAgeValue = partnerAge.toIntOrNull() ?: 0
+    val partnerValid = partnerName.isNotBlank() && partnerAgeValue >= 18
+    val nameValid = name.isNotBlank()
 
     Column(
         Modifier.fillMaxSize().background(Ink).verticalScroll(rememberScrollState()).padding(20.dp)
@@ -206,35 +231,27 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             modifier = Modifier.padding(vertical = 8.dp),
         )
 
-        Surface(
-            modifier =
-                Modifier.fillMaxWidth().padding(top = 12.dp).clickable {
-                    picker.launch(arrayOf("image/*"))
-                },
-            color = Panel,
-            shape = RoundedCornerShape(18.dp),
-        ) {
-            if (portrait != null) {
-                AsyncImage(
-                    portrait,
-                    null,
-                    Modifier.fillMaxWidth().height(230.dp),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Image(
-                    painterResource(R.drawable.portrait_knight),
-                    null,
-                    Modifier.fillMaxWidth().height(230.dp),
-                    contentScale = ContentScale.Crop,
-                )
+        Surface(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), color = Panel, shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (portrait != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(portrait, null, Modifier.size(112.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+                        Column {
+                            Text("Eigenes Foto gewählt", color = PaleGold, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { portrait = null }) { Text("Lieber gezeichnet") }
+                        }
+                    }
+                } else LookEditor(playerLook, { playerLook = it })
+                OutlinedButton(onClick = { picker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Eigenes Foto verwenden") }
             }
         }
 
         OutlinedTextField(
             name,
             { name = it.take(24) },
-            label = { Text("Name") },
+            label = { Text("Dein Name") },
+            placeholder = { Text("Wie soll man dich nennen?") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
         )
         OutlinedTextField(
@@ -249,7 +266,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             val selected = option == species
             Surface(
                 modifier =
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option },
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option; playerLook = playerLook.copy(elfEars = option != Species.HUMAN) },
                 color = if (selected) Color(0xFF27313A) else Panel,
                 shape = RoundedCornerShape(14.dp),
                 border =
@@ -331,6 +348,63 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             }
         }
 
+        SectionTitle("Ausrüstung")
+        ChoiceRow(listOf("Langschwert", "Bastardschwert", "Streitaxt", "Speer", "Langbogen", "Zwillingsklingen"), weapon) { weapon = it }
+        ChoiceRow(listOf("Grenzwächter", "Schwere Platte", "Kettenhemd", "Elbenschuppen", "Lamellenrüstung", "Leichtes Leder"), armor) { armor = it }
+
+        SectionTitle("Deine zukünftige Partnerin")
+        Text(
+            "Gestalte schon jetzt, wer sie ist. Kennen lernt ihr euch erst nach etwa einer Woche – wo und wie, hängt von ihrem Werdegang ab. Danach entscheidest du, ob sie deine Feldherrin wird und wohin eure Geschichte führt.",
+            color = Mist,
+            fontSize = 13.sp,
+        )
+        Surface(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), color = Panel, shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (partnerPortrait != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(partnerPortrait, null, Modifier.size(112.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+                        Column {
+                            Text("Eigenes Foto gewählt", color = PaleGold, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { partnerPortrait = null }) { Text("Lieber gezeichnet") }
+                        }
+                    }
+                } else LookEditor(partnerLook, { partnerLook = it }, allowBeard = false)
+                OutlinedButton(onClick = { partnerPicker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Eigenes Foto für sie verwenden") }
+            }
+        }
+        OutlinedTextField(partnerName, { partnerName = it.take(24) }, label = { Text("Name der Partnerin") },
+            placeholder = { Text("Ihr Name") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+        OutlinedTextField(partnerAge, { partnerAge = it.filter(Char::isDigit).take(3) }, label = { Text("Alter (ab 18)") },
+            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            isError = partnerAgeValue < 18,
+            supportingText = { if (partnerAgeValue < 18) Text("Deine Partnerin muss mindestens 18 Jahre alt sein.") })
+        Text("Volk", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        ChoiceRow(Species.entries.map { it.label }, partnerSpecies.label) { label ->
+            partnerSpecies = Species.entries.first { it.label == label }
+            partnerLook = partnerLook.copy(elfEars = partnerSpecies != Species.HUMAN)
+        }
+        Text("Werdegang · Ort eurer Begegnung", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        listOf(
+            Triple("alina", "Grenzläuferin", "Meisterbogenschützin. Ihr begegnet euch im Nebel an der Furt von Rabenfurt."),
+            Triple("seraphine", "Verstoßene Ritterin", "Unbesiegt im Schwertkampf. Ihr begegnet euch beim Turnier von Aldenburg."),
+            Triple("liang", "Strategin", "Brillante Feldherrin der Mauerlegion. Ihr begegnet euch im Kriegsrat am Kranichtor."),
+            Triple("ithiliel", "Klingentänzerin", "Diplomatin und Klingenmeisterin. Ihr begegnet euch am Hof von Sonnenhain."),
+        ).forEach { (id, label, text) ->
+            val selected = partnerBackground == id
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { partnerBackground = id },
+                color = if (selected) Color(0xFF27313A) else Panel,
+                shape = RoundedCornerShape(14.dp),
+                border = if (selected) androidx.compose.foundation.BorderStroke(1.dp, Gold) else null,
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(label, color = if (selected) PaleGold else Color.White, fontWeight = FontWeight.Bold)
+                    Text(text, color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+
         SectionTitle("Attribute · 100 Punkte selbst verteilen")
         Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
             Column(
@@ -377,16 +451,27 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                             diplomacy = diplomacy,
                         ),
                         startingCultures = startingCultures,
-                    ).let { it.copy(settings = it.settings.copy(ironman = ironman)) }
+                    ).let { created ->
+                        HeroineSagaEngine.setPartner(
+                            created.copy(
+                                settings = created.settings.copy(ironman = ironman),
+                                player = created.player.copy(weapon = weapon, armorStyle = armor),
+                                crown = created.crown.copy(playerLook = playerLook),
+                            ),
+                            PartnerProfile(partnerName, partnerAgeValue, partnerSpecies, partnerBackground, partnerPortrait, look = partnerLook),
+                        )
+                    }
                 )
             },
-            enabled = remainingAttributePoints == 0 && startingCultures.isNotEmpty(),
+            enabled = remainingAttributePoints == 0 && startingCultures.isNotEmpty() && partnerValid && nameValid,
             modifier = Modifier.fillMaxWidth().height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
         ) {
             Text(
                 when {
+                    !nameValid -> "GIB DEINEN NAMEN EIN"
                     startingCultures.isEmpty() -> "STARTKULTUR AUSWÄHLEN"
+                    !partnerValid -> "PARTNERIN: NAME UND ALTER AB 18"
                     remainingAttributePoints == 0 -> "REICH GRÜNDEN"
                     else -> "NOCH $remainingAttributePoints ATTRIBUTSPUNKTE VERTEILEN"
                 },
@@ -440,16 +525,33 @@ private fun GameShell(
     onAdvanceDay: () -> Unit,
     controller: GameViewModel,
 ) {
-    var screen by rememberSaveable { mutableStateOf(GameDestination.COMMAND) }
-    var worldPage by rememberSaveable { mutableStateOf(0) }
+    var screen by rememberSaveable { mutableStateOf(GameDestination.TODAY) }
+    var realmTab by rememberSaveable { mutableIntStateOf(0) }
+    var armyTab by rememberSaveable { mutableIntStateOf(0) }
+    var courtTab by rememberSaveable { mutableIntStateOf(0) }
     var showMore by rememberSaveable { mutableStateOf(false) }
     var showCensus by rememberSaveable { mutableStateOf(false) }
     var showDefense by rememberSaveable { mutableStateOf(false) }
-    BackHandler(enabled = showMore || screen != GameDestination.COMMAND) {
-        if (showMore) showMore = false else screen = GameDestination.COMMAND
+    var dismissedScene by rememberSaveable { mutableStateOf<String?>(null) }
+    fun open(destination: GameDestination, tab: Int = -1) {
+        showMore = false
+        val (area, defaultTab) = areaFor(destination)
+        val chosen = if (tab >= 0) tab else defaultTab
+        when (area) {
+            MainArea.REALM -> realmTab = chosen
+            MainArea.ARMY -> armyTab = chosen
+            MainArea.COURT -> courtTab = chosen
+            else -> Unit
+        }
+        screen = destination
+    }
+    val area = if (screen == GameDestination.TODAY) MainArea.TODAY else areaFor(screen).first
+    BackHandler(enabled = showMore || screen != GameDestination.TODAY) {
+        if (showMore) showMore = false else screen = GameDestination.TODAY
     }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
-    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
+    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && area != MainArea.COURT
+    val sagaScene = state.crown.saga.pendingScene
     Scaffold(
         containerColor = Ink,
         topBar = {
@@ -464,77 +566,52 @@ private fun GameShell(
                         Modifier.weight(1f).clickable { showCensus = true },
                         verticalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        Text(
-                            state.realm.settlementName.uppercase(),
-                            color = Gold,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.4.sp,
-                            maxLines = 1,
-                        )
-                        Text(
-                            "Tag ${state.day} · ${state.title}",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                        )
+                        Text(state.realm.settlementName.uppercase(), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, maxLines = 1)
+                        Text("Tag ${state.day} · ${state.title}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     if (state.player.skillPoints > 0) {
                         Surface(
                             color = Gold.copy(alpha = .13f),
                             shape = RoundedCornerShape(12.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = .25f)),
-                            modifier = Modifier.clickable {
-                                showMore = false
-                                screen = GameDestination.CHARACTER
-                            },
+                            modifier = Modifier.clickable { open(GameDestination.CHARACTER, 7) },
                         ) {
-                            Text(
-                                "${state.player.skillPoints} SKILL",
-                                color = PaleGold,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
-                            )
+                            Text("${state.player.skillPoints} SKILL", color = PaleGold, fontSize = 11.sp, fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
                         }
                     }
-                    IconButton(onClick = { showTutorial = true }) {
-                        Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Muted)
-                    }
-                    IconButton(onClick = { showMore = !showMore }) {
-                        Icon(Icons.Outlined.MoreVert, "Menü", tint = Gold)
-                    }
+                    IconButton(onClick = { showTutorial = true }) { Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Muted) }
+                    IconButton(onClick = { showMore = !showMore }) { Icon(Icons.Outlined.MoreVert, "Mehr: Optionen, Hilfe, Spielstand", tint = Gold) }
                 }
 
                 ResourceStrip(state.resources, EconomyEngine.production(state).net)
 
                 val pendingCampaignDecision = state.campaign.pendingDecision
                 val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
+                val crownThreat = state.crown.threats.minByOrNull { it.arrivalDay }
                 val warningText = when {
-                    pendingCampaignDecision != null ->
-                        "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
-                    nearestThreat != null ->
-                        "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
-                    state.invasion != null ->
-                        "${state.invasion.enemy.label} · ${(state.invasion.arrivalDay - state.day).coerceAtLeast(0)} T. · ${state.invasionStrengthEstimate()}"
-                    state.war.wounded.isNotEmpty() ->
-                        "${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
-                    EconomyEngine.production(state).net.food < 0 ->
-                        "Nahrung ${EconomyEngine.production(state).net.food}/Tag"
+                    state.crown.duel != null -> "Duell gegen ${state.crown.duel.opponentName} wartet"
+                    sagaScene != null -> "${sagaScene.title} · ${sagaScene.location}"
+                    pendingCampaignDecision != null -> "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
+                    crownThreat != null -> "Angriff auf ${CrownEngine.province(state, crownThreat.targetId)?.name ?: "Provinz"} in ${(crownThreat.arrivalDay - state.day).coerceAtLeast(0)} T."
+                    nearestThreat != null -> "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
+                    state.invasion != null -> "${state.invasion.enemy.label} · ${(state.invasion.arrivalDay - state.day).coerceAtLeast(0)} T. · ${state.invasionStrengthEstimate()}"
+                    state.war.wounded.isNotEmpty() -> "${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
+                    EconomyEngine.production(state).net.food < 0 -> "Nahrung ${EconomyEngine.production(state).net.food}/Tag"
                     else -> null
                 }
                 if (warningText != null) {
                     Surface(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).heightIn(min = 48.dp).clickable {
                             showMore = false
-                            if (pendingCampaignDecision == null && (nearestThreat != null || state.invasion != null)) showDefense = true
-                            else
-                            screen = when {
-                                pendingCampaignDecision != null -> GameDestination.DECISIONS
-                                nearestThreat != null -> GameDestination.FRONTIER
-                                state.war.wounded.isNotEmpty() -> GameDestination.HOSPITAL
-                                else -> GameDestination.CITY
+                            when {
+                                state.crown.duel != null -> open(GameDestination.KINGDOM, 0)
+                                sagaScene != null -> dismissedScene = null
+                                pendingCampaignDecision != null -> open(GameDestination.DECISIONS)
+                                crownThreat != null -> open(GameDestination.KINGDOM, 0)
+                                nearestThreat != null || state.invasion != null -> showDefense = true
+                                state.war.wounded.isNotEmpty() -> open(GameDestination.HOSPITAL)
+                                else -> open(GameDestination.CITY)
                             }
                         },
                         color = Color(0xFF221719),
@@ -547,14 +624,7 @@ private fun GameShell(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Box(Modifier.size(6.dp).background(Danger, RoundedCornerShape(6.dp)))
-                            Text(
-                                warningText,
-                                color = PaleGold,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 2,
-                            )
+                            Text(warningText, color = PaleGold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 2)
                             Text("›", color = Gold, fontSize = 18.sp)
                         }
                     }
@@ -562,9 +632,6 @@ private fun GameShell(
             }
         },
         bottomBar = {
-            val realmSelected = screen in setOf(GameDestination.COMMAND, GameDestination.DECISIONS, GameDestination.PALACE)
-            val armySelected = screen in setOf(GameDestination.MILITARY, GameDestination.FRONTIER, GameDestination.HOSPITAL, GameDestination.MISSIONS)
-            val moreSelected = showMore || (!realmSelected && !armySelected && screen !in setOf(GameDestination.CITY, GameDestination.WORLD))
             val itemColors = NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
                 selectedTextColor = Color.White,
@@ -572,14 +639,9 @@ private fun GameShell(
                 unselectedIconColor = Muted,
                 unselectedTextColor = Muted,
             )
-
             Box(
                 Modifier.fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Ink.copy(alpha = .92f))
-                        )
-                    )
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Ink.copy(alpha = .92f))))
                     .navigationBarsPadding()
                     .padding(horizontal = 10.dp, vertical = 7.dp)
             ) {
@@ -591,46 +653,34 @@ private fun GameShell(
                     shadowElevation = 16.dp,
                     tonalElevation = 0.dp,
                 ) {
-                    NavigationBar(
-                        containerColor = Color.Transparent,
-                        tonalElevation = 0.dp,
-                        modifier = Modifier.height(68.dp),
-                    ) {
-                        NavigationBarItem(
-                            selected = !showMore && realmSelected,
-                            onClick = { showMore = false; screen = GameDestination.COMMAND },
-                            icon = { Icon(Icons.Outlined.Castle, null) },
-                            label = { Text("Reich", fontSize = 9.sp, fontWeight = if (!showMore && realmSelected) FontWeight.Black else FontWeight.Medium) },
-                            colors = itemColors,
-                        )
-                        NavigationBarItem(
-                            selected = !showMore && screen == GameDestination.CITY,
-                            onClick = { showMore = false; screen = GameDestination.CITY },
-                            icon = { Icon(Icons.Outlined.LocationCity, null) },
-                            label = { Text("Stadt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.CITY) FontWeight.Black else FontWeight.Medium) },
-                            colors = itemColors,
-                        )
-                        NavigationBarItem(
-                            selected = !showMore && armySelected,
-                            onClick = { showMore = false; screen = GameDestination.MILITARY },
-                            icon = { Icon(Icons.Outlined.Shield, null) },
-                            label = { Text("Heer", fontSize = 9.sp, fontWeight = if (!showMore && armySelected) FontWeight.Black else FontWeight.Medium) },
-                            colors = itemColors,
-                        )
-                        NavigationBarItem(
-                            selected = !showMore && screen == GameDestination.WORLD,
-                            onClick = { showMore = false; screen = GameDestination.WORLD },
-                            icon = { Icon(Icons.Outlined.Public, null) },
-                            label = { Text("Welt", fontSize = 9.sp, fontWeight = if (!showMore && screen == GameDestination.WORLD) FontWeight.Black else FontWeight.Medium) },
-                            colors = itemColors,
-                        )
-                        NavigationBarItem(
-                            selected = moreSelected,
-                            onClick = { showMore = true },
-                            icon = { Icon(Icons.Outlined.MoreVert, null) },
-                            label = { Text("Mehr", fontSize = 9.sp, fontWeight = if (moreSelected) FontWeight.Black else FontWeight.Medium) },
-                            colors = itemColors,
-                        )
+                    NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp, modifier = Modifier.height(70.dp)) {
+                        val urgent = state.crown.duel != null || sagaScene != null || state.campaign.pendingDecision != null || state.crown.threats.isNotEmpty()
+                        listOf(
+                            Triple(MainArea.TODAY, GameDestination.TODAY, Icons.Outlined.Home),
+                            Triple(MainArea.REALM, GameDestination.KINGDOM, Icons.Outlined.Crown),
+                            Triple(MainArea.ARMY, GameDestination.MILITARY, Icons.Outlined.Shield),
+                            Triple(MainArea.COURT, GameDestination.COURT, Icons.Outlined.FavoriteBorder),
+                            Triple(MainArea.CITY, GameDestination.CITY, Icons.Outlined.LocationCity),
+                        ).forEach { (target, destination, icon) ->
+                            val selected = !showMore && area == target
+                            NavigationBarItem(
+                                selected = selected,
+                                onClick = {
+                                    showMore = false
+                                    screen = when (target) {
+                                        MainArea.REALM -> GameDestination.KINGDOM
+                                        MainArea.ARMY -> GameDestination.MILITARY
+                                        MainArea.COURT -> GameDestination.COURT
+                                        else -> destination
+                                    }
+                                },
+                                icon = {
+                                    BadgedBox(badge = { if (target == MainArea.TODAY && urgent) Badge(containerColor = Danger) }) { Icon(icon, null) }
+                                },
+                                label = { Text(target.label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Medium) },
+                                colors = itemColors,
+                            )
+                        }
                     }
                 }
             }
@@ -639,73 +689,86 @@ private fun GameShell(
         if (showCensus) PopulationDialog(state, onState, onNotice) { showCensus = false }
         if (showDefense) DefenseDashboard(state, onState, onNotice) { showDefense = false }
         Box(Modifier.fillMaxSize().padding(padding)) {
+            val duel = state.crown.duel
             if (showMore) {
-                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination ->
-                    showMore = false
-                    screen = destination
-                }
-            } else if (
-                state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT
-            ) {
-                LiveBattleScreen(
-                    state,
-                    { next ->
-                        if (next.battleSession == null) screen = GameDestination.WORLD
-                        onState(next)
-                    },
-                    onNotice,
-                )
-            } else
-                when (screen) {
-                    GameDestination.COMMAND -> CommandCenterScreen(state, onState, onNotice, { screen = it }, onAdvanceDay)
-                    GameDestination.DECISIONS -> CommandCenterScreen(state, onState, onNotice, { screen = it }, onAdvanceDay, initialPage = 1)
-                    GameDestination.CITY ->
-                        CityScreen(
-                            state,
-                            onState,
-                            onNotice,
-                            onAdvanceDay,
-                            onNavigate = { type ->
-                                worldPage = if (type == BuildingType.EMBASSY) 2 else 0
-                                screen = when (type) {
-                                BuildingType.BARRACKS, BuildingType.STABLES, BuildingType.ARSENAL, BuildingType.HOSPITAL -> GameDestination.MILITARY
-                                BuildingType.PALACE -> GameDestination.PALACE
-                                BuildingType.ACADEMY -> GameDestination.RESEARCH
-                                BuildingType.EMBASSY -> GameDestination.WORLD
-                                BuildingType.WALL, BuildingType.TOWER -> GameDestination.FRONTIER
-                                else -> GameDestination.CITY
-                            } },
-                        )
-                    GameDestination.MILITARY -> ArmyHubScreen(state, onState, onNotice)
-                    GameDestination.WORLD -> WorldHubScreen(state, onState, onNotice, worldPage)
-                    GameDestination.COURT -> CourtHubScreen(state, onState, onNotice)
-                    GameDestination.RULERS -> RulerPairScreen(state, onState, onNotice, { screen = GameDestination.COUNCIL })
-                    GameDestination.FAMILY -> FamilyScreen(state, onState, onNotice)
-                    GameDestination.CHARACTER -> CharacterHubScreen(state, onState, onNotice)
-                    GameDestination.FRONTIER -> FrontierScreen(state, onState, onNotice)
-                    GameDestination.HOSPITAL -> ArmyHubScreen(state, onState, onNotice, 3)
-                    GameDestination.MISSIONS -> ArmyHubScreen(state, onState, onNotice, 2)
-                    GameDestination.COUNCIL -> CouncilScreen(state, onState, onNotice)
-                    GameDestination.PALACE -> PalaceHubScreen(state) { screen = it }
-                    GameDestination.JOURNAL -> QuestJournalScreen(state) { screen = it }
-                    GameDestination.CHRONICLE -> ChronicleScreen(state)
-                    GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
-                }
+                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination -> open(destination) }
+            } else if (duel != null) {
+                DuelPanel(state, duel) { result -> onState(result.state); onNotice(result.message) }
+            } else if (battleVisible) {
+                LiveBattleScreen(state, { next -> onState(next) }, onNotice)
+            } else androidx.compose.animation.Crossfade(targetState = screen, animationSpec = androidx.compose.animation.core.tween(if (state.settings.animations) 220 else 0), label = "area") { screen -> when (screen) {
+                GameDestination.TODAY -> TodayScreen(state, onAdvanceDay) { destination, tab -> if (destination == GameDestination.COURT && tab == 0 && sagaScene != null) dismissedScene = null; open(destination, tab) }
+                GameDestination.COMMAND -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay)
+                GameDestination.DECISIONS -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay, initialPage = 1)
+                GameDestination.CITY ->
+                    CityScreen(
+                        state, onState, onNotice, onAdvanceDay,
+                        onNavigate = { type ->
+                            when (type) {
+                                BuildingType.BARRACKS, BuildingType.STABLES -> open(GameDestination.MILITARY)
+                                BuildingType.ARSENAL -> open(GameDestination.MILITARY, 6)
+                                BuildingType.HOSPITAL -> open(GameDestination.HOSPITAL)
+                                BuildingType.PALACE -> open(GameDestination.PALACE)
+                                BuildingType.ACADEMY -> open(GameDestination.RESEARCH)
+                                BuildingType.EMBASSY -> open(GameDestination.WORLD, 2)
+                                BuildingType.WALL, BuildingType.TOWER -> open(GameDestination.FRONTIER)
+                                else -> Unit
+                            }
+                        },
+                    )
+                GameDestination.KINGDOM, GameDestination.WORLD -> RealmArea(state, onState, onNotice, realmTab) { realmTab = it }
+                GameDestination.MILITARY, GameDestination.MISSIONS, GameDestination.HOSPITAL, GameDestination.FRONTIER ->
+                    ArmyArea(state, onState, onNotice, armyTab) { armyTab = it }
+                GameDestination.COURT, GameDestination.RULERS, GameDestination.FAMILY, GameDestination.COUNCIL, GameDestination.CHARACTER ->
+                    CourtArea(state, onState, onNotice, courtTab) { courtTab = it }
+                GameDestination.PALACE -> PalaceHubScreen(state) { open(it) }
+                GameDestination.JOURNAL -> QuestJournalScreen(state) { open(it) }
+                GameDestination.CHRONICLE -> ChronicleScreen(state)
+                GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
+            } }
         }
     }
 
-    GameSoundscape(state, if (!showMore && state.battleSession != null && screen != GameDestination.CITY && screen != GameDestination.COURT) "battle" else screen.name.lowercase())
+    val celebration = state.crown.celebrations.firstOrNull()
+    if (celebration != null && state.crown.duel == null && state.battleSession?.isActive != true) {
+        CelebrationOverlay(celebration, state.crown.celebrations.size, state.settings.animations) {
+            onState(com.goldenunicorn.troopmanager.engine.CelebrationEngine.dismiss(state))
+        }
+    } else if (sagaScene != null && dismissedScene != sagaScene.key && state.crown.duel == null && state.battleSession == null) {
+        SagaStageDialog(state, sagaScene, { result -> onState(result.state); onNotice(result.message) }) { dismissedScene = sagaScene.key }
+    }
+
+    GameSoundscape(state, if (battleVisible) "battle" else when (area) {
+        MainArea.CITY -> "city"
+        MainArea.COURT -> "court"
+        MainArea.ARMY -> "military"
+        MainArea.REALM -> "world"
+        MainArea.TODAY -> "command"
+    })
 
     if (showTutorial) {
         TutorialDialog(
-            onFinish = {
-                showTutorial = false
-                onState(GameEngine.markTutorialSeen(state))
-            },
-            onSkip = {
-                showTutorial = false
-                onState(GameEngine.markTutorialSeen(state))
-            },
+            onFinish = { showTutorial = false; onState(GameEngine.markTutorialSeen(state)) },
+            onSkip = { showTutorial = false; onState(GameEngine.markTutorialSeen(state)) },
         )
+    }
+}
+
+private fun partnerPortraitKey(background: String): String = when (background) {
+    "seraphine" -> "knight"
+    "liang" -> "wall_guard"
+    "ithiliel" -> "gold_elf"
+    else -> "companion"
+}
+
+@Composable
+private fun ChoiceRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        options.forEach { option ->
+            FilterChip(selected = option == selected, onClick = { onSelect(option) }, label = { Text(option) })
+        }
     }
 }

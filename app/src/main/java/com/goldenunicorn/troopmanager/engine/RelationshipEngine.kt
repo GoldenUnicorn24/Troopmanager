@@ -10,7 +10,8 @@ object RelationshipEngine {
             state.copy(
                 relationship = state.relationship.copy(actionDay = state.day, spentActions = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0)
             )
-        if (!next.companion.met && next.day >= 5)
+        // v1.1: with the heroine saga the companion is met and recruited in the story, not on day 5.
+        if (!next.companion.met && next.day >= 5 && !next.crown.saga.enabled)
             next =
                 next.copy(
                     companion = next.companion.copy(met = true),

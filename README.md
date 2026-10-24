@@ -1,4 +1,18 @@
-# Realm of the Last Wall — Troopmanager v1.0.0 — Sprint A
+# Realm of the Last Wall — Troopmanager v1.3.0
+
+**Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v1.3: Akte, Rivalen-Könige, Feldzug-Ereignisse, Porträts
+
+Three acts with boss battles against Orks, Uruk-hai and Tao Tei, five rival rulers with personalities, events on the march, the partner fighting with her own ability, full-screen celebrations, animations and a portrait builder. See [v1.3](docs/V1.3-AKTE-UND-RIVALEN.md).
+
+## v1.2: neue Oberfläche, lebendige Gegner, Königinnen-Anliegen
+
+Five main areas (Heute, Reich, Heer, Hof, Stadt), an advisor feed, a hex map of the Kronlande, full-screen story scenes, counteroffensives with garrisons and relief armies, live battles for conquests and the queen's own requests after the coronation. See [v1.2](docs/V1.2-NEUE-OBERFLAECHE.md).
+
+## v1.1: Kronlande, Heerbann, Handel, Heldinnen-Saga und Kampfkünste
+
+A new **Krone** area adds 42 conquerable provinces in seven lands, mass levies and mercenaries for very large armies, six trade partners, realm edicts, the titles Großkönig and Kaiser der Kronlande, a heroine saga (meet four heroines at their own places, recruit them as field marshals, and – with consent – marry and crown your companion), personal combat arts with duels and tournaments, and a hidden developer menu (tap the build number seven times in the options). See [v1.1 Krone](docs/V1.1-KRONE.md).
 
 An offline Android strategy RPG built with Kotlin and Jetpack Compose. You begin as a young border lord with one territory, a working fortress, supplies and a standing army. Grow a realm, send actual troops on multi-day missions, prepare for invasions and command interactive battles. Becoming High King opens continued progression rather than ending the campaign.
 

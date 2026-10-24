@@ -100,7 +100,7 @@ object GameEngine {
             armyPools = units.map { ArmyUnitPool(it.type, it.amount) },
             commanders = listOf(commander),
         )
-        return DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state)))
+        return CrownEngine.initialize(DiplomacyEngine.initialize(CharacterEngine.initialize(WorldEngine.initialize(state))))
     }
 
     private fun balancedStartingForces(cultures: Set<Culture>): Pair<Population, List<UnitAllocation>> {
@@ -228,7 +228,7 @@ object GameEngine {
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
         val before = state
-        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(state)))
+        var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(ActEngine.reconcile(CrownWarEngine.reconcile(CrownEngine.initialize(state))))))
         next = ResearchEngine.tick(next)
         next = MilitaryEconomyEngine.tick(next)
         next = WorldEngine.tick(next)
@@ -249,20 +249,38 @@ object GameEngine {
         next = EventEngine.day(next)
         next = InvasionEngine.day(next)
         next = FrontierEngine.tick(next)
+        next = CrownEngine.tick(next)
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
         next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
         next = CampaignPulseEngine.tick(before, next)
         next = QuestJournalEngine.refresh(next)
-        next = next.copy(dailyReport = DailyReportEngine.build(before, next))
+        next = next.copy(dailyReport = DailyReportEngine.build(before, next), chronicle = next.chronicle.takeLast(CHRONICLE_LIMIT))
         val message =
             if (next.battleSession?.isActive == true)
-                "Die Invasion erreicht deine Festung. Die Verteidigung beginnt!"
+                "${next.battleSession.enemy.label} erreicht deine Festung. Die Verteidigung beginnt!"
+            else if (next.crown.saga.pendingScene != null)
+                "Tag ${next.day}: ${next.crown.saga.pendingScene.title}"
             else if (next.campaign.pendingDecision != null)
                 "Tag ${next.day}: ${next.campaign.pendingDecision.title} wartet auf deine Entscheidung."
-            else
-                "Tag ${next.day}: ${next.dailyReport.entries.count { it.important }} wichtige Meldungen im Tagesbericht."
+            else daySummary(before, next)
         return ActionResult(next, message)
+    }
+
+    /** A short, concrete summary of what the day changed instead of a bare report count. */
+    fun daySummary(before: GameState, after: GameState): String {
+        fun signed(v: Int) = (if (v >= 0) "+" else "") + String.format(java.util.Locale.GERMANY, "%,d", v)
+        val parts = mutableListOf(
+            "${signed(after.resources.gold - before.resources.gold)} Gold",
+            "${signed(after.resources.food - before.resources.food)} Nahrung",
+        )
+        val army = after.armySize - before.armySize
+        if (army != 0) parts += "${signed(army)} Soldaten"
+        val recruits = after.population.totalRecruits - before.population.totalRecruits
+        if (recruits > 0) parts += "${signed(recruits)} Rekruten"
+        val newest = after.chronicle.lastOrNull { it.day == after.day && it !in before.chronicle }
+        val headline = newest?.let { " · ${it.title}" } ?: ""
+        return "Tag ${after.day}: ${parts.joinToString(", ")}$headline"
     }
 
     fun buyReinforcements(state: GameState, people: AllyPeople, amount: Int): ActionResult =
@@ -272,7 +290,7 @@ object GameEngine {
         val barracks = state.realm.level(BuildingType.BARRACKS)
         val stable = if (type == UnitType.KNIGHT) state.realm.level(BuildingType.STABLES).coerceAtMost(2) else 0
         val base = maxOf(2, type.trainingDays - barracks - stable)
-        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state)).toInt().coerceAtLeast(2)
+        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state) * CrownEngine.trainingFactor(state)).toInt().coerceAtLeast(if (CrownEngine.has(state, CrownEdict.WAR_ECONOMY)) 1 else 2)
     }
 
     fun recruit(state: GameState, type: UnitType, percent: Int): ActionResult {
@@ -286,7 +304,7 @@ object GameEngine {
         val available = ArmyEngine.recruitable(state, type.culture)
         if (available <= 0) return ActionResult(state, "Keine passenden Rekruten verfügbar.")
         val amount = ceil(available * percent / 100.0).toInt()
-        val gold = amount.toLong() * type.goldCost
+        val gold = ceil(amount.toLong() * type.goldCost * CrownEngine.recruitCostFactor(state)).toLong()
         if (gold > state.resources.gold)
             return ActionResult(state, "Benötigt: $gold Gold.")
         val goods = MilitaryEconomyEngine.requirements(type, amount)

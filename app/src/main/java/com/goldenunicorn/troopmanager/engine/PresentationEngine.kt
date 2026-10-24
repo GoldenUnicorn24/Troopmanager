@@ -57,8 +57,8 @@ object PresentationEngine {
             Achievement.FIRST_VICTORY -> state.victories > 0 || victories.isNotEmpty()
             Achievement.ARMY_10K -> state.armySize >= 10_000
             Achievement.ARMY_100K -> state.armySize >= 100_000
-            Achievement.KING -> state.title == "König" || state.title == "Hochkönig"
-            Achievement.HIGH_KING -> state.title == "Hochkönig"
+            Achievement.KING -> state.title in setOf("König", "Hochkönig", "Großkönig", "Kaiser der Kronlande")
+            Achievement.HIGH_KING -> state.title in setOf("Hochkönig", "Großkönig", "Kaiser der Kronlande")
             Achievement.LEGENDARY_GENERAL -> state.commanders.any { it.level >= 6 && it.victories >= 10 }
             Achievement.DAYS_100 -> state.day >= 100
             Achievement.DAYS_365 -> state.day >= 365

@@ -49,7 +49,7 @@ internal fun PageTitle(title: String, subtitle: String) {
         Text(
             title.uppercase(),
             color = Gold,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.8.sp,
         )
@@ -145,7 +145,7 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(label, color = Color(0xFFA3ADB4), fontSize = 10.sp)
+                            Text(label, color = Color(0xFFA3ADB4), fontSize = 11.sp)
                         }
                     }
                 }
@@ -178,9 +178,9 @@ internal fun ResourceStrip(r: Resources, production: Resources? = null) {
                         border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
                         modifier = Modifier.width(cardWidth).heightIn(min = 48.dp).testTag("resource_$index")) {
                         Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                            Text(label, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Text(label, color = Muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                             Text(value.toString(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            if (gain != null) Text("${if (gain >= 0) "+" else ""}$gain / Tag", color = accent, fontSize = 10.sp)
+                            if (gain != null) Text("${if (gain >= 0) "+" else ""}$gain / Tag", color = accent, fontSize = 11.sp)
                         }
                     }
                 }
@@ -235,7 +235,7 @@ internal fun CharacterPanel(
                 Text(
                     "Portrait antippen, um ein eigenes Bild zu wählen.",
                     color = Color(0xFF87949C),
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -339,7 +339,7 @@ internal fun EconomyStrip(state: GameState) {
                             tint = Gold,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(kind.label.uppercase(), color = Color(0xFF8F9BA4), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        Text(kind.label.uppercase(), color = Color(0xFF8F9BA4), fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                     Text(
                         kind.value(state.resources).toString(),
@@ -350,7 +350,7 @@ internal fun EconomyStrip(state: GameState) {
                     Text(
                         "${if (detail.net >= 0) "+" else ""}${detail.net}/Tag",
                         color = accent,
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }
