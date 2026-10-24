@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -176,6 +177,8 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
     var partnerSpecies by remember { mutableStateOf(Species.HALF_ELF) }
     var partnerBackground by remember { mutableStateOf("alina") }
     var partnerPortrait by remember { mutableStateOf<String?>(null) }
+    var playerLook by remember { mutableStateOf(PortraitSpec(skin = 1, hairColor = 1, armorColor = 3, background = 3, elfEars = true)) }
+    var partnerLook by remember { mutableStateOf(com.goldenunicorn.troopmanager.model.ActCatalog.heroineLook("alina")) }
     // v0.61 keeps roughly the old total starting power while letting the player shape it.
     var sword by remember { mutableStateOf(30) }
     var bow by remember { mutableStateOf(30) }
@@ -228,28 +231,18 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             modifier = Modifier.padding(vertical = 8.dp),
         )
 
-        Surface(
-            modifier =
-                Modifier.fillMaxWidth().padding(top = 12.dp).clickable {
-                    picker.launch(arrayOf("image/*"))
-                },
-            color = Panel,
-            shape = RoundedCornerShape(18.dp),
-        ) {
-            if (portrait != null) {
-                AsyncImage(
-                    portrait,
-                    null,
-                    Modifier.fillMaxWidth().height(230.dp),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Image(
-                    painterResource(R.drawable.portrait_knight),
-                    null,
-                    Modifier.fillMaxWidth().height(230.dp),
-                    contentScale = ContentScale.Crop,
-                )
+        Surface(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), color = Panel, shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (portrait != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(portrait, null, Modifier.size(112.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+                        Column {
+                            Text("Eigenes Foto gewählt", color = PaleGold, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { portrait = null }) { Text("Lieber gezeichnet") }
+                        }
+                    }
+                } else LookEditor(playerLook, { playerLook = it })
+                OutlinedButton(onClick = { picker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Eigenes Foto verwenden") }
             }
         }
 
@@ -273,7 +266,7 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             val selected = option == species
             Surface(
                 modifier =
-                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option },
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable { species = option; playerLook = playerLook.copy(elfEars = option != Species.HUMAN) },
                 color = if (selected) Color(0xFF27313A) else Panel,
                 shape = RoundedCornerShape(14.dp),
                 border =
@@ -365,16 +358,19 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             color = Mist,
             fontSize = 13.sp,
         )
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                modifier = Modifier.size(96.dp).clickable { partnerPicker.launch(arrayOf("image/*")) },
-                color = Panel,
-                shape = RoundedCornerShape(18.dp),
-            ) {
-                if (partnerPortrait != null) AsyncImage(partnerPortrait, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Image(painterResource(portraitResource(partnerPortraitKey(partnerBackground))), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Surface(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), color = Panel, shape = RoundedCornerShape(18.dp)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (partnerPortrait != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AsyncImage(partnerPortrait, null, Modifier.size(112.dp).clip(androidx.compose.foundation.shape.CircleShape), contentScale = ContentScale.Crop)
+                        Column {
+                            Text("Eigenes Foto gewählt", color = PaleGold, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { partnerPortrait = null }) { Text("Lieber gezeichnet") }
+                        }
+                    }
+                } else LookEditor(partnerLook, { partnerLook = it }, allowBeard = false)
+                OutlinedButton(onClick = { partnerPicker.launch(arrayOf("image/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Eigenes Foto für sie verwenden") }
             }
-            Text("Tippe auf das Bild, um ein eigenes Porträt zu wählen.", color = Muted, fontSize = 12.sp, modifier = Modifier.weight(1f))
         }
         OutlinedTextField(partnerName, { partnerName = it.take(24) }, label = { Text("Name der Partnerin") },
             placeholder = { Text("Ihr Name") }, singleLine = true,
@@ -384,7 +380,10 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
             isError = partnerAgeValue < 18,
             supportingText = { if (partnerAgeValue < 18) Text("Deine Partnerin muss mindestens 18 Jahre alt sein.") })
         Text("Volk", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-        ChoiceRow(Species.entries.map { it.label }, partnerSpecies.label) { label -> partnerSpecies = Species.entries.first { it.label == label } }
+        ChoiceRow(Species.entries.map { it.label }, partnerSpecies.label) { label ->
+            partnerSpecies = Species.entries.first { it.label == label }
+            partnerLook = partnerLook.copy(elfEars = partnerSpecies != Species.HUMAN)
+        }
         Text("Werdegang · Ort eurer Begegnung", color = PaleGold, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
         listOf(
             Triple("alina", "Grenzläuferin", "Meisterbogenschützin. Ihr begegnet euch im Nebel an der Furt von Rabenfurt."),
@@ -457,8 +456,9 @@ private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit
                             created.copy(
                                 settings = created.settings.copy(ironman = ironman),
                                 player = created.player.copy(weapon = weapon, armorStyle = armor),
+                                crown = created.crown.copy(playerLook = playerLook),
                             ),
-                            PartnerProfile(partnerName, partnerAgeValue, partnerSpecies, partnerBackground, partnerPortrait),
+                            PartnerProfile(partnerName, partnerAgeValue, partnerSpecies, partnerBackground, partnerPortrait, look = partnerLook),
                         )
                     }
                 )
@@ -696,7 +696,7 @@ private fun GameShell(
                 DuelPanel(state, duel) { result -> onState(result.state); onNotice(result.message) }
             } else if (battleVisible) {
                 LiveBattleScreen(state, { next -> onState(next) }, onNotice)
-            } else when (screen) {
+            } else androidx.compose.animation.Crossfade(targetState = screen, animationSpec = androidx.compose.animation.core.tween(if (state.settings.animations) 220 else 0), label = "area") { screen -> when (screen) {
                 GameDestination.TODAY -> TodayScreen(state, onAdvanceDay) { destination, tab -> if (destination == GameDestination.COURT && tab == 0 && sagaScene != null) dismissedScene = null; open(destination, tab) }
                 GameDestination.COMMAND -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay)
                 GameDestination.DECISIONS -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay, initialPage = 1)
@@ -725,11 +725,16 @@ private fun GameShell(
                 GameDestination.JOURNAL -> QuestJournalScreen(state) { open(it) }
                 GameDestination.CHRONICLE -> ChronicleScreen(state)
                 GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
-            }
+            } }
         }
     }
 
-    if (sagaScene != null && dismissedScene != sagaScene.key && state.crown.duel == null && state.battleSession == null) {
+    val celebration = state.crown.celebrations.firstOrNull()
+    if (celebration != null && state.crown.duel == null && state.battleSession?.isActive != true) {
+        CelebrationOverlay(celebration, state.crown.celebrations.size, state.settings.animations) {
+            onState(com.goldenunicorn.troopmanager.engine.CelebrationEngine.dismiss(state))
+        }
+    } else if (sagaScene != null && dismissedScene != sagaScene.key && state.crown.duel == null && state.battleSession == null) {
         SagaStageDialog(state, sagaScene, { result -> onState(result.state); onNotice(result.message) }) { dismissedScene = sagaScene.key }
     }
 

@@ -78,6 +78,7 @@ object ProgressionEngine {
                 realm = r.copy(settlementTier = tier),
                 completedRealm = state.completedRealm || title in setOf("Hochkönig", "Großkönig", "Kaiser der Kronlande"),
             )
+        next = CelebrationEngine.titleChange(state.title, next)
         if (!state.completedRealm && next.completedRealm)
             next =
                 next.copy(

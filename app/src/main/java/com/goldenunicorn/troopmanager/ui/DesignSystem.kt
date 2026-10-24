@@ -1,5 +1,6 @@
 package com.goldenunicorn.troopmanager.ui
 
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -88,7 +89,14 @@ internal fun BigStat(label: String, value: String, modifier: Modifier = Modifier
         modifier.clip(RoundedCornerShape(16.dp)).background(StoneRaised).padding(Space.m),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(value, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1)
+        androidx.compose.animation.AnimatedContent(
+            targetState = value,
+            transitionSpec = {
+                (androidx.compose.animation.slideInVertically { it / 2 } + androidx.compose.animation.fadeIn()) togetherWith
+                    (androidx.compose.animation.slideOutVertically { -it / 2 } + androidx.compose.animation.fadeOut())
+            },
+            label = "stat",
+        ) { shown -> Text(shown, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black, maxLines = 1) }
         Text(label, color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }

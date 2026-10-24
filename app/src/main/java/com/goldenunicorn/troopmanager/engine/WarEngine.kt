@@ -489,8 +489,14 @@ object WarEngine {
             enemyFled = if (victory) session.enemyRemaining else session.fronts.filter { it.intent == BattleAiIntent.WITHDRAW }.sumOf { it.enemySoldiers },
             ownFled = session.contingents.filter { it.routed }.sumOf { it.soldiers })
         val records = state.war.history + record
+        // Each full record is ~26 KB. Keep replays for the newest 5 battles and exchange details for the newest 3;
+        // older reports keep outcome, casualties and causes, so long campaigns stay small and fast to save.
         val history = records.mapIndexed { index, entry ->
-            if (index < records.size - 24 && entry.replay != null) entry.copy(replay = null, inputs = emptyList()) else entry
+            var trimmed = entry
+            if (index < records.size - 5 && trimmed.replay != null) trimmed = trimmed.copy(replay = null, inputs = emptyList())
+            if (index < records.size - 3 && (trimmed.exchanges.isNotEmpty() || trimmed.segments.isNotEmpty() || trimmed.siegeDevices.isNotEmpty()))
+                trimmed = trimmed.copy(exchanges = emptyList(), segments = emptyList(), siegeDevices = emptyList(), turningPoints = trimmed.turningPoints.takeLast(4))
+            trimmed
         }
         return ArmyEngine.clampAssignments(
             state.copy(

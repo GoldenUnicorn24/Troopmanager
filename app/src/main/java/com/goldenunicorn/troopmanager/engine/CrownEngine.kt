@@ -15,7 +15,7 @@ object CrownEngine {
     private fun ok(state: GameState, text: String) = GameEngine.ActionResult(state, text)
 
     fun chronicle(state: GameState, title: String, text: String): GameState =
-        state.copy(chronicle = (state.chronicle + ChronicleEntry(state.day, title, text)).takeLast(2000))
+        state.copy(chronicle = (state.chronicle + ChronicleEntry(state.day, title, text)).takeLast(CHRONICLE_LIMIT))
 
     // ------------------------------------------------------------ lifecycle
 
@@ -28,7 +28,7 @@ object CrownEngine {
             initialized = true,
             partners = partners,
         )
-        return HeroineSagaEngine.initialize(state.copy(crown = crown))
+        return RivalEngine.initialize(HeroineSagaEngine.initialize(state.copy(crown = crown)))
     }
 
     fun tick(state: GameState): GameState {
@@ -43,6 +43,8 @@ object CrownEngine {
         next = edictSideEffects(next)
         next = CrownWarEngine.tick(next)
         next = HeroineSagaEngine.tick(next)
+        next = ActEngine.tick(next)
+        next = RivalEngine.tick(next)
         return next
     }
 
@@ -295,13 +297,15 @@ object CrownEngine {
             p.land in hordeLands || (CrownCatalog.neighbors[p.land] ?: emptySet()).any { it in hordeLands }
         }
         val target = exposed.minByOrNull { it.fortification * 1000 + it.loyalty } ?: return state
-        if (target.fortification >= 3) return chronicle(state, "Überfall abgewehrt", "Der Aschebund rennt gegen die Befestigungen von ${target.name} an und zieht sich zurück.")
+        val raiders = state.crown.provinces.filter { it.owner == ProvinceOwner.HORDE }
+            .minByOrNull { if (it.land == target.land) 0 else 1 }?.ownerLabel ?: "Orks"
+        if (target.fortification >= 3) return chronicle(state, "Überfall abgewehrt", "$raiders rennen gegen die Befestigungen von ${target.name} an und ziehen sich zurück.")
         val loss = (target.population * (0.05 - target.fortification * 0.015)).toInt()
         val provinces = state.crown.provinces.map {
             if (it.id == target.id) it.copy(population = (it.population - loss).coerceAtLeast(500), loyalty = (it.loyalty - 6).coerceAtLeast(0)) else it
         }
-        return chronicle(state.copy(crown = state.crown.withProvinces(provinces)), "Aschebund plündert ${target.name}",
-            "Horden fallen in ${target.name} ein: $loss Untertanen fliehen oder sterben. Befestige die Provinz, um künftige Überfälle abzuwehren.")
+        return chronicle(state.copy(crown = state.crown.withProvinces(provinces)), "$raiders plündern ${target.name}",
+            "$raiders fallen in ${target.name} ein: $loss Untertanen fliehen oder sterben. Befestige die Provinz, um künftige Überfälle abzuwehren.")
     }
 
     private fun edictSideEffects(state: GameState): GameState {
@@ -404,6 +408,8 @@ object CrownEngine {
             renown = next.renown + 15 + p.wealth * 3,
         )
         next = chronicle(next, "${p.name} gehört der Krone", "$how in ${p.land.label}: ${p.name} (${p.population} Untertanen) schließt sich deinem Reich an. $settlers Siedler ziehen in deine Lande.")
+        next = CelebrationEngine.provinceMilestone(next)
+        next = RivalEngine.onProvinceAcquired(next, p)
         return ProgressionEngine.update(next)
     }
 
@@ -419,7 +425,7 @@ object CrownEngine {
 
     fun envoy(state: GameState, id: String): GameEngine.ActionResult {
         val p = province(state, id) ?: return ok(state, "Provinz nicht gefunden.")
-        if (p.owner != ProvinceOwner.RIVAL && p.owner != ProvinceOwner.FREE) return ok(state, "Mit ${p.owner.label} gibt es keine Verhandlungen.")
+        if (p.owner != ProvinceOwner.RIVAL && p.owner != ProvinceOwner.FREE) return ok(state, "Mit ${p.ownerLabel} gibt es keine Verhandlungen.")
         if (!reachable(state, p.land)) return ok(state, "${p.land.label} ist noch nicht erreichbar.")
         if (p.lastEnvoyDay == state.day) return ok(state, "Die Gesandten sind heute bereits unterwegs.")
         val cost = 250 + p.wealth * 50
@@ -523,6 +529,40 @@ object CrownEngine {
         return (campaignsAllowed(state) - used).coerceAtLeast(0)
     }
 
+    // ------------------------------------------------------------ companion in battle
+
+    data class CompanionAbility(val name: String, val description: String, val ratio: Double, val losses: Double)
+
+    /** The companion's special ability, or null when she is not available (not met, wounded or away). */
+    fun companionAbility(state: GameState): CompanionAbility? {
+        val saga = state.crown.saga
+        if (!state.companion.met || saga.companionId == null) return null
+        if (saga.companionWoundedUntil > state.day || state.commanderAway(COMPANION_COMMANDER_ID)) return null
+        return when (saga.companionId) {
+            "alina" -> CompanionAbility("Pfeilhagel", "Ihre Bogenschützen dünnen jede Verteidigung aus.", 1.15, 0.95)
+            "seraphine" -> CompanionAbility("Ritterlicher Sturm", "Sie führt den Sturmangriff an vorderster Front.", 1.20, 1.0)
+            "liang" -> CompanionAbility("Kriegslist", "Sie findet die Schwachstelle in jeder Stellung.", 1.12, 0.80)
+            "ithiliel" -> CompanionAbility("Klingentanz", "Wo sie kämpft, bricht die Moral des Feindes.", 1.14, 0.90)
+            else -> CompanionAbility("Treue Klinge", "Sie kämpft an deiner Seite.", 1.10, 0.95)
+        }
+    }
+
+    fun companionWoundedDays(state: GameState): Int = (state.crown.saga.companionWoundedUntil - state.day).coerceAtLeast(0)
+
+    private fun maybeWoundCompanion(state: GameState, victory: Boolean, risky: Boolean, seed: Int): GameState {
+        if (companionAbility(state) == null) return state
+        val chance = (if (victory) 0.04 else 0.30) + (if (risky) 0.15 else 0.0)
+        if (Random(seed).nextDouble() >= chance) return state
+        val days = (8 - state.realm.level(BuildingType.HOSPITAL)).coerceIn(3, 8)
+        val name = state.companion.name
+        var next = state.copy(
+            crown = state.crown.copy(saga = state.crown.saga.copy(companionWoundedUntil = state.day + days)),
+            companion = state.companion.copy(affection = (state.companion.affection + 3).coerceAtMost(100)),
+        )
+        next = RelationshipEngine.remember(next, "wounded", "$name wird im Kampf verwundet. Du wachst an ihrem Lager.", 3, setOf("battle"))
+        return chronicle(next, "$name verwundet", "$name wurde im Kampf verwundet und braucht $days Tage zur Genesung.")
+    }
+
     private fun commandFactor(state: GameState): Double {
         val arts = state.crown.arts
         val companion = if (state.companion.met && state.crown.saga.companionId != null)
@@ -543,7 +583,8 @@ object CrownEngine {
             val pool = state.armyPools.first { it.type == type }
             (n.toDouble() * pool.power / pool.soldiers.coerceAtLeast(1)).toLong()
         }
-        val ownPower = (own * commandFactor(state)).toLong()
+        val ability = companionAbility(state)
+        val ownPower = (own * commandFactor(state) * (ability?.ratio ?: 1.0)).toLong()
         val difficulty = when (state.settings.difficulty) { Difficulty.STORY -> 0.8; Difficulty.VETERAN -> 1.2; else -> 1.0 }
         val champion = when (id) {
             state.crown.championBonusProvinceId -> 0.8
@@ -554,8 +595,8 @@ object CrownEngine {
         var ratio = if (enemyPower <= 0) 99.0 else ownPower.toDouble() / enemyPower
         if (state.crown.godMode) ratio = maxOf(ratio, 8.0)
         val total = troops.values.sum()
-        val lossFraction = if (ratio >= 1.0) (0.30 / ratio.pow(1.15)).coerceIn(0.01, 0.45)
-            else (0.25 + 0.2 * (1.0 - ratio)).coerceIn(0.25, 0.6)
+        val lossFraction = (if (ratio >= 1.0) (0.30 / ratio.pow(1.15)).coerceIn(0.01, 0.45)
+            else (0.25 + 0.2 * (1.0 - ratio)).coerceIn(0.25, 0.6)) * (ability?.losses ?: 1.0)
         val label = when {
             total == 0 -> "Keine Truppen daheim"
             ratio >= 2.5 -> "Überwältigend"
@@ -574,23 +615,39 @@ object CrownEngine {
         if (p.owner == ProvinceOwner.PLAYER) return ok(state, "${p.name} gehört bereits dir.")
         if (!reachable(state, p.land)) return ok(state, "${p.land.label} ist noch nicht erreichbar.")
         if (campaignsLeft(state) <= 0) return ok(state, "Dein Heer braucht Ruhe. Morgen sind neue Feldzüge möglich.")
+        if (state.crown.pendingMarch != null) return ok(state, "Ein Feldzug wartet noch auf deine Entscheidung unterwegs.")
         val preview = preview(state, id, sharePercent) ?: return ok(state, "Feldzug nicht möglich.")
         if (preview.ownTroops <= 0) return ok(state, "Keine Soldaten daheim, die ausrücken könnten.")
         if (state.resources.gold < preview.supplyGold || state.resources.food < preview.supplyFood)
             return ok(state, "Nachschub fehlt: ${preview.supplyGold} Gold und ${preview.supplyFood} Nahrung.")
+        MarchEngine.maybeStart(state, id, sharePercent.coerceIn(1, 100))?.let { return it }
+        return resolveConquest(state, id, sharePercent, PendingMarch(id, sharePercent))
+    }
+
+    /** Fights the campaign; [march] carries modifiers from an event on the way. */
+    fun resolveConquest(state: GameState, id: String, sharePercent: Int, march: PendingMarch): GameEngine.ActionResult {
+        val p = province(state, id) ?: return ok(state, "Provinz nicht gefunden.")
+        if (p.owner == ProvinceOwner.PLAYER) return ok(state, "${p.name} gehört bereits dir.")
+        val base = preview(state, id, sharePercent) ?: return ok(state, "Feldzug nicht möglich.")
+        if (base.ownTroops <= 0) return ok(state, "Keine Soldaten daheim, die ausrücken könnten.")
+        val preview = base.copy(ratio = base.ratio * march.ratioFactor)
+        val supplyGold = minOf(preview.supplyGold, state.resources.gold)
+        val supplyFood = minOf(preview.supplyFood, state.resources.food)
         val troops = committed(state, sharePercent.coerceIn(1, 100))
         val rng = Random(state.day * 7919 + p.id.hashCode() + state.crown.campaignVictories * 31)
         val roll = rng.nextDouble(0.92, 1.08)
         val victory = p.garrison <= 0 || preview.ratio * roll >= 1.0
-        val lossFraction = if (victory) (0.30 / (preview.ratio * roll).pow(1.15)).coerceIn(0.01, 0.45)
-            else (0.25 + 0.2 * (1.0 - preview.ratio)).coerceIn(0.25, 0.6)
+        val ability = companionAbility(state)
+        val lossFraction = (if (victory) (0.30 / (preview.ratio * roll).pow(1.15)).coerceIn(0.01, 0.45)
+            else (0.25 + 0.2 * (1.0 - preview.ratio)).coerceIn(0.25, 0.6)) * march.lossFactor * (ability?.losses ?: 1.0)
         val losses = troops.mapValues { (_, n) -> (n * lossFraction).roundToInt() }
         val ownLosses = losses.values.sum()
         val enemyLosses = if (victory) p.garrison else (p.garrison * (0.5 * preview.ratio).coerceIn(0.05, 0.6)).toInt()
 
         var next = state.copy(
-            resources = state.resources.copy(gold = state.resources.gold - preview.supplyGold, food = state.resources.food - preview.supplyFood),
+            resources = state.resources.copy(gold = state.resources.gold - supplyGold, food = state.resources.food - supplyFood),
             crown = state.crown.copy(
+                pendingMarch = null,
                 lastCampaignDay = state.day,
                 campaignsToday = (if (state.crown.lastCampaignDay == state.day) state.crown.campaignsToday else 0) + 1,
                 championBonusProvinceId = state.crown.championBonusProvinceId.takeUnless { it == id },
@@ -619,7 +676,8 @@ object CrownEngine {
             next = acquire(next, id, "Eroberung")
             if (next.companion.met) next = next.copy(companion = next.companion.copy(
                 trust = (next.companion.trust + 2).coerceAtMost(100), respect = (next.companion.respect + 3).coerceAtMost(100)))
-            text = "Sieg in ${p.name}! ${preview.ownTroops} Soldaten stürmen gegen ${p.garrison} Verteidiger. Verluste: $ownLosses. Beute: $loot Gold."
+            val helper = ability?.let { " ${next.companion.name}: ${it.name}." } ?: ""
+            text = "Sieg in ${p.name}! ${preview.ownTroops} Soldaten stürmen gegen ${p.garrison} Verteidiger. Verluste: $ownLosses. Beute: $loot Gold.$helper"
         } else {
             renown = 2
             next = replace(next, p.copy(garrison = (p.garrison - enemyLosses).coerceAtLeast(0)))
@@ -629,7 +687,9 @@ object CrownEngine {
         val report = CampaignReport(state.day, p.id, p.name, victory, preview.ownTroops, ownLosses, p.garrison, enemyLosses, loot, renown, text)
         next = next.copy(crown = next.crown.copy(reports = (listOf(report) + next.crown.reports).take(25)))
         next = chronicle(next, if (victory) "Feldzug gewonnen" else "Feldzug abgebrochen", text)
-        return ok(ProgressionEngine.update(next), text)
+        next = maybeWoundCompanion(next, victory, march.companionRisk, state.day * 31 + p.id.hashCode())
+        val wounded = next.crown.saga.companionWoundedUntil > state.day && state.crown.saga.companionWoundedUntil <= state.day
+        return ok(ProgressionEngine.update(next), if (wounded) "$text ${next.companion.name} wurde verwundet!" else text)
     }
 
     // ------------------------------------------------------------ edicts

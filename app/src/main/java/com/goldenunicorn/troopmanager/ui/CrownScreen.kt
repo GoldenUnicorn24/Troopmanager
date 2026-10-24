@@ -110,6 +110,7 @@ private fun costLabel(cost: Resources): String = ResourceKind.entries
 
 private fun androidx.compose.foundation.lazy.LazyListScope.landsTab(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
     val crown = state.crown
+    item(key = "act") { ActCard(state, apply) }
     item(key = "title") {
         val ladder = CrownCatalog.titleLadder
         val index = ladder.indexOfFirst { it.title == state.title }.coerceAtLeast(0)
@@ -212,7 +213,7 @@ private fun ProvinceCard(
     onCampaign: () -> Unit,
 ) {
     CrownCard(emphasized = p.owner == ProvinceOwner.PLAYER) {
-        CardTitle(p.name, "${p.terrain} · ${p.culture.label} · Wohlstand ${"★".repeat((p.wealth + 1) / 2)}", p.owner.label, ownerColor(p.owner))
+        CardTitle(p.name, "${p.terrain} · ${p.culture.label} · Wohlstand ${"★".repeat((p.wealth + 1) / 2)}", p.ownerLabel, ownerColor(p.owner))
         InfoLine("Bevölkerung", fmt(p.population))
         if (p.owner == ProvinceOwner.PLAYER) {
             Meter("Loyalität", p.loyalty, color = if (p.loyalty >= 40) Emerald else Crimson)
@@ -272,6 +273,11 @@ private fun CampaignDialog(state: GameState, provinceId: String, apply: (GameEng
                     state.crown.championBonusProvinceId == provinceId -> Text("Der feindliche Champion ist gefallen: −20 % Verteidigung.", color = Emerald, fontSize = 12.sp)
                     state.crown.championPenaltyProvinceId == provinceId -> Text("Dein Champion-Duell ging verloren: +10 % Verteidigung.", color = Crimson, fontSize = 12.sp)
                     else -> Text("Fordere vorher den feindlichen Champion zum Duell. Ein Sieg bricht den Mut der Verteidiger.", color = Muted, fontSize = 12.sp)
+                }
+                val ability = CrownEngine.companionAbility(state)
+                when {
+                    ability != null -> Text("${state.companion.name} kämpft mit: ${ability.name} (+${((ability.ratio - 1) * 100).toInt()} % Stärke). ${ability.description}", color = Emerald, fontSize = 12.sp)
+                    CrownEngine.companionWoundedDays(state) > 0 -> Text("${state.companion.name} ist noch ${CrownEngine.companionWoundedDays(state)} Tage verwundet.", color = Crimson, fontSize = 12.sp)
                 }
                 Text("Feldzüge heute noch: ${CrownEngine.campaignsLeft(state)}", color = Muted, fontSize = 12.sp)
                 GoldButton("Angreifen · schnell auflösen", { apply(CrownEngine.conquer(state, provinceId, share)); onClose() }, Modifier.fillMaxWidth())
@@ -399,6 +405,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
     apply: (GameEngine.ActionResult) -> Unit,
     onState: (GameState) -> Unit,
 ) {
+    item(key = "looks") { LooksCard(state, onState) }
     if (state.companion.met) item(key = "companion_story") { CompanionStoryCard(state, onState) }
     item {
         Text(
@@ -411,10 +418,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 }
 
 @Composable
-internal fun Portrait(key: String, uri: String?, diameter: Int = 64) {
+internal fun Portrait(key: String, uri: String?, diameter: Int = 64, look: PortraitSpec? = null) {
     val modifier = Modifier.size(diameter.dp).clip(CircleShape).background(Steel)
-    if (uri != null) AsyncImage(uri, null, modifier, contentScale = ContentScale.Crop)
-    else Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
+    when {
+        uri != null -> AsyncImage(uri, null, modifier, contentScale = ContentScale.Crop)
+        look != null -> DrawnPortrait(look, modifier)
+        else -> Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
+    }
 }
 
 @Composable
@@ -424,7 +434,7 @@ private fun CompanionStoryCard(state: GameState, onState: (GameState) -> Unit) {
     val def = HeroineSagaEngine.companionDef(state)
     CrownCard(emphasized = true) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Portrait(def?.portraitKey ?: "companion", c.portraitUri, 72)
+            Portrait(def?.portraitKey ?: "companion", c.portraitUri, 72, HeroineSagaEngine.companionLook(state))
             Column(Modifier.weight(1f)) {
                 Text(c.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
                 val role = if (state.relationship.romanceStage == RomanceStage.CO_RULERS) "Königin & Feldherrin" else c.role
@@ -453,7 +463,7 @@ private fun HeroineCard(state: GameState, def: CrownCatalog.HeroineDef, apply: (
     val available = partner || HeroineSagaEngine.available(state, def)
     CrownCard(emphasized = h.stage == HeroineStage.COMPANION) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Portrait(def.portraitKey, partnerPortrait(state, def.id) ?: if (h.stage == HeroineStage.COMPANION) state.companion.portraitUri else null)
+            Portrait(def.portraitKey, partnerPortrait(state, def.id) ?: if (h.stage == HeroineStage.COMPANION) state.companion.portraitUri else null, 64, HeroineSagaEngine.look(state, def.id))
             Column(Modifier.weight(1f)) {
                 Text(if (h.stage == HeroineStage.RUMOR && !available) "Unbekannte Heldin" else def.name, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
                 Text("${def.epithet} · ${def.location}", color = Muted, fontSize = 12.sp)
@@ -616,3 +626,43 @@ private fun androidx.compose.foundation.lazy.LazyListScope.edictsTab(state: Game
 
 internal fun partnerPortrait(state: GameState, heroineId: String): String? =
     state.crown.saga.partner?.takeIf { it.background == heroineId }?.portraitUri
+
+@Composable
+private fun LooksCard(state: GameState, onState: (GameState) -> Unit) {
+    var editPlayer by remember { mutableStateOf(false) }
+    var editPartner by remember { mutableStateOf(false) }
+    val partner = state.crown.saga.partner
+    CrownCard {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Portrait("knight", state.player.portraitUri, 56, state.crown.playerLook ?: ActCatalog.defaultPlayerLook(state.player.species))
+            if (partner != null) Portrait(partnerPortraitKeyFor(partner.background), partner.portraitUri, 56, partner.look ?: ActCatalog.heroineLook(partner.background))
+            Column(Modifier.weight(1f)) {
+                Text("Gesichter", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("Passe euer Aussehen jederzeit an.", color = Muted, fontSize = 12.sp)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) { SmallAction("Dein Gesicht") { editPlayer = true } }
+            if (partner != null) Box(Modifier.weight(1f)) { SmallAction("Gesicht von ${partner.name}") { editPartner = true } }
+        }
+    }
+    if (editPlayer) LookEditorDialog("Dein Aussehen", state.crown.playerLook ?: ActCatalog.defaultPlayerLook(state.player.species), { editPlayer = false }) {
+        editPlayer = false
+        onState(state.copy(crown = state.crown.copy(playerLook = it), player = state.player.copy(portraitUri = null)))
+    }
+    if (editPartner && partner != null) LookEditorDialog("Aussehen von ${partner.name}", partner.look ?: ActCatalog.heroineLook(partner.background), { editPartner = false }) { look ->
+        editPartner = false
+        val companionIsPartner = state.crown.saga.companionId == partner.background
+        onState(state.copy(
+            crown = state.crown.copy(saga = state.crown.saga.copy(partner = partner.copy(look = look, portraitUri = null))),
+            companion = if (companionIsPartner) state.companion.copy(portraitUri = null) else state.companion,
+        ))
+    }
+}
+
+private fun partnerPortraitKeyFor(background: String): String = when (background) {
+    "seraphine" -> "knight"
+    "liang" -> "wall_guard"
+    "ithiliel" -> "gold_elf"
+    else -> "companion"
+}

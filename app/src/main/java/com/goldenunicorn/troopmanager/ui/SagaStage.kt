@@ -48,12 +48,14 @@ internal fun SagaStageDialog(state: GameState, scene: SagaScene, apply: (GameEng
                 }
                 Spacer(Modifier.weight(0.15f))
                 val def = HeroineSagaEngine.def(state, scene.heroineId)
-                val uri = partnerPortrait(state, scene.heroineId) ?: if (state.crown.saga.companionId == scene.heroineId) state.companion.portraitUri else null
+                val heroine = def != null
+                val uri = if (heroine) partnerPortrait(state, scene.heroineId) ?: if (state.crown.saga.companionId == scene.heroineId) state.companion.portraitUri else null else null
+                val look = scene.look ?: if (heroine) HeroineSagaEngine.look(state, scene.heroineId) else null
                 Box(Modifier.align(Alignment.CenterHorizontally).border(3.dp, Gold.copy(alpha = .7f), CircleShape)) {
-                    Portrait(def?.portraitKey ?: "companion", uri, 168)
+                    Portrait(scene.portraitKey ?: def?.portraitKey ?: "companion", uri, 168, look)
                 }
                 Text(
-                    def?.name ?: state.companion.name,
+                    scene.speaker ?: def?.name ?: state.companion.name,
                     color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
@@ -87,11 +89,13 @@ internal fun SagaStageDialog(state: GameState, scene: SagaScene, apply: (GameEng
     }
 }
 
-private enum class Backdrop { FORD, TOURNAMENT, WALL, ELF_COURT, CAMP, HALL, DUSK }
+private enum class Backdrop { FORD, TOURNAMENT, WALL, ELF_COURT, CAMP, HALL, DUSK, HORDE }
 
 private fun backdropFor(text: String): Backdrop {
     val t = text.lowercase()
     return when {
+        "ork" in t || "uruk" in t || "tao-tei" in t || "hordenland" in t || "kriegshäuptling" in t -> Backdrop.HORDE
+        "marsch nach" in t -> Backdrop.CAMP
         "furt" in t || "nebel" in t -> Backdrop.FORD
         "turnier" in t || "aldenburg" in t || "markt" in t -> Backdrop.TOURNAMENT
         "kranich" in t || "wall" in t || "kriegsrat" in t || "rat am" in t -> Backdrop.WALL
@@ -115,6 +119,7 @@ private fun SceneBackdrop(key: String, modifier: Modifier) {
             Backdrop.CAMP -> camp()
             Backdrop.HALL -> hall()
             Backdrop.DUSK -> dusk()
+            Backdrop.HORDE -> horde()
         }
     }
 }
@@ -224,4 +229,21 @@ private fun DrawScope.dusk() {
     sky(Color(0xFF2C3E58), Color(0xFFC77C4E))
     hills(Color(0xFF2A2F3A), 0.5f, 0.08f, 1.2f)
     hills(Color(0xFF1A1E26), 0.6f, 0.05f, 2.1f)
+}
+
+private fun DrawScope.horde() {
+    sky(Color(0xFF2A0E0C), Color(0xFF7A2A14))
+    hills(Color(0xFF1A0B0A), 0.5f, 0.10f, 1.4f)
+    for (i in 0 until 9) {
+        val x = size.width * (0.05f + i * 0.11f)
+        val base = size.height * (0.52f + (i % 3) * 0.02f)
+        drawLine(Color(0xFF120706), Offset(x, base), Offset(x, base - size.height * 0.10f), strokeWidth = 5f)
+        drawPath(Path().apply {
+            moveTo(x, base - size.height * 0.10f); lineTo(x + size.width * 0.05f, base - size.height * 0.085f); lineTo(x, base - size.height * 0.07f); close()
+        }, Color(0xFF8A1F1F))
+    }
+    for (i in 0 until 4) {
+        val c = Offset(size.width * (0.15f + i * 0.25f), size.height * 0.46f)
+        drawCircle(Brush.radialGradient(listOf(Color(0x99FF6A00), Color(0x00FF6A00)), center = c, radius = size.width * 0.18f), size.width * 0.18f, c)
+    }
 }

@@ -27,6 +27,12 @@ object HeroineSagaEngine {
 
     const val PARTNER_MEET_DAY = 7
 
+    /** Drawn face of a heroine: the partner's own design, otherwise the heroine's default look. */
+    fun look(state: GameState, heroineId: String): PortraitSpec? =
+        saga(state).partner?.takeIf { it.background == heroineId }?.look ?: if (CrownCatalog.heroine(heroineId) != null) ActCatalog.heroineLook(heroineId) else null
+
+    fun companionLook(state: GameState): PortraitSpec? = saga(state).companionId?.let { look(state, it) }
+
     fun isPartner(state: GameState, heroineId: String): Boolean = saga(state).partnerId == heroineId
 
     /** Replaces the template heroine's names with the player's own partner. */
@@ -267,6 +273,8 @@ object HeroineSagaEngine {
         next = RelationshipEngine.remember(next, "first_meeting", "${def.name} schwört dir in ${def.location} die Treue als Feldherrin.", 4, setOf("relationship", "milestone"))
         next = CrownEngine.chronicle(next, "${def.name} wird deine Feldherrin", "${def.name}, ${def.epithet}, übernimmt das Kommando über eigene Truppen und reitet von nun an an deiner Seite.")
         next = RelationshipEngine.syncCommander(next)
+        next = CelebrationEngine.add(next, CelebrationKind.HEROINE, "${def.name} reitet an deiner Seite",
+            "Als deine Feldherrin kämpft sie mit ihrer Spezialfähigkeit in jedem Feldzug mit.")
         return ok(next, "${def.name} ist jetzt deine Feldherrin. Weise ihr im Heer Truppen zu.")
     }
 
@@ -282,6 +290,7 @@ object HeroineSagaEngine {
         next = withHeroine(next, h.copy(stage = HeroineStage.GENERAL, recruitedDay = state.day))
         next = CharacterEngine.initialize(next)
         next = CrownEngine.chronicle(next, "${def.name} führt ein Heer", "${def.name}, ${def.epithet}, übernimmt als Feldherrin ein eigenes Heer deines Reiches.")
+        next = CelebrationEngine.add(next, CelebrationKind.HEROINE, "${def.name} führt ein Heer", "Jede Feldherrin macht deine Feldzüge stärker.")
         return ok(next, "${def.name} führt nun als Feldherrin ein Heer. Weise ihr im Heer Truppen zu.")
     }
 
@@ -428,6 +437,9 @@ object HeroineSagaEngine {
         val scene = saga(state).pendingScene ?: return ok(state, "Keine offene Szene.")
         val cleared = withSaga(state, saga(state).copy(pendingScene = null))
         return when {
+            scene.key.startsWith("march_") -> MarchEngine.choose(cleared, scene, optionId)
+            scene.key.startsWith("rival_") -> RivalEngine.choose(cleared, scene, optionId)
+            scene.key.startsWith("boss_") -> ActEngine.choose(cleared, optionId)
             scene.key.startsWith("meet_") -> meetingChoice(cleared, scene, optionId)
             scene.key.startsWith("royal_") -> RoyalCourtEngine.choose(cleared, scene, optionId)
             else -> chapterChoice(cleared, scene, optionId)
@@ -474,7 +486,10 @@ object HeroineSagaEngine {
             else -> { favor += 10; impression = "Ihr begegnet euch zum ersten Mal." }
         }
         val personal = personalize(state, def.id, impression)
-        next = withHeroine(next, h.copy(stage = HeroineStage.MET, metDay = state.day, favor = favor.coerceIn(0, 100), firstImpression = personal))
+        // The player's own partner asks for her trial right away so the story never stalls silently.
+        val stage = if (isPartner(state, def.id)) HeroineStage.TRIAL else HeroineStage.MET
+        next = withHeroine(next, h.copy(stage = stage, metDay = state.day, favor = favor.coerceIn(0, 100), firstImpression = personal,
+            trialStartDay = if (stage == HeroineStage.TRIAL) state.day else null, trialStartVictories = victoryCount(state)))
         next = withSaga(next, saga(next).copy(lastOutcome = personal))
         next = CrownEngine.chronicle(next, "Begegnung mit ${def.name}", personal)
         return ok(next, personal)
@@ -593,7 +608,13 @@ object HeroineSagaEngine {
         val result = RelationshipEngine.action(prepared, action)
         return if (result.state.relationship.romanceStage > before) {
             val text = result.message
-            ok(onSuccess(advance(result.state, chapter + 1, text)), text)
+            var done = onSuccess(advance(result.state, chapter + 1, text))
+            done = when (done.relationship.romanceStage) {
+                RomanceStage.MARRIED -> CelebrationEngine.add(done, CelebrationKind.WEDDING, "Hochzeit von ${done.player.name} und ${done.companion.name}", text)
+                RomanceStage.CO_RULERS -> CelebrationEngine.add(done, CelebrationKind.CORONATION, "Königin ${done.companion.name}", "Gemeinsam regiert ihr die Kronlande.")
+                else -> done
+            }
+            ok(done, text)
         } else {
             // Nothing is forced: the scene returns in a few days, costs are refunded.
             val restored = state.copy(resources = state.resources.copy(gold = state.resources.gold + refund, food = state.resources.food + refundFood))

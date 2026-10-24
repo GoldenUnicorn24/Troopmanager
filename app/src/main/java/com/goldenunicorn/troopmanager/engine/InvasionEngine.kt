@@ -6,7 +6,9 @@ object InvasionEngine {
     fun day(state: GameState): GameState {
         var next = state
         val old = next.realm.threat
-        val threat = (old.toLong() + 2 + next.realm.territory + next.victories / 4).coerceAtMost(100).toInt()
+        // v1.3: crown provinces also count as territory, so growth is capped to keep invasions an event, not a routine.
+        val gain = 1 + next.realm.territory.coerceAtMost(8) / 2 + next.victories.coerceAtMost(30) / 6
+        val threat = (old.toLong() + gain).coerceAtMost(100).toInt()
         next = next.copy(realm = next.realm.copy(threat = threat))
         listOf(40 to "Späherwarnung", 60 to "Grenzüberfälle", 75 to "Große feindliche Bewegung")
             .forEach { (threshold, label) ->

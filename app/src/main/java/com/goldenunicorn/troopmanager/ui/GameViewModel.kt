@@ -14,6 +14,7 @@ import com.goldenunicorn.troopmanager.engine.QuestJournalEngine
 import com.goldenunicorn.troopmanager.engine.DailyReportEngine
 import com.goldenunicorn.troopmanager.engine.CoRulerEngine
 import com.goldenunicorn.troopmanager.engine.CrownWarEngine
+import com.goldenunicorn.troopmanager.engine.ActEngine
 import com.goldenunicorn.troopmanager.model.GameState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +90,7 @@ class GameViewModel(private val saves: SaveRepository) : ViewModel() {
     fun update(expected: GameState, next: GameState) = task {
         if (mutableUi.value.game != expected) return@task
         val reconciled = withContext(Dispatchers.Default) {
-            QuestJournalEngine.refresh(CoRulerEngine.refreshRegency(PresenceEngine.day(PresentationEngine.tick(RelationshipEngine.normalize(CrownWarEngine.reconcile(WorldEngine.reconcileBattle(next)))))))
+            QuestJournalEngine.refresh(CoRulerEngine.refreshRegency(PresenceEngine.day(PresentationEngine.tick(RelationshipEngine.normalize(ActEngine.reconcile(CrownWarEngine.reconcile(WorldEngine.reconcileBattle(next))))))))
         }
         persist(DailyReportEngine.recordAction(expected, reconciled))
     }

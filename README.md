@@ -1,6 +1,10 @@
-# Realm of the Last Wall — Troopmanager v1.2.0
+# Realm of the Last Wall — Troopmanager v1.3.0
 
 **Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v1.3: Akte, Rivalen-Könige, Feldzug-Ereignisse, Porträts
+
+Three acts with boss battles against Orks, Uruk-hai and Tao Tei, five rival rulers with personalities, events on the march, the partner fighting with her own ability, full-screen celebrations, animations and a portrait builder. See [v1.3](docs/V1.3-AKTE-UND-RIVALEN.md).
 
 ## v1.2: neue Oberfläche, lebendige Gegner, Königinnen-Anliegen
 

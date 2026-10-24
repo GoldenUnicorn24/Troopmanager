@@ -39,6 +39,12 @@ object AdvisorEngine {
                 GameDestination.KINGDOM,
             )
         }
+        if (ActEngine.bossReady(state)) ActEngine.current(state)?.let { act ->
+            list += Advice(Severity.CRITICAL, "Endkampf: ${act.boss.name}", "Alle Ziele von Akt ${act.number} sind erfüllt. Stell dich ${act.boss.title} in der Schlacht.", GameDestination.KINGDOM, 0)
+        }
+        crown.pendingMarch?.let { m ->
+            list += Advice(Severity.CRITICAL, "Feldzug wartet", "Unterwegs nach ${CrownEngine.province(state, m.provinceId)?.name ?: "der Provinz"} musst du eine Entscheidung treffen.", GameDestination.TODAY)
+        }
         state.invasion?.let {
             list += Advice(Severity.CRITICAL, "${it.enemy.label} rückt an", "Ankunft an Tag ${it.arrivalDay}. Bereite Mauern und Heer vor.", GameDestination.FRONTIER)
         }
@@ -111,10 +117,24 @@ object AdvisorEngine {
         }
         crown.saga.partner?.let { partner ->
             val h = crown.heroine(partner.background)
-            if (h?.stage == HeroineStage.TRAVELING) {
-                val days = ((h.arrivalDay ?: state.day) - state.day).coerceAtLeast(0)
-                list += Advice(Severity.INFO, "Begegnung mit ${partner.name}", if (days == 0) "Heute kreuzen sich eure Wege." else "In $days Tagen kreuzen sich eure Wege.", GameDestination.COURT, 0)
+            when (h?.stage) {
+                HeroineStage.TRAVELING -> {
+                    val days = ((h.arrivalDay ?: state.day) - state.day).coerceAtLeast(0)
+                    list += Advice(Severity.INFO, "Begegnung mit ${partner.name}", if (days == 0) "Heute kreuzen sich eure Wege." else "In $days Tagen kreuzen sich eure Wege.", GameDestination.COURT, 0)
+                }
+                HeroineStage.MET -> list += Advice(Severity.OPPORTUNITY, "${partner.name} wartet auf dich", "Bitte sie, deine Feldherrin zu werden.", GameDestination.COURT, 0)
+                HeroineStage.TRIAL -> {
+                    val progress = HeroineSagaEngine.trialProgress(state, h.id)
+                    if (!progress.done) list += Advice(Severity.INFO, "Probe für ${partner.name}: ${progress.current}/${progress.target}", progress.text, GameDestination.COURT, 0)
+                }
+                else -> Unit
             }
+        }
+        if (CrownEngine.companionWoundedDays(state) > 0)
+            list += Advice(Severity.INFO, "${state.companion.name} ist verwundet", "Noch ${CrownEngine.companionWoundedDays(state)} Tage, bis sie wieder mitkämpfen kann. Ein Lazarett verkürzt die Genesung.", GameDestination.COURT, 0)
+        ActEngine.current(state)?.takeIf { !ActEngine.goalsMet(state) }?.let { act ->
+            val open = ActEngine.goals(state).filterNot { it.done }
+            list += Advice(Severity.INFO, "Akt ${act.number}: ${act.title}", open.joinToString(" · ") { "${it.text} ${it.current}/${it.target}" }, GameDestination.KINGDOM, 0)
         }
         crown.saga.goal?.let { g ->
             val p = CrownEngine.province(state, g.provinceId)

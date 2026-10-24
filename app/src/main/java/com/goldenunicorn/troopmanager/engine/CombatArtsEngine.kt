@@ -202,6 +202,8 @@ object CombatArtsEngine {
                         renown = next.renown + renown,
                         crown = next.crown.copy(arts = next.crown.arts.copy(tournamentWins = tier + 1)),
                     )
+                    next = addXp(next, CombatArt.RIDING, 25)
+                    next = addXp(next, CombatArt.WARCRY, 15)
                     text = "Turniersieg! +$gold Gold, +$renown Ruhm."
                     next = CrownEngine.chronicle(next, "Turniersieg", "${next.player.name} besiegt ${duel.opponentName} vor jubelnden Rängen.")
                 } else {
@@ -215,6 +217,10 @@ object CombatArtsEngine {
                     else next.copy(crown = next.crown.copy(championPenaltyProvinceId = provinceId, championBonusProvinceId = null))
                 text = if (duel.won) "Der feindliche Champion fällt. Die Verteidiger verlieren den Mut (−20 % Stärke beim nächsten Feldzug)."
                     else "Dein Champion-Duell ist verloren. Die Verteidiger schöpfen Mut (+10 % Stärke)."
+            }
+            context.startsWith("rival:") -> {
+                next = RivalEngine.duelFinished(next, context.removePrefix("rival:"), duel.won)
+                text = if (duel.won) "Der Champion liegt im Staub. Respekt aus ganz ${ActCatalog.rival(context.removePrefix("rival:"))?.land?.label ?: "den Kronlanden"}." else "Der Champion behält die Oberhand."
             }
             context.startsWith("trial:") || context.startsWith("saga:") -> {
                 val heroineId = context.substringAfter(':')
@@ -232,7 +238,7 @@ object CombatArtsEngine {
         val tier = arts(state).tournamentWins
         val names = listOf("Ser Brandt der Junge", "Hauptmann Odo", "Ritterin Mira Falkenhorst", "Graf Vellmar", "Der Eisenhengst",
             "Klingenmeister Torvald", "Ser Aldric der Unbesiegte", "Die Rote Lanze", "Champion von Saltmere", "Großmeister Kaelen")
-        return names[tier % names.size] + (if (tier >= names.size) " ${tier / names.size + 1}" else "") to (55 + tier * 7).coerceAtMost(170)
+        return names[tier % names.size] + (if (tier >= names.size) " ${tier / names.size + 1}" else "") to (50 + tier * 5).coerceAtMost(135)
     }
 
     fun tournament(state: GameState): GameEngine.ActionResult {
@@ -256,10 +262,14 @@ object CombatArtsEngine {
         if (state.crown.championBonusProvinceId == provinceId) return ok(state, "Der Champion von ${p.name} ist bereits gefallen.")
         val skill = p.garrisonQuality * 4 + 20 + p.wealth * 2
         val name = when (p.owner) {
-            ProvinceOwner.HORDE -> "Kriegsherr von ${p.name}"
+            ProvinceOwner.HORDE -> when (p.horde) {
+                EnemyType.ORC -> "Ork-Häuptling von ${p.name}"
+                EnemyType.URUK -> "Uruk-hai-Kriegsführer von ${p.name}"
+                EnemyType.TAO_TEI -> "Tao-Tei-Alphatier von ${p.name}"
+            }
             ProvinceOwner.BANDITS, ProvinceOwner.REBELS -> "Räuberhauptmann von ${p.name}"
             else -> "Champion von ${p.name}"
         }
-        return ok(startDuel(state, "campaign:$provinceId", name, p.owner.label, skill), "$name nimmt deine Herausforderung an.")
+        return ok(startDuel(state, "campaign:$provinceId", name, p.ownerLabel, skill), "$name nimmt deine Herausforderung an.")
     }
 }

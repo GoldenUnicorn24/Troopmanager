@@ -5,7 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,6 +82,12 @@ internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) 
     val measurer = rememberTextMeasurer()
     val provinces = state.crown.provinces
     val reachable = remember(state.crown.provinceChanges) { CrownLand.entries.associateWith { CrownEngine.reachable(state, it) } }
+    // Conquered tiles fade into their new color instead of jumping.
+    val colors = provinces.associate { p ->
+        val open = reachable[p.land] == true || p.owner == ProvinceOwner.PLAYER
+        p.id to animateColorAsState(if (open) ownerFill(p.owner).copy(alpha = .82f) else Steel.copy(alpha = .55f), tween(700), label = p.id).value
+    }
+    val pulse by rememberInfiniteTransition(label = "select").animateFloat(0.55f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse")
     Box(
         Modifier.fillMaxWidth()
             .aspectRatio(MAP_W / MAP_H)
@@ -104,16 +117,15 @@ internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) 
             provinces.forEach { p ->
                 val center = (provinceUnits[p.id] ?: return@forEach) * s
                 val open = reachable[p.land] == true || p.owner == ProvinceOwner.PLAYER
-                val fill = if (open) ownerFill(p.owner) else Steel
                 val hex = hexPath(center, s * 0.94f)
-                drawPath(hex, fill.copy(alpha = if (open) 0.82f else 0.55f))
+                drawPath(hex, colors[p.id] ?: Steel)
                 drawPath(hex, Color.Black.copy(alpha = .35f), style = Stroke(width = s * 0.06f))
                 if (p.owner == ProvinceOwner.PLAYER && p.fortification > 0) drawCircle(Ivory, s * (0.12f + p.fortification * 0.05f), center, style = Stroke(s * 0.07f))
                 if (p.owner != ProvinceOwner.PLAYER && p.garrison > 0 && open) {
                     val r = (s * 0.12f + s * 0.28f * (p.garrison / 40000f).coerceIn(0f, 1f))
                     drawCircle(Color.Black.copy(alpha = .45f), r, center)
                 }
-                if (p.id == selectedId) drawPath(hexPath(center, s * 1.02f), Color.White, style = Stroke(width = s * 0.16f))
+                if (p.id == selectedId) drawPath(hexPath(center, s * 1.02f), Color.White.copy(alpha = pulse), style = Stroke(width = s * 0.16f))
             }
             // Marching enemies.
             state.crown.threats.forEach { t ->

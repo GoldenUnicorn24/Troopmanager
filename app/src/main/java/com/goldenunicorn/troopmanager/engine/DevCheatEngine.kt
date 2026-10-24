@@ -23,6 +23,7 @@ object DevCheatEngine {
         PARTNERS("Handelsimperium", "Alle Partner freigeschaltet, verbündet, 3 Routen"),
         PEACE("Ruhe an der Grenze", "Bedrohung 0, Mauern vollständig repariert"),
         GOD_MODE("Gottmodus Feldzüge", "Feldzüge immer überlegen, unbegrenzt pro Tag, Reisen sofort"),
+        SKIP_ACT("Akt überspringen", "Aktuellen Endgegner sofort besiegen"),
     }
 
     private fun ok(state: GameState, text: String) = GameEngine.ActionResult(state, text)
@@ -107,6 +108,10 @@ object DevCheatEngine {
                 it.copy(unlocked = true, relation = 100, agreement = 2, routes = maxOf(it.routes, 3))
             })), "Alle Handelshäuser sind deine Verbündeten.")
             Cheat.PEACE -> ok(base.copy(realm = base.realm.copy(threat = 0, wallIntegrity = 100)), "Die Grenze ist ruhig.")
+            Cheat.SKIP_ACT -> {
+                if (ActEngine.finished(base)) return ok(base, "Alle Akte sind bereits geschafft.")
+                ok(ActEngine.forceComplete(base), "Akt ${base.crown.act.act} abgeschlossen.")
+            }
             Cheat.GOD_MODE -> {
                 val on = !base.crown.godMode
                 ok(base.copy(crown = base.crown.copy(godMode = on)), if (on) "Gottmodus aktiv." else "Gottmodus aus.")

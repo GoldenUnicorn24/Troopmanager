@@ -12,21 +12,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldenunicorn.troopmanager.engine.ActEngine
 import com.goldenunicorn.troopmanager.engine.AdvisorEngine
+import com.goldenunicorn.troopmanager.engine.HeroineSagaEngine
 import com.goldenunicorn.troopmanager.engine.EconomyEngine
 import com.goldenunicorn.troopmanager.model.*
 
 /** The five main areas of v1.2. Every older destination lives in exactly one of them. */
 internal enum class MainArea(val label: String) { TODAY("Heute"), REALM("Reich"), ARMY("Heer"), COURT("Hof"), CITY("Stadt") }
 
-internal val realmTabs = listOf("Kronlande", "Weltkarte", "Diplomatie", "Handel", "Edikte")
+internal val realmTabs = listOf("Kronlande", "Könige", "Weltkarte", "Diplomatie", "Handel", "Edikte")
 internal val armyTabs = listOf("Truppen", "Heerbann", "Kommandanten", "Missionen", "Kampfkunst", "Lazarett", "Arsenal", "Grenze")
 internal val courtTabs = listOf("Partnerin", "Herrscherpaar", "Familie", "Ämter", "Hofnetz", "Rat", "Profil", "Fertigkeiten")
 
 /** Maps every destination of older versions onto an area and a tab. */
 internal fun areaFor(destination: GameDestination): Pair<MainArea, Int> = when (destination) {
     GameDestination.KINGDOM -> MainArea.REALM to 0
-    GameDestination.WORLD -> MainArea.REALM to 1
+    GameDestination.WORLD -> MainArea.REALM to 2
     GameDestination.MILITARY -> MainArea.ARMY to 0
     GameDestination.MISSIONS -> MainArea.ARMY to 3
     GameDestination.HOSPITAL -> MainArea.ARMY to 5
@@ -57,7 +59,14 @@ internal fun TodayScreen(
     ) {
         item {
             PremiumPanel(emphasized = true) {
-                Text("TAG ${state.day}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Portrait("knight", state.player.portraitUri, 60, state.crown.playerLook)
+                    if (state.companion.met) Portrait(HeroineSagaEngine.companionDef(state)?.portraitKey ?: "companion", state.companion.portraitUri, 60, HeroineSagaEngine.companionLook(state))
+                    Column(Modifier.weight(1f)) {
+                        Text("TAG ${state.day}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                        ActEngine.current(state)?.let { Text("Akt ${it.number}: ${it.title}", color = PaleGold, fontSize = 12.sp) }
+                    }
+                }
                 Text("${state.player.name}, ${state.title}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                 val partner = if (state.companion.met) " · an deiner Seite: ${state.companion.name}" else ""
                 Text("${state.realm.settlementName} · ${state.crown.ownedProvinces.size} Kronprovinzen$partner", color = Mist, fontSize = 14.sp)
@@ -71,13 +80,13 @@ internal fun TodayScreen(
         }
         if (urgent.isNotEmpty()) {
             item { Heading("Jetzt wichtig", "Diese Dinge kosten dich etwas, wenn du sie liegen lässt.") }
-            items(urgent.size) { i -> val a = urgent[i]; AdviceCard(a) { onOpen(a.destination, a.tab) } }
+            items(urgent.size, key = { "u$it" + urgent[it].title }) { i -> val a = urgent[i]; Box(Modifier.animateItem()) { AdviceCard(a) { onOpen(a.destination, a.tab) } } }
         } else item {
             Heading("Alles ruhig", "Keine akuten Gefahren. Nutze den Tag für Expansion, Handel oder deine Partnerin.")
         }
         if (chances.isNotEmpty()) {
             item { Heading("Chancen & Hinweise") }
-            items(chances.size) { i -> val a = chances[i]; AdviceCard(a) { onOpen(a.destination, a.tab) } }
+            items(chances.size, key = { "c$it" + chances[it].title }) { i -> val a = chances[i]; Box(Modifier.animateItem()) { AdviceCard(a) { onOpen(a.destination, a.tab) } } }
         }
         item { Heading("Mehr Überblick") }
         item {
@@ -115,9 +124,10 @@ internal fun RealmArea(state: GameState, onState: (GameState) -> Unit, onNotice:
     HubFrame(realmTabs, tab, onTab) { page ->
         when (page) {
             0 -> CrownPanel(state, onState, onNotice, CrownSection.LANDS)
-            1 -> CampaignMapScreen(state, onState, onNotice)
-            2 -> KingdomsScreen(state, onState, onNotice)
-            3 -> CrownPanel(state, onState, onNotice, CrownSection.TRADE)
+            1 -> RivalsPanel(state, onState, onNotice)
+            2 -> CampaignMapScreen(state, onState, onNotice)
+            3 -> KingdomsScreen(state, onState, onNotice)
+            4 -> CrownPanel(state, onState, onNotice, CrownSection.TRADE)
             else -> CrownPanel(state, onState, onNotice, CrownSection.EDICTS)
         }
     }

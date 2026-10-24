@@ -24,6 +24,7 @@ object CrownCatalog {
         val garrison: Int,
         val quality: Int,
         val owner: ProvinceOwner,
+        val horde: EnemyType? = null,
     )
 
     private val raw: Map<CrownLand, List<P>> = mapOf(
@@ -57,7 +58,7 @@ object CrownCatalog {
             P("sh_goldwiesen", "Goldwiesen", "Blütenland", Culture.GOLD_ELF, 9500, 8, 2600, 22, ProvinceOwner.FREE),
             P("sh_sternwarte", "Sternwarte", "Kristallturm", Culture.GOLD_ELF, 6000, 9, 4100, 27, ProvinceOwner.RIVAL),
             P("sh_morgentau", "Morgentau", "Terrassengärten", Culture.GOLD_ELF, 11000, 8, 3500, 24, ProvinceOwner.RIVAL),
-            P("sh_aschegrat", "Aschegrat", "Grenzfeste", Culture.GOLD_ELF, 7000, 6, 5200, 25, ProvinceOwner.HORDE),
+            P("sh_aschegrat", "Aschegrat", "Grenzfeste", Culture.GOLD_ELF, 7000, 6, 5200, 25, ProvinceOwner.HORDE, EnemyType.ORC),
         ),
         CrownLand.KUESTENREICH to listOf(
             P("ks_saltmere", "Saltmere", "Freihafen", Culture.HUMAN, 36000, 10, 5200, 14, ProvinceOwner.RIVAL),
@@ -73,27 +74,33 @@ object CrownCatalog {
             P("kw_drachensturz", "Drachensturz", "Schlucht", Culture.WALL, 15000, 6, 6800, 19, ProvinceOwner.RIVAL),
             P("kw_tigerpass", "Tigerpass", "Pass", Culture.WALL, 12000, 6, 7600, 20, ProvinceOwner.RIVAL),
             P("kw_lotusdelta", "Lotusdelta", "Flussdelta", Culture.WALL, 32000, 8, 5600, 17, ProvinceOwner.RIVAL),
-            P("kw_wachtfeuer", "Wachtfeuer", "Signaltürme", Culture.WALL, 10000, 5, 8400, 21, ProvinceOwner.HORDE),
+            P("kw_wachtfeuer", "Wachtfeuer", "Signaltürme", Culture.WALL, 10000, 5, 8400, 21, ProvinceOwner.HORDE, EnemyType.TAO_TEI),
         ),
         CrownLand.ASCHESTEPPE to listOf(
-            P("as_glutmark", "Glutmark", "Lavafelder", Culture.HUMAN, 9000, 6, 14000, 13, ProvinceOwner.HORDE),
-            P("as_knochenfeld", "Knochenfeld", "Totenebene", Culture.HUMAN, 7000, 5, 18000, 13, ProvinceOwner.HORDE),
-            P("as_eisenpakt", "Feste des Eisenpakts", "Schmiedefestung", Culture.HUMAN, 15000, 9, 26000, 15, ProvinceOwner.HORDE),
-            P("as_schattengrube", "Schattengrube", "Nebelkrater", Culture.HUMAN, 6000, 6, 22000, 14, ProvinceOwner.HORDE),
-            P("as_aschethron", "Aschethron", "Hordenhauptstadt", Culture.HUMAN, 24000, 10, 40000, 16, ProvinceOwner.HORDE),
+            P("as_glutmark", "Glutmark", "Lavafelder", Culture.HUMAN, 9000, 6, 14000, 13, ProvinceOwner.HORDE, EnemyType.ORC),
+            P("as_knochenfeld", "Knochenfeld", "Totenebene", Culture.HUMAN, 7000, 5, 18000, 13, ProvinceOwner.HORDE, EnemyType.ORC),
+            P("as_eisenpakt", "Uruk-Festung Kar-Duum", "Schmiedefestung", Culture.HUMAN, 15000, 9, 26000, 15, ProvinceOwner.HORDE, EnemyType.URUK),
+            P("as_schattengrube", "Tao-Tei-Krater", "Nebelkrater", Culture.HUMAN, 6000, 6, 22000, 14, ProvinceOwner.HORDE, EnemyType.TAO_TEI),
+            P("as_aschethron", "Ork-Thron von Grimmfels", "Hordenhauptstadt", Culture.HUMAN, 24000, 10, 40000, 16, ProvinceOwner.HORDE, EnemyType.URUK),
             P("as_freistatt", "Freistatt der Entflohenen", "Lagerstadt", Culture.HUMAN, 11000, 4, 3500, 11, ProvinceOwner.FREE),
         ),
     )
 
-    data class ProvinceInfo(val name: String, val land: CrownLand, val terrain: String, val culture: Culture, val wealth: Int)
+    data class ProvinceInfo(val name: String, val land: CrownLand, val terrain: String, val culture: Culture, val wealth: Int, val horde: EnemyType? = null)
 
     private val infos: Map<String, ProvinceInfo> = raw.flatMap { (land, list) ->
-        list.map { it.id to ProvinceInfo(it.name, land, it.terrain, it.culture, it.wealth) }
+        list.map { it.id to ProvinceInfo(it.name, land, it.terrain, it.culture, it.wealth, it.horde) }
     }.toMap()
 
     private val unknown = ProvinceInfo("Unbekanntes Land", CrownLand.GRENZMARK, "Ödland", Culture.HUMAN, 1)
 
     fun info(id: String): ProvinceInfo = infos[id] ?: unknown
+
+    fun hordeName(type: EnemyType): String = when (type) {
+        EnemyType.ORC -> "Orks"
+        EnemyType.URUK -> "Uruk-hai"
+        EnemyType.TAO_TEI -> "Tao Tei"
+    }
 
     /** Start state of every province; never owned by the player, so changes are always persisted. */
     val startProvinces: List<CrownProvince> by lazy { initialProvinces() }
@@ -148,7 +155,7 @@ object CrownCatalog {
             ResourceKind.IRON, ResourceKind.STONE,
             listOf(MilitaryGood.SIEGE_PARTS to 400, MilitaryGood.MEDICINE to 900), 11000, 450, true),
         TradePartnerDef("steppe", "Karawanen der freien Steppe", CrownLand.ASCHESTEPPE,
-            "Nomaden, die dem Aschebund entkommen sind. Kaufen Gold-Waren, liefern Pferde in Herden.",
+            "Nomaden, die den Orks entkommen sind. Kaufen Gold-Waren, liefern Pferde in Herden.",
             ResourceKind.GOLD, ResourceKind.FOOD,
             listOf(MilitaryGood.HORSES to 700), 12000, 600, false),
         TradePartnerDef("velmar", "Inselprinzen von Velmar", CrownLand.KUESTENREICH,
@@ -243,7 +250,7 @@ object CrownCatalog {
             TrialKind.OWN_PROVINCES, 1,
             "Ihr Dorf liegt schutzlos in der Grenzmark. Sichere eine Provinz der Kronlande, dann folgt sie dir.",
             "Die Asche von Birkenau",
-            "Alinas Heimatdorf wurde vom Aschebund niedergebrannt. Besitze drei Provinzen, damit sie die Überlebenden in Sicherheit bringen kann.",
+            "Alinas Heimatdorf wurde von Orks niedergebrannt. Besitze drei Provinzen, damit sie die Überlebenden in Sicherheit bringen kann.",
             68,
         ),
         HeroineDef(

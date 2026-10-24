@@ -1,4 +1,4 @@
-# Aktueller Arbeitsstand: v1.2 (Branch claude/v1.1-koenigreich-overhaul, Details in docs/V1.2-NEUE-OBERFLAECHE.md und docs/V1.1-KRONE.md)
+# Aktueller Arbeitsstand: v1.3 (Branch claude/v1.1-koenigreich-overhaul = main, Details in docs/V1.3-AKTE-UND-RIVALEN.md)
 
 # Vorheriger Stand: v1.0 Sprint A
 

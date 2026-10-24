@@ -6,7 +6,7 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * Living opponents in the Kronlande: rival crowns, bandits, rebels and the Aschebund
+ * Living opponents in the Kronlande: rival crowns, bandits, rebels and the hordes (Orks, Uruk-hai, Tao Tei)
  * march against your provinces. Garrisons, fortifications and relief armies defend them,
  * and large campaigns can be fought as real live battles with Combat Engine 3.0.
  */
@@ -47,7 +47,10 @@ object CrownWarEngine {
         if (state.day - state.crown.lastThreatDay < interval(state)) return state
         if (state.crown.threats.size >= 1 + owned.size / 10) return state
         val targeted = state.crown.threats.map { it.targetId }.toSet()
-        val pairs = state.crown.provinces.filter { it.owner in hostile && it.garrison >= 200 }.flatMap { source ->
+        val pairs = state.crown.provinces.filter {
+            it.owner in hostile && it.garrison >= 200 &&
+                !(it.owner == ProvinceOwner.RIVAL && RivalEngine.statusForLand(state, it.land) == RivalStatus.ALLIED)
+        }.flatMap { source ->
             owned.filter { target ->
                 target.id !in targeted && (target.land == source.land || (CrownCatalog.neighbors[source.land] ?: emptySet()).contains(target.land))
             }.map { source to it }
@@ -62,11 +65,12 @@ object CrownWarEngine {
         val threat = CrownThreat(
             id = "threat_${state.crown.nextId}", targetId = target.id, sourceId = source.id, attacker = source.owner,
             soldiers = soldiers, quality = source.garrisonQuality, announcedDay = state.day, arrivalDay = state.day + days,
+            attackerName = source.ownerLabel,
         )
         var next = replace(state, source.copy(garrison = (source.garrison - (source.garrison * 0.55).toInt()).coerceAtLeast(0)))
         next = next.copy(crown = next.crown.copy(threats = next.crown.threats + threat, lastThreatDay = state.day, nextId = next.crown.nextId + 1))
         return CrownEngine.chronicle(next, "Gegenoffensive gegen ${target.name}",
-            "${source.owner.label} aus ${source.name} marschiert mit ${soldiers} Kriegern auf ${target.name}. Ankunft in $days Tagen. Stationiere Truppen, befestige die Provinz oder zieh dem Feind mit dem Heer entgegen.")
+            "${source.ownerLabel} aus ${source.name} marschiert mit ${soldiers} Kriegern auf ${target.name}. Ankunft in $days Tagen. Stationiere Truppen, befestige die Provinz oder zieh dem Feind mit dem Heer entgegen.")
     }
 
     private fun resolveArrivals(state: GameState): GameState {
@@ -82,13 +86,13 @@ object CrownWarEngine {
                 val loss = if (defense <= 0) 0 else (p.garrison * (attack / defense * 0.35)).toInt()
                 next = replace(next, p.copy(garrison = (p.garrison - loss).coerceAtLeast(0), loyalty = (p.loyalty + 5).coerceAtMost(100)))
                 next = next.copy(renown = next.renown + 10 + t.soldiers / 100)
-                next = CrownEngine.chronicle(next, "${p.name} hält stand", "Der Angriff von ${t.attacker.label} (${t.soldiers} Krieger) zerbricht an Mauern, Miliz und Besatzung. Verluste der Besatzung: $loss.")
+                next = CrownEngine.chronicle(next, "${p.name} hält stand", "Der Angriff von ${t.label} (${t.soldiers} Krieger) zerbricht an Mauern, Miliz und Besatzung. Verluste der Besatzung: $loss.")
             } else {
                 val survivors = (t.soldiers * (1.0 - (defense / attack.coerceAtLeast(1.0)) * 0.5)).toInt().coerceAtLeast(1)
                 next = replace(next, p.copy(owner = t.attacker, garrison = survivors, baseGarrison = survivors, garrisonQuality = t.quality,
                     loyalty = 30, unrest = 0, acquiredDay = null, favor = 0))
                 next = next.copy(realm = next.realm.copy(territory = (next.realm.territory - 1).coerceAtLeast(1)))
-                next = CrownEngine.chronicle(next, "${p.name} gefallen", "${t.attacker.label} erobert ${p.name}. Hole dir die Provinz mit einem Feldzug zurück.")
+                next = CrownEngine.chronicle(next, "${p.name} gefallen", "${t.label} erobert ${p.name}. Hole dir die Provinz mit einem Feldzug zurück.")
             }
         }
         return if (next == state) state else ProgressionEngine.update(next)
@@ -193,9 +197,10 @@ object CrownWarEngine {
 
     // ------------------------------------------------------------ live battles
 
-    fun enemyTypeFor(owner: ProvinceOwner): EnemyType = when (owner) {
-        ProvinceOwner.HORDE -> EnemyType.ORC
-        ProvinceOwner.REBELS, ProvinceOwner.BANDITS -> EnemyType.TAO_TEI
+    /** Combat profile of a province's defenders: hordes keep their kind, people fight like disciplined armies. */
+    fun enemyTypeFor(p: CrownProvince): EnemyType = when (p.owner) {
+        ProvinceOwner.HORDE -> p.horde
+        ProvinceOwner.REBELS, ProvinceOwner.BANDITS -> EnemyType.ORC
         else -> EnemyType.URUK
     }
 
@@ -213,10 +218,10 @@ object CrownWarEngine {
             return ok(state, "Nachschub fehlt: ${preview.supplyGold} Gold und ${preview.supplyFood} Nahrung.")
         val paid = state.copy(resources = state.resources.copy(gold = state.resources.gold - preview.supplyGold, food = state.resources.food - preview.supplyFood))
         val result = BattleEngine.start(
-            paid, enemyTypeFor(p.owner), Tactic.AGGRESSIVE,
+            paid, enemyTypeFor(p), Tactic.AGGRESSIVE,
             enemyStrength = p.garrison.coerceAtLeast(1), location = p.name,
             enemyArmyName = "Besatzung von ${p.name}", enemyFortification = p.fortification * 20,
-            enemyFactionName = p.owner.label, enemyExperience = (p.garrisonQuality * 3).coerceAtMost(90),
+            enemyFactionName = p.ownerLabel, enemyExperience = (p.garrisonQuality * 3).coerceAtMost(90),
         )
         if (result.state.battleSession == null) return ok(state, result.message)
         val crown = result.state.crown

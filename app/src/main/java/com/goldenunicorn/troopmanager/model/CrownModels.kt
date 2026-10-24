@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
  * Every field is additive with safe defaults so older saves load unchanged.
  */
 
+/** Chronicle entries kept in the save; older lines fade out so long campaigns stay small and fast. */
+const val CHRONICLE_LIMIT = 700
+
 @Serializable
 enum class CrownLand(val label: String, val description: String) {
     GRENZMARK("Grenzmark", "Umkämpftes Grenzland vor deiner Feste. Räuberbarone und freie Dörfer."),
@@ -21,7 +24,7 @@ enum class CrownLand(val label: String, val description: String) {
     SONNENHAIN("Sonnenhain", "Goldene Elbenstädte voller Kunst, Magie und stolzer Garden."),
     KUESTENREICH("Küstenreich", "Häfen, Handelsstädte und Fischerdörfer am Silbermeer."),
     KRANICHWALL("Kranichwall", "Festungsstädte entlang des großen Walls, Heimat der Mauerlegion."),
-    ASCHESTEPPE("Aschesteppe", "Verbrannte Ebenen des Aschebunds. Gewaltige Horden, reiche Beute."),
+    ASCHESTEPPE("Hordenland", "Verbrannte Ebenen der Orks und Uruk-hai. Aus den Kratern schwärmen die Tao Tei."),
 }
 
 @Serializable
@@ -30,7 +33,7 @@ enum class ProvinceOwner(val label: String) {
     FREE("Freies Land"),
     BANDITS("Räuberbarone"),
     RIVAL("Fremde Krone"),
-    HORDE("Aschebund"),
+    HORDE("Horden"),
     REBELS("Aufständische"),
 }
 
@@ -62,6 +65,10 @@ data class CrownProvince(
     val culture: Culture get() = info.culture
     /** 1..10, drives gold and loot. */
     val wealth: Int get() = info.wealth
+    /** Monster kind holding a horde province; captured provinces fall back to orcs. */
+    val horde: EnemyType get() = info.horde ?: EnemyType.ORC
+    /** Readable owner: "Orks", "Uruk-hai" or "Tao Tei" instead of a generic horde label. */
+    val ownerLabel: String get() = if (owner == ProvinceOwner.HORDE) CrownCatalog.hordeName(horde) else owner.label
 }
 
 @Serializable
@@ -108,7 +115,11 @@ data class CrownThreat(
     val quality: Int,
     val announcedDay: Int,
     val arrivalDay: Int,
-)
+    /** Readable attacker name, e.g. "Uruk-hai" or "Fremde Krone". */
+    val attackerName: String = "",
+) {
+    val label: String get() = attackerName.ifBlank { attacker.label }
+}
 
 /** A personal wish of the queen with a deadline, e.g. freeing her homeland. */
 @Serializable
@@ -221,6 +232,10 @@ data class SagaScene(
     val location: String,
     val text: String,
     val options: List<SagaOption>,
+    /** Optional speaker for non-heroine scenes (kings, bosses, campaign events). */
+    val speaker: String? = null,
+    val portraitKey: String? = null,
+    val look: PortraitSpec? = null,
 )
 
 /** The future partner the player designs at character creation. She is met after about a week. */
@@ -234,6 +249,7 @@ data class PartnerProfile(
     val portraitUri: String? = null,
     val weapon: String? = null,
     val armorStyle: String? = null,
+    val look: PortraitSpec? = null,
 )
 
 @Serializable
@@ -253,6 +269,8 @@ data class HeroineSagaState(
     val goal: RoyalGoal? = null,
     /** Custom partner from character creation; replaces the heroine of the same background. */
     val partner: PartnerProfile? = null,
+    /** The companion is wounded and cannot fight until this day. */
+    val companionWoundedUntil: Int = 0,
 ) {
     val partnerId: String? get() = partner?.background
 }
@@ -281,6 +299,11 @@ data class CrownState(
     val threats: List<CrownThreat> = emptyList(),
     val lastThreatDay: Int = 0,
     val liveCampaignProvinceId: String? = null,
+    val act: ActState = ActState(),
+    val rivals: List<RivalState> = emptyList(),
+    val celebrations: List<Celebration> = emptyList(),
+    val pendingMarch: PendingMarch? = null,
+    val playerLook: PortraitSpec? = null,
     val devMode: Boolean = false,
     val devCheatsUsed: Int = 0,
     val godMode: Boolean = false,

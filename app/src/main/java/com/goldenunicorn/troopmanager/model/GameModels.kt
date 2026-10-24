@@ -65,9 +65,9 @@ enum class BuildingType(val label: String) {
 
 @Serializable
 enum class EnemyType(val label: String) {
-    ORC("Aschebund-Raubzug"),
-    URUK("Eisenpakt-Kriegsheer"),
-    TAO_TEI("Nebelbrut-Schwarm"),
+    ORC("Ork-Raubzug"),
+    URUK("Uruk-hai-Kriegsheer"),
+    TAO_TEI("Tao-Tei-Schwarm"),
 }
 
 @Serializable
