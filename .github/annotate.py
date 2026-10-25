@@ -8,7 +8,9 @@ for name in sys.argv[1:]:
     path = Path(name)
     if path.exists():
         lines += path.read_text(errors="replace").splitlines()
-interesting = [l for l in lines if re.match(r"^(e: |w: .*error)|.*(What went wrong|FAILED|Error:|error:|AssertionError|Exception)", l)]
+errors = [l for l in lines if l.startswith("e: ")]
+others = [l for l in lines if re.match(r".*(What went wrong|FAILED|Error:|error:|AssertionError|Exception)", l) and not l.startswith("e: ")]
+interesting = errors + others
 if not interesting:
     interesting = lines[-30:]
 # GitHub keeps 10 error annotations per step: pack several lines into each.

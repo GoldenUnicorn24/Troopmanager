@@ -479,19 +479,19 @@ private fun skyFor(slot: TimeSlot): List<Color> = when (slot) {
     TimeSlot.NIGHT -> listOf(Color(0xFF1B2440), Color(0xFF080B16))
 }
 
-private val Plaster = Color(0xFF8C7458)
-private val Timber = Color(0xFF3A2516)
-private val Wood = Color(0xFF6E4A2C)
-private val Stone = Color(0xFF6C665E)
+private val TavPlaster = Color(0xFF8C7458)
+private val TavTimber = Color(0xFF3A2516)
+private val TavWood = Color(0xFF6E4A2C)
+private val TavStone = Color(0xFF6C665E)
 
 private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wallH: Float, time: Float) {
     val w = size.width
     // Back wall: plaster between timber, wainscot below.
-    drawRect(Brush.verticalGradient(listOf(Plaster.copy(alpha = 1f).mix(Color.Black, .35f), Plaster), 0f, wallH))
-    for (i in 0..12) drawRect(Brush.horizontalGradient(listOf(Timber.mix(Color.White, .08f), Timber), i * tw - tw * .08f, i * tw + tw * .08f),
+    drawRect(Brush.verticalGradient(listOf(TavPlaster.copy(alpha = 1f).mix(Color.Black, .35f), TavPlaster), 0f, wallH))
+    for (i in 0..12) drawRect(Brush.horizontalGradient(listOf(TavTimber.mix(Color.White, .08f), TavTimber), i * tw - tw * .08f, i * tw + tw * .08f),
         Offset(i * tw - tw * .08f, 0f), Size(tw * .16f, wallH))
-    drawRect(Timber, Offset(0f, 0f), Size(w, tw * .22f))
-    drawRect(Brush.verticalGradient(listOf(Wood.mix(Color.Black, .2f), Wood.mix(Color.Black, .45f)), wallH - tw * .7f, wallH), Offset(0f, wallH - tw * .7f), Size(w, tw * .7f))
+    drawRect(TavTimber, Offset(0f, 0f), Size(w, tw * .22f))
+    drawRect(Brush.verticalGradient(listOf(TavWood.mix(Color.Black, .2f), TavWood.mix(Color.Black, .45f)), wallH - tw * .7f, wallH), Offset(0f, wallH - tw * .7f), Size(w, tw * .7f))
     for (i in 0..24) drawLine(Color.Black.copy(alpha = .25f), Offset(i * tw * .5f, wallH - tw * .7f), Offset(i * tw * .5f, wallH), 1.5f)
     // Windows with the sky of the hour.
     val sky = skyFor(state.life.timeSlot)
@@ -500,14 +500,14 @@ private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wal
         val ws = Size(tw * .95f, tw * 1.05f)
         drawRect(Brush.verticalGradient(sky, tl.y, tl.y + ws.height), tl, ws)
         if (state.life.timeSlot == TimeSlot.NIGHT) drawCircle(Color(0xFFF3EBD0), tw * .12f, tl + Offset(ws.width * .7f, ws.height * .3f))
-        drawRect(Timber, tl, ws, style = Stroke(tw * .08f))
-        drawLine(Timber, tl + Offset(ws.width / 2f, 0f), tl + Offset(ws.width / 2f, ws.height), tw * .05f)
-        drawLine(Timber, tl + Offset(0f, ws.height / 2f), tl + Offset(ws.width, ws.height / 2f), tw * .05f)
+        drawRect(TavTimber, tl, ws, style = Stroke(tw * .08f))
+        drawLine(TavTimber, tl + Offset(ws.width / 2f, 0f), tl + Offset(ws.width / 2f, ws.height), tw * .05f)
+        drawLine(TavTimber, tl + Offset(0f, ws.height / 2f), tl + Offset(ws.width, ws.height / 2f), tw * .05f)
     }
     // Shelves with bottles and mugs behind the bar.
     for (shelf in 0..1) {
         val y = tw * (.75f + shelf * .62f)
-        drawRect(Wood.mix(Color.Black, .15f), Offset(tw * .9f, y), Size(tw * 4.2f, tw * .08f))
+        drawRect(TavWood.mix(Color.Black, .15f), Offset(tw * .9f, y), Size(tw * 4.2f, tw * .08f))
         for (k in 0 until 11) {
             val bx = tw * (1.05f + k * .37f)
             val col = listOf(Color(0xFF2E5A3A), Color(0xFF7A2430), Color(0xFFB98E3A), Color(0xFF3A4A6A))[(k + shelf) % 4]
@@ -534,7 +534,7 @@ private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wal
     val hx = tw * 7.75f
     val hw = tw * 2.5f
     val hTop = wallH - tw * 1.7f
-    drawRoundRect(Brush.verticalGradient(listOf(Stone.mix(Color.White, .1f), Stone.mix(Color.Black, .3f)), hTop, wallH + th), Offset(hx, hTop), Size(hw, wallH - hTop + th * 1.2f), CornerRadius(tw * .3f))
+    drawRoundRect(Brush.verticalGradient(listOf(TavStone.mix(Color.White, .1f), TavStone.mix(Color.Black, .3f)), hTop, wallH + th), Offset(hx, hTop), Size(hw, wallH - hTop + th * 1.2f), CornerRadius(tw * .3f))
     for (r in 0 until 6) for (c in 0 until 5) {
         drawRoundRect(Color.Black.copy(alpha = .18f), Offset(hx + c * hw / 5f + (if (r % 2 == 0) 0f else hw / 10f), hTop + r * tw * .3f), Size(hw / 5f - 3f, tw * .3f - 3f), CornerRadius(4f), style = Stroke(1.5f))
     }
@@ -557,7 +557,7 @@ private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wal
     for (r in 0 until 18) {
         val y = floorTop + r * th * .5f
         val shade = .32f - r * .012f
-        drawRect(Wood.mix(if (r % 2 == 0) Color.Black else Color(0xFF2A1A10), shade.coerceIn(.05f, .4f)), Offset(0f, y), Size(w, th * .5f))
+        drawRect(TavWood.mix(if (r % 2 == 0) Color.Black else Color(0xFF2A1A10), shade.coerceIn(.05f, .4f)), Offset(0f, y), Size(w, th * .5f))
         drawLine(Color.Black.copy(alpha = .35f), Offset(0f, y), Offset(w, y), 1.6f)
         var x = ((r * 37) % 5) * tw * .6f
         while (x < w) { drawLine(Color.Black.copy(alpha = .3f), Offset(x, y), Offset(x, y + th * .5f), 1.4f); x += tw * 2.7f }
