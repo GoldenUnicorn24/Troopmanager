@@ -61,7 +61,11 @@ object TacticalBattleEngine {
         return Odds(own, enemy, ratio, label, percent)
     }
 
-    fun stage(session: BattleSession): Stage = Stage.entries[session.tacticalStage.coerceIn(0, Stage.entries.lastIndex)]
+    fun stage(session: BattleSession): Stage =
+        // Detailed controls can advance a battle without selecting a cinematic plan.
+        // Resume those saves in the simulation, without granting preparation bonuses.
+        if (session.tacticalStage == Stage.PLAN.ordinal && (session.step > 0 || session.minute > 0)) Stage.RUNNING
+        else Stage.entries[session.tacticalStage.coerceIn(0, Stage.entries.lastIndex)]
 
     fun isWall(session: BattleSession): Boolean =
         if (session.tacticalStage == 0) session.tactic == Tactic.FORTIFY else session.tacticalWall

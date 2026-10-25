@@ -91,6 +91,22 @@ class TacticalBattlePersistenceTest {
         assertSame(ended, TacticalBattleEngine.choosePlan(ended, TacticalBattleEngine.Plan.SHIELD_WALL).state)
     }
 
+    @Test fun detailedBattleResumesWithoutPlanBonusesAndQuickResolveStillFinishes() {
+        val running = BattleEngine.advance(prepared(wall = false, wonders = false)).state
+        val resumed = SaveCodec.decode(SaveCodec.encode(running))
+        assertEquals(running, resumed)
+        assertEquals(TacticalBattleEngine.Stage.RUNNING, TacticalBattleEngine.stage(resumed.battleSession!!))
+        assertNull(resumed.battleSession.tacticalPlan)
+        val next = TacticalBattleEngine.step(resumed).state
+        assertTrue(next.battleSession!!.step > resumed.battleSession.step ||
+            TacticalBattleEngine.stage(next.battleSession) == TacticalBattleEngine.Stage.MIDDLE)
+        val finished = TacticalBattleEngine.autoResolve(resumed)
+        assertFalse(finished.battleSession!!.isActive)
+        assertNull(finished.battleSession.tacticalPlan)
+        assertEquals(resumed.battleSession.moraleBonus, finished.battleSession.moraleBonus)
+        assertEquals(finished, SaveCodec.decode(SaveCodec.encode(finished)))
+    }
+
     @Test fun planSelectionIsOneShotAndDoesNotGrantWonderBonusesWithoutTheWonder() {
         val before = prepared(wall = true, wonders = false)
         val chosen = TacticalBattleEngine.choosePlan(before, TacticalBattleEngine.Plan.HOLD_WALL).state
