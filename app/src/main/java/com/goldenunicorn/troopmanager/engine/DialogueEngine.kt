@@ -212,7 +212,8 @@ object DialogueEngine {
         }
         if (outcome == Outcome.DECLINED && updated.relation.romanceBoundary && !npc.relation.romanceBoundary)
             extra += " ${npc.firstName} hat dir eine klare Grenze gesetzt. Romantische Annäherungen sind jetzt tabu – Freundschaft bleibt möglich."
-        next = LifeEngine.log(next, "${topic.label.replace("{interest}", npc.interests.firstOrNull() ?: "")} – ${npc.name}: ${outcome.name.lowercase()}")
+        val verdict = when (outcome) { Outcome.SUCCESS -> "gut aufgenommen"; Outcome.FAILURE -> "misslungen"; Outcome.DECLINED -> "abgelehnt"; Outcome.UNAVAILABLE -> "nicht möglich" }
+        next = LifeEngine.log(next, "${fill(topic.label, next, npc)} – ${npc.name}: $verdict")
         return Reply(next, line, outcome, playerLine, fade, brawl = outcome == Outcome.FAILURE && topic.failure.brawl, summary = (summary(npc, updated) + extra).trim())
     }
 

@@ -145,11 +145,11 @@ fun TavernScreen(
                             detectTapGestures { tap ->
                                 // People first (their figures stand above their tile).
                                 val hit = latestPlacements.minByOrNull { p ->
-                                    val c = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) - tw * .7f)
+                                    val c = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) - tw * 1.0f)
                                     (c - tap).getDistanceSquared()
                                 }?.takeIf { p ->
-                                    val c = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) - tw * .7f)
-                                    kotlin.math.abs(tap.x - c.x) < tw * .6f && kotlin.math.abs(tap.y - c.y) < tw * 1.0f
+                                    val c = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) - tw * 1.0f)
+                                    kotlin.math.abs(tap.x - c.x) < tw * .7f && kotlin.math.abs(tap.y - c.y) < tw * 1.4f
                                 }
                                 if (hit != null) {
                                     if (hit.npc.role == NpcRole.INNKEEPER) walkTo(layout.barFront) { openTalk(hit.npc.id) }
@@ -180,12 +180,12 @@ fun TavernScreen(
                         placements.filter { it.cell.y == row }.sortedBy { it.cell.x }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) + th * .3f)
                             val bob = sin((time + p.cell.x * .13f) * 6.283f) * tw * .012f
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 1.75f / 140f, detailed = false)
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false)
                         }
                         if (floor(playerRow + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), wallH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 1.75f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f)
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f)
                         }
                     }
                     target?.let { t ->
@@ -198,13 +198,13 @@ fun TavernScreen(
                         val label = if (known) p.npc.firstName else p.npc.role.label
                         val style = TextStyle(color = if (known) PaleGold else Mist.copy(alpha = .8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         val m = measurer.measure(label, style)
-                        val top = Offset(tw * (p.cell.x + .5f) - m.size.width / 2f, wallH + th * (p.cell.y + .5f) - tw * 1.95f)
+                        val top = Offset(tw * (p.cell.x + .5f) - m.size.width / 2f, wallH + th * (p.cell.y + .5f) - tw * 2.7f)
                         drawRoundRect(Color.Black.copy(alpha = .55f), top - Offset(6f, 2f), Size(m.size.width + 12f, m.size.height + 4f), CornerRadius(10f))
                         drawText(m, topLeft = top)
                     }
                 }
-                TavernEventBanner(state, onState, onNotice, Modifier.align(Alignment.TopCenter).padding(10.dp))
             }
+            TavernEventBanner(state, onState, onNotice, Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
             if (talkTo == null) TavernActionBar(state, onState, onNotice,
                 onBar = { placements.firstOrNull { it.npc.role == NpcRole.INNKEEPER }?.let { k -> walkTo(layout.barFront) { openTalk(k.npc.id) } } },
                 onRoom = { walkTo(layout.stairFoot) { talkTo = "__room" } },
@@ -489,7 +489,7 @@ private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wal
     val w = size.width
     if (tw < 2f) return
     // Back wall: plaster between timber, wainscot below.
-    drawRect(Brush.verticalGradient(listOf(TavPlaster.copy(alpha = 1f).mix(Color.Black, .35f), TavPlaster), 0f, wallH))
+    drawRect(Brush.verticalGradient(listOf(TavPlaster.mix(Color.Black, .2f), TavPlaster.mix(Color.White, .08f)), 0f, wallH))
     for (i in 0..12) drawRect(Brush.horizontalGradient(listOf(TavTimber.mix(Color.White, .08f), TavTimber), i * tw - tw * .08f, i * tw + tw * .08f),
         Offset(i * tw - tw * .08f, 0f), Size(tw * .16f, wallH))
     drawRect(TavTimber, Offset(0f, 0f), Size(w, tw * .22f))
@@ -558,7 +558,7 @@ private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wal
     val floorTop = wallH
     for (r in 0 until 18) {
         val y = floorTop + r * th * .5f
-        val shade = .32f - r * .012f
+        val shade = .2f - r * .01f
         drawRect(TavWood.mix(if (r % 2 == 0) Color.Black else Color(0xFF2A1A10), shade.coerceIn(.05f, .4f)), Offset(0f, y), Size(w, th * .5f))
         drawLine(Color.Black.copy(alpha = .35f), Offset(0f, y), Offset(w, y), 1.6f)
         var x = ((r * 37) % 5) * tw * .6f
@@ -641,7 +641,7 @@ private fun DrawScope.candle(at: Offset, tw: Float, time: Float) {
 }
 
 private fun DrawScope.drawLighting(slot: TimeSlot, tw: Float, th: Float, wallH: Float, time: Float) {
-    val dark = when (slot) { TimeSlot.MORNING -> .18f; TimeSlot.NOON -> .1f; TimeSlot.AFTERNOON -> .16f; TimeSlot.EVENING -> .34f; TimeSlot.NIGHT -> .48f }
+    val dark = when (slot) { TimeSlot.MORNING -> .08f; TimeSlot.NOON -> .02f; TimeSlot.AFTERNOON -> .06f; TimeSlot.EVENING -> .16f; TimeSlot.NIGHT -> .3f }
     drawRect(Color(0xFF0A0604).copy(alpha = dark))
     val pulse = .85f + .15f * sin(time * 6.283f * 2f)
     // Hearth glow.
@@ -659,5 +659,5 @@ private fun DrawScope.drawLighting(slot: TimeSlot, tw: Float, th: Float, wallH: 
         }, Brush.verticalGradient(listOf(Color(0x44FFF4D6), Color.Transparent), tw * 1.5f, wallH + th * 4f), blendMode = BlendMode.Screen)
     }
     // Vignette.
-    drawRect(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .45f)), Offset(size.width / 2f, size.height * .55f), size.width * .8f))
+    drawRect(Brush.radialGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .3f)), Offset(size.width / 2f, size.height * .55f), size.width * .85f))
 }

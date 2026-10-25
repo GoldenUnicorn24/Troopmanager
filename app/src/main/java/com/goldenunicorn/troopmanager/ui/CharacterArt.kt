@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -96,7 +97,7 @@ fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier:
 
 @Composable
 fun PaintedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    Canvas(modifier.semantics { contentDescription = "Porträt" }) {
+    Canvas(modifier.clipToBounds().semantics { contentDescription = "Porträt" }) {
         paintPortrait(appearance.normalized(), gender, framing)
     }
 }
@@ -115,8 +116,8 @@ internal fun DrawScope.paintPortrait(a: CharacterAppearance, gender: Gender, fra
             drawBust(a, gender, Offset(w / 2f, h * .56f), s)
         }
         Framing.BUST -> {
-            val s = w / 62f
-            drawBust(a, gender, Offset(w / 2f, h * .46f), s)
+            val s = w / 78f
+            drawBust(a, gender, Offset(w / 2f, h * .40f), s)
         }
         Framing.FULL -> drawFullFigure(a, gender, Offset(w / 2f, h * .97f), h / 146f, detailed = true)
     }
@@ -341,11 +342,11 @@ private fun DrawScope.drawCloakFront(a: CharacterAppearance, c: Offset, s: Float
 }
 
 private fun DrawScope.drawHood(a: CharacterAppearance, c: Offset, s: Float) {
-    val color = ArtPalette.fabric[a.accentColor]
+    val color = ArtPalette.fabric[a.accentColor].shade(.45f)
     val p = Path().apply {
-        moveTo(c.x - 22f * s, c.y + 30f * s)
-        cubicTo(c.x - 28f * s, c.y - 4f * s, c.x - 20f * s, c.y - 32f * s, c.x, c.y - 33f * s)
-        cubicTo(c.x + 20f * s, c.y - 32f * s, c.x + 28f * s, c.y - 4f * s, c.x + 22f * s, c.y + 30f * s)
+        moveTo(c.x - 20f * s, c.y + 30f * s)
+        cubicTo(c.x - 25f * s, c.y - 4f * s, c.x - 18f * s, c.y - 29f * s, c.x, c.y - 30f * s)
+        cubicTo(c.x + 18f * s, c.y - 29f * s, c.x + 25f * s, c.y - 4f * s, c.x + 20f * s, c.y + 30f * s)
         close()
     }
     drawPath(p, Brush.radialGradient(listOf(color.shade(.15f), color.shade(.65f)), Offset(c.x - 6f * s, c.y - 18f * s), 34f * s))
@@ -417,11 +418,11 @@ internal fun DrawScope.drawHead(a: CharacterAppearance, gender: Gender, c: Offse
 
 private fun DrawScope.stubble(a: CharacterAppearance, g: FaceGeometry) {
     val r = Strands(seedOf(a) + 11)
-    val color = ArtPalette.hair[a.hairColor].copy(alpha = .22f)
-    repeat(260) {
+    val color = ArtPalette.hair[a.hairColor].copy(alpha = .13f)
+    repeat(220) {
         val t = r.range(-1f, 1f)
         val x = g.c.x + t * g.jawW * 1.05f * g.s
-        val yTop = g.noseY + 2f * g.s + kotlin.math.abs(t) * -3f * g.s
+        val yTop = g.noseY + 3.5f * g.s
         val y = r.range(yTop, g.chinY)
         if (kotlin.math.abs(x - g.c.x) < 3.4f * g.s && y in (g.mouthY - 1.5f * g.s)..(g.mouthY + 2f * g.s)) return@repeat
         drawCircle(color, r.range(.12f, .24f) * g.s, Offset(x, y))
@@ -441,7 +442,7 @@ private fun DrawScope.drawEars(a: CharacterAppearance, g: FaceGeometry, tone: Ar
                 p.close()
             }
             else -> {
-                val len = if (a.ears == 2) 13f else 8f
+                val len = if (a.ears == 2) 9.5f else 5.5f
                 p.moveTo(bx, g.eyeY)
                 p.cubicTo(bx + side * 3f * s, g.eyeY - 2f * s, bx + side * (len * .7f) * s, g.eyeY - len * .6f * s, bx + side * len * s, g.eyeY - len * .95f * s)
                 p.cubicTo(bx + side * (len * .6f) * s, g.eyeY + 1f * s, bx + side * 4.6f * s, g.noseY + 2f * s, bx + side * .4f * s, g.noseY + 3.5f * s)
@@ -522,14 +523,21 @@ private fun DrawScope.drawBrows(a: CharacterAppearance, g: FaceGeometry) {
     val r = Strands(seedOf(a) + 5)
     for (side in listOf(-1f, 1f)) {
         val x0 = g.x(side * .14f)
-        val x1 = g.x(side * .78f)
-        val y0 = g.browY + (if (a.expression == 3) 1f else 0f) * s
-        for (k in 0 until 26) {
-            val t = k / 25f
+        val x1 = g.x(side * .8f)
+        val y0 = g.browY + (if (a.expression == 3) .8f else 0f) * s
+        fun py(t: Float) = y0 - sin(t * 3.1416f) * arch * s - lift * (1f - t) * s * .6f + t * .8f * s
+        val shape = Path().apply {
+            moveTo(x0, py(0f) + thick * .9f * s)
+            for (k in 1..10) { val t = k / 10f; lineTo(x0 + (x1 - x0) * t, py(t) + thick * (.9f - t * .65f) * s) }
+            for (k in 10 downTo 0) { val t = k / 10f; lineTo(x0 + (x1 - x0) * t, py(t) - thick * (.55f - t * .4f) * s) }
+            close()
+        }
+        drawPath(shape, color.copy(alpha = .72f))
+        for (k in 0 until 22) {
+            val t = r.next()
             val x = x0 + (x1 - x0) * t
-            val y = y0 - sin(t * 3.1416f) * arch * s - lift * (1f - t) * s * .6f + t * .8f * s
-            val len = (thick * (1.6f - t * .9f)) * s
-            drawLine(color.copy(alpha = .75f), Offset(x, y + len * .5f), Offset(x + side * r.range(.4f, 1f) * s, y - len * .5f), r.range(.25f, .42f) * s * thick, StrokeCap.Round)
+            val y = py(t)
+            drawLine(color.shade(.2f).copy(alpha = .55f), Offset(x, y + thick * .5f * s), Offset(x + side * r.range(.8f, 1.6f) * s, y - thick * .4f * s), .18f * s, StrokeCap.Round)
         }
     }
 }
@@ -564,30 +572,30 @@ private fun DrawScope.drawNose(a: CharacterAppearance, g: FaceGeometry, tone: Ar
 private fun DrawScope.drawMouth(a: CharacterAppearance, g: FaceGeometry, tone: ArtPalette.Tone) {
     val s = g.s
     val mw = g.halfW * (.34f + a.mouthWidth / 420f) * s
-    val full = .75f + a.lips / 110f + if (g.female) .25f else 0f
+    val full = .7f + a.lips / 140f + if (g.female) .15f else 0f
     val curve = when (a.expression) { 1 -> 1.5f; 2 -> -.5f; 3 -> -.2f; else -> .25f } * s
     val y = g.mouthY
     val lipColor = tone.lip.mix(tone.base, if (g.female) .05f else .35f)
     val upper = Path().apply {
         moveTo(g.c.x - mw, y - curve)
-        cubicTo(g.c.x - mw * .6f, y - 1.6f * full * s, g.c.x - mw * .25f, y - 1.9f * full * s, g.c.x, y - 1.3f * full * s)
-        cubicTo(g.c.x + mw * .25f, y - 1.9f * full * s, g.c.x + mw * .6f, y - 1.6f * full * s, g.c.x + mw, y - curve)
+        cubicTo(g.c.x - mw * .6f, y - 1.0f * full * s, g.c.x - mw * .25f, y - 1.25f * full * s, g.c.x, y - .85f * full * s)
+        cubicTo(g.c.x + mw * .25f, y - 1.25f * full * s, g.c.x + mw * .6f, y - 1.0f * full * s, g.c.x + mw, y - curve)
         cubicTo(g.c.x + mw * .4f, y + .2f * s, g.c.x - mw * .4f, y + .2f * s, g.c.x - mw, y - curve)
         close()
     }
     val lower = Path().apply {
         moveTo(g.c.x - mw * .92f, y - curve * .9f)
         cubicTo(g.c.x - mw * .4f, y + .3f * s, g.c.x + mw * .4f, y + .3f * s, g.c.x + mw * .92f, y - curve * .9f)
-        cubicTo(g.c.x + mw * .5f, y + 2.3f * full * s, g.c.x - mw * .5f, y + 2.3f * full * s, g.c.x - mw * .92f, y - curve * .9f)
+        cubicTo(g.c.x + mw * .5f, y + 1.8f * full * s, g.c.x - mw * .5f, y + 1.8f * full * s, g.c.x - mw * .92f, y - curve * .9f)
         close()
     }
-    drawPath(upper, Brush.verticalGradient(listOf(lipColor.shade(.15f), lipColor.shade(.3f)), y - 2f * s, y))
+    drawPath(upper, Brush.verticalGradient(listOf(lipColor.shade(.02f), lipColor.shade(.14f)), y - 2f * s, y))
     drawPath(lower, Brush.verticalGradient(listOf(lipColor.shade(.1f), lipColor.tint(.1f), lipColor.shade(.2f)), y, y + 2.4f * full * s))
     drawOval(Color.White.copy(alpha = .18f), Offset(g.c.x - mw * .3f, y + .5f * full * s), Size(mw * .5f, .8f * s))
     drawPath(Path().apply {
         moveTo(g.c.x - mw * 1.02f, y - curve * 1.1f)
         cubicTo(g.c.x - mw * .4f, y + .25f * s, g.c.x + mw * .4f, y + .25f * s, g.c.x + mw * 1.02f, y - curve * 1.1f)
-    }, Color(0xFF3A1A16).copy(alpha = .75f), style = Stroke(.38f * s, cap = StrokeCap.Round))
+    }, Color(0xFF3A1A16).copy(alpha = .6f), style = Stroke(.3f * s, cap = StrokeCap.Round))
     // Shadow below the lower lip.
     drawOval(Brush.radialGradient(listOf(tone.shadow.copy(alpha = .35f), Color.Transparent), Offset(g.c.x, y + 3.6f * s), 3.5f * s),
         Offset(g.c.x - 3.5f * s, y + 2.4f * s), Size(7f * s, 2.6f * s))
@@ -741,10 +749,11 @@ private fun DrawScope.drawFrontHair(a: CharacterAppearance, g: FaceGeometry, gen
     val fringe = when (a.hairStyle) { 0 -> .32f; 1 -> .5f; 6 -> .62f; 2 -> .3f; else -> .22f } + a.hairLength / 600f
     val hairline = g.top + g.halfH * fringe * s
     val parting = if (a.hairStyle == 1) .35f else 0f
+    val sideBottom = if (a.hairStyle == 0 || a.hairStyle == 1) g.browY + 3f * s else g.eyeY
     val cap = Path().apply {
-        moveTo(g.x(-1.07f), g.eyeY)
+        moveTo(g.x(-1.07f), sideBottom)
         cubicTo(g.x(-1.2f) - volume * s, g.top - 2f * s, g.x(-.6f), g.top - (4f + volume) * s, g.c.x, g.top - (4.2f + volume) * s)
-        cubicTo(g.x(.6f), g.top - (4f + volume) * s, g.x(1.2f) + volume * s, g.top - 2f * s, g.x(1.07f), g.eyeY)
+        cubicTo(g.x(.6f), g.top - (4f + volume) * s, g.x(1.2f) + volume * s, g.top - 2f * s, g.x(1.07f), sideBottom)
         cubicTo(g.x(1f), g.browY - 2f * s, g.x(.9f), hairline, g.x(.55f + parting * .2f), hairline + 1.5f * s)
         cubicTo(g.x(.25f), hairline - 1f * s, g.x(parting), hairline - 2.4f * s, g.x(parting - .2f), hairline + .6f * s)
         cubicTo(g.x(-.4f), hairline + 2.4f * s, g.x(-.8f), hairline, g.x(-1f), g.browY - 2f * s)
