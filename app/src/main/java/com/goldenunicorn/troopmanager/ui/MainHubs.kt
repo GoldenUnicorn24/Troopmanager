@@ -105,7 +105,7 @@ private fun HubPage(area: MainArea, tab: Int, sub: Int, ctx: HubContext) {
             1 -> when (sub) {
                 0 -> ArmyScreen(s, ctx.onState, ctx.onNotice)
                 1 -> CrownPanel(s, ctx.onState, ctx.onNotice, CrownSection.LEVY)
-                2 -> ScrollPanel { MilitaryLogisticsPanel(s, ctx.onState, ctx.onNotice) }
+                2 -> MilitaryLogisticsPanel(s, ctx.onState, ctx.onNotice)
                 else -> ScrollPanel { WarManagementPanel(s, ctx.onState, ctx.onNotice) }
             }
             2 -> if (sub == 0) CommanderDirectoryScreen(s, ctx.onState, ctx.onNotice) else WorldScreen(s, ctx.onState, ctx.onNotice)
