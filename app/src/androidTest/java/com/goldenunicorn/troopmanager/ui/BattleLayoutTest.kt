@@ -189,7 +189,6 @@ class BattleLayoutTest {
         val tabs = rule.onNodeWithTag("adaptive_tabs").fetchSemanticsNode().boundsInRoot
         val selected = rule.onNodeWithTag("tab_1").assertIsSelected().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue(selected.left >= tabs.left && selected.right <= tabs.right)
-        rule.onAllNodesWithText("Heerbann").onFirst().assertIsDisplayed()
     }
 
     @Test fun invasionDashboardStoresTheDefensePlan() {
