@@ -67,12 +67,17 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
 
     // The simulation clock: one combat step every 0.9 s (faster with the speed toggle).
     val running = battle.isActive && !paused && stage in listOf(Stage.RUNNING, Stage.AFTER_MIDDLE, Stage.AFTER_FINAL)
-    LaunchedEffect(battle.step, battle.tacticalStage, battle.status, running, speed) {
-        if (!running) return@LaunchedEffect
-        delay((if (state.settings.animations) 900L else 250L) / speed)
-        val result = TacticalBattleEngine.step(state)
-        if (result.state.battleSession?.tacticalStage != battle.tacticalStage) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-        onState(result.state)
+    val latest by rememberUpdatedState(state)
+    val latestOnState by rememberUpdatedState(onState)
+    LaunchedEffect(running, speed, battle.tacticalStage, battle.status) {
+        while (running) {
+            delay((if (latest.settings.animations) 900L else 250L) / speed)
+            val current = latest
+            val result = TacticalBattleEngine.step(current)
+            if (result.state === current) break
+            if (result.state.battleSession?.tacticalStage != current.battleSession?.tacticalStage) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            latestOnState(result.state)
+        }
     }
 
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().testTag("battle_screen")) {
