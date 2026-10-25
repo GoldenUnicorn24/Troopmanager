@@ -67,7 +67,7 @@ internal fun CrownCard(emphasized: Boolean = false, content: @Composable ColumnS
 internal fun CardTitle(title: String, subtitle: String? = null, pill: String? = null, pillColor: Color = Gold) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+            Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel)
             if (subtitle != null) Text(subtitle, color = Muted, fontSize = 12.sp)
         }
         if (pill != null) ModernPill(pill, pillColor, filled = true)
@@ -148,6 +148,13 @@ internal fun ThreatCard(state: GameState, t: CrownThreat, apply: (GameEngine.Act
     var share by remember { mutableIntStateOf(75) }
     val preview = CrownWarEngine.relievePreview(state, t.id, share)
     CrownCard(emphasized = true) {
+        val horde = if (t.attacker == ProvinceOwner.HORDE) CrownEngine.province(state, t.sourceId)?.horde else null
+        ArtImage(when (horde) {
+            EnemyType.ORC -> "frontier/horde_orc.webp"
+            EnemyType.URUK -> "frontier/horde_uruk.webp"
+            EnemyType.TAO_TEI -> "frontier/horde_taotei.webp"
+            null -> "category_human.webp"
+        }, Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(14.dp)))
         CardTitle("${t.attacker.label} → ${p.name}", "${fmt(t.soldiers)} Krieger · Ankunft Tag ${t.arrivalDay}", if (defense >= attack) "Hält" else "Fällt", if (defense >= attack) Emerald else Crimson)
         Meter("Verteidigung in % des Angriffs", (defense * 100 / attack.coerceAtLeast(1)).toInt().coerceAtMost(200), 100, if (defense >= attack) Emerald else Crimson)
         Text("Besatzung ${fmt(p.garrison)} · Miliz ${fmt(CrownWarEngine.militia(p))} · Mauern ${p.fortification}/3", color = Muted, fontSize = 12.sp)

@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -54,89 +58,181 @@ internal object PortraitPalette {
 internal fun DrawnPortrait(spec: PortraitSpec, modifier: Modifier = Modifier) {
     Canvas(modifier.clip(CircleShape).semantics { contentDescription = "Gezeichnetes Porträt" }) {
         val u = size.minDimension / 100f
-        fun o(x: Float, y: Float) = Offset(x * u, y * u)
-        fun sz(w: Float, h: Float) = Size(w * u, h * u)
-        val p = PortraitPalette
-        val skin = p.skin[spec.skin.mod(p.skin.size)]
-        val hairC = p.hairColor[spec.hairColor.mod(p.hairColor.size)]
-        val armorC = p.armorColor[spec.armorColor.mod(p.armorColor.size)]
-        val shade = Color.Black.copy(alpha = .18f)
+        // Everything below is drawn on a 100×100 grid; light falls from the upper left.
+        scale(u, u, pivot = Offset.Zero) { paintPortrait(spec) }
+    }
+}
 
-        val bg = p.background[spec.background.mod(p.background.size)]
-        drawRect(Brush.radialGradient(listOf(bg.lighten(.22f), bg), center = o(50f, 35f), radius = 70 * u), size = size)
 
-        // Long hair falls behind the shoulders.
-        if (spec.hair == 1 || spec.hair == 2 || spec.hair == 4) drawRoundRect(hairC, o(26f, 30f), sz(48f, if (spec.hair == 1) 52f else 40f), CornerRadius(20 * u))
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.oval(color: Color, cx: Float, cy: Float, rx: Float, ry: Float) =
+    drawOval(color, Offset(cx - rx, cy - ry), Size(rx * 2, ry * 2))
 
-        // Shoulders and armor.
-        val body = Path().apply {
-            moveTo(10 * u, 100 * u); cubicTo(12 * u, 80 * u, 28 * u, 72 * u, 50 * u, 72 * u)
-            cubicTo(72 * u, 72 * u, 88 * u, 80 * u, 90 * u, 100 * u); close()
-        }
-        drawPath(body, armorC)
-        when (spec.armor) {
-            0 -> { // plate: pauldrons and a center ridge
-                drawOval(armorC.lighten(.22f), o(12f, 76f), sz(26f, 16f))
-                drawOval(armorC.lighten(.22f), o(62f, 76f), sz(26f, 16f))
-                drawLine(armorC.lighten(.35f), o(50f, 80f), o(50f, 100f), strokeWidth = 2.2f * u)
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.oval(brush: Brush, cx: Float, cy: Float, rx: Float, ry: Float) =
+    drawOval(brush, Offset(cx - rx, cy - ry), Size(rx * 2, ry * 2))
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.paintPortrait(spec: PortraitSpec) {
+    val p = PortraitPalette
+    val skin = p.skin[spec.skin.mod(p.skin.size)]
+    val hairC = p.hairColor[spec.hairColor.mod(p.hairColor.size)]
+    val arm = p.armorColor[spec.armorColor.mod(p.armorColor.size)]
+    val bg = p.background[spec.background.mod(p.background.size)]
+    val eye = p.eyes[spec.eyes.mod(p.eyes.size)]
+    val black = Color.Black
+    val gold = Color(0xFFC9A34A)
+
+    // Background with soft light and vignette, plus a faint ray.
+    drawRect(Brush.radialGradient(0f to bg.lighten(.35f), .6f to bg, 1f to bg.darken(.55f), center = Offset(36f, 30f), radius = 86f), Offset.Zero, Size(100f, 100f))
+    drawPath(Path().apply { moveTo(10f, 0f); lineTo(40f, 0f); lineTo(80f, 100f); lineTo(55f, 100f); close() }, Color(0x0FFFF0C8))
+
+    // Long hair falls behind the shoulders.
+    if (spec.hair == 1 || spec.hair == 2 || spec.hair == 4) {
+        val bottom = if (spec.hair == 1) 90f else 78f
+        drawPath(Path().apply {
+            moveTo(28f, 36f); cubicTo(22f, 60f, 24f, bottom - 4f, 30f, bottom); lineTo(70f, bottom); cubicTo(76f, bottom - 4f, 78f, 60f, 72f, 36f); close()
+        }, Brush.verticalGradient(listOf(hairC, hairC.darken(.35f)), 28f, 85f))
+    }
+
+    // Cloak and shoulders.
+    drawPath(Path().apply { moveTo(4f, 100f); cubicTo(8f, 82f, 24f, 74f, 50f, 73f); cubicTo(76f, 74f, 92f, 82f, 96f, 100f); close() }, arm.darken(.5f))
+    drawPath(Path().apply { moveTo(12f, 100f); cubicTo(14f, 82f, 30f, 75f, 50f, 75f); cubicTo(70f, 75f, 86f, 82f, 88f, 100f); close() },
+        Brush.linearGradient(0f to arm.lighten(.25f), .5f to arm, 1f to arm.darken(.45f), start = Offset(20f, 70f), end = Offset(80f, 100f)))
+    when (spec.armor) {
+        0 -> {
+            listOf(10f, 62f).forEach { px ->
+                oval(Brush.radialGradient(0f to arm.lighten(.6f), .4f to arm.lighten(.15f), 1f to arm.darken(.35f), center = Offset(px + 9f, 79f), radius = 16f), px + 14f, 85f, 14f, 9f)
+                drawOval(black.copy(alpha = .35f), Offset(px, 76f), Size(28f, 18f), style = Stroke(.8f))
             }
-            1 -> { // leather: straps
-                drawLine(armorC.darken(.3f), o(30f, 76f), o(62f, 100f), strokeWidth = 3f * u)
-                drawCircle(Color(0xFFB08A3E), 2f * u, o(44f, 86f))
+            drawLine(arm.lighten(.5f), Offset(50f, 82f), Offset(50f, 100f), 1.6f)
+            drawCircle(gold, 2.2f, Offset(50f, 84f))
+        }
+        1 -> {
+            drawLine(arm.darken(.4f), Offset(28f, 78f), Offset(64f, 100f), 3f)
+            drawCircle(gold, 2.2f, Offset(43f, 87f))
+        }
+        2 -> {
+            val collar = Path().apply { moveTo(36f, 74f); lineTo(50f, 94f); lineTo(64f, 74f); close() }
+            drawPath(collar, arm.darken(.3f))
+            drawPath(Path().apply { moveTo(36f, 74f); lineTo(50f, 94f); lineTo(64f, 74f) }, gold, style = Stroke(1f))
+        }
+        else -> for (row in 0 until 3) for (i in 0 until 7)
+            drawArc(arm.lighten(.3f), 0f, 180f, false, Offset(15f + i * 10f + (row % 2) * 5f, 79f + row * 6f), Size(10f, 10f), style = Stroke(1.2f))
+    }
+
+    // Neck with the shadow under the jaw.
+    drawPath(Path().apply { moveTo(42f, 58f); lineTo(41f, 76f); quadraticBezierTo(50f, 79f, 59f, 76f); lineTo(58f, 58f); close() },
+        Brush.verticalGradient(listOf(skin.darken(.35f), skin.darken(.12f)), 58f, 76f))
+
+    // Ears.
+    val earColor = skin.darken(.06f)
+    if (spec.elfEars) {
+        listOf(false, true).forEach { mirrored ->
+            withTransform({ if (mirrored) scale(-1f, 1f, pivot = Offset(50f, 50f)) }) {
+                drawPath(Path().apply { moveTo(32f, 44f); quadraticBezierTo(22f, 36f, 16f, 28f); quadraticBezierTo(24f, 44f, 32f, 54f); close() }, earColor)
+                drawPath(Path().apply { moveTo(30f, 45f); quadraticBezierTo(24f, 40f, 20f, 33f); quadraticBezierTo(25f, 44f, 30f, 51f); close() }, Color(0x407A3B2A))
             }
-            2 -> { // robe: high collar
-                drawPath(Path().apply { moveTo(38 * u, 72 * u); lineTo(50 * u, 90 * u); lineTo(62 * u, 72 * u); close() }, armorC.darken(.25f))
-            }
-            else -> { // scales
-                for (row in 0 until 3) for (i in 0 until 6) drawArc(armorC.lighten(.18f), 0f, 180f, false, o(22f + i * 10f + (row % 2) * 5f, 80f + row * 6f), sz(10f, 8f), style = Stroke(1.4f * u))
-            }
         }
-        // Neck and head.
-        drawRoundRect(skin.darken(.08f), o(43f, 58f), sz(14f, 18f), CornerRadius(5 * u))
-        if (spec.elfEars) {
-            drawPath(Path().apply { moveTo(31 * u, 46 * u); lineTo(19 * u, 33 * u); lineTo(32 * u, 54 * u); close() }, skin)
-            drawPath(Path().apply { moveTo(69 * u, 46 * u); lineTo(81 * u, 33 * u); lineTo(68 * u, 54 * u); close() }, skin)
-        } else {
-            drawOval(skin, o(28f, 42f), sz(7f, 12f)); drawOval(skin, o(65f, 42f), sz(7f, 12f))
-        }
-        drawOval(skin, o(31f, 22f), sz(38f, 46f))
-        drawOval(shade, o(31f, 52f), sz(38f, 16f), alpha = .25f)
+    } else {
+        oval(earColor, 31.5f, 47f, 3.8f, 6.5f)
+        oval(earColor, 68.5f, 47f, 3.8f, 6.5f)
+    }
 
-        // Eyes, brows, nose, mouth.
-        val eye = p.eyes[spec.eyes.mod(p.eyes.size)]
-        listOf(42f, 58f).forEach { x ->
-            drawOval(Color.White, o(x - 4.5f, 40f), sz(9f, 5f))
-            drawCircle(eye, 2.3f * u, o(x, 42.5f))
-            drawCircle(Color.Black, 1.0f * u, o(x, 42.5f))
-            drawLine(hairC.darken(.1f), o(x - 5f, 36f), o(x + 5f, 35.2f), strokeWidth = 1.8f * u, cap = StrokeCap.Round)
-        }
-        drawLine(skin.darken(.25f), o(50f, 44f), o(48.5f, 51f), strokeWidth = 1.2f * u, cap = StrokeCap.Round)
-        drawArc(Color(0xFF8A4A42), 20f, 140f, false, o(44f, 52f), sz(12f, 6f), style = Stroke(1.6f * u, cap = StrokeCap.Round))
+    // Face with a real jaw line.
+    val face = Path().apply {
+        moveTo(50f, 21f); cubicTo(63f, 21f, 70f, 31f, 69.5f, 43f); cubicTo(69f, 54f, 62f, 66f, 50f, 68.5f)
+        cubicTo(38f, 66f, 31f, 54f, 30.5f, 43f); cubicTo(30f, 31f, 37f, 21f, 50f, 21f); close()
+    }
+    drawPath(face, Brush.radialGradient(0f to skin.lighten(.18f), .65f to skin, 1f to skin.darken(.22f), center = Offset(42f, 36f), radius = 34f))
+    clipPath(face) {
+        oval(black.copy(alpha = .10f), 70f, 48f, 12f, 26f)
+        oval(black.copy(alpha = .08f), 50f, 70f, 20f, 6f)
+    }
+    drawPath(face, skin.darken(.6f).copy(alpha = .35f), style = Stroke(.6f))
+    oval(Color(0x29D0605A), 39f, 52f, 4.5f, 2.6f)
+    oval(Color(0x29D0605A), 61f, 52f, 4.5f, 2.6f)
 
-        // Beard.
-        when (spec.beard) {
-            1 -> drawOval(hairC.copy(alpha = .35f), o(35f, 48f), sz(30f, 20f))
-            2 -> drawPath(Path().apply { moveTo(33 * u, 46 * u); cubicTo(34 * u, 70 * u, 66 * u, 70 * u, 67 * u, 46 * u); cubicTo(60 * u, 58 * u, 40 * u, 58 * u, 33 * u, 46 * u); close() }, hairC)
-            3 -> drawRoundRect(hairC, o(45f, 58f), sz(10f, 11f), CornerRadius(4 * u))
-        }
+    // Eyes and brows.
+    listOf(41.5f, 58.5f).forEach { x ->
+        oval(skin.darken(.5f).copy(alpha = .18f), x, 41.2f, 5.6f, 3.6f)
+        oval(Color(0xFFF7F1EA), x, 42.5f, 4.4f, 2.5f)
+        drawCircle(Brush.radialGradient(listOf(eye.lighten(.35f), eye.darken(.25f)), center = Offset(x - .5f, 42f), radius = 2.6f), 2.3f, Offset(x, 42.5f))
+        drawCircle(Color(0xFF111111), 1f, Offset(x, 42.5f))
+        drawCircle(Color.White.copy(alpha = .9f), .55f, Offset(x - .8f, 41.6f))
+        drawArc(hairC.darken(.2f), 189f, 162f, false, Offset(x - 4.6f, 39.9f), Size(9.2f, 5.2f), style = Stroke(.9f, cap = StrokeCap.Round))
+        val dir = if (x < 50f) 1f else -1f
+        drawPath(Path().apply { moveTo(x - 5f * dir, 36.6f); quadraticBezierTo(x, 34.6f, x + 5f * dir, 36f) }, hairC.darken(.05f), style = Stroke(1.7f, cap = StrokeCap.Round))
+    }
 
-        // Markings.
-        when (spec.marking) {
-            1 -> drawLine(Color(0xFFB0605A), o(56f, 33f), o(63f, 50f), strokeWidth = 1.6f * u, cap = StrokeCap.Round)
-            2 -> { drawLine(Color(0xFF8A1F1F).copy(alpha = .8f), o(36f, 46f), o(46f, 48f), strokeWidth = 2.4f * u); drawLine(Color(0xFF8A1F1F).copy(alpha = .8f), o(54f, 48f), o(64f, 46f), strokeWidth = 2.4f * u) }
-            3 -> { drawCircle(Color(0xFF6FD0C0).copy(alpha = .8f), 1.4f * u, o(50f, 31f)); drawArc(Color(0xFF6FD0C0).copy(alpha = .8f), 200f, 140f, false, o(44f, 28f), sz(12f, 8f), style = Stroke(1.0f * u)) }
-        }
+    // Nose and mouth.
+    drawPath(Path().apply { moveTo(51f, 43f); quadraticBezierTo(52.5f, 49f, 51f, 51.5f); quadraticBezierTo(49.5f, 52.6f, 47.8f, 51.6f) },
+        skin.darken(.45f).copy(alpha = .7f), style = Stroke(.9f, cap = StrokeCap.Round))
+    oval(Color.White.copy(alpha = .18f), 49.6f, 47f, .8f, 3f)
+    drawPath(Path().apply { moveTo(44.5f, 57f); quadraticBezierTo(50f, 55.6f, 55.5f, 57f); quadraticBezierTo(50f, 60.5f, 44.5f, 57f); close() }, Color(0xFFAC5D55))
+    drawPath(Path().apply { moveTo(44.5f, 57f); quadraticBezierTo(50f, 57.8f, 55.5f, 57f) }, Color(0xCC6E2E2A), style = Stroke(.7f, cap = StrokeCap.Round))
 
-        // Hair on top.
-        when (spec.hair) {
-            0 -> drawArc(hairC, 180f, 180f, true, o(30f, 18f), sz(40f, 26f))
-            1 -> { drawArc(hairC, 180f, 180f, true, o(29f, 17f), sz(42f, 28f)); drawRoundRect(hairC, o(29f, 28f), sz(6f, 30f), CornerRadius(3 * u)); drawRoundRect(hairC, o(65f, 28f), sz(6f, 30f), CornerRadius(3 * u)) }
-            2 -> { drawArc(hairC, 180f, 180f, true, o(30f, 18f), sz(40f, 26f)); drawRoundRect(hairC, o(66f, 40f), sz(7f, 34f), CornerRadius(3.5f * u)) }
-            3 -> { drawArc(hairC, 180f, 180f, true, o(30f, 18f), sz(40f, 24f)); drawCircle(hairC, 8f * u, o(50f, 14f)) }
-            4 -> for (i in 0 until 7) drawPath(Path().apply { val x = 29f + i * 7f; moveTo(x * u, 32 * u); lineTo((x + 3.5f) * u, 12f * u + (i % 2) * 4 * u); lineTo((x + 7f) * u, 32 * u); close() }, hairC)
-            else -> drawOval(Color.White.copy(alpha = .10f), o(40f, 23f), sz(14f, 6f))
+    // Beard.
+    when (spec.beard) {
+        1 -> clipPath(face) { oval(hairC.copy(alpha = .30f), 50f, 62f, 18f, 10f) }
+        2 -> {
+            drawPath(Path().apply {
+                moveTo(31f, 46f); cubicTo(32f, 66f, 42f, 74f, 50f, 74f); cubicTo(58f, 74f, 68f, 66f, 69f, 46f)
+                cubicTo(64f, 58f, 56f, 55f, 50f, 59f); cubicTo(44f, 55f, 36f, 58f, 31f, 46f); close()
+            }, Brush.verticalGradient(listOf(hairC, hairC.darken(.3f)), 48f, 72f))
+            for (i in 0 until 6) drawLine(hairC.lighten(.4f).copy(alpha = .35f), Offset(40f + i * 4f, 62f), Offset(41f + i * 4f, 71f), .6f)
+        }
+        3 -> drawPath(Path().apply { moveTo(45f, 61f); quadraticBezierTo(50f, 74f, 55f, 61f); close() }, hairC)
+    }
+
+    // Markings.
+    when (spec.marking) {
+        1 -> drawLine(Color(0xFFB0605A), Offset(57f, 33f), Offset(63f, 49f), 1.2f, cap = StrokeCap.Round)
+        2 -> {
+            drawLine(Color(0xBF8A1F1F), Offset(35f, 47f), Offset(45f, 49f), 2.2f)
+            drawLine(Color(0xBF8A1F1F), Offset(55f, 49f), Offset(65f, 47f), 2.2f)
+        }
+        3 -> {
+            drawCircle(Color(0xD96FD0C0), 1.2f, Offset(50f, 30.5f))
+            drawArc(Color(0xD96FD0C0), 207f, 126f, false, Offset(45f, 27f), Size(10f, 10f), style = Stroke(.8f))
         }
     }
+
+    // Hair on top with clipped highlight strands.
+    if (spec.hair != 5) {
+        val hair = Path().apply {
+            if (spec.hair == 4) {
+                moveTo(28f, 40f)
+                for (i in 0 until 8) { lineTo(30f + i * 5.6f, 14f + (i % 2) * 6f); lineTo(33f + i * 5.6f, 30f) }
+                lineTo(72f, 40f); cubicTo(70f, 24f, 62f, 16f, 50f, 16f); cubicTo(38f, 16f, 30f, 24f, 28f, 40f); close()
+            } else {
+                moveTo(29f, 42f); cubicTo(27f, 24f, 38f, 15f, 50f, 15f); cubicTo(62f, 15f, 73f, 24f, 71f, 42f)
+                cubicTo(68f, 33f, 62f, 27f, 55f, 26f); cubicTo(50f, 30f, 40f, 31f, 35f, 33f); cubicTo(32f, 36f, 30f, 39f, 29f, 42f); close()
+            }
+        }
+        val hairBrush = Brush.linearGradient(0f to hairC.lighten(.22f), .5f to hairC, 1f to hairC.darken(.3f), start = Offset(30f, 14f), end = Offset(70f, 40f))
+        drawPath(hair, hairBrush)
+        clipPath(hair) {
+            for (i in 0 until 6) drawPath(Path().apply { moveTo(40f + i * 5f, 16f); quadraticBezierTo(37f + i * 5f, 22f, 33f + i * 5f, 30f) },
+                hairC.lighten(.55f).copy(alpha = .45f), style = Stroke(.9f, cap = StrokeCap.Round))
+        }
+        when (spec.hair) {
+            1 -> listOf(27f, 67f).forEach { x ->
+                drawPath(Path().apply { moveTo(x, 32f); cubicTo(x - 1f, 48f, x + 1f, 58f, x + 3f, 66f); lineTo(x + 6f, 64f); cubicTo(x + 5f, 52f, x + 5f, 42f, x + 6f, 34f); close() },
+                    Brush.verticalGradient(listOf(hairC, hairC.darken(.3f)), 30f, 70f))
+            }
+            2 -> for (i in 0 until 5) {
+                oval(hairC, 70f, 40f + i * 7f, 4.2f, 4.4f)
+                drawOval(hairC.darken(.4f).copy(alpha = .6f), Offset(65.8f, 35.6f + i * 7f), Size(8.4f, 8.8f), style = Stroke(.6f))
+            }
+            3 -> {
+                drawCircle(hairC, 8f, Offset(50f, 13f))
+                drawArc(hairC.lighten(.5f).copy(alpha = .4f), 180f, 144f, false, Offset(45f, 8f), Size(10f, 10f), style = Stroke(.9f))
+            }
+        }
+    } else {
+        withTransform({ rotate(-17f, pivot = Offset(46f, 25f)) }) { oval(Color.White.copy(alpha = .12f), 46f, 25f, 8f, 3f) }
+    }
+
+    // Rim light along the upper left edge.
+    drawArc(Color(0x59FFE6B4), 189f, 90f, false, Offset(1f, 1f), Size(98f, 98f), style = Stroke(1.2f))
 }
 
 private fun Color.lighten(f: Float) = Color(red + (1 - red) * f, green + (1 - green) * f, blue + (1 - blue) * f, alpha)

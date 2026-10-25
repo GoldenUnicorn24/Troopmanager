@@ -71,7 +71,7 @@ internal fun CelebrationOverlay(celebration: Celebration, remaining: Int, animat
             ) {
                 Canvas(Modifier.size(150.dp).scale(0.6f + 0.4f * entry.value)) { emblem(celebration.kind, accent) }
                 Text(eyebrow, color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                Text(celebration.title, color = Color.White, fontSize = 30.sp, lineHeight = 36.sp, fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
+                Text(celebration.title, color = Color.White, fontSize = 30.sp, lineHeight = 38.sp, fontWeight = FontWeight.Black, fontFamily = Cinzel, textAlign = TextAlign.Center)
                 Text(celebration.text, color = Mist, fontSize = 16.sp, lineHeight = 23.sp, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(10.dp))
                 GoldButton(if (remaining > 1) "Weiter (${remaining - 1} mehr)" else "Weiter", onContinue, Modifier.fillMaxWidth())

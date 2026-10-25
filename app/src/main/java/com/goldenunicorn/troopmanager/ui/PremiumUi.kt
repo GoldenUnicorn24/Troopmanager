@@ -132,7 +132,7 @@ internal fun ModernSectionHeader(
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp,
             )
-            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel)
         }
         if (action != null && onAction != null) {
             TextButton(onClick = onAction, contentPadding = PaddingValues(horizontal = 4.dp)) {
@@ -162,7 +162,7 @@ internal fun ModernTabStrip(
             Surface(
                 modifier = Modifier.widthIn(min = 48.dp, max = itemWidth).heightIn(min = 48.dp)
                     .testTag("tab_$index").semantics { this.selected = active }.clickable { onSelect(index) },
-                color = if (active) Color.White else Color(0xFF111820),
+                color = if (active) Color.White else Color(0xCC111820),
                 shape = RoundedCornerShape(100.dp),
                 border = BorderStroke(
                     1.dp,

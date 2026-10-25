@@ -31,9 +31,23 @@ internal object Space {
     val xl = 24.dp
 }
 
+/** Cinzel: carved-stone capitals for titles and the brand. */
+internal val Cinzel = androidx.compose.ui.text.font.FontFamily(
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cinzel_semibold, FontWeight.SemiBold),
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cinzel_bold, FontWeight.Bold),
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cinzel_bold, FontWeight.Black),
+)
+
+/** Cormorant Garamond: a book face for story scenes and letters. */
+internal val Cormorant = androidx.compose.ui.text.font.FontFamily(
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cormorant_medium, FontWeight.Normal),
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cormorant_medium, FontWeight.Medium),
+    androidx.compose.ui.text.font.Font(com.goldenunicorn.troopmanager.R.font.cormorant_italic, FontWeight.Normal, androidx.compose.ui.text.font.FontStyle.Italic),
+)
+
 internal val AppTypography = Typography(
-    headlineMedium = TextStyle(fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black),
-    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold),
+    headlineMedium = TextStyle(fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Black, fontFamily = Cinzel),
+    titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 26.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel),
     titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Bold),
     bodyLarge = TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
     bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
@@ -54,7 +68,7 @@ internal fun severityColor(severity: AdvisorEngine.Severity): Color = when (seve
 @Composable
 internal fun Heading(title: String, subtitle: String? = null) {
     Column(Modifier.padding(top = Space.s), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel)
         if (subtitle != null) Text(subtitle, color = Muted, fontSize = 13.sp, lineHeight = 18.sp)
     }
 }

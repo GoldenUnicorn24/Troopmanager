@@ -56,7 +56,7 @@ internal fun SagaStageDialog(state: GameState, scene: SagaScene, apply: (GameEng
                 }
                 Text(
                     scene.speaker ?: def?.name ?: state.companion.name,
-                    color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black,
+                    color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black, fontFamily = Cinzel,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
                 Text(scene.title, color = PaleGold, fontSize = 15.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -69,7 +69,7 @@ internal fun SagaStageDialog(state: GameState, scene: SagaScene, apply: (GameEng
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Text(scene.text, color = Ivory, fontSize = 16.sp, lineHeight = 24.sp)
+                    Text(scene.text, color = Ivory, fontSize = 19.sp, lineHeight = 26.sp, fontFamily = Cormorant)
                     scene.options.forEach { option ->
                         OutlinedButton(
                             onClick = { apply(HeroineSagaEngine.choose(state, option.id)) },

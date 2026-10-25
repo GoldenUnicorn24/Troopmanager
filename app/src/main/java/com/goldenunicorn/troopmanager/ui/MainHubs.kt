@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -46,10 +48,43 @@ internal fun AreaHub(area: MainArea, tab: Int, sub: Int, onTab: (Int) -> Unit, o
     val subs = tabs[page].subs
     val subPage = sub.coerceIn(0, (subs.size - 1).coerceAtLeast(0))
     Column(Modifier.fillMaxSize()) {
-        HubTabs(tabs.mapIndexed { i, t -> tabLabel(ctx.state, area, i, t.label) }, page, onTab)
-        if (subs.isNotEmpty()) SubSwitch(subs, subPage, onSub)
+        // Tabs sit on a strip of the area's painting: atmosphere without costing screen height.
+        Box(Modifier.fillMaxWidth()) {
+            ArtImage(areaArt(area), Modifier.matchParentSize(), areaArtAlignment(area))
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Ink.copy(alpha = .45f), Ink.copy(alpha = .78f), Ink))))
+            Column {
+                HubTabs(tabs.mapIndexed { i, t -> tabLabel(ctx.state, area, i, t.label) }, page, onTab)
+                if (subs.isNotEmpty()) SubSwitch(subs, subPage, onSub)
+            }
+        }
         Box(Modifier.weight(1f)) { HubPage(area, page, subPage, ctx) }
     }
+}
+
+internal fun areaArt(area: MainArea): String = when (area) {
+    MainArea.TODAY -> "menu_cover.webp"
+    MainArea.REALM -> "world_map.webp"
+    MainArea.ARMY -> "category_human.webp"
+    MainArea.COURT -> "frontier/bond_train.webp"
+    MainArea.CITY -> "city_landscape.webp"
+}
+
+private fun areaArtAlignment(area: MainArea): Alignment = when (area) {
+    MainArea.TODAY -> BiasAlignment(0f, -0.35f)
+    MainArea.COURT -> BiasAlignment(0f, -0.6f)
+    else -> Alignment.Center
+}
+
+/** A bundled painting from the assets folder. */
+@Composable
+internal fun ArtImage(asset: String, modifier: Modifier = Modifier, alignment: Alignment = Alignment.Center) {
+    coil.compose.AsyncImage(
+        model = "file:///android_asset/$asset",
+        contentDescription = null,
+        modifier = modifier,
+        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+        alignment = alignment,
+    )
 }
 
 private fun tabLabel(state: GameState, area: MainArea, index: Int, label: String): String =
@@ -69,7 +104,7 @@ internal fun SubSwitch(labels: List<String>, selected: Int, onSelect: (Int) -> U
                 fontSize = 12.sp,
                 fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
-                    .background(if (active) Gold else StoneRaised)
+                    .background(if (active) Gold else Color.Black.copy(alpha = .45f))
                     .clickable { onSelect(i) }
                     .heightIn(min = 36.dp)
                     .padding(horizontal = 12.dp, vertical = 9.dp),
@@ -156,7 +191,7 @@ internal fun TodayScreen(ctx: HubContext) {
         verticalArrangement = Arrangement.spacedBy(Space.m),
     ) {
         item {
-            PremiumPanel(emphasized = true) {
+            HeroCard("menu_cover.webp", BiasAlignment(0f, -0.2f)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Portrait("knight", state.player.portraitUri, 60, state.crown.playerLook)
                     if (state.companion.met) Portrait(HeroineSagaEngine.companionDef(state)?.portraitKey ?: "companion", state.companion.portraitUri, 60, HeroineSagaEngine.companionLook(state))
@@ -165,7 +200,7 @@ internal fun TodayScreen(ctx: HubContext) {
                         ActEngine.current(state)?.let { Text("Akt ${it.number}: ${it.title}", color = PaleGold, fontSize = 12.sp) }
                     }
                 }
-                Text("${state.player.name}, ${state.title}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text("${state.player.name}, ${state.title}", color = Color.White, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel)
                 val partner = if (state.companion.met) " · an deiner Seite: ${state.companion.name}" else ""
                 Text("${state.realm.settlementName} · ${state.crown.ownedProvinces.size} Kronprovinzen$partner", color = Mist, fontSize = 14.sp)
                 ActEngine.current(state)?.takeIf { !ActEngine.goalsMet(state) }?.let {
@@ -223,9 +258,11 @@ private fun InboxCard(state: GameState, item: InboxEngine.Item, onOpen: (Spot) -
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            item.portraitKey?.let {
-                if (it == "companion") Portrait(HeroineSagaEngine.companionDef(state)?.portraitKey ?: "companion", state.companion.portraitUri, 40, HeroineSagaEngine.companionLook(state))
-                else Portrait(it, null, 40)
+            val key = item.portraitKey
+            when {
+                key == "companion" -> Portrait(HeroineSagaEngine.companionDef(state)?.portraitKey ?: "companion", state.companion.portraitUri, 48, HeroineSagaEngine.companionLook(state))
+                key != null -> Portrait(key, null, 48)
+                else -> ArtImage(inboxArt(item), Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
             }
             Column(Modifier.weight(1f)) {
                 Text(item.source.label.uppercase() + (since?.let { s -> if (item.autoSettles) " · noch ${(InboxEngine.AUTO_DAYS - (state.day - s)).coerceAtLeast(0)} T." else "" } ?: ""),
@@ -250,6 +287,38 @@ private fun InboxCard(state: GameState, item: InboxEngine.Item, onOpen: (Spot) -
                 }
             }
         }
+    }
+}
+
+/** A painting that fits the kind of decision. */
+private fun inboxArt(item: InboxEngine.Item): String = when (item.source) {
+    InboxEngine.Source.WEEKLY -> when {
+        "ORC_STORM" in item.key -> "frontier/horde_orc.webp"
+        "HARVEST" in item.key -> "city_landscape.webp"
+        "TOURNAMENT" in item.key -> "category_human.webp"
+        "MERCHANTS" in item.key -> "frontier/ally_gold.webp"
+        "PLAGUE" in item.key -> "frontier/ally_holds.webp"
+        else -> "category_gold_elf.webp"
+    }
+    InboxEngine.Source.FRONTIER -> "frontier/wall_crown.webp"
+    InboxEngine.Source.REALM -> "category_human.webp"
+    InboxEngine.Source.WORLD -> "frontier/ally_holds.webp"
+    InboxEngine.Source.CAMPAIGN -> "world_map.webp"
+    InboxEngine.Source.COMMANDER -> "category_wall.webp"
+    InboxEngine.Source.RELATIONSHIP -> "frontier/bond_train.webp"
+    InboxEngine.Source.FAMILY -> "frontier/bond_train.webp"
+    InboxEngine.Source.STORY, InboxEngine.Source.DEMAND -> "city_landscape.webp"
+    InboxEngine.Source.COUNCIL -> "category_gold_elf.webp"
+}
+
+/** A card with a painting behind its content, used for the big hero moments of a screen. */
+@Composable
+internal fun HeroCard(asset: String, alignment: Alignment = Alignment.Center, content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    Box(Modifier.fillMaxWidth().clip(shape).border(1.dp, Gold.copy(alpha = .30f), shape)) {
+        ArtImage(asset, Modifier.matchParentSize(), alignment)
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Ink.copy(alpha = .35f), Ink.copy(alpha = .80f), Ink.copy(alpha = .95f)))))
+        Column(Modifier.fillMaxWidth().padding(17.dp), verticalArrangement = Arrangement.spacedBy(11.dp), content = content)
     }
 }
 

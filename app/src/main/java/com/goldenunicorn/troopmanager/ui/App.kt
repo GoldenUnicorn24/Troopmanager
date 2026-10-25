@@ -114,10 +114,10 @@ internal fun MainMenu(ui: GameUiState, controller: GameViewModel) {
             Text(
                 "LAST WALL",
                 color = Color.White,
-                fontSize = 48.sp,
-                lineHeight = 48.sp,
+                fontSize = 46.sp,
+                lineHeight = 52.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = (-1).sp,
+                fontFamily = Cinzel,
             )
             Text(
                 "Baue dein Reich. Führe Armeen. Regiere gemeinsam. Jede Entscheidung verändert die Grenze.",
@@ -564,8 +564,8 @@ internal fun GameShell(
                         Modifier.weight(1f).clickable { showCensus = true },
                         verticalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        Text(state.realm.settlementName.uppercase(), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp, maxLines = 1)
-                        Text("Tag ${state.day} · ${state.title}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(state.realm.settlementName, color = Gold, fontSize = 13.sp, fontWeight = FontWeight.Bold, fontFamily = Cinzel, maxLines = 1)
+                        Text("Tag ${state.day} · ${state.title}", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     if (state.player.skillPoints > 0) {
                         Surface(
@@ -599,7 +599,7 @@ internal fun GameShell(
                 }
                 if (warningText != null) {
                     Surface(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).heightIn(min = 48.dp).clickable {
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp).heightIn(min = 44.dp).clickable {
                             showMore = false
                             when {
                                 state.crown.duel != null -> open(Spot.ARTS)
@@ -616,7 +616,7 @@ internal fun GameShell(
                         border = androidx.compose.foundation.BorderStroke(1.dp, Danger.copy(alpha = .28f)),
                     ) {
                         Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {

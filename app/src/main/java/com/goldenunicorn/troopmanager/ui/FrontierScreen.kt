@@ -56,20 +56,10 @@ internal fun FrontierScreen(
 
     Column(Modifier.fillMaxSize()) {
         Column(
-            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            PageTitle("FRONT & MAUER", "Orks, Uruk-hai und Tao Tei – an der Mauer und in den Kronlanden")
-            TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
-                listOf("Lage", "Verbündete", "Mauer", "Regimenter", "Posten").forEachIndexed { index, label ->
-                    Tab(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        text = { Text(label, fontSize = 12.sp) },
-                    )
-                }
-            }
+            ModernTabStrip(listOf("Lage", "Verbündete", "Mauer", "Regimenter", "Posten"), tab, { tab = it })
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
