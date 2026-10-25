@@ -29,6 +29,7 @@ Behoben während der Abnahme:
 - Namenskonflikt `Stone` (Kompilierfehler, Runde 2).
 - Editor-Screenshot hing beim Zeichnen: Strichmuster-Pfadeffekt bei Leinwandgröße 0 → Naht ohne Pfadeffekt, Zeichnen bei Nullgröße übersprungen (Runde 4).
 - Porträt zeichnete über seine Grenzen hinaus (`clipToBounds`), Kopf im Brustbild zu groß, Brauen gepunktet, Oberlippe wirkte wie Bart, Elbenohren zu lang; Taverne zu dunkel, Figuren zu klein, Ereignisbanner verdeckte die Szene (Runde 5).
+- Editor-Screenshot überschritt erneut das 2-s-Zeichenlimit des Emulators: Porträts werden jetzt einmal pro Größe/Aussehen in eine Bitmap gerendert und danach nur noch geblittet (Runde 7, danach alle Jobs grün).
 
 ## 3. Funktionstests (Unit, JVM)
 
