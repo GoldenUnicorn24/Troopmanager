@@ -202,11 +202,21 @@ object CrownEngine {
             return next.copy(resources = next.resources.copy(gold = next.resources.gold - upkeep))
         }
         // Unpaid mercenaries desert in part.
-        val deserters = clamped.associate { it.type to (it.soldiers / 20).coerceAtLeast(1) }
+        // Each contract has its own desertion count; several companies may use one
+        // pool. Only soldiers that can actually leave the home army are removed.
+        val available = clamped.associate { it.type to next.homeSoldiers(it.type) }.toMutableMap()
+        val desertions = clamped.associate { c ->
+            val lost = minOf((c.soldiers / 20).coerceAtLeast(1), available[c.type] ?: 0)
+            available[c.type] = (available[c.type] ?: 0) - lost
+            c.id to lost
+        }
+        val deserters = clamped.groupBy { it.type }.mapValues { (_, contracts) ->
+            contracts.sumOf { desertions.getValue(it.id) }
+        }
         next = next.copy(resources = next.resources.copy(gold = 0))
         next = removeHomeSoldiers(next, deserters)
         val contracts = next.crown.mercenaries.mapNotNull { c ->
-            val lost = deserters[c.type] ?: 0
+            val lost = desertions.getValue(c.id)
             if (c.soldiers - lost <= 0) null else c.copy(soldiers = c.soldiers - lost)
         }
         next = next.copy(crown = next.crown.copy(mercenaries = contracts))
@@ -219,6 +229,7 @@ object CrownEngine {
         var income = 0
         var next = state
         val freeTrade = has(state, CrownEdict.FREE_TRADE)
+        val goldCapacity = maxOf(state.city.storageCapacity.gold, state.resources.gold)
         val partners = state.crown.partners.map { ps ->
             val def = CrownCatalog.partner(ps.id) ?: return@map ps
             var p = ps
@@ -237,7 +248,8 @@ object CrownEngine {
                 val got = (pay * 2.2 * relationFactor * tradeFactor).toInt()
                 resources = def.sells.withValue(resources, safe(def.sells.value(resources).toLong() + got))
                 stock = MilitaryEconomyEngine.add(stock, MilitaryGood.HORSES, (volume / 40).coerceAtLeast(1))
-                gained = got / 3
+                // This purchasing route reports a goods valuation, not gold revenue.
+                gained = ((got / 3) * ReignEngine.tradeFactor(next)).toInt()
             } else {
                 val available = def.buys.value(resources)
                 val reserve = available / 5
@@ -249,15 +261,15 @@ object CrownEngine {
                     ResourceKind.IRON -> 2.1
                     ResourceKind.GOLD -> 1.0
                 }
-                val gold = (export * price * relationFactor * tradeFactor).toInt()
+                val gold = ((export * price * relationFactor * tradeFactor).toInt() * ReignEngine.tradeFactor(next)).toInt()
                 resources = def.buys.withValue(resources, available - export)
-                resources = resources.copy(gold = safe(resources.gold.toLong() + gold))
+                val credited = safe(resources.gold.toLong() + gold).coerceAtMost(goldCapacity)
+                gained = (credited - resources.gold).coerceAtLeast(0)
+                resources = resources.copy(gold = credited)
                 val imported = (volume * 0.4 * relationFactor).toInt()
                 resources = def.sells.withValue(resources, safe(def.sells.value(resources).toLong() + imported))
-                gained = gold
             }
-            gained = (gained * ReignEngine.tradeFactor(next)).toInt()
-            income += gained
+            income = safe(income.toLong() + gained)
             p.copy(
                 relation = (p.relation + 1 + if (freeTrade) 1 else 0).coerceAtMost(100),
                 totalProfit = p.totalProfit + gained,
@@ -717,6 +729,7 @@ object CrownEngine {
     // ------------------------------------------------------------ mercenaries
 
     fun companyBlocker(state: GameState, def: CrownCatalog.MercenaryCompanyDef): String? = when {
+        state.battleSession?.isActive == true -> "Beende zuerst die laufende Schlacht."
         state.renown < def.renownRequired -> "Benötigt ${def.renownRequired} Ruhm"
         def.partnerId != null && (state.crown.partner(def.partnerId)?.agreement ?: 0) < 1 ->
             "Benötigt Handelsabkommen mit ${CrownCatalog.partner(def.partnerId)?.name ?: def.partnerId}"
@@ -736,6 +749,7 @@ object CrownEngine {
     }
 
     fun dismiss(state: GameState, contractId: String): GameEngine.ActionResult {
+        if (state.battleSession?.isActive == true) return ok(state, "Beende zuerst die laufende Schlacht.")
         val c = state.crown.mercenaries.firstOrNull { it.id == contractId } ?: return ok(state, "Vertrag nicht gefunden.")
         var next = removeHomeSoldiers(state, mapOf(c.type to c.soldiers))
         next = next.copy(crown = next.crown.copy(mercenaries = next.crown.mercenaries.filterNot { it.id == contractId }))
