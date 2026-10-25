@@ -7,7 +7,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.isRoot
-import androidx.compose.ui.test.onAllNodes
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.goldenunicorn.troopmanager.model.Spot
 import org.junit.Rule
