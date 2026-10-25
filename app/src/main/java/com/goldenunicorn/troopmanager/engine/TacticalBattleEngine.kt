@@ -61,7 +61,11 @@ object TacticalBattleEngine {
         return Odds(own, enemy, ratio, label, percent)
     }
 
-    fun stage(session: BattleSession): Stage = Stage.entries[session.tacticalStage.coerceIn(0, Stage.entries.lastIndex)]
+    fun stage(session: BattleSession): Stage =
+        // Detailed controls can advance a battle without selecting a cinematic plan.
+        // Resume those saves in the simulation, without granting preparation bonuses.
+        if (session.tacticalStage == Stage.PLAN.ordinal && (session.step > 0 || session.minute > 0)) Stage.RUNNING
+        else Stage.entries[session.tacticalStage.coerceIn(0, Stage.entries.lastIndex)]
 
     fun isWall(session: BattleSession): Boolean =
         if (session.tacticalStage == 0) session.tactic == Tactic.FORTIFY else session.tacticalWall
@@ -83,7 +87,8 @@ object TacticalBattleEngine {
     /** Decision 1: the battle plan. */
     fun choosePlan(state: GameState, plan: Plan): GameEngine.ActionResult {
         val session = state.battleSession ?: return GameEngine.ActionResult(state, "Keine Schlacht aktiv.")
-        if (session.tacticalStage != 0) return GameEngine.ActionResult(state, "Der Schlachtplan steht bereits.")
+        if (session.status != BattleStatus.ACTIVE || session.step != 0 || session.minute != 0 || session.tacticalStage != 0)
+            return GameEngine.ActionResult(state, "Der Schlachtplan kann nur vor Schlachtbeginn gewählt werden.")
         val wall = isWall(session)
         if (plan.wall != wall) return GameEngine.ActionResult(state, "Dieser Plan passt nicht zu dieser Schlacht.")
         val partner = session.contingents.any { it.commanderId == COMPANION_COMMANDER_ID && it.soldiers > 0 } || state.companion.met
@@ -101,11 +106,22 @@ object TacticalBattleEngine {
                 val wallBonus = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) 15 else 0
                 c.copy(morale = (c.morale + moraleBoost).coerceAtMost(100), cohesion = (c.cohesion + wallBonus).coerceAtMost(100))
             },
-            segments = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) session.segments.map { it.copy(cover = (it.cover + 0.1).coerceAtMost(0.95)) } else session.segments,
+            segments = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) session.segments.map { it.copy(cover = (it.cover + 0.1).coerceAtMost(0.85)) } else session.segments,
             fronts = if (ReignEngine.ballistaeMorale(state) > 0 && wall) session.fronts.map { it.copy(morale = (it.morale - ReignEngine.ballistaeMorale(state)).coerceAtLeast(5)) } else session.fronts,
             log = (session.log + BattleLogEntry(0, "Schlachtplan: ${plan.label}. ${plan.description}")).takeLast(60),
         )
-        return GameEngine.ActionResult(state.copy(battleSession = updated), "Schlachtplan „${plan.label}“ ausgegeben.")
+        // Plan selection is preparation, just like redeployment: replay begins with the
+        // actual army and fortifications, without reapplying bonuses or debiting supplies.
+        val replay = updated.replayStart?.copy(
+            initialContingents = updated.contingents,
+            initialFronts = updated.fronts,
+            initialSegments = updated.segments,
+            heroPerk = updated.heroPerk,
+            reservePerk = updated.reservePerk,
+            rallyPerk = updated.rallyPerk,
+            moraleBonus = updated.moraleBonus,
+        )
+        return GameEngine.ActionResult(state.copy(battleSession = updated.copy(replayStart = replay)), "Schlachtplan „${plan.label}“ ausgegeben.")
     }
 
     /** One simulation tick: advances five battle minutes or opens the next key decision. */
@@ -240,7 +256,7 @@ object TacticalBattleEngine {
     // ------------------------------------------------------------------ internals
 
     private fun middleReached(session: BattleSession): Boolean {
-        val wall = session.tacticalWall
+        val wall = isWall(session)
         val states = session.segments.map { it.contactState }
         return if (wall) BattleContactState.BREACHED in states || BattleContactState.COURTYARD in states ||
             BattleContactState.WALL_ASSAULT in states || session.minute >= 45
@@ -262,7 +278,7 @@ object TacticalBattleEngine {
 
     private fun openMiddle(state: GameState, session: BattleSession): GameState {
         val section = hotSection(session)
-        val wall = session.tacticalWall
+        val wall = isWall(session)
         val contact = session.segment(section)?.contactState
         val candidates = when {
             wall && (contact == BattleContactState.BREACHED || contact == BattleContactState.COURTYARD) ->
@@ -270,7 +286,7 @@ object TacticalBattleEngine {
             wall -> listOf(BattleDecision.REPEL_LADDERS, BattleDecision.FIRE_OIL, BattleDecision.STRENGTHEN_SECTION, BattleDecision.ROTATE_RESERVE, BattleDecision.COUNTERATTACK, BattleDecision.RALLY, BattleDecision.HOLD)
             else -> listOf(BattleDecision.CAVALRY_CHARGE, BattleDecision.ADVANCE, BattleDecision.COUNTERATTACK, BattleDecision.SEND_RESERVE, BattleDecision.RALLY, BattleDecision.HOLD)
         }
-        val ready = session.copy(commandPoints = session.maxCommandPoints)
+        val ready = session.copy(commandPoints = session.maxCommandPoints, tacticalWall = wall)
         val options = candidates.filter { BattleEngine.canOrder(ready, it, section) }.take(4).ifEmpty { listOf(BattleDecision.HOLD) }
         val (title, text) = when {
             wall && contact in listOf(BattleContactState.BREACHED, BattleContactState.COURTYARD) -> "Die Mauer ist gefallen!" to "Am Abschnitt ${section.label} strömt der Feind durch die Bresche. Was jetzt geschieht, entscheidet die Schlacht."
@@ -284,7 +300,7 @@ object TacticalBattleEngine {
     }
 
     private fun openFinal(state: GameState, session: BattleSession, winning: Boolean): GameState {
-        val ready = session.copy(commandPoints = session.maxCommandPoints)
+        val ready = session.copy(commandPoints = session.maxCommandPoints, tacticalWall = isWall(session))
         if (winning) {
             val event = session.pendingEvent ?: BattleEvent("Der Gegner flieht", "", BattleSection.CENTER, listOf(BattleDecision.PURSUE, BattleDecision.HOLD_FORMATION))
             return state.copy(battleSession = ready.copy(tacticalStage = Stage.FINAL.ordinal,

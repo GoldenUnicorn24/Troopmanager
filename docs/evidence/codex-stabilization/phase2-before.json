@@ -1,0 +1,71 @@
+{
+  "source_commit": "9176e30c6af8d9303493098008432029ef2c6508",
+  "production_base": "46cf63f8792eeb5759728a23338693831953b95f",
+  "workflow_run": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218539418",
+  "artifact_id": 12608214720,
+  "artifact_sha256": "11d5692f081ca0f8604c8c63b9b7dc3ad74e299494c7c627bd1e60cdfa392bd7",
+  "exit_code": 1,
+  "totals": {
+    "tests": 503,
+    "failures": 11,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failed_tests": [
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.BattleMutationSafetyTest",
+      "name": "garrisonTransfersCannotChangeAnActiveBattleArmy",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "largeWoodReservesDoNotDisableOtherwiseIdenticalArsenalProduction",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "dismissalCannotRemoveDeployedSoldiersDuringCombatOrPursuit",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "successiveUnpaidDaysConservePoolContractAndPopulationLosses",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "unequalContractsOfOneTypeKeepTheirOwnDesertionAmounts",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "duplicatedMercenaryCompaniesLoseExactlyTheirCombinedDeserters",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "hiringCannotChangeTheArmyDuringCombatOrPursuit",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "harborBonusIsCreditedAsGoldAndMatchesTheTradeReport",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "tradeReportsOnlyGoldThatFitsInTheTreasury",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.EconomyStabilityTest",
+      "name": "tradeAtTheIntegerLimitDoesNotReportUncreditedGold",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalReplayContinuityTest",
+      "name": "completeTacticalBattlesReplayTheSameCombatAndCommandPoints",
+      "type": "java.lang.AssertionError"
+    }
+  ]
+}

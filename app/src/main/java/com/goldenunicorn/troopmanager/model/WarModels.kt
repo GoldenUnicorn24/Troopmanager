@@ -124,7 +124,14 @@ data class BattleReplayStart(
 )
 
 @Serializable
-data class BattleInput(val decision: BattleDecision? = null, val event: BattleEvent? = null, val plan: BattlePlan? = null)
+data class BattleInput(
+    val decision: BattleDecision? = null,
+    val event: BattleEvent? = null,
+    val plan: BattlePlan? = null,
+    /** Captures tactical turning-point refills; absent in existing schema-5 saves. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val commandPointsBefore: Int? = null,
+)
 
 @Serializable
 data class BattleRecord(

@@ -1,0 +1,71 @@
+{
+  "source_commit": "9deb73e1d99c8aed6de91683fb6ab679432348b7",
+  "workflow_run": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40216568844",
+  "build_job_id": 121238872966,
+  "unit_tests": {
+    "command": "gradle :app:testDebugUnitTest --stacktrace",
+    "exit_code": 0,
+    "suite_count": 47,
+    "tests": 490,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "regression_suite": {
+    "name": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+    "tests": "8",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0"
+  },
+  "lint": {
+    "command": "gradle :app:lintDebug --stacktrace",
+    "exit_code": 0,
+    "severities": {
+      "Warning": 20,
+      "Information": 12
+    },
+    "warning_ids": {
+      "OldTargetApi": 1,
+      "VectorRaster": 5,
+      "GradleDependency": 7,
+      "LockedOrientationActivity": 2,
+      "ModifierParameter": 2,
+      "DiscouragedApi": 2,
+      "ObsoleteSdkInt": 1
+    }
+  },
+  "assemble": {
+    "command": "gradle :app:assembleDebug --stacktrace",
+    "exit_code": 0
+  },
+  "apk": {
+    "artifact_id": 12607678244,
+    "artifact_zip_sha256": "98b349e9876e04f6d6ca5666df95d62d607577fd5d6871d1ff4d5bf149d4d13e",
+    "sha256": "785b664b3533827447d78d0d19bf7fc738e32c456ece734082a70911c52ca27b",
+    "bytes": 31559853,
+    "signature_v2_verified": true,
+    "application_id": "com.goldenunicorn.troopmanager",
+    "version_name": "2.1.0",
+    "version_code": 51
+  },
+  "verification_artifact": {
+    "id": 12607617656,
+    "zip_sha256": "36b35995436d2a1a7b62d7d652f546f3b7666a719137fd5282036c6824756643"
+  },
+  "android_ui": {
+    "job_id": 121240074347,
+    "status": "success",
+    "device": "Android 35 x86_64 google_apis, pixel_4 profile",
+    "command": "gradle :app:connectedDebugAndroidTest --stacktrace",
+    "exit_code": 0,
+    "suite_count": 1,
+    "tests": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "artifact_id": 12608167943,
+    "artifact_zip_sha256": "35bd11392d55d2bafb683ad872b384bb6db90bf16195d3e5da04a6ea831d025c"
+  },
+  "physical_device_tested": false
+}

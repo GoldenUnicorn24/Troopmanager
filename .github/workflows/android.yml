@@ -82,7 +82,7 @@ jobs:
           retention-days: 30
 
       - name: Publish download without login
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -170,7 +170,7 @@ jobs:
                       print(f"::error title={case.get('name')}::{text}")
           PYUI
       - name: Publish screenshots for design review
-        if: always() && github.event_name == 'push'
+        if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           set -e
           [ -d build/ui-screenshots ] || exit 0

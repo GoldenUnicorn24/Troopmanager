@@ -14,6 +14,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -25,7 +26,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -81,19 +85,33 @@ private fun ownerFill(owner: ProvinceOwner): Color = when (owner) {
 internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) -> Unit) {
     val measurer = rememberTextMeasurer()
     val provinces = state.crown.provinces
+    val select by rememberUpdatedState(onSelect)
+    val selectionActions = remember(provinces) {
+        provinces.map { province ->
+            CustomAccessibilityAction("${province.name} auswählen") { select(province.id); true }
+        }
+    }
     val reachable = remember(state.crown.provinceChanges) { CrownLand.entries.associateWith { CrownEngine.reachable(state, it) } }
     // Conquered tiles fade into their new color instead of jumping.
     val colors = provinces.associate { p ->
         val open = reachable[p.land] == true || p.owner == ProvinceOwner.PLAYER
-        p.id to animateColorAsState(if (open) ownerFill(p.owner).copy(alpha = .62f) else Steel.copy(alpha = .45f), tween(700), label = p.id).value
+        val target = if (open) ownerFill(p.owner).copy(alpha = .62f) else Steel.copy(alpha = .45f)
+        p.id to if (state.settings.animations) animateColorAsState(target, tween(700), label = p.id).value else target
     }
-    val pulse by rememberInfiniteTransition(label = "select").animateFloat(0.55f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse")
+    val pulse = if (state.settings.animations && selectedId != null)
+        rememberInfiniteTransition(label = "select").animateFloat(0.55f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse").value
+    else 1f
     Box(
         Modifier.fillMaxWidth()
             .aspectRatio(MAP_W / MAP_H)
             .clip(RoundedCornerShape(22.dp))
             .background(Brush.verticalGradient(listOf(Color(0xFF1B2A30), Color(0xFF0E171C))))
-            .semantics { contentDescription = "Karte der Kronlande mit ${provinces.size} Provinzen" },
+            .semantics {
+                contentDescription = "Karte der Kronlande mit ${provinces.size} Provinzen"
+                customActions = selectionActions
+                stateDescription = provinces.firstOrNull { it.id == selectedId }
+                    ?.let { "${it.name}, ${it.ownerLabel}" } ?: "Keine Provinz ausgewählt"
+            },
     ) {
         // The painted world map shines through the province tiles.
         ArtImage("world_map.webp", Modifier.matchParentSize())
@@ -103,7 +121,7 @@ internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) 
                 detectTapGestures { tap ->
                     val s = size.width / MAP_W
                     val hit = provinceUnits.minByOrNull { (_, u) -> (u * s - tap).getDistanceSquared() }
-                    if (hit != null && (hit.value * s - tap).getDistance() < s * 1.1f) onSelect(hit.key)
+                    if (hit != null && (hit.value * s - tap).getDistance() < s * 1.1f) select(hit.key)
                 }
             }
         ) {

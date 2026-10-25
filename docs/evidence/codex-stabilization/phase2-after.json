@@ -1,0 +1,49 @@
+{
+  "source_commit": "c680c5d8a10268c6ab0688c08ac64f777fa369c0",
+  "workflow_run": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218952639",
+  "build_job_id": 121246122613,
+  "unit_tests": {
+    "exit_code": 0,
+    "suite_count": 51,
+    "tests": 506,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "exit_code": 0,
+    "severities": {
+      "Warning": 20,
+      "Information": 12
+    }
+  },
+  "assemble_exit_code": 0,
+  "apk": {
+    "artifact_id": 12608970759,
+    "zip_sha256": "81f8ea78aed6ce7295704238df53f7b52f7367b190959002ad516df9b7fe02e4",
+    "bytes": 31576237,
+    "sha256": "18f06e66cb5dbb3943c0e7fcb49b4ef10211842996de71a743c9fde85413d2b3",
+    "signature_v2_verified": true,
+    "application_id": "com.goldenunicorn.troopmanager",
+    "version_name": "2.1.0",
+    "version_code": 51
+  },
+  "verification_artifact": {
+    "id": 12608835840,
+    "zip_sha256": "3516fd072b3520b5bc190d0d4f9916077b7813db74455e6350f94a3ad8b08b4d"
+  },
+  "android_ui": {
+    "job_id": 121247300497,
+    "status": "success",
+    "device": "Android 35 x86_64 google_apis, pixel_4 profile",
+    "exit_code": 0,
+    "suite_count": 1,
+    "tests": 15,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "artifact_id": 12608852601,
+    "artifact_zip_sha256": "1789bfc50a79acf92d57d7ddf068a4bf937b06db7673f78a23bc3ca66c8df7cf"
+  },
+  "physical_device_tested": false
+}

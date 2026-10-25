@@ -71,6 +71,11 @@ object WarEngine {
         return 60 + hospital * 180 + healing * 20
     }
 
+    private fun validReplayInputs(inputs: List<BattleInput>, maxPoints: Int = 100): Boolean = inputs.all {
+        (it.plan == null || BattleEngine.validPlan(it.plan)) &&
+            (it.commandPointsBefore == null || it.commandPointsBefore in 0..maxPoints)
+    }
+
     fun validate(state: GameState) {
         val war = state.war
         require(war.wounded.size <= UnitType.entries.size * 16 && war.wounded.map { it.id }.distinct().size == war.wounded.size && war.wounded.map { it.type to it.recoveryDay }.distinct().size == war.wounded.size) { "Ungültige Verwundetenverbände." }
@@ -85,6 +90,7 @@ object WarEngine {
         war.history.forEach { record ->
             require(record.ownStart >= 0 && record.enemyStart > 0 && record.ownRemaining in 0..record.ownStart && record.enemyRemaining in 0..record.enemyStart && record.minute in 0..95 && record.inputs.size <= 160 && BattleEngine.validPlan(record.plan)) { "Ungültiger Schlachtbericht." }
             require(record.replay == null || record.replay.rulesVersion in 1..3) { "Unbekannte Replay-Regeln." }
+            require(validReplayInputs(record.inputs)) { "Ungültige Replay-Eingaben." }
             BattleStateEngine.validateCauses(record.causes)
             if (record.causes.isNotEmpty()) require(record.causes.sumOf { it.own.toLong() } == record.ownStart.toLong() - record.ownRemaining &&
                 record.causes.sumOf { it.enemy.toLong() } == record.enemyStart.toLong() - record.enemyRemaining) { "Ungültige Verlustursachen im Schlachtbericht." }
@@ -93,7 +99,7 @@ object WarEngine {
         state.battleSession?.let { battle ->
             BattleStateEngine.validate(battle)
             require(battle.replayStart == null || battle.replayStart.rulesVersion in 1..3) { "Unbekannte Replay-Regeln." }
-            require(battle.commandPoints in 0..battle.maxCommandPoints && battle.maxCommandPoints in 1..100 && battle.inputs.size <= 160 && battle.inputs.all { it.plan == null || BattleEngine.validPlan(it.plan) } && battle.enemyFortification in 0..100 && (battle.deployedMorale == null || battle.deployedMorale in 0..100) && battle.enemyExperience in 0..10000) { "Ungültige Befehlspunkte." }
+            require(battle.commandPoints in 0..battle.maxCommandPoints && battle.maxCommandPoints in 1..100 && battle.inputs.size <= 160 && validReplayInputs(battle.inputs, battle.maxCommandPoints) && battle.enemyFortification in 0..100 && (battle.deployedMorale == null || battle.deployedMorale in 0..100) && battle.enemyExperience in 0..10000) { "Ungültige Befehlspunkte." }
             require(battle.rangedWeather.isFinite() && battle.cavalryWeather.isFinite() && battle.seasonPenalty.isFinite() && battle.rangedWeather in 0.25..1.5 && battle.cavalryWeather in 0.25..1.5 && battle.seasonPenalty in 0.5..1.5) { "Ungültige Schlachtbedingungen." }
         }
         Culture.entries.forEach { culture ->
