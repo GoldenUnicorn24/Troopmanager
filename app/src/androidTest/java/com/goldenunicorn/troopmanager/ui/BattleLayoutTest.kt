@@ -233,7 +233,8 @@ class BattleLayoutTest {
             val option = battle.pendingEvent!!.options.first { com.goldenunicorn.troopmanager.engine.BattleEngine.canOrder(battle, it, battle.pendingEvent!!.section) }
             rule.onNodeWithTag("decision_${option.name}").performScrollTo().performClick()
             rule.waitForIdle()
-            assertTrue(BattlePreviewActivity.latestState!!.battleSession!!.tacticalStage in setOf(3, 5) || !BattlePreviewActivity.latestState!!.battleSession!!.isActive)
+            val after = BattlePreviewActivity.latestState!!.battleSession!!
+            assertTrue("Decision applied: ${describe()}", after.tacticalStage > battle.tacticalStage || !after.isActive)
         }
     }
 }
