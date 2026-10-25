@@ -201,3 +201,21 @@ Replays nach jedem UI-Wendepunkt und Installation/Spieltest einer neuen APK.
 
 Die priorisierten Folgearbeiten einschließlich Aufwand und Abhängigkeiten stehen
 in [CODEX-ROADMAP.md](CODEX-ROADMAP.md).
+
+## 8. Fortschreibung durch die zweite Stabilisierung
+
+Die Quelltextbefunde B04/B05/B06 (Handelsgold, Vertragsdesertion, Holzüberlauf)
+werden in der Fortsetzung korrigiert. Vier bisher ungeschützte Kronland-
+Armeemutationen sind während aktiver Schlachten gesperrt. Haptik, Kartenanimationen,
+Provinz-Zugänglichkeit und Unterreiter wurden verbessert; automatische Kampfschritte
+und Schnellauflösung laufen im Hintergrund mit Zustands-/Abbruchprüfung.
+
+Neue Replay-Eingaben tragen optional den Befehlspunktestand vor der Aktion. Damit
+lassen sich Auffüllungen an taktischen Wendepunkten reproduzieren; Default `null`
+erhält bestehende Schema-5-Inputs. Historisch fehlende Daten werden nicht erfunden.
+Release-/Screenshot-Veröffentlichung ist auf Pushes nach `main` eingeschränkt.
+
+Die ursprünglichen Befundtabellen sind der Audit-Ausgangsstand, keine Behauptung,
+dass korrigierte Fehler weiterhin im aktuellen Branch bestehen. Prüfumfang,
+Kompatibilitätsvertrag und tatsächliche Ergebnisse der Fortsetzung stehen im
+zweiten Abschnitt des [Implementierungsberichts](CODEX-IMPLEMENTATION-REPORT.md).

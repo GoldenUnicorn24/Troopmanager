@@ -1,8 +1,12 @@
-# Implementierungsbericht – erste Stabilisierung
+# Implementierungsbericht – Stabilisierungsphasen
 
 Stand: 25.10.2026. Basis **2.1.0 / 51**, `af694d7`.
 Entwicklungsbranch: `codex/audit-combat-stability`.
 Pull Request: [#13](https://github.com/GoldenUnicorn24/Troopmanager/pull/13).
+
+Die folgenden Abschnitte bis zur zweiten Stabilisierung dokumentieren die erste
+Lieferung. Die Fortsetzung am Ende erweitert deren Umfang und beschreibt das
+zusätzliche optionale Replay-Feld ausdrücklich.
 
 ## Ergebnis und Grenzen
 
@@ -149,3 +153,113 @@ Abnahmekriterien der acht Tests:
   Gerät, Akkumessung und lange Kampagnen über Generationen.
 - `main` bleibt erhalten; kein Merge, Release-Publishing oder Austausch von `dev-latest`
   ist Teil dieser Lieferung. Die vorhandenen PR-Jobs veröffentlichen nur Prüfartefakte.
+
+## Zweite Stabilisierung – Wirtschaft, Armeesicherheit, Replay und UI
+
+Fortsetzung auf demselben GitHub-Branch und PR. Produktionsstand zur Prüfung:
+`c680c5d8a10268c6ab0688c08ac64f777fa369c0`.
+
+### Tatsächlich implementiert
+
+| Bereich | Änderung | Dateien unter `app/src/main/java/com/goldenunicorn/troopmanager/` |
+| --- | --- | --- |
+| Handelsbuchung | Der Hafenbonus erhöht tatsächlich gutgeschriebenes Exportgold; Bericht/Profit berücksichtigen Schatzkammer- und Int-Grenzen. Die bisherige Warenbewertung der Gold-Kaufroute bleibt erhalten. | `engine/CrownEngine.kt` |
+| Söldner | Desertion wird je Vertrags-ID berechnet und je Typ summiert. Heimtruppen, Verträge und Bevölkerung verlieren dieselbe tatsächlich verfügbare Zahl. | `engine/CrownEngine.kt` |
+| Große Vorräte | Das 35-%-Holzbudget der Arsenalproduktion wird mit Long berechnet. | `engine/MilitaryEconomyEngine.kt` |
+| Schlachtsnapshots | Stationieren, Besatzung zurückholen, Söldner anwerben/entlassen verändern während ACTIVE/PURSUIT keine eingesetzten Armeepools; nach Ende wieder zulässig. | `engine/CrownWarEngine.kt`, `engine/CrownEngine.kt` |
+| Replays | Befehlspunkte vor jedem Austausch bzw. Live-Planwechsel werden aufgezeichnet und vor Reproduktion restauriert/validiert. Dies bildet auch Auffüllungen an taktischen Wendepunkten ab. | `model/WarModels.kt`, `engine/BattleEngine.kt`, `engine/WarEngine.kt` |
+| Haptik | GoldButton respektiert den aktuellen Schalter über einen CompositionLocal; taktische Entscheidungen/Ticks prüfen die aktuellen Einstellungen. | `ui/Components.kt`, `ui/App.kt`, `ui/TacticalBattleScreen.kt` |
+| Animationen | Kronlandfarben/Puls und taktische Stärke-/Entscheidungsanimationen werden bei ausgeschalteten Animationen statisch. | `ui/CrownMap.kt`, `ui/TacticalBattleScreen.kt` |
+| Bedienbarkeit | Unterreiter mindestens 48 × 48 dp; alle Provinzen als benannte zugängliche Auswahlaktionen samt angesagter aktueller Auswahl verfügbar. | `ui/MainHubs.kt`, `ui/CrownMap.kt` |
+| Berechnung | Automatische Kampfschritte und Schnellauflösung auf Default-Dispatcher. Pause/Details verwerfen ausstehende Ergebnisse; veränderte Ausgangszustände werden nicht überschrieben. | `ui/TacticalBattleScreen.kt` |
+| CI | Release und gemeinsam genutzter Screenshot-Branch werden nur noch durch Push auf `main` veröffentlicht. PR-Artefakte bleiben verfügbar. | `.github/workflows/android.yml` |
+
+`CODEX.md` verweist jetzt auf den tatsächlichen Arbeitsbranch, die aktuelle
+Versionsbasis, den Replay-Kompatibilitätsvertrag und diese Berichte. Alte
+Branchanweisungen sind ausdrücklich historisch eingeordnet.
+
+Zusätzliche Tests:
+
+- `engine/EconomyStabilityTest.kt`: zehn Fälle für Gold-/Lagerbuchung, gleiche und
+  ungleiche Verträge, mehrere unbezahlte Tage, große Holzvorräte und Militärsperren.
+- `engine/BattleMutationSafetyTest.kt`: zwei Fälle für Garnisonssperren und
+  Soldatenerhaltung nach einem tatsächlichen Schlachtende.
+- `engine/TacticalReplayContinuityTest.kt`: komplette taktische Auflösung aller
+  acht Pläne mit Save/Load und reproduzierten Kampfzuständen/Befehlspunkten.
+- `data/ReplayInputCompatibilityTest.kt`: drei Fälle für Alt-JSON ohne neues Feld,
+  Save-Roundtrip und Zurückweisung ungültiger Befehlspunkte.
+- `androidTest/.../ui/UiPreferencesTest.kt`: fünf Fälle für Haptik samt Laufzeitwechsel,
+  taktische Planwahl, asynchrone Schnellauflösung, Touchziele und Provinzaktionen.
+
+### Speicher-/Replay-Kompatibilität
+
+Schema **5** und Regeln **3** bleiben erhalten. `BattleInput.commandPointsBefore`
+ist ein zusätzliches optionales Feld mit Default `null`. Alte Inputs werden ohne
+das Feld geladen und behalten die bisherigen Replay-Regeln; beim Schreiben wird
+der Default ausgelassen. Neue Inputs sichern den echten Befehlspunktestand vor
+Kosten/Regeneration. Aktive und historische Inputs werden validiert, der Replay-
+Interpreter prüft zusätzlich gegen das tatsächliche Maximum.
+
+Bestehende Kampagnen werden nicht neu initialisiert oder umgeschrieben. Bereits
+historisch fehlende Informationen über taktische Auffüllungen lassen sich nicht
+rückwirkend zuverlässig rekonstruieren. Der neue Nachweis betrifft mechanische
+Kampfzustände und Befehlspunkte; UI-Stufen und erläuternde Logzeilen sind kein
+vollständig rekonstruierter Bildschirmablauf.
+
+### Frische Reproduktion und laufende Verifikation
+
+Testcommit `9176e30` enthält ausschließlich neue JVM-Tests; Produktionscode ist
+noch `46cf63f`. [CI-Lauf 40218539418](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218539418):
+**503 Tests, elf Fehler, keine Errors/übersprungenen Tests**, Exit 1.
+Alle Fehler liegen in den neuen Regressionen; insbesondere konnte der komplette
+PINCER-Replay nicht erzeugt werden. Maschinenlesbarer Nachweis:
+[phase2-before.json](evidence/codex-stabilization/phase2-before.json).
+
+Der integrierte Produktionsstand wurde in
+[CI 40218952639](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218952639)
+geprüft:
+
+| Prüfung | Frisches Ergebnis |
+| --- | --- |
+| `gradle :app:testDebugUnitTest --stacktrace` | Exit 0; **506 Tests, 0 Failures, 0 Errors, 0 übersprungen**, 51 Suiten |
+| `gradle :app:lintDebug --stacktrace` | Exit 0; **0 Fehler, 20 Warnungen, 12 Hinweise** |
+| `gradle :app:assembleDebug --stacktrace` | Exit 0; APK erstellt |
+| APK-Signatur und Metadaten | Exit 0; gültige v2-Signatur, Paket `com.goldenunicorn.troopmanager`, 2.1.0 / 51 |
+| `gradle :app:connectedDebugAndroidTest --stacktrace` | Exit 0; **15/15 Android-35-UI-Tests**, keine Fehler oder übersprungenen Tests |
+
+JUnit-/Lint-Berichte wurden aus den CI-Artefakten lokal ausgewertet; ZIP-Hashes
+stimmen mit den veröffentlichten Digests überein.
+[phase2-after.json](evidence/codex-stabilization/phase2-after.json) und
+[Quellfingerabdruck](evidence/codex-stabilization/source-fingerprints.json) halten
+Ergebnisse und geprüften Stand fest. Lokale Gradle-/SDK-/Geräteprüfungen werden
+weiterhin nicht behauptet.
+
+[Neue Test-APK](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218952639/artifacts/12608970759):
+**31.576.237 Bytes**, SHA-256
+`18f06e66cb5dbb3943c0e7fcb49b4ef10211842996de71a743c9fde85413d2b3`.
+Lokale Kopie: `build/phase2-apk/app-debug.apk`, nicht eingecheckt.
+
+[UI-Berichte und Screenshots](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40218952639/artifacts/12608852601)
+enthalten die vorhandenen zehn Prüfungen und fünf neue Bedien-/Einstellungsfälle.
+Die asynchrone Schnellauflösung liefert im Test genau einen abgeschlossenen
+Schlachtzustand. Haptik ist auch nach einem Einstellungswechsel korrekt, alle
+Provinzen lassen sich über die Semantikaktion auswählen, Unterreiter erreichen
+48 dp. Das ist ein Emulator-/Semantiknachweis, keine reale TalkBack-Abnahme oder
+Messung eines physisch spürbaren Vibrationssignals.
+
+Eine unabhängige rein lesende Integrationsprüfung fand keine verbleibenden
+blockierenden Befunde. Die abschließenden Guards berücksichtigen Pause/Details
+auch vor der nächsten Recomposition; eine anderweitige Zustandsänderung beendet
+die automatische Simulation nicht dauerhaft. Abbruchrennen wurden durch Review
+geprüft, nicht durch einen gezielt verzögerten Concurrency-Test nachgestellt.
+Nachfolgende Dokumentationscommits ändern den getesteten Quellfingerabdruck nicht.
+
+### Verbleibender Umfang
+
+Diese Fortsetzung schließt konkrete Stabilitäts- und Bedienfehler; sie ist keine
+fertige Umsetzung aller langfristigen Strategie-RPG-Erweiterungen. Insbesondere
+Crown-/World-Verbindung, Produktions-/Lagervereinheitlichung, neue räumliche
+Kampfmanöver/Formationen, große Politik-/Dynastie-/Endgame-Erweiterungen und echte
+Langzeitsimulationen bleiben in der Roadmap offen. Direkte Einzelbefehle und andere
+UI-Rechenpfade benötigen weiterhin Laufzeitprofiling; eine FPS-/Akkumessung wurde
+nicht vorgenommen. Keine reale TalkBack-Bedienung oder physisches S26 Ultra getestet.

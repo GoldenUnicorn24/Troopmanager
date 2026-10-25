@@ -1,0 +1,6 @@
+{
+  "verified_source_commit": "c680c5d8a10268c6ab0688c08ac64f777fa369c0",
+  "algorithm": "SHA-256 of sorted UTF-8 path + NUL + file SHA-256 rows joined with LF; no trailing LF",
+  "source_file_count": 314,
+  "source_tree_sha256": "90342c8c165040ac5d463aa93576fe6ba66134980bdb4dbed41c51d68446a6f9"
+}

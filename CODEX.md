@@ -1,4 +1,18 @@
-# Aktueller Arbeitsstand: v1.3 (Branch claude/v1.1-koenigreich-overhaul = main, Details in docs/V1.3-AKTE-UND-RIVALEN.md)
+# Aktueller Arbeitsstand: 2.1.0 / 51 mit Stabilisierungsfortsetzung
+
+Arbeitsbranch: `codex/audit-combat-stability`, Pull Request #13 gegen `main`.
+Die Hauptbranch bleibt bis zur Prüfung erhalten. Technischer Ausgangsstand ist
+`af694d7`; konkrete Änderungen, CI-Nachweise und verbleibende Aufgaben stehen in
+`docs/CODEX-FULL-AUDIT.md`, `docs/CODEX-ROADMAP.md` und
+`docs/CODEX-IMPLEMENTATION-REPORT.md`.
+
+Speicherformat 5 und Kampf-/Replay-Regeln 3 bleiben erhalten. Neue Replay-Inputs
+können optional `commandPointsBefore` tragen; alte Inputs behalten Default `null`.
+Vor weiteren Erweiterungen bestehende Engines, Zustandsgrenzen und Migrationstests
+weiterverwenden. Die folgenden Versions-/Branchhinweise sind ausschließlich
+historisch und bestimmen nicht die aktuelle Arbeitsbranch.
+
+# Historischer Arbeitsstand: v1.3 (Branch claude/v1.1-koenigreich-overhaul = main, Details in docs/V1.3-AKTE-UND-RIVALEN.md)
 
 # Vorheriger Stand: v1.0 Sprint A
 

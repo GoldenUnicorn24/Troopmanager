@@ -11,15 +11,15 @@ P1 = Stabilität/korrekte Regeln; P2 = wesentliche Spielqualität; P3 = Ausbau.
 | B01 | B / P1 | Große-Mauer-Plan bleibt im erlaubten Deckungsbereich; Save/Load und identische Fortsetzung | 1 | A01 | Abgeschlossen: Regression, Save/Load und CI-Lauf 40216568844 |
 | B02 | B / P1 | Alle acht Pläne sichern den echten Replay-Startzustand; erster Austausch reproduzierbar | 1 | B01 | Abgeschlossen: alle acht Pläne in CI; Gesamtreplay bleibt B09 |
 | B03 | B / P1 | Planwahl nur vor erstem Austausch und bei aktiver Schlacht; kein Nachbuff/Ändern fertiger Berichte | <1 | B02 | Abgeschlossen: einschließlich sicherer Detail-Fortsetzung Feld/Mauer, acht Regressionstests insgesamt |
-| B04 | B / P1 | Hafenbonus tatsächlich buchen; Anzeige = Goldänderung einschließlich Rundung/Kapazität | 1 | A01 | Offen |
-| B05 | B / P1 | Söldnerverluste pro Vertrag und Einheitentyp erhalten; identische Typen kumulieren | 1 | A01 | Offen |
-| B06 | B / P1 | Alle garnisons-/armeeverändernden Aktionen gegen aktive Schlachtsnapshots sichern | 2–3 | B03 | Offen; Risiko erst reproduzieren |
-| B07 | B / P2 | Ressourcenarithmetik überlaufsicher; Produktion/Lagergrenzen bei großen Vorräten | 1–2 | B04, B05 | Offen |
-| B08 | B / P1 | Veröffentlichungen nur aus freigegebenem Hauptstand; PRs bauen APK und sammeln Diagnose | 1 | A01 | Offen; bestehende PR-Pipeline wird genutzt |
-| B09 | B / P1 | Vollständiger taktischer Ablauf im Replay: Befehlspunkt-Auffüllungen/Schlüsselentscheidungen erfassen, alte Inputs laden | 2–3 | B02 | Offen; benötigt eigenen Daten-/Kompatibilitätsvertrag |
-| U01 | B/E / P1 | Kampfschritte/Schnellauflösung auf Hintergrunddispatcher, stale Aktionen verwerfen, Bedienung bleibt reaktionsfähig | 2–3 | B03, B06 | Offen; vorher Laufzeit messen |
-| U02 | B/E / P2 | Haptik-/Animationsschalter auf allen erreichbaren Screens respektieren | 1–2 | A01 | Offen |
-| U03 | B/E / P2 | Provinzen mit TalkBack auswählbar; 48-dp-Ziele, große Schrift und lesbare Folgendetails | 2–4 | U02 | Offen |
+| B04 | B / P1 | Hafenbonus tatsächlich buchen; Anzeige = Goldänderung einschließlich Rundung/Kapazität | 1 | A01 | Abgeschlossen für Exportgold: CI 40218952639; Kaufroute bleibt Warenbewertung |
+| B05 | B / P1 | Söldnerverluste pro Vertrag und Einheitentyp erhalten; identische Typen kumulieren | 1 | A01 | Abgeschlossen: gleiche/ungleiche Verträge und mehrere unbezahlte Tage in CI geprüft |
+| B06 | B / P1 | Alle garnisons-/armeeverändernden Aktionen gegen aktive Schlachtsnapshots sichern | 2–3 | B03 | Teilweise: Stationieren/Rückholen/Anwerben/Entlassen gesperrt und getestet; übrige Mutationspfade weiter prüfen |
+| B07 | B / P2 | Ressourcenarithmetik überlaufsicher; Produktion/Lagergrenzen bei großen Vorräten | 1–2 | B04, B05 | Teilweise: Holzüberlauf korrigiert; Sonderproduktion/Kapazitäten bleiben offen |
+| B08 | B / P1 | Veröffentlichungen nur aus freigegebenem Hauptstand; PRs bauen APK und sammeln Diagnose | 1 | A01 | Abgeschlossen: Veröffentlichung nur von main; PR-Artefakte und Workflow in CI erfolgreich |
+| B09 | B / P1 | Vollständiger taktischer Ablauf im Replay: Befehlspunkt-Auffüllungen/Schlüsselentscheidungen erfassen, alte Inputs laden | 2–3 | B02 | Abgeschlossen für Kampfzustände/CP aller acht Pläne und Alt-JSON: CI 40218952639; historische fehlende Daten/UI-Logs nicht rekonstruiert |
+| U01 | B/E / P1 | Kampfschritte/Schnellauflösung auf Hintergrunddispatcher, stale Aktionen verwerfen, Bedienung bleibt reaktionsfähig | 2–3 | B03, B06 | Teilweise: automatische Schritte/Schnellauflösung ausgelagert und gegen veraltete Ergebnisse geschützt; weitere Pfade/Profiling offen |
+| U02 | B/E / P2 | Haptik-/Animationsschalter auf allen erreichbaren Screens respektieren | 1–2 | A01 | Teilweise: Haptik und Karten-/Taktikanimationen korrigiert; übrige Animationen weiter prüfen |
+| U03 | B/E / P2 | Provinzen mit TalkBack auswählbar; 48-dp-Ziele, große Schrift und lesbare Folgendetails | 2–4 | U02 | Teilweise: zugängliche Provinzaktionen und 48-dp-Unterreiter; reale TalkBack-Prüfung und weitere Text-/Gerätefälle offen |
 | U04 | E / P2 | Produktive Querformatrotation mit stabiler Navigation/Save; kleine und große Geräteprofile einschließlich Ultra-Klasse | 3–5 | U01, U03 | Offen; physisches S26 Ultra separat testen |
 | C01 | C / P1 | Crown-/World-Zuordnung für Besitz, Fraktionen, Diplomatie, Versorgung definieren; eine vertikale Provinzverbindung | 4–8 | B04–B07 | Offen; keine dritte Weltsimulation |
 | C02 | C / P2 | Schildwall/Speerwall/Keil/lockere Ordnung mit Kontaktbreite, Übergangszeit und echten Zuständen | 4–6 | B09 | Offen; Schildwall/offene Ordnung existieren, nur erweitern |
@@ -45,7 +45,7 @@ P1 = Stabilität/korrekte Regeln; P2 = wesentliche Spielqualität; P3 = Ausbau.
 | E01 | E / P2 | Schlachtbilder, Geschosse, Kavallerie, Befestigung/Geräte ausschließlich aus Simulationszustand projizieren | 3–5 | C03–C06 | Offen; Canvas/Projektion wiederverwenden |
 | E02 | E / P3 | Einheitlicher Fantasy-Gemäldestil für Porträts/Gebäude/Karte/Banner/Icons; vorhandene Lizenzen und Audio pflegen | 3–6 | U03, D09 | Offen; keine ungeklärten Assets |
 | E03 | E/F / P2 | Recomposition, Kartenrendering, Bitmap-/Audio-Speicher, Lade-/Savezeit und Akku messen und gezielt verbessern | 3–6 | U01, C08 | Offen; keine pauschale Neuschreibung |
-| F01 | F / P1 | Unit-/Integrations-/Migrationsregression, Lint, APK und Emulatornachweise je größerer Änderung | laufend | jeweilige Phase | Abgeschlossen für B01–B03: 490 JVM- und 10 Android-Tests, Lint, signierte APK; Nachweise im Bericht |
+| F01 | F / P1 | Unit-/Integrations-/Migrationsregression, Lint, APK und Emulatornachweise je größerer Änderung | laufend | jeweilige Phase | Abgeschlossen für beide Stabilisierungen: zuletzt 506 JVM- und 15 Android-Tests, Lint, signierte APK; Nachweise im Bericht |
 | F02 | F / P1 | Feste Seeds: 200/1.000/10.000 Tage, Wirtschaft/KI-Expansion/Diplomatie/Hunger/Nachfolge und Erhaltungsinvarianten | 3–5 | B04–B07 | Offen; historischer Ein-Tages-Test genügt nicht |
 | F03 | F / P2 | Kleine Smartphones, große Schrift, Querformat und großes Display; APK installieren, Update/Savefortsetzung und Offlinebetrieb | 2–4 | U04, F01 | Offen; erfolgreicher Build ist kein Gerätetest |
 
@@ -57,3 +57,7 @@ Kampf-/Balanceformeln. Die bestehende Android-Pipeline liefert Prüfungen und ei
 Test-APK, sofern die tatsächlichen Läufe erfolgreich sind. Ein offener Eintrag ist
 keine implementierte Funktion. Prüfergebnisse und PR-Status stehen im
 [Implementierungsbericht](CODEX-IMPLEMENTATION-REPORT.md).
+
+Die zweite Stabilisierung erweitert B04–B09 und U01–U03 im oben ausdrücklich
+angegebenen Umfang. Offene Teilbereiche und langfristige Gameplay-Erweiterungen
+werden dadurch nicht als erledigt markiert.
