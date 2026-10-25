@@ -86,7 +86,7 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
         scope.launch {
             try {
                 val next = withContext(Dispatchers.Default) { TacticalBattleEngine.autoResolve(expected) }
-                if (latest == expected) latestOnState(next)
+                if (!expert && latest == expected) latestOnState(next)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -101,7 +101,8 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
             delay((if (latest.settings.animations) 1_800L else 250L) / speed)
             val current = latest
             val result = withContext(Dispatchers.Default) { TacticalBattleEngine.step(current) }
-            if (latest != current || resolving) break
+            if (resolving || paused || expert) break
+            if (latest != current) continue
             if (result.state === current) break
             if (current.settings.haptics && result.state.battleSession?.tacticalStage != current.battleSession?.tacticalStage)
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)

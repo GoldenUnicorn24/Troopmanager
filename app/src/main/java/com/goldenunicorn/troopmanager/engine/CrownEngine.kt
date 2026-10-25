@@ -729,7 +729,7 @@ object CrownEngine {
     // ------------------------------------------------------------ mercenaries
 
     fun companyBlocker(state: GameState, def: CrownCatalog.MercenaryCompanyDef): String? = when {
-        state.battleSession?.isActive == true -> "Beende zuerst die laufende Schlacht."
+        state.battleSession?.isActive == true -> "Beende zuerst die laufende Schlacht"
         state.renown < def.renownRequired -> "Benötigt ${def.renownRequired} Ruhm"
         def.partnerId != null && (state.crown.partner(def.partnerId)?.agreement ?: 0) < 1 ->
             "Benötigt Handelsabkommen mit ${CrownCatalog.partner(def.partnerId)?.name ?: def.partnerId}"
