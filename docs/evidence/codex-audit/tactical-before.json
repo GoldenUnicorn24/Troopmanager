@@ -1,0 +1,42 @@
+{
+  "source_commit": "b0f0fb5b16bb7c5964dea6e1bd3b43586f4b9de9",
+  "production_base": "af694d7eab9f301178ed94ade0b5daa7fabc6eb4",
+  "workflow_run": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40215775836",
+  "artifact_id": 12607079688,
+  "artifact_sha256": "2957c18b47d567e30c6bc8436f7d3708144d041dd8f78a115d8846a45907b221",
+  "command": "gradle :app:testDebugUnitTest --stacktrace",
+  "exit_code": 1,
+  "totals": {
+    "tests": 488,
+    "failures": 5,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failed_tests": [
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+      "name": "greatWallPlanCanBeSavedAndResumed",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+      "name": "everyPlanPersistsItsActualReplayStartingConditions",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+      "name": "planCannotChangeACompletedBattle",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+      "name": "firstExchangeReplaysTheChosenPlanRatherThanTheUnboostedArmy",
+      "type": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.goldenunicorn.troopmanager.engine.TacticalBattlePersistenceTest",
+      "name": "planCannotBeAppliedAfterTheDetailedSimulationHasStarted",
+      "type": "java.lang.AssertionError"
+    }
+  ]
+}

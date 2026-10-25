@@ -1,0 +1,10 @@
+{
+  "verified_source_commit": "9deb73e1d99c8aed6de91683fb6ab679432348b7",
+  "algorithm": "SHA-256 of sorted UTF-8 path + NUL + file SHA-256 rows joined with LF; no trailing LF",
+  "source_file_count": 309,
+  "source_tree_sha256": "ae120c48096e267189557b44e314ee8b1864c56187f1830488416392c52b359e",
+  "changed_source_files": {
+    "app/src/main/java/com/goldenunicorn/troopmanager/engine/TacticalBattleEngine.kt": "9d0bd705757f1b58af6d1cb011a4593be4e4aecfcb20fbc9c21508984407038f",
+    "app/src/test/java/com/goldenunicorn/troopmanager/engine/TacticalBattlePersistenceTest.kt": "1cbc64d0b7aae51913d4073fd0f150f0a9aa002195b3ac601a77e7587db346b3"
+  }
+}
