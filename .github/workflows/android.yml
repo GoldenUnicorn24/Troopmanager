@@ -52,10 +52,14 @@ jobs:
           fi
 
       - name: Run unit tests
-        run: gradle :app:testDebugUnitTest --stacktrace
+        run: |
+          gradle :app:testDebugUnitTest --stacktrace > /tmp/unit.log 2>&1 || { python3 .github/annotate.py /tmp/unit.log; exit 1; }
+          tail -5 /tmp/unit.log
 
       - name: Android lint
-        run: gradle :app:lintDebug --stacktrace
+        run: |
+          gradle :app:lintDebug --stacktrace > /tmp/lint.log 2>&1 || { python3 .github/annotate.py /tmp/lint.log app/build/reports/lint-results-debug.txt; exit 1; }
+          tail -5 /tmp/lint.log
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
