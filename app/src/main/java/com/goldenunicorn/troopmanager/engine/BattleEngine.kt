@@ -400,7 +400,7 @@ object BattleEngine {
         val changed = battle.copy(plan = plan, commandPoints = battle.commandPoints - cost,
             contingents = troops, segments = segments,
             replayStart = if (battle.step == 0) battle.replayStart?.copy(plan = plan, initialContingents = troops, initialSegments = segments) else battle.replayStart,
-            inputs = if (battle.step > 0) (battle.inputs + BattleInput(plan = plan)).takeLast(160) else battle.inputs,
+            inputs = if (battle.step > 0) (battle.inputs + BattleInput(plan = plan, commandPointsBefore = battle.commandPoints)).takeLast(160) else battle.inputs,
             log = (battle.log + BattleLogEntry(battle.minute, "Schlachtplan: ${plan.doctrine.label}; ${plan.rangedPriority.label}, ${plan.ammunitionPolicy.label}. −$cost BP.")).takeLast(60))
         return GameEngine.ActionResult(state.copy(battleSession = changed,
             defensePlan = if (FrontierEngine.isHomeFortifiedBattle(state, battle)) plan else state.defensePlan),
@@ -483,7 +483,7 @@ object BattleEngine {
         if (state.resources.wood < siegeCost.wood || state.resources.iron < siegeCost.iron) return GameEngine.ActionResult(state, "Dieser Angriff benötigt ${siegeCost.wood} Holz und ${siegeCost.iron} Eisen.")
         val cost = decision?.let { orderCost(original, it) } ?: 0
         if (cost > original.commandPoints) return GameEngine.ActionResult(state, "Dieser Befehl benötigt $cost Befehlspunkte; ${original.commandPoints} verfügbar.")
-        original = original.copy(commandPoints = (original.commandPoints - cost + commandRegeneration(state, original)).coerceAtMost(original.maxCommandPoints), inputs = (original.inputs + BattleInput(decision, event)).takeLast(160))
+        original = original.copy(commandPoints = (original.commandPoints - cost + commandRegeneration(state, original)).coerceAtMost(original.maxCommandPoints), inputs = (original.inputs + BattleInput(decision, event, commandPointsBefore = original.commandPoints)).takeLast(160))
         if (original.status == BattleStatus.PURSUIT)
             return resolvePursuit(state, original, decision!!)
         if (decision == BattleDecision.ORDERED_RETREAT)
@@ -771,8 +771,13 @@ object BattleEngine {
         replayState = FrontierEngine.prepareBattle(BattleStateEngine.migrate(replayState))
         if (record.ownStart == 0) return finish(replayState, replayState.battleSession!!, false).battleSession
         record.inputs.take(exchanges.coerceIn(0, record.inputs.size)).forEach { input ->
-            val current = replayState.battleSession ?: return null
+            var current = replayState.battleSession ?: return null
             if (!current.isActive) return if (legacyRules) current else null
+            input.commandPointsBefore?.let { points ->
+                if (points !in 0..current.maxCommandPoints) return null
+                current = current.copy(commandPoints = points)
+                replayState = replayState.copy(battleSession = current)
+            }
             if (input.plan != null) {
                 val result = configurePlan(replayState, input.plan)
                 if (result.state == replayState) return null

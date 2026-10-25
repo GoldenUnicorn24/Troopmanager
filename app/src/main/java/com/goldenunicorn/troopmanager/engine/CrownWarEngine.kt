@@ -102,6 +102,7 @@ object CrownWarEngine {
 
     /** Moves soldiers from home into a province as a permanent garrison. */
     fun station(state: GameState, provinceId: String, amount: Int): GameEngine.ActionResult {
+        if (state.battleSession?.isActive == true) return ok(state, "Beende zuerst die laufende Schlacht.")
         val p = CrownEngine.province(state, provinceId) ?: return ok(state, "Provinz nicht gefunden.")
         if (p.owner != ProvinceOwner.PLAYER) return ok(state, "Nur in eigenen Provinzen.")
         val home = state.homeArmySize
@@ -131,6 +132,7 @@ object CrownWarEngine {
 
     /** Brings a garrison home as basic infantry of the province's people. */
     fun withdraw(state: GameState, provinceId: String): GameEngine.ActionResult {
+        if (state.battleSession?.isActive == true) return ok(state, "Beende zuerst die laufende Schlacht.")
         val p = CrownEngine.province(state, provinceId) ?: return ok(state, "Provinz nicht gefunden.")
         if (p.owner != ProvinceOwner.PLAYER || p.garrison <= 0) return ok(state, "Hier steht keine Besatzung.")
         val type = when (p.culture) {
