@@ -1,6 +1,8 @@
 package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -41,6 +43,10 @@ import com.goldenunicorn.troopmanager.engine.TacticalBattleEngine
 import com.goldenunicorn.troopmanager.engine.TacticalBattleEngine.Stage
 import com.goldenunicorn.troopmanager.model.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -61,21 +67,44 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
     }
     val haptics = LocalHapticFeedback.current
     var paused by rememberSaveable(battle.seed) { mutableStateOf(false) }
+    var resolving by remember(battle.seed) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var speed by rememberSaveable { mutableIntStateOf(2) }
     val stage = TacticalBattleEngine.stage(battle)
     fun apply(result: GameEngine.ActionResult) { onState(result.state); if (result.message.isNotBlank()) onNotice(result.message) }
 
     // The simulation clock: one combat step every 0.9 s (faster with the speed toggle).
-    val running = battle.isActive && !paused && stage in listOf(Stage.RUNNING, Stage.AFTER_MIDDLE, Stage.AFTER_FINAL)
+    val running = battle.isActive && !paused && !resolving && stage in listOf(Stage.RUNNING, Stage.AFTER_MIDDLE, Stage.AFTER_FINAL)
     val latest by rememberUpdatedState(state)
     val latestOnState by rememberUpdatedState(onState)
+    val latestOnNotice by rememberUpdatedState(onNotice)
+    fun quickResolve() {
+        if (resolving) return
+        val expected = latest
+        paused = true
+        resolving = true
+        scope.launch {
+            try {
+                val next = withContext(Dispatchers.Default) { TacticalBattleEngine.autoResolve(expected) }
+                if (latest == expected) latestOnState(next)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                latestOnNotice(error.message ?: "Die Schlacht konnte nicht abgeschlossen werden.")
+            } finally {
+                resolving = false
+            }
+        }
+    }
     LaunchedEffect(running, speed, battle.tacticalStage, battle.status) {
         while (running) {
             delay((if (latest.settings.animations) 1_800L else 250L) / speed)
             val current = latest
-            val result = TacticalBattleEngine.step(current)
+            val result = withContext(Dispatchers.Default) { TacticalBattleEngine.step(current) }
+            if (latest != current || resolving) break
             if (result.state === current) break
-            if (result.state.battleSession?.tacticalStage != current.battleSession?.tacticalStage) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (current.settings.haptics && result.state.battleSession?.tacticalStage != current.battleSession?.tacticalStage)
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             latestOnState(result.state)
         }
     }
@@ -90,17 +119,21 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
         // The bottom panel may use up to its share of the height and scrolls inside it, so the field always stays visible.
         Box(Modifier.weight(if (deciding) 1.6f else 1f, fill = false).verticalScroll(rememberScrollState())) {
         when {
+            resolving -> Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(24.dp), color = Gold)
+                Text("Die Schlacht wird entschieden …", color = Mist)
+            }
             !battle.isActive -> BattleResultPanel(state, battle) { onState(state.copy(battleSession = null)) }
             stage == Stage.PLAN -> PlanPicker(state, battle, onPlan = { plan ->
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                if (state.settings.haptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 apply(TacticalBattleEngine.choosePlan(state, plan))
-            }, onQuick = { onState(TacticalBattleEngine.autoResolve(state)) })
+            }, onQuick = ::quickResolve)
             stage == Stage.MIDDLE || stage == Stage.FINAL -> DecisionOverlay(state, battle, stage, Modifier.padding(horizontal = 10.dp)) { decision ->
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                if (state.settings.haptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 apply(TacticalBattleEngine.decide(state, decision))
             }
             else -> SimulationControls(battle, paused, speed, onPause = { paused = !paused }, onSpeed = { speed = if (speed >= 4) 1 else speed * 2 },
-                onQuick = { onState(TacticalBattleEngine.autoResolve(state)) })
+                onQuick = ::quickResolve)
         }
         }
     }
@@ -128,15 +161,16 @@ private fun BattleHeader(state: GameState, battle: BattleSession, stage: Stage, 
                     modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if (active) Gold else StoneRaised).padding(vertical = 5.dp), maxLines = 1)
             }
         }
-        StrengthBar("Dein Heer", battle.fightingRemaining, battle.ownStart, Emerald, "Moral ${battle.morale} %")
+        StrengthBar("Dein Heer", battle.fightingRemaining, battle.ownStart, Emerald, "Moral ${battle.morale} %", state.settings.animations)
         val enemyMorale = if (battle.enemyRemaining == 0) 0 else (battle.fronts.sumOf { it.morale.toLong() * it.enemySoldiers } / battle.enemyRemaining.coerceAtLeast(1)).toInt()
-        StrengthBar(battle.enemyFactionName ?: battle.enemy.label, battle.enemyRemaining, battle.enemyStart, Crimson, "Moral $enemyMorale %")
+        StrengthBar(battle.enemyFactionName ?: battle.enemy.label, battle.enemyRemaining, battle.enemyStart, Crimson, "Moral $enemyMorale %", state.settings.animations)
     }
 }
 
 @Composable
-private fun StrengthBar(label: String, value: Int, max: Int, color: Color, extra: String) {
-    val fraction by animateFloatAsState((value.toFloat() / max.coerceAtLeast(1)).coerceIn(0f, 1f), tween(600), label = label)
+private fun StrengthBar(label: String, value: Int, max: Int, color: Color, extra: String, animations: Boolean) {
+    val target = (value.toFloat() / max.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val fraction = if (animations) animateFloatAsState(target, tween(600), label = label).value else target
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(Modifier.fillMaxWidth()) {
             Text(label, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1)
@@ -196,7 +230,9 @@ private fun SimulationControls(battle: BattleSession, paused: Boolean, speed: In
 private fun DecisionOverlay(state: GameState, battle: BattleSession, stage: Stage, modifier: Modifier, onDecide: (BattleDecision) -> Unit) {
     val event = battle.pendingEvent ?: return
     val choices = TacticalBattleEngine.choices(state, battle)
-    AnimatedVisibility(true, modifier = modifier, enter = fadeIn() + scaleIn(initialScale = .92f), exit = fadeOut()) {
+    AnimatedVisibility(true, modifier = modifier,
+        enter = if (state.settings.animations) fadeIn() + scaleIn(initialScale = .92f) else EnterTransition.None,
+        exit = if (state.settings.animations) fadeOut() else ExitTransition.None) {
         Column(
             Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xF2101820))
                 .border(1.dp, Gold.copy(alpha = .6f), RoundedCornerShape(20.dp)).padding(14.dp),

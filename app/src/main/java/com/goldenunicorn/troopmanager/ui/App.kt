@@ -51,7 +51,10 @@ fun RealmGameApp(saves: SaveRepository) {
     val state = ui.game
     val systemDensity = LocalDensity.current
     val settings = state?.settings ?: GameSettings()
-    CompositionLocalProvider(LocalDensity provides Density(systemDensity.density, systemDensity.fontScale * settings.textScale)) {
+    CompositionLocalProvider(
+        LocalDensity provides Density(systemDensity.density, systemDensity.fontScale * settings.textScale),
+        LocalGameHapticsEnabled provides settings.haptics,
+    ) {
         MaterialTheme(typography = AppTypography, colorScheme = darkColorScheme(primary = Gold, onPrimary = Ink, secondary = Blue,
             background = Ink, surface = Panel, onSurface = Mist)) {
             Box(Modifier.fillMaxSize().background(Ink)) {

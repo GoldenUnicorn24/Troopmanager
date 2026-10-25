@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -106,7 +108,8 @@ internal fun SubSwitch(labels: List<String>, selected: Int, onSelect: (Int) -> U
                 modifier = Modifier.clip(RoundedCornerShape(10.dp))
                     .background(if (active) Gold else Color.Black.copy(alpha = .45f))
                     .clickable { onSelect(i) }
-                    .heightIn(min = 36.dp)
+                    .semantics { this.selected = active }
+                    .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                     .padding(horizontal = 12.dp, vertical = 9.dp),
             )
         }

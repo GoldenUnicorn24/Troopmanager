@@ -42,6 +42,7 @@ internal val Mist = Color(0xFFC7D0D7)
 internal val Danger = Color(0xFFE2676B)
 internal val Success = Color(0xFF69C08B)
 internal val Blue = Color(0xFF72B8E8)
+internal val LocalGameHapticsEnabled = staticCompositionLocalOf { true }
 
 @Composable
 internal fun PageTitle(title: String, subtitle: String) {
@@ -80,8 +81,12 @@ internal fun SectionTitle(text: String) {
 @Composable
 internal fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val hapticsEnabled = LocalGameHapticsEnabled.current
     Button(
-        onClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onClick() },
+        onClick = {
+            if (hapticsEnabled) haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         modifier = modifier.heightIn(min = 54.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
         shape = RoundedCornerShape(16.dp),
