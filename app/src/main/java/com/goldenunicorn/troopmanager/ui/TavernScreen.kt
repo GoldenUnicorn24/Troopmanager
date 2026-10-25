@@ -195,7 +195,7 @@ fun TavernScreen(
                     // Name tags for people you know, a role tag for the rest.
                     placements.forEach { p ->
                         val known = p.npc.relation.timesMet > 0
-                        val label = if (known) p.npc.firstName else p.npc.role.label
+                        val label = if (known) p.npc.firstName else if (p.npc.role == NpcRole.INNKEEPER) p.npc.profession else p.npc.profession.substringBefore(' ').take(14)
                         val style = TextStyle(color = if (known) PaleGold else Mist.copy(alpha = .8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         val m = measurer.measure(label, style)
                         val top = Offset(tw * (p.cell.x + .5f) - m.size.width / 2f, wallH + th * (p.cell.y + .5f) - tw * 2.7f)

@@ -112,11 +112,11 @@ internal fun DrawScope.paintPortrait(a: CharacterAppearance, gender: Gender, fra
     drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = .10f), Color.Transparent), Offset(w * .15f, h * .05f), w * .9f))
     when (framing) {
         Framing.HEAD -> {
-            val s = w / 46f
+            val s = minOf(w / 46f, h / 57.5f)
             drawBust(a, gender, Offset(w / 2f, h * .56f), s)
         }
         Framing.BUST -> {
-            val s = w / 78f
+            val s = minOf(w / 78f, h / 97.5f)
             drawBust(a, gender, Offset(w / 2f, h * .40f), s)
         }
         Framing.FULL -> drawFullFigure(a, gender, Offset(w / 2f, h * .97f), h / 146f, detailed = true)

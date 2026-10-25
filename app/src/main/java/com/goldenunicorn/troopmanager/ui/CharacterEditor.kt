@@ -59,8 +59,8 @@ fun CharacterEditor(
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(
-            Modifier.fillMaxWidth().aspectRatio(.8f).heightIn(max = 460.dp).clip(RoundedCornerShape(24.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Box(
+            Modifier.widthIn(max = 368.dp).fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(24.dp))
                 .border(1.dp, Gold.copy(alpha = .25f), RoundedCornerShape(24.dp)).testTag("editor_preview"),
         ) {
             CharacterPortrait(appearance, gender, Modifier.fillMaxSize(), framing)
@@ -75,7 +75,7 @@ fun CharacterEditor(
                     AppearanceOptions.expressions.forEachIndexed { i, label -> RbChip(label, appearance.expression == i) { change(appearance.copy(expression = i)) } }
                 }
             }
-        }
+        } }
         Text(
             "Vorschau-Renderer: gezeichnete Vektormalerei. Gemalte Porträt-Ebenen werden automatisch genutzt, sobald sie installiert sind.",
             color = Muted, fontSize = 11.sp, lineHeight = 15.sp,
