@@ -82,7 +82,7 @@ fun RealmGameApp(saves: SaveRepository) {
 }
 
 @Composable
-private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
+internal fun MainMenu(ui: GameUiState, controller: GameViewModel) {
     GameSoundscape(ui.game, "menu")
     Box(Modifier.fillMaxSize()) {
         AsyncImage(
@@ -164,7 +164,7 @@ private fun MainMenu(ui: GameUiState, controller: GameViewModel) {
 }
 
 @Composable
-private fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit) {
+internal fun CharacterCreation(onCreated: (GameState) -> Unit, onBack: () -> Unit) {
     var name by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("23") }
     var species by remember { mutableStateOf(Species.HALF_ELF) }
@@ -518,7 +518,7 @@ private fun AttributeAllocatorRow(
 }
 
 @Composable
-private fun GameShell(
+internal fun GameShell(
     state: GameState,
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
@@ -526,11 +526,12 @@ private fun GameShell(
     onDelete: () -> Unit,
     onAdvanceDay: () -> Unit,
     controller: GameViewModel,
+    initialSpot: Spot = Spot.INBOX,
 ) {
-    var areaName by rememberSaveable { mutableStateOf(MainArea.TODAY.name) }
+    var areaName by rememberSaveable { mutableStateOf(initialSpot.area.name) }
     val area = MainArea.valueOf(areaName)
-    var tabs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { 0 }) }
-    var subs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { 0 }) }
+    var tabs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { if (it == initialSpot.area.ordinal) initialSpot.tab else 0 }) }
+    var subs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { if (it == initialSpot.area.ordinal) initialSpot.sub else 0 }) }
     var showMore by rememberSaveable { mutableStateOf(false) }
     var showCensus by rememberSaveable { mutableStateOf(false) }
     var showDefense by rememberSaveable { mutableStateOf(false) }

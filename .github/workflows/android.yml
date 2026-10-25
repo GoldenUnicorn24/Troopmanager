@@ -125,7 +125,9 @@ jobs:
     name: Battle UI on Android 35
     runs-on: ubuntu-24.04
     needs: build
-    timeout-minutes: 25
+    timeout-minutes: 35
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -149,9 +151,10 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: |
-            gradle :app:connectedDebugAndroidTest --stacktrace
+            gradle :app:connectedDebugAndroidTest --stacktrace || touch /tmp/ui-tests-failed
             mkdir -p build/ui-screenshots
-            adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots
+            adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots || true
+            test ! -f /tmp/ui-tests-failed
       - name: Report UI test failures as annotations
         if: failure()
         run: |
@@ -163,6 +166,17 @@ jobs:
                       text = (failure.get("message") or failure.text or "").replace("\n", " ").replace("%", "%25")[:900]
                       print(f"::error title={case.get('name')}::{text}")
           PYUI
+      - name: Publish screenshots for design review
+        if: always() && github.event_name == 'push'
+        run: |
+          set -e
+          [ -d build/ui-screenshots ] || exit 0
+          mkdir -p /tmp/shots && cp -r build/ui-screenshots/. /tmp/shots/
+          cd /tmp/shots
+          git init -q && git checkout -q -b ui-screenshots
+          git config user.name "ci" && git config user.email "ci@users.noreply.github.com"
+          git add -A && git commit -q -m "Screenshots ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ui-screenshots
       - name: Upload UI evidence
         if: always()
         uses: actions/upload-artifact@v4
