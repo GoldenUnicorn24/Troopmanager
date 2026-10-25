@@ -211,7 +211,7 @@ class BattleLayoutTest {
         rule.onNodeWithText("Entscheidung 1 · Dein Schlachtplan").assertIsDisplayed()
         rule.onNodeWithTag("tactical_field").assertIsDisplayed()
         saveScreenshot("tactical-plan")
-        rule.onNodeWithTag("plan_HOLD_WALL").performClick()
+        rule.onNodeWithTag("plan_HOLD_WALL").performScrollTo().assertIsDisplayed().performClick()
         rule.waitForIdle()
         fun describe() = BattlePreviewActivity.latestState?.battleSession?.let { "stage=${it.tacticalStage} minute=${it.minute} status=${it.status} event=${it.pendingEvent?.title} notice=${BattlePreviewActivity.latestNotice}" } ?: "no battle"
         assertEquals("Plan applied: ${describe()}", 1, BattlePreviewActivity.latestState!!.battleSession!!.tacticalStage)

@@ -82,11 +82,13 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
 
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().testTag("battle_screen")) {
         BattleHeader(state, battle, stage, onExpert = { expert = true })
-        Box(Modifier.weight(1.3f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
+        // While a decision is open the panel gets more room; during the simulation the field dominates.
+        val deciding = battle.isActive && stage in listOf(Stage.PLAN, Stage.MIDDLE, Stage.FINAL)
+        Box(Modifier.weight(if (deciding) 0.9f else 2f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
             BattleSimulation(battle, state.settings.animations, Modifier.fillMaxSize())
         }
         // The bottom panel may use up to its share of the height and scrolls inside it, so the field always stays visible.
-        Box(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+        Box(Modifier.weight(if (deciding) 1.6f else 1f, fill = false).verticalScroll(rememberScrollState())) {
         when {
             !battle.isActive -> BattleResultPanel(state, battle) { onState(state.copy(battleSession = null)) }
             stage == Stage.PLAN -> PlanPicker(state, battle, onPlan = { plan ->
