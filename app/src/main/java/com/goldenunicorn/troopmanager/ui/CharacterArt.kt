@@ -104,6 +104,7 @@ fun PaintedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: M
 internal fun DrawScope.paintPortrait(a: CharacterAppearance, gender: Gender, framing: Framing) {
     val w = size.width
     val h = size.height
+    if (w < 8f || h < 8f) return
     val bg = ArtPalette.backgrounds[a.background]
     drawRect(Brush.radialGradient(bg, Offset(w * .32f, h * .28f), maxOf(w, h) * 1.05f))
     // A soft window light from the upper left.
@@ -220,7 +221,13 @@ private fun DrawScope.drawArmor(a: CharacterAppearance, c: Offset, s: Float, sho
                     close()
                 }
                 drawPath(p, Brush.linearGradient(listOf(ArtPalette.leather.tint(.18f), ArtPalette.leather.shade(.35f)), Offset(c.x, top), Offset(c.x + side * shoulder * s, top + 14f * s)))
-                drawPath(p, ArtPalette.leather.tint(.4f), style = Stroke(.35f * s, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(1.2f * s, .9f * s))))
+                // Stitching: short strokes along the edge (no dash path effect, which degenerates at tiny sizes).
+                for (k in 0 until 7) {
+                    val t = k / 6f
+                    val sx = c.x + side * (10f + (shoulder - 8f) * t) * s
+                    val sy = top + (1f + 10f * t * t) * s
+                    drawLine(ArtPalette.leather.tint(.4f), Offset(sx, sy), Offset(sx + side * .9f * s, sy + .4f * s), .3f * s)
+                }
             }
             drawLine(ArtPalette.leather.shade(.3f), Offset(c.x - shoulder * .9f * s, top + 4f * s), Offset(c.x + shoulder * .3f * s, bottom), 2.2f * s)
             drawCircle(ArtPalette.gold, 1.1f * s, Offset(c.x - shoulder * .3f * s, top + 22f * s))

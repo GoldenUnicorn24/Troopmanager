@@ -342,18 +342,18 @@ private fun ModeCard(mode: GameMode, selected: Boolean, onClick: () -> Unit) {
         GameMode.FREE_LIFE -> "city_landscape.webp"
     }
     Box(
-        Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(22.dp))
+        Modifier.fillMaxWidth().heightIn(min = 176.dp).clip(RoundedCornerShape(22.dp))
             .border(if (selected) 2.dp else 1.dp, if (selected) Gold else Color.White.copy(alpha = .1f), RoundedCornerShape(22.dp))
             .clickable(onClick = onClick).testTag("mode_${mode.name.lowercase()}"),
     ) {
         ArtImage(art, Modifier.matchParentSize())
         Box(Modifier.matchParentSize().background(Brush.horizontalGradient(listOf(Ink.copy(alpha = .95f), Ink.copy(alpha = .55f), Color.Transparent))))
-        Column(Modifier.align(Alignment.CenterStart).padding(18.dp).fillMaxWidth(.78f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(18.dp).fillMaxWidth(.8f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ModernPill(mode.tagline, if (selected) Gold else ModernBlue, filled = selected)
             }
             Text(mode.label, color = if (selected) PaleGold else Color.White, fontSize = 22.sp, fontFamily = Cinzel, fontWeight = FontWeight.Bold)
-            Text(mode.description, color = Mist, fontSize = 12.sp, lineHeight = 16.sp, maxLines = 4)
+            Text(mode.description, color = Mist, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
 }

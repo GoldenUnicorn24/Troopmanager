@@ -171,6 +171,7 @@ fun TavernScreen(
                             }
                         },
                 ) {
+                    if (tw < 2f) return@Canvas
                     drawTavernRoom(state, tw, th, wallH, time)
                     // Depth-sorted actors and furniture rows.
                     val playerRow = pos.value.y
@@ -486,6 +487,7 @@ private val TavStone = Color(0xFF6C665E)
 
 private fun DrawScope.drawTavernRoom(state: GameState, tw: Float, th: Float, wallH: Float, time: Float) {
     val w = size.width
+    if (tw < 2f) return
     // Back wall: plaster between timber, wainscot below.
     drawRect(Brush.verticalGradient(listOf(TavPlaster.copy(alpha = 1f).mix(Color.Black, .35f), TavPlaster), 0f, wallH))
     for (i in 0..12) drawRect(Brush.horizontalGradient(listOf(TavTimber.mix(Color.White, .08f), TavTimber), i * tw - tw * .08f, i * tw + tw * .08f),
