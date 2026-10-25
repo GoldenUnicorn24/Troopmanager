@@ -83,7 +83,8 @@ object TacticalBattleEngine {
     /** Decision 1: the battle plan. */
     fun choosePlan(state: GameState, plan: Plan): GameEngine.ActionResult {
         val session = state.battleSession ?: return GameEngine.ActionResult(state, "Keine Schlacht aktiv.")
-        if (session.tacticalStage != 0) return GameEngine.ActionResult(state, "Der Schlachtplan steht bereits.")
+        if (session.status != BattleStatus.ACTIVE || session.step != 0 || session.minute != 0 || session.tacticalStage != 0)
+            return GameEngine.ActionResult(state, "Der Schlachtplan kann nur vor Schlachtbeginn gewählt werden.")
         val wall = isWall(session)
         if (plan.wall != wall) return GameEngine.ActionResult(state, "Dieser Plan passt nicht zu dieser Schlacht.")
         val partner = session.contingents.any { it.commanderId == COMPANION_COMMANDER_ID && it.soldiers > 0 } || state.companion.met
@@ -101,11 +102,22 @@ object TacticalBattleEngine {
                 val wallBonus = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) 15 else 0
                 c.copy(morale = (c.morale + moraleBoost).coerceAtMost(100), cohesion = (c.cohesion + wallBonus).coerceAtMost(100))
             },
-            segments = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) session.segments.map { it.copy(cover = (it.cover + 0.1).coerceAtMost(0.95)) } else session.segments,
+            segments = if (wall && ReignEngine.has(state, WonderKind.GREAT_WALL)) session.segments.map { it.copy(cover = (it.cover + 0.1).coerceAtMost(0.85)) } else session.segments,
             fronts = if (ReignEngine.ballistaeMorale(state) > 0 && wall) session.fronts.map { it.copy(morale = (it.morale - ReignEngine.ballistaeMorale(state)).coerceAtLeast(5)) } else session.fronts,
             log = (session.log + BattleLogEntry(0, "Schlachtplan: ${plan.label}. ${plan.description}")).takeLast(60),
         )
-        return GameEngine.ActionResult(state.copy(battleSession = updated), "Schlachtplan „${plan.label}“ ausgegeben.")
+        // Plan selection is preparation, just like redeployment: replay begins with the
+        // actual army and fortifications, without reapplying bonuses or debiting supplies.
+        val replay = updated.replayStart?.copy(
+            initialContingents = updated.contingents,
+            initialFronts = updated.fronts,
+            initialSegments = updated.segments,
+            heroPerk = updated.heroPerk,
+            reservePerk = updated.reservePerk,
+            rallyPerk = updated.rallyPerk,
+            moraleBonus = updated.moraleBonus,
+        )
+        return GameEngine.ActionResult(state.copy(battleSession = updated.copy(replayStart = replay)), "Schlachtplan „${plan.label}“ ausgegeben.")
     }
 
     /** One simulation tick: advances five battle minutes or opens the next key decision. */
