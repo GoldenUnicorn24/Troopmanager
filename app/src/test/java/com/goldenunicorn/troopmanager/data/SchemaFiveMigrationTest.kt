@@ -41,7 +41,7 @@ class SchemaFiveMigrationTest {
         val original = Json.parseToJsonElement(running()).jsonObject
         assertEquals(4, original.getValue("version").jsonPrimitive.int)
         val migrated = SaveCodec.decode(running())
-        assertEquals(5, migrated.version)
+        assertEquals(SaveCodec.CURRENT_VERSION, migrated.version)
         assertEquals(3, migrated.battleSession!!.combatVersion)
         preservesOldFields(original, Json.parseToJsonElement(SaveCodec.encode(migrated)))
         assertEquals(migrated, SaveCodec.decode(SaveCodec.encode(migrated)))
@@ -90,7 +90,7 @@ class SchemaFiveMigrationTest {
         val original = storage.values.toMap()
         storage.reject = true
         val saves = SaveRepository(storage)
-        assertEquals(5, saves.load()!!.version)
+        assertEquals(SaveCodec.CURRENT_VERSION, saves.load()!!.version)
         assertNotNull(saves.lastError)
         assertEquals(original, storage.values)
     }
@@ -105,9 +105,9 @@ class SchemaFiveMigrationTest {
 
     @Test fun schemaFiveReencodesAndRejectsUnknownFutureSchemaWithoutOverwriting() {
         val state = SaveCodec.decode(running())
-        assertEquals(5, Json.parseToJsonElement(SaveCodec.encode(state)).jsonObject.getValue("version").jsonPrimitive.int)
+        assertEquals(SaveCodec.CURRENT_VERSION, Json.parseToJsonElement(SaveCodec.encode(state)).jsonObject.getValue("version").jsonPrimitive.int)
         val storage = Storage()
-        storage.values["game_state_v1"] = """{"version":6}"""
+        storage.values["game_state_v1"] = """{"version":${SaveCodec.CURRENT_VERSION + 1}}"""
         val before = storage.values.toMap()
         val saves = SaveRepository(storage)
         assertNull(saves.load())

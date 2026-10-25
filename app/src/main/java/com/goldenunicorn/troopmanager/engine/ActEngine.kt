@@ -58,6 +58,7 @@ object ActEngine {
     // ------------------------------------------------------------ daily
 
     fun tick(state: GameState): GameState {
+        if (!state.life.storyActs) return state
         val act = current(state) ?: return state
         val a = state.crown.act
         if (a.bossAnnounced || a.bossBattleActive || !goalsMet(state) || state.crown.saga.pendingScene != null) return state

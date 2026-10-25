@@ -159,7 +159,7 @@ class BattleTacticsTest {
             .joinToString("") { "%02x".format(it) }
         root["_checksum"] = JsonPrimitive(checksum)
         val decoded = SaveCodec.decode(JsonObject(root).toString())
-        assertEquals(5, decoded.version)
+        assertEquals(SaveCodec.CURRENT_VERSION, decoded.version)
         assertEquals(BattlePlan(), decoded.defensePlan)
         assertEquals(BattlePlan(), decoded.battleSession!!.plan)
         assertEquals(1, decoded.battleSession.replayStart!!.rulesVersion)
