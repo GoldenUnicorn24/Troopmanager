@@ -1,6 +1,10 @@
-# Realm of the Last Wall — Troopmanager v2.0.0
+# Realm of the Last Wall — Troopmanager v2.1.0
 
 **Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v2.1: Look & Feel
+
+Gemälde in allen Bereichen, kompakte Kopfleiste, neue Porträts, Schriften, Morgendämmerung nach jedem Tag und neue Klänge. Siehe [v2.1](docs/V2.1-LOOK-AND-FEEL.md).
 
 ## v2.0: die große Überarbeitung
 

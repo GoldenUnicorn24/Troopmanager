@@ -110,7 +110,11 @@ internal fun costLabel(cost: Resources): String = ResourceKind.entries
 
 private fun androidx.compose.foundation.lazy.LazyListScope.landsTab(state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
     val crown = state.crown
-    item(key = "act") { ActCard(state, apply) }
+    // The map leads; the act card jumps to the top only when the final battle is ready.
+    val bossFirst = ActEngine.bossReady(state)
+    if (bossFirst) item(key = "act") { ActCard(state, apply) }
+    item(key = "map") { ProvincesPanel(state, apply) }
+    if (!bossFirst) item(key = "act") { ActCard(state, apply) }
     item(key = "title") {
         val ladder = CrownCatalog.titleLadder
         val index = ladder.indexOfFirst { it.title == state.title }.coerceAtLeast(0)
@@ -124,7 +128,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.landsTab(state: GameS
             if (next != null) Text("Nächster Titel: ${next.title} · ${next.requirement}", color = PaleGold, fontSize = 13.sp)
         }
     }
-    item(key = "map") { ProvincesPanel(state, apply) }
     if (crown.threats.isNotEmpty()) {
         item { Heading("Gegenoffensiven", "Feindliche Heere auf dem Marsch gegen deine Provinzen.") }
         items(crown.threats, key = { it.id }) { t -> ThreatCard(state, t, apply) }
