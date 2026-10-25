@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -97,9 +99,17 @@ fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier:
 
 @Composable
 fun PaintedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    Canvas(modifier.clipToBounds().semantics { contentDescription = "Porträt" }) {
-        paintPortrait(appearance.normalized(), gender, framing)
-    }
+    val look = remember(appearance) { appearance.normalized() }
+    // The painting is rendered once per size and look into a bitmap; redraws only blit it.
+    Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
+        val w = size.width.toInt().coerceAtLeast(1)
+        val h = size.height.toInt().coerceAtLeast(1)
+        val image = ImageBitmap(w, h)
+        CanvasDrawScope().draw(this, layoutDirection, androidx.compose.ui.graphics.Canvas(image), Size(w.toFloat(), h.toFloat())) {
+            paintPortrait(look, gender, framing)
+        }
+        onDrawBehind { drawImage(image) }
+    })
 }
 
 internal fun DrawScope.paintPortrait(a: CharacterAppearance, gender: Gender, framing: Framing) {

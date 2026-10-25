@@ -5,6 +5,7 @@
 | Base-Branch / Commit | `main` @ `af694d7` (v2.1.0, versionCode 51) |
 | Feature-Branch | `claude/project-rebirth-rpg` |
 | Neue Version | 2.2.0 (versionCode 52), Save-Schema 6 |
+| Pull Request | https://github.com/GoldenUnicorn24/Troopmanager/pull/14 |
 | CI | GitHub Actions „Android APK“ (Unit-Tests → Lint → Debug-APK → apksigner/aapt-Prüfung → Emulator API 35 mit Screenshot-Tour) |
 
 Build-, Start- und Funktionstest werden getrennt ausgewiesen.
