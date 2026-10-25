@@ -77,24 +77,24 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
 
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding()) {
         BattleHeader(state, battle, stage, onExpert = { expert = true })
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
+        Box(Modifier.weight(1.3f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
             BattleSimulation(battle, state.settings.animations, Modifier.fillMaxSize())
-            if (battle.isActive && (stage == Stage.MIDDLE || stage == Stage.FINAL)) {
-                DecisionOverlay(state, battle, stage, Modifier.align(Alignment.BottomCenter)) { decision ->
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    apply(TacticalBattleEngine.decide(state, decision))
-                }
-            }
         }
+        // The bottom panel may use up to its share of the height and scrolls inside it, so the field always stays visible.
+        Box(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
         when {
             !battle.isActive -> BattleResultPanel(state, battle) { onState(state.copy(battleSession = null)) }
             stage == Stage.PLAN -> PlanPicker(state, battle, onPlan = { plan ->
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                 apply(TacticalBattleEngine.choosePlan(state, plan))
             }, onQuick = { onState(TacticalBattleEngine.autoResolve(state)) })
-            stage == Stage.MIDDLE || stage == Stage.FINAL -> Spacer(Modifier.height(8.dp))
+            stage == Stage.MIDDLE || stage == Stage.FINAL -> DecisionOverlay(state, battle, stage, Modifier.padding(horizontal = 10.dp)) { decision ->
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                apply(TacticalBattleEngine.decide(state, decision))
+            }
             else -> SimulationControls(battle, paused, speed, onPause = { paused = !paused }, onSpeed = { speed = if (speed >= 4) 1 else speed * 2 },
                 onQuick = { onState(TacticalBattleEngine.autoResolve(state)) })
+        }
         }
     }
 }
@@ -369,7 +369,7 @@ private fun DecisionOverlay(state: GameState, battle: BattleSession, stage: Stag
     AnimatedVisibility(true, modifier = modifier, enter = fadeIn() + scaleIn(initialScale = .92f), exit = fadeOut()) {
         Column(
             Modifier.fillMaxWidth().padding(bottom = 8.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xF2101820))
-                .border(1.dp, Gold.copy(alpha = .6f), RoundedCornerShape(20.dp)).verticalScroll(rememberScrollState()).padding(14.dp),
+                .border(1.dp, Gold.copy(alpha = .6f), RoundedCornerShape(20.dp)).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Text(if (stage == Stage.MIDDLE) "ENTSCHEIDUNG 2 · WENDEPUNKT" else "ENTSCHEIDUNG 3 · DAS ENDE", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
