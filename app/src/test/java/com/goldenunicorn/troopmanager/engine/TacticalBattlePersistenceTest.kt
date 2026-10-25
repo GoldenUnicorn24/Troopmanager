@@ -7,7 +7,8 @@ import org.junit.Test
 
 /** Regressions at the boundary between cinematic plans, core combat and schema-5 saves. */
 class TacticalBattlePersistenceTest {
-    private fun prepared(wall: Boolean, wonders: Boolean = true): GameState {
+    private fun prepared(wall: Boolean, wonders: Boolean = true, arrows: Int = 8000,
+        devices: List<SiegeDevice> = emptyList()): GameState {
         val base = GameEngine.newGame("Mauerwacht", 24, Species.HUMAN, null)
         val state = base.copy(
             armyPools = listOf(
@@ -18,12 +19,12 @@ class TacticalBattlePersistenceTest {
             population = Population(human = 5000),
             commanderAssignments = emptyList(),
             realm = Realm(buildings = mapOf(BuildingType.WALL to 4, BuildingType.TOWER to 4)),
-            militaryStock = MilitaryStock(arrows = 8000, siegeParts = 100),
+            militaryStock = MilitaryStock(arrows = arrows, siegeParts = 100),
             reign = base.reign.copy(wonders = if (wonders) listOf(
                 WonderProject(WonderKind.GREAT_WALL, 0, 1, finished = true),
                 WonderProject(WonderKind.DRAGON_BALLISTAE, 0, 1, finished = true),
             ) else emptyList()),
-            invasion = Invasion(EnemyType.ORC, 1, 600, 1, devices = emptyList()),
+            invasion = Invasion(EnemyType.ORC, 1, 600, 1, devices = devices),
         )
         return BattleEngine.start(state, EnemyType.ORC, if (wall) Tactic.FORTIFY else Tactic.HOLD,
             seed = 971, enemyStrength = 600,
@@ -92,19 +93,45 @@ class TacticalBattlePersistenceTest {
     }
 
     @Test fun detailedBattleResumesWithoutPlanBonusesAndQuickResolveStillFinishes() {
-        val running = BattleEngine.advance(prepared(wall = false, wonders = false)).state
-        val resumed = SaveCodec.decode(SaveCodec.encode(running))
-        assertEquals(running, resumed)
-        assertEquals(TacticalBattleEngine.Stage.RUNNING, TacticalBattleEngine.stage(resumed.battleSession!!))
-        assertNull(resumed.battleSession.tacticalPlan)
-        val next = TacticalBattleEngine.step(resumed).state
-        assertTrue(next.battleSession!!.step > resumed.battleSession.step ||
-            TacticalBattleEngine.stage(next.battleSession) == TacticalBattleEngine.Stage.MIDDLE)
-        val finished = TacticalBattleEngine.autoResolve(resumed)
-        assertFalse(finished.battleSession!!.isActive)
-        assertNull(finished.battleSession.tacticalPlan)
-        assertEquals(resumed.battleSession.moraleBonus, finished.battleSession.moraleBonus)
-        assertEquals(finished, SaveCodec.decode(SaveCodec.encode(finished)))
+        for (wall in listOf(false, true)) {
+            val running = BattleEngine.advance(prepared(wall = wall, wonders = false)).state
+            val resumed = SaveCodec.decode(SaveCodec.encode(running))
+            assertEquals(running, resumed)
+            assertEquals(TacticalBattleEngine.Stage.RUNNING, TacticalBattleEngine.stage(resumed.battleSession!!))
+            assertNull(resumed.battleSession.tacticalPlan)
+            val next = TacticalBattleEngine.step(resumed).state
+            assertTrue(next.battleSession!!.step > resumed.battleSession.step ||
+                TacticalBattleEngine.stage(next.battleSession) == TacticalBattleEngine.Stage.MIDDLE)
+            val finished = TacticalBattleEngine.autoResolve(resumed)
+            assertFalse(finished.battleSession!!.isActive)
+            assertNull(finished.battleSession.tacticalPlan)
+            assertEquals(resumed.battleSession.moraleBonus, finished.battleSession.moraleBonus)
+            assertEquals(wall, TacticalBattleEngine.isWall(finished.battleSession))
+            assertEquals(finished, SaveCodec.decode(SaveCodec.encode(finished)))
+        }
+    }
+
+    @Test fun detailedWallBattleKeepsItsWallDecisionsAtTheTurningPoint() {
+        var state = prepared(wall = true, wonders = false, arrows = 0, devices = listOf(SiegeDevice.LADDERS))
+        repeat(12) {
+            val battle = state.battleSession!!
+            if (battle.status == BattleStatus.ACTIVE && battle.segments.none { it.contactState.allowsMelee }) {
+                val options = battle.pendingEvent?.options
+                state = BattleEngine.advance(state, options?.let { if (BattleDecision.HOLD in it) BattleDecision.HOLD else it.first() }).state
+            }
+        }
+        assertEquals(BattleStatus.ACTIVE, state.battleSession!!.status)
+        assertTrue(state.battleSession!!.segments.any { it.contactState == BattleContactState.WALL_ASSAULT })
+        repeat(4) {
+            if (TacticalBattleEngine.stage(state.battleSession!!) == TacticalBattleEngine.Stage.RUNNING)
+                state = TacticalBattleEngine.step(state).state
+        }
+        val middle = state.battleSession!!
+        assertEquals(TacticalBattleEngine.Stage.MIDDLE, TacticalBattleEngine.stage(middle))
+        assertTrue(TacticalBattleEngine.isWall(middle))
+        assertEquals("Der Feind ist an den Zinnen!", middle.pendingEvent!!.title)
+        assertNull(middle.tacticalPlan)
+        assertEquals(state, SaveCodec.decode(SaveCodec.encode(state)))
     }
 
     @Test fun planSelectionIsOneShotAndDoesNotGrantWonderBonusesWithoutTheWonder() {

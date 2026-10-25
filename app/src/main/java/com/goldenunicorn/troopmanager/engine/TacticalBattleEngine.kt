@@ -256,7 +256,7 @@ object TacticalBattleEngine {
     // ------------------------------------------------------------------ internals
 
     private fun middleReached(session: BattleSession): Boolean {
-        val wall = session.tacticalWall
+        val wall = isWall(session)
         val states = session.segments.map { it.contactState }
         return if (wall) BattleContactState.BREACHED in states || BattleContactState.COURTYARD in states ||
             BattleContactState.WALL_ASSAULT in states || session.minute >= 45
@@ -278,7 +278,7 @@ object TacticalBattleEngine {
 
     private fun openMiddle(state: GameState, session: BattleSession): GameState {
         val section = hotSection(session)
-        val wall = session.tacticalWall
+        val wall = isWall(session)
         val contact = session.segment(section)?.contactState
         val candidates = when {
             wall && (contact == BattleContactState.BREACHED || contact == BattleContactState.COURTYARD) ->
@@ -286,7 +286,7 @@ object TacticalBattleEngine {
             wall -> listOf(BattleDecision.REPEL_LADDERS, BattleDecision.FIRE_OIL, BattleDecision.STRENGTHEN_SECTION, BattleDecision.ROTATE_RESERVE, BattleDecision.COUNTERATTACK, BattleDecision.RALLY, BattleDecision.HOLD)
             else -> listOf(BattleDecision.CAVALRY_CHARGE, BattleDecision.ADVANCE, BattleDecision.COUNTERATTACK, BattleDecision.SEND_RESERVE, BattleDecision.RALLY, BattleDecision.HOLD)
         }
-        val ready = session.copy(commandPoints = session.maxCommandPoints)
+        val ready = session.copy(commandPoints = session.maxCommandPoints, tacticalWall = wall)
         val options = candidates.filter { BattleEngine.canOrder(ready, it, section) }.take(4).ifEmpty { listOf(BattleDecision.HOLD) }
         val (title, text) = when {
             wall && contact in listOf(BattleContactState.BREACHED, BattleContactState.COURTYARD) -> "Die Mauer ist gefallen!" to "Am Abschnitt ${section.label} strömt der Feind durch die Bresche. Was jetzt geschieht, entscheidet die Schlacht."
@@ -300,7 +300,7 @@ object TacticalBattleEngine {
     }
 
     private fun openFinal(state: GameState, session: BattleSession, winning: Boolean): GameState {
-        val ready = session.copy(commandPoints = session.maxCommandPoints)
+        val ready = session.copy(commandPoints = session.maxCommandPoints, tacticalWall = isWall(session))
         if (winning) {
             val event = session.pendingEvent ?: BattleEvent("Der Gegner flieht", "", BattleSection.CENTER, listOf(BattleDecision.PURSUE, BattleDecision.HOLD_FORMATION))
             return state.copy(battleSession = ready.copy(tacticalStage = Stage.FINAL.ordinal,
