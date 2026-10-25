@@ -212,11 +212,14 @@ class BattleLayoutTest {
         rule.onNodeWithTag("tactical_field").assertIsDisplayed()
         saveScreenshot("tactical-plan")
         rule.onNodeWithTag("plan_HOLD_WALL").performClick()
-        // The simulation clock is a coroutine delay; drive the test clock explicitly.
+        rule.waitForIdle()
+        fun describe() = BattlePreviewActivity.latestState?.battleSession?.let { "stage=${it.tacticalStage} minute=${it.minute} status=${it.status} event=${it.pendingEvent?.title} notice=${BattlePreviewActivity.latestNotice}" } ?: "no battle"
+        assertEquals("Plan applied: ${describe()}", 1, BattlePreviewActivity.latestState!!.battleSession!!.tacticalStage)
+        // The simulation clock is a coroutine delay; advance both the test clock and real time.
         fun runUntil(limit: Int, condition: () -> Boolean) {
             var ticks = 0
-            while (!condition() && ticks++ < limit) { rule.mainClock.advanceTimeBy(300); rule.waitForIdle() }
-            assertTrue("Simulation did not reach the expected state", condition())
+            while (!condition() && ticks++ < limit) { rule.mainClock.advanceTimeBy(300); Thread.sleep(120); rule.waitForIdle() }
+            assertTrue("Simulation did not reach the expected state: ${describe()}", condition())
         }
         runUntil(60) { (BattlePreviewActivity.latestState?.battleSession?.minute ?: 0) > 0 }
         saveScreenshot("tactical-simulation")
