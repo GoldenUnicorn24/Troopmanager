@@ -75,7 +75,7 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
         onState(result.state)
     }
 
-    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().testTag("battle_screen")) {
         BattleHeader(state, battle, stage, onExpert = { expert = true })
         Box(Modifier.weight(1.3f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
             BattleSimulation(battle, state.settings.animations, Modifier.fillMaxSize())
