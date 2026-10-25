@@ -703,7 +703,14 @@ internal fun GameShell(
         }
     }
 
+    // Dawn interstitial whenever a new day begins (skipped when a celebration takes the stage).
+    var dawnDay by remember { mutableIntStateOf(state.day) }
     val celebration = state.crown.celebrations.firstOrNull()
+    if (state.day > dawnDay && celebration == null && state.battleSession == null && sagaScene == null) {
+        DawnOverlay(state, state.settings.animations) { dawnDay = state.day }
+    } else if (state.day > dawnDay) {
+        SideEffect { dawnDay = state.day }
+    }
     if (celebration != null && state.crown.duel == null && state.battleSession?.isActive != true) {
         CelebrationOverlay(celebration, state.crown.celebrations.size, state.settings.animations) {
             onState(com.goldenunicorn.troopmanager.engine.CelebrationEngine.dismiss(state))

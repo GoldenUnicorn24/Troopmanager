@@ -56,10 +56,11 @@ internal fun PageTitle(title: String, subtitle: String) {
         Text(
             subtitle,
             color = Color.White,
-            fontSize = 22.sp,
-            lineHeight = 28.sp,
+            fontSize = 19.sp,
+            lineHeight = 25.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = Cinzel,
+            maxLines = 3,
         )
     }
 }

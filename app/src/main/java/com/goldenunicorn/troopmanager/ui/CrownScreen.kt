@@ -412,7 +412,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
     apply: (GameEngine.ActionResult) -> Unit,
     onState: (GameState) -> Unit,
 ) {
-    item(key = "looks") { LooksCard(state, onState) }
     if (state.companion.met) item(key = "companion_story") { CompanionStoryCard(state, onState) }
     if (state.companion.met) item(key = "companion_gear") {
         CrownCard {
@@ -431,6 +430,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
         )
     }
     items(CrownCatalog.heroines.mapNotNull { HeroineSagaEngine.def(state, it.id) }, key = { it.id }) { def -> HeroineCard(state, def, apply) }
+    item(key = "looks") { LooksCard(state, onState) }
 }
 
 @Composable
