@@ -85,7 +85,7 @@ internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) 
     // Conquered tiles fade into their new color instead of jumping.
     val colors = provinces.associate { p ->
         val open = reachable[p.land] == true || p.owner == ProvinceOwner.PLAYER
-        p.id to animateColorAsState(if (open) ownerFill(p.owner).copy(alpha = .82f) else Steel.copy(alpha = .55f), tween(700), label = p.id).value
+        p.id to animateColorAsState(if (open) ownerFill(p.owner).copy(alpha = .62f) else Steel.copy(alpha = .45f), tween(700), label = p.id).value
     }
     val pulse by rememberInfiniteTransition(label = "select").animateFloat(0.55f, 1f, infiniteRepeatable(tween(900), RepeatMode.Reverse), label = "pulse")
     Box(
@@ -95,6 +95,9 @@ internal fun CrownMap(state: GameState, selectedId: String?, onSelect: (String) 
             .background(Brush.verticalGradient(listOf(Color(0xFF1B2A30), Color(0xFF0E171C))))
             .semantics { contentDescription = "Karte der Kronlande mit ${provinces.size} Provinzen" },
     ) {
+        // The painted world map shines through the province tiles.
+        ArtImage("world_map.webp", Modifier.matchParentSize())
+        Box(Modifier.matchParentSize().background(Color(0x99091117)))
         Canvas(
             Modifier.fillMaxSize().pointerInput(provinces) {
                 detectTapGestures { tap ->

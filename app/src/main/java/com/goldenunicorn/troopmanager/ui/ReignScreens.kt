@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -83,6 +84,7 @@ internal fun WondersScreen(state: GameState, onState: (GameState) -> Unit, onNot
             val done = ReignEngine.has(state, kind)
             val blocker = ReignEngine.wonderBlocker(state, kind)
             CrownCard {
+                ArtImage(wonderArt(kind), Modifier.fillMaxWidth().height(110.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)))
                 CardTitle(kind.label, kind.description, if (done) "Vollendet" else "${kind.days} Tage", if (done) Emerald else Gold)
                 Text(kind.effect, color = if (done) Emerald else PaleGold, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 if (!done) {
@@ -104,4 +106,15 @@ internal fun WondersScreen(state: GameState, onState: (GameState) -> Unit, onNot
             }
         }
     }
+}
+
+private fun wonderArt(kind: WonderKind): String = when (kind) {
+    WonderKind.GREAT_WALL -> "category_wall.webp"
+    WonderKind.ROYAL_PALACE -> "menu_cover.webp"
+    WonderKind.WAR_ACADEMY -> "category_human.webp"
+    WonderKind.GREAT_HARBOR -> "city_landscape.webp"
+    WonderKind.CATHEDRAL -> "frontier/ally_gold.webp"
+    WonderKind.DRAGON_BALLISTAE -> "frontier/wall_crown.webp"
+    WonderKind.GRANARY -> "category_wood_elf.webp"
+    WonderKind.STAR_FORGE -> "category_gold_elf.webp"
 }
