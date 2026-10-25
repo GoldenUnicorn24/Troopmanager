@@ -136,6 +136,11 @@ object LifeEngine {
         }
     }
 
+    /** Older saves have no townsfolk yet; they are created once, deterministically, on first need. */
+    fun ensurePeople(state: GameState): GameState =
+        if (state.life.npcs.any { !it.designedByPlayer }) state
+        else state.copy(life = state.life.copy(npcs = Towns.all.flatMap { NpcEngine.populateTown(it) } + state.life.npcs))
+
     // ------------------------------------------------------------ queries
 
     fun town(state: GameState): TownDef? = Towns.byProvince(state.life.provinceId)

@@ -329,4 +329,26 @@ class ProjectRebirthTest {
         if (a.won == true) assertEquals(s.life.purse + 2, a.state.life.purse)
         if (a.won == false) assertEquals(s.life.purse - 2, a.state.life.purse)
     }
+
+    /** The UI persists every action through the same reconcile chain as classic games; it must leave a landless life intact. */
+    @Test fun uiReconcileChainKeepsLandlessStateStable() {
+        var s = TavernEngine.enter(LifeEngine.newGame(config(choice = CompanionChoice.FULL, draft = NpcEngine.CompanionDraft(name = "Mira", age = 24)))).state
+        val reconciled = QuestJournalEngine.refresh(CoRulerEngine.refreshRegency(PresenceEngine.day(PresentationEngine.tick(
+            RelationshipEngine.normalize(ActEngine.reconcile(CrownWarEngine.reconcile(WorldEngine.reconcileBattle(s))))))))
+        assertEquals(s.life, reconciled.life)
+        assertEquals(s.resources, reconciled.resources)
+        s = roundTrip(reconciled)
+        assertFalse(s.life.landed)
+        assertEquals(LifePlace.TAVERN, s.life.place)
+    }
+
+    @Test fun legacyLandedSavesGetTownsfolkOnFirstTavernVisit() {
+        val legacy = GameEngine.newGame("Leon", 27, Species.HUMAN, null)
+        assertTrue(legacy.life.npcs.isEmpty())
+        val entered = TavernEngine.enter(LifeEngine.ensurePeople(legacy)).state
+        assertTrue(entered.life.npcs.size >= Towns.all.size * 5)
+        assertTrue(TavernEngine.present(entered).any { it.role == NpcRole.INNKEEPER })
+        assertEquals(entered, roundTrip(entered))
+        assertTrue(LifeEngine.drink(entered, Drink.ALE).state.resources.gold < entered.resources.gold)
+    }
 }

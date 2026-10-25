@@ -42,5 +42,8 @@ class TourTest {
         listOf("menu", "create").forEach { page(it); shot("a-$it") }
         Spot.entries.forEachIndexed { i, spot -> page("spot:${spot.name}"); shot("b-${i.toString().padStart(2, '0')}-${spot.name}") }
         listOf("scene", "celebration", "battle").forEach { page(it); shot("c-$it") }
+        // Project Rebirth: start wizard, landless life, walkable tavern, conversation, portraits.
+        listOf("wizard-0", "wizard-1", "wizard-2", "wizard-4", "wizard-5", "life-0", "life-1", "life-2", "life-3",
+            "tavern", "tavern-talk", "portraits").forEach { page(it); shot("d-$it") }
     }
 }
