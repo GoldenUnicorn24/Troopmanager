@@ -230,6 +230,11 @@ data class BattleSession(
     val visibility: Double = 1.0,
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val causes: List<BattleCauseBreakdown> = emptyList(),
+    /** v2.0 tactical flow: 0 plan, 1 running, 2 middle decision open, 3 after it, 4 final decision open, 5 after it. */
+    val tacticalStage: Int = 0,
+    val tacticalPlan: String? = null,
+    val tacticalWall: Boolean = false,
+    val tacticalTitle: String? = null,
 ) {
     val tacticalStageLabel: String
         get() = when {

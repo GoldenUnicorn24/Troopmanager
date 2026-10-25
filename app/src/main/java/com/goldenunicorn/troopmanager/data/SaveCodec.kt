@@ -63,6 +63,7 @@ object SaveCodec {
                 state = DiplomacyEngine.initialize(state)
             }
             state = BattleStateEngine.migrate(state)
+            state = repairSocialLinks(state)
             validate(state)
             return state
         } catch (error: SaveFormatException) {
@@ -73,6 +74,17 @@ object SaveCodec {
                 cause = error,
             )
         }
+    }
+
+    /** Commander events of v1.x could store a friendship with the larger id first; order and deduplicate. */
+    private fun repairSocialLinks(state: GameState): GameState {
+        val links = state.court.socialLinks
+        if (links.all { it.firstId < it.secondId } && links.map { it.firstId to it.secondId }.distinct().size == links.size) return state
+        val fixed = links.filter { it.firstId != it.secondId }
+            .map { if (it.firstId > it.secondId) it.copy(firstId = it.secondId, secondId = it.firstId) else it }
+            .map { it.copy(strength = it.strength.coerceIn(0, 100), sinceDay = it.sinceDay.coerceAtLeast(0)) }
+            .associateBy { it.firstId to it.secondId }.values.toList()
+        return state.copy(court = state.court.copy(socialLinks = fixed))
     }
 
     private fun checksum(payload: String): String = MessageDigest.getInstance("SHA-256")

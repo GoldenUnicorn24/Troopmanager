@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -39,9 +40,13 @@ fun FamilyScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
     var tab by remember { mutableIntStateOf(0) }
     var newName by remember(state.dynasty.plannedChildName) { mutableStateOf(state.dynasty.plannedChildName.ifBlank { "Hoffnung" }) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Familie & Dynastie", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        Text("Familie & Dynastie", color = PaleGold, fontWeight = FontWeight.Bold, fontSize = 22.sp, fontFamily = Cinzel)
         if (!state.settings.dynasty) {
-            FamilyCard { Text("Die Dynastie ruht. Aktiviere sie in den Einstellungen, um Kinder, Erziehung und Nachfolge zu begleiten.", color = Mist) }
+            FamilyCard {
+                ArtImage("frontier/bond_train.webp", Modifier.fillMaxWidth().height(150.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)), androidx.compose.ui.BiasAlignment(0f, -0.4f))
+                Text("Die Dynastie ruht. Mit ihr begleitest du Kinder, ihre Erziehung und die Nachfolge auf dem Thron.", color = Mist)
+                GoldButton("Dynastie beginnen", { onState(state.copy(settings = state.settings.copy(dynasty = true))); onNotice("Die Dynastie ist erwacht.") }, Modifier.fillMaxWidth())
+            }
         } else {
             FamilyCard {
                 Text("${family.dynasty.members.count { it.alive }} Familienmitglieder · Legitimität ${family.dynasty.legitimacy}%", color = Gold)

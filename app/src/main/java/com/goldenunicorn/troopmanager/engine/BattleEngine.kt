@@ -580,7 +580,7 @@ object BattleEngine {
                     realm =
                         state.realm.copy(
                             wallIntegrity =
-                                if (original.tactic == Tactic.FORTIFY) integrity
+                                if (original.tactic == Tactic.FORTIFY) (state.realm.wallIntegrity - ((state.realm.wallIntegrity - integrity).coerceAtLeast(0) * ReignEngine.wallDamageFactor(state)).toInt()).coerceIn(0, 100)
                                 else state.realm.wallIntegrity
                         ),
                 )
@@ -597,7 +597,8 @@ object BattleEngine {
                 ownRatio < 0.24 ||
                 (minute >= 35 && session.morale < 20) ||
                 fronts.count { it.position <= 10 && it.enemySoldiers > 0 && session.segment(it.section)?.contactState?.allowsMelee == true } >= 2
-        if (victory || (minute >= 90 && !defeat && ownRatio > enemyRatio)) {
+        val holdsField = session.fightingRemaining > session.enemyRemaining * 6 / 5
+        if (victory || (minute >= 90 && !defeat && (ownRatio > enemyRatio || holdsField))) {
             session =
                 session.copy(
                     status = BattleStatus.PURSUIT,

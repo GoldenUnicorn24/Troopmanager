@@ -164,13 +164,13 @@ internal fun CityScreen(
                             Text(
                                 "Wohlstand ${state.city.prosperity}% · Zufriedenheit ${state.city.satisfaction}% · Nahrung ${state.resources.food}",
                                 color = Mist,
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                             )
                         }
                         Text(
                             "Zwei Finger: Zoom & Verschieben · Doppeltippen: Übersicht",
                             color = Mist,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                         )
                     }
                 }
@@ -572,7 +572,7 @@ private fun QueueSummary(state: GameState) {
 }
 
 @Composable
-private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) -> Unit) {
+internal fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) -> Unit) {
     var resourceName by rememberSaveable { mutableStateOf(ResourceKind.FOOD.name) }
     var amount by rememberSaveable { mutableIntStateOf(100) }
     val resource = ResourceKind.valueOf(resourceName)
@@ -592,7 +592,7 @@ private fun MarketPanel(state: GameState, onTrade: (ResourceKind, Int, Boolean) 
                 }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf(100, 500, 1000).forEach { quantity ->
+            listOf(100, 1000, 10_000, 50_000).forEach { quantity ->
                 ModernChoice(
                     selected = amount == quantity,
                     onClick = { amount = quantity },
@@ -666,7 +666,7 @@ private fun BuildingDetails(state: GameState, type: BuildingType, onConstruction
             BuildingType.PALACE, BuildingType.ACADEMY -> "Hof & Charaktere"
             BuildingType.MARKET -> "Markt & Handel"
             BuildingType.EMBASSY -> "Diplomatie"
-            BuildingType.WALL, BuildingType.TOWER -> "Weltkarte & Feldzüge"
+            BuildingType.WALL, BuildingType.TOWER -> "Front & Mauer"
             else -> null
         }
         if (destination != null && onNavigate != null) GoldButton("$destination öffnen", onNavigate, Modifier.fillMaxWidth())

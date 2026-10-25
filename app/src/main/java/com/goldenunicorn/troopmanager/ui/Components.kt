@@ -49,16 +49,18 @@ internal fun PageTitle(title: String, subtitle: String) {
         Text(
             title.uppercase(),
             color = Gold,
-            fontSize = 9.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = 1.8.sp,
         )
         Text(
             subtitle,
             color = Color.White,
-            fontSize = 25.sp,
-            lineHeight = 27.sp,
-            fontWeight = FontWeight.Black,
+            fontSize = 19.sp,
+            lineHeight = 25.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = Cinzel,
+            maxLines = 3,
         )
     }
 }
@@ -77,8 +79,9 @@ internal fun SectionTitle(text: String) {
 
 @Composable
 internal fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Button(
-        onClick = onClick,
+        onClick = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onClick() },
         modifier = modifier.heightIn(min = 54.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink),
         shape = RoundedCornerShape(16.dp),
@@ -145,7 +148,7 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(label, color = Color(0xFFA3ADB4), fontSize = 10.sp)
+                            Text(label, color = Color(0xFFA3ADB4), fontSize = 11.sp)
                         }
                     }
                 }
@@ -155,42 +158,89 @@ internal fun StatGrid(values: List<Pair<String, String>>) {
     }
 }
 
+/** Compact number for tight spaces: 6.697 · 68,3k · 1,2 Mio. */
+internal fun compact(value: Int): String {
+    val v = kotlin.math.abs(value.toLong())
+    val sign = if (value < 0) "−" else ""
+    return sign + when {
+        v >= 1_000_000 -> String.format(java.util.Locale.GERMANY, "%.1f Mio", v / 1_000_000.0)
+        v >= 100_000 -> "${v / 1_000}k"
+        v >= 10_000 -> String.format(java.util.Locale.GERMANY, "%.1fk", v / 1_000.0)
+        else -> String.format(java.util.Locale.GERMANY, "%,d", v)
+    }
+}
+
+/** Small painted glyphs for the five raw resources. */
 @Composable
-internal fun ResourceStrip(r: Resources, production: Resources? = null) {
-    val list = androidx.compose.foundation.lazy.rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    val resources = listOf(
-        Triple("Gold", r.gold, production?.gold), Triple("Nahrung", r.food, production?.food),
-        Triple("Holz", r.wood, production?.wood), Triple("Stein", r.stone, production?.stone),
-        Triple("Eisen", r.iron, production?.iron),
-    )
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 4.dp).testTag("resource_strip")) {
-        val columns = if (maxWidth >= 600.dp) 5 else 2
-        val cardWidth = (maxWidth - 48.dp - 16.dp - 7.dp * (columns - 1)) / columns
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.foundation.lazy.LazyRow(state = list, modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(7.dp),
-                flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(list)) {
-                items(resources.size) { index ->
-                    val (label, value, gain) = resources[index]
-                    val accent = if (gain != null && gain < 0) Danger else Success
-                    Surface(color = Color(0xFF111820), shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = .07f)),
-                        modifier = Modifier.width(cardWidth).heightIn(min = 48.dp).testTag("resource_$index")) {
-                        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                            Text(label, color = Muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                            Text(value.toString(), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            if (gain != null) Text("${if (gain >= 0) "+" else ""}$gain / Tag", color = accent, fontSize = 10.sp)
-                        }
-                    }
+internal fun ResourceIcon(kind: ResourceKind, size: androidx.compose.ui.unit.Dp = 16.dp) {
+    androidx.compose.foundation.Canvas(Modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        when (kind) {
+            ResourceKind.GOLD -> {
+                drawCircle(Color(0xFFB8862F), w * .48f)
+                drawCircle(Color(0xFFF2CF6B), w * .40f)
+                drawCircle(Color(0xFFB8862F), w * .22f, style = androidx.compose.ui.graphics.drawscope.Stroke(w * .08f))
+            }
+            ResourceKind.FOOD -> {
+                drawLine(Color(0xFF9C7A35), androidx.compose.ui.geometry.Offset(w * .5f, h * .95f), androidx.compose.ui.geometry.Offset(w * .5f, h * .2f), w * .1f)
+                for (i in 0 until 3) {
+                    val y = h * (.25f + i * .2f)
+                    drawOval(Color(0xFFE6C15A), androidx.compose.ui.geometry.Offset(w * .18f, y), androidx.compose.ui.geometry.Size(w * .3f, h * .16f))
+                    drawOval(Color(0xFFE6C15A), androidx.compose.ui.geometry.Offset(w * .52f, y), androidx.compose.ui.geometry.Size(w * .3f, h * .16f))
                 }
             }
-            IconButton(onClick = { scope.launch {
-                list.animateScrollToItem(if (list.canScrollForward) (list.firstVisibleItemIndex + columns).coerceAtMost(resources.lastIndex) else 0)
-            } }, modifier = Modifier.size(48.dp).testTag("resource_next")) {
-                Text(if (list.canScrollForward) "›" else "‹", color = Gold, fontSize = 28.sp,
-                    modifier = Modifier.semantics { contentDescription = "Weitere Ressourcen; horizontal scrollbar" })
+            ResourceKind.WOOD -> {
+                drawRoundRect(Color(0xFF8A5A33), androidx.compose.ui.geometry.Offset(0f, h * .3f), androidx.compose.ui.geometry.Size(w * .8f, h * .42f), androidx.compose.ui.geometry.CornerRadius(h * .2f))
+                drawCircle(Color(0xFFD9A86C), h * .21f, androidx.compose.ui.geometry.Offset(w * .78f, h * .51f))
+                drawCircle(Color(0xFF8A5A33), h * .09f, androidx.compose.ui.geometry.Offset(w * .78f, h * .51f), style = androidx.compose.ui.graphics.drawscope.Stroke(w * .05f))
             }
+            ResourceKind.STONE -> {
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * .1f, h * .75f); lineTo(w * .25f, h * .3f); lineTo(w * .6f, h * .15f); lineTo(w * .9f, h * .45f); lineTo(w * .8f, h * .85f); close()
+                }
+                drawPath(path, Color(0xFF9AA3AA))
+                drawLine(Color(0xFF6E767C), androidx.compose.ui.geometry.Offset(w * .25f, h * .3f), androidx.compose.ui.geometry.Offset(w * .55f, h * .6f), w * .07f)
+            }
+            ResourceKind.IRON -> {
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(w * .05f, h * .78f); lineTo(w * .25f, h * .35f); lineTo(w * .75f, h * .35f); lineTo(w * .95f, h * .78f); close()
+                }
+                drawPath(path, Color(0xFF8C98A6))
+                drawLine(Color(0xFFD5DEE6), androidx.compose.ui.geometry.Offset(w * .28f, h * .42f), androidx.compose.ui.geometry.Offset(w * .72f, h * .42f), w * .07f)
+            }
+        }
+    }
+}
+
+/** One compact row with all five resources; the chevron shows the daily change. */
+@Composable
+internal fun ResourceStrip(r: Resources, production: Resources? = null) {
+    var showDelta by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 3.dp).testTag("resource_strip"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ResourceKind.entries.forEachIndexed { index, kind ->
+            val value = kind.value(r)
+            val gain = production?.let { kind.value(it) }
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color(0xFF111820))
+                    .heightIn(min = 44.dp).padding(horizontal = 6.dp, vertical = 5.dp).testTag("resource_$index")
+                    .semantics(mergeDescendants = true) { contentDescription = "${kind.label}: ${String.format(java.util.Locale.GERMANY, "%,d", value)}" + (gain?.let { ", ${if (it >= 0) "plus" else "minus"} ${kotlin.math.abs(it)} pro Tag" } ?: "") },
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ResourceIcon(kind, 14.dp)
+                    Text(compact(value), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                if (showDelta && gain != null) Text((if (gain >= 0) "+" else "") + compact(gain), color = if (gain < 0) Danger else Success, fontSize = 11.sp, maxLines = 1)
+            }
+        }
+        IconButton(onClick = { showDelta = !showDelta }, modifier = Modifier.size(36.dp).testTag("resource_next")) {
+            Text(if (showDelta) "–" else "±", color = Gold, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { contentDescription = "Tägliche Veränderung ein- oder ausblenden" })
         }
     }
 }
@@ -235,7 +285,7 @@ internal fun CharacterPanel(
                 Text(
                     "Portrait antippen, um ein eigenes Bild zu wählen.",
                     color = Color(0xFF87949C),
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -339,7 +389,7 @@ internal fun EconomyStrip(state: GameState) {
                             tint = Gold,
                             modifier = Modifier.size(18.dp),
                         )
-                        Text(kind.label.uppercase(), color = Color(0xFF8F9BA4), fontSize = 8.sp, fontWeight = FontWeight.Black)
+                        Text(kind.label.uppercase(), color = Color(0xFF8F9BA4), fontSize = 11.sp, fontWeight = FontWeight.Black)
                     }
                     Text(
                         kind.value(state.resources).toString(),
@@ -350,7 +400,7 @@ internal fun EconomyStrip(state: GameState) {
                     Text(
                         "${if (detail.net >= 0) "+" else ""}${detail.net}/Tag",
                         color = accent,
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                     )
                 }

@@ -6,6 +6,9 @@ import kotlin.random.Random
 
 /** War logistics own aggregate quantities; wounded and captives never remain in an army pool. */
 object WarEngine {
+    /** Older battles live on as chronicle lines; the record list itself stays short so saves stay small. */
+    const val HISTORY_LIMIT = 30
+
     data class DefenseReadiness(val garrison: Int, val reserve: Int, val wallArchers: Int, val arrows: Int,
         val wall: Int, val gate: Int, val tower: Int, val activeWeapons: Int, val warnings: List<String>)
 
@@ -489,9 +492,16 @@ object WarEngine {
             enemyFled = if (victory) session.enemyRemaining else session.fronts.filter { it.intent == BattleAiIntent.WITHDRAW }.sumOf { it.enemySoldiers },
             ownFled = session.contingents.filter { it.routed }.sumOf { it.soldiers })
         val records = state.war.history + record
+        // Each full record is ~26 KB. Keep replays for the newest 5 battles and exchange details for the newest 3;
+        // older reports keep outcome, casualties and causes, so long campaigns stay small and fast to save.
         val history = records.mapIndexed { index, entry ->
-            if (index < records.size - 24 && entry.replay != null) entry.copy(replay = null, inputs = emptyList()) else entry
-        }
+            var trimmed = entry
+            if (index < records.size - 1 && trimmed.replay != null) trimmed = trimmed.copy(replay = null, inputs = emptyList())
+            if (index < records.size - 1 && (trimmed.exchanges.isNotEmpty() || trimmed.segments.isNotEmpty() || trimmed.siegeDevices.isNotEmpty() || trimmed.causes.isNotEmpty()))
+                trimmed = trimmed.copy(exchanges = emptyList(), segments = emptyList(), siegeDevices = emptyList(), turningPoints = trimmed.turningPoints.takeLast(4),
+                    causes = emptyList(), aftermath = trimmed.aftermath.takeLast(3), plan = BattlePlan(), weaponChargesUsed = emptyMap(), enemyUnits = emptyList(), terrain = emptyMap())
+            trimmed
+        }.takeLast(HISTORY_LIMIT)
         return ArmyEngine.clampAssignments(
             state.copy(
                 population = population,

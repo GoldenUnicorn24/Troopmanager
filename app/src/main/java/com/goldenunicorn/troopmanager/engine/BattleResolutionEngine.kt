@@ -290,7 +290,9 @@ object BattleResolutionEngine {
                 ((rangedEnemy + artilleryEnemy + (battle.wallWeaponReports[front.section] ?: 0)) * 30 / enemyCount.coerceAtLeast(1) * density *
                     (if (battle.plan.doctrine == BattleDoctrine.RANGED_SUPERIORITY) 1.25 else 1.0) *
                     (1 - discipline / 180).coerceIn(.35, 1.0)).toInt().coerceIn(1, 30) else 0
-            val morale = (front.morale - shock - suppression - (if (stalled) 4 else if (enemyBudget > ownBudget) 2 else 0) -
+            // v2.0: a clearly outnumbered enemy loses heart even when the frontage limits the actual fighting.
+            val outnumbered = if (!contact) 0 else units.sumOf { it.soldiers }.let { own -> if (own > enemyCount * 2) 5 else if (own > enemyCount * 3 / 2) 3 else 0 }
+            val morale = (front.morale - shock - suppression - outnumbered - (if (stalled) 4 else if (enemyBudget > ownBudget) 2 else 0) -
                 (if (focus && decision == BattleDecision.ARROW_VOLLEY && enemyBudget > 0) 3 else 0)).coerceIn(0, 100)
             val position = (front.position + if (!contact) 0 else if (count == 0) -15 else if (ownBudget > enemyBudget * 2) -6 else if (enemyBudget > ownBudget * 2) 3 else 0).coerceIn(0, 100)
             if (front.morale >= 22 && morale < 22) events += "${front.section.label} bricht: Verluste und $suppression Unterdrückung senken die Moral auf $morale%."

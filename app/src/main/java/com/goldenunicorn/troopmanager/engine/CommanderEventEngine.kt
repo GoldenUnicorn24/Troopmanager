@@ -117,8 +117,8 @@ object CommanderEventEngine {
                             socialLinks =
                                 (existing +
                                         NpcSocialLink(
-                                            commander.id,
-                                            other,
+                                            minOf(commander.id, other),
+                                            maxOf(commander.id, other),
                                             socialKind,
                                             state.day,
                                             if (positive) 35 else 30,

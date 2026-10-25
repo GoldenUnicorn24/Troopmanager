@@ -198,7 +198,7 @@ internal fun LiveBattleScreen(state: GameState, onState: (GameState) -> Unit, on
                                 modifier = Modifier.testTag("battle_cohesion_${section.name}").semantics {
                                     contentDescription = "Moral $morale Prozent, Kohäsion $cohesion Prozent, Distanz ${front?.enemyDistance ?: 0} Meter, eigene ${battle.fighting(section)}, Gegner ${front?.enemySoldiers ?: 0}"
                                 })
-                            if (!compact) Text("${battle.fighting(section)} / ${front?.enemySoldiers ?: 0}", color = Mist, fontSize = 9.sp, lineHeight = 11.sp, maxLines = 1)
+                            if (!compact) Text("${battle.fighting(section)} / ${front?.enemySoldiers ?: 0}", color = Mist, fontSize = 11.sp, lineHeight = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             LinearProgressIndicator(
                                 progress = { cohesion.coerceIn(0, 100) / 100f },
                                 modifier = Modifier.fillMaxWidth().height(2.dp),

@@ -69,7 +69,7 @@ object EconomyEngine {
             else 0
         val companion = if (kind == ResourceKind.GOLD && c.met && c.role == "Mitregentin") c.diplomacy / 2 else 0
         val embassy = if (kind == ResourceKind.GOLD) r.level(BuildingType.EMBASSY) * 25 else 0
-        val event = safe(trade.toLong() + companion + embassy + CharacterEngine.bonuses(state).gold)
+        val event = safe(trade.toLong() + companion + embassy + CharacterEngine.bonuses(state).gold + CrownEngine.provinceYield(state, kind))
         val untaxed = safe(base.toLong() + ((building.toLong() + territory) * worker).toLong() + event)
         val socialFactor = if (kind == ResourceKind.GOLD) (1.0 + (state.city.prosperity - 50) / 500.0 + (state.city.satisfaction - 50) / 1000.0) else 1.0
         val seasonFactor = if (kind == ResourceKind.FOOD) Season.forDay(state.day).harvestFactor else 1.0
@@ -107,7 +107,8 @@ object EconomyEngine {
         var gross = Resources(0, 0, 0, 0, 0)
         ResourceKind.entries.forEach { gross = it.withValue(gross, breakdown(state, it).gross) }
         val upkeep = upkeep(state)
-        return DailyProduction(gross, upkeep, gross.copy(food = gross.food - upkeep))
+        val fed = gross.copy(food = safeAdd(gross.food, ReignEngine.bonusFood(state)))
+        return DailyProduction(fed, upkeep, fed.copy(food = fed.food - upkeep))
     }
 
     /** Overflow is discarded from today's positive output, never from pre-existing stock. */
@@ -122,6 +123,21 @@ object EconomyEngine {
         }
         return result
     }
+
+    private fun safeAdd(a: Int, b: Int): Int = (a.toLong() + b).coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+
+    /** Deserters leave the army and return to civilian life; commands and elite units shrink with them. */
+    private fun desert(state: GameState): GameState {
+        val gone = state.armyPools.associate { it.type to state.homeSoldiers(it.type) / 50 }
+        if (gone.values.sum() == 0) return state
+        val pools = state.armyPools.mapNotNull { p -> val n = p.soldiers - (gone[p.type] ?: 0); if (n > 0) p.copy(soldiers = n) else null }
+        return WarEngine.afterCombatLosses(state, ArmyEngine.clampAssignments(state.copy(armyPools = pools)))
+    }
+
+    fun canPay(r: Resources, cost: Resources): Boolean = ResourceKind.entries.all { it.value(r) >= it.value(cost) }
+
+    fun pay(r: Resources, cost: Resources): Resources =
+        ResourceKind.entries.fold(r) { acc, kind -> kind.withValue(acc, (kind.value(acc) - kind.value(cost)).coerceAtLeast(0)) }
 
     fun add(r: Resources, delta: Resources): Resources {
         fun safe(a: Int, b: Int) = (a.toLong() + b).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
@@ -140,7 +156,7 @@ object EconomyEngine {
         var next =
             state.copy(
                 day = state.day + 1,
-                resources = addCapped(state.resources, production.net, state.city.storageCapacity),
+                resources = addCapped(state.resources, production.net, state.city.storageCapacity.let { it.copy(food = (it.food.toLong() * ReignEngine.foodStorageFactor(state)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) }),
                 realm =
                     state.realm.copy(
                         tradeBonusDays = (state.realm.tradeBonusDays - 1).coerceAtLeast(0),
@@ -157,11 +173,13 @@ object EconomyEngine {
                                 ChronicleEntry(
                                     next.day,
                                     "Versorgungsnot",
-                                    "Nahrung fehlt. Moral sinkt; Ausbildung läuft nur jeden zweiten Tag, Zuzug bleibt aus.",
+                                    "Nahrung fehlt. 2 % des Heeres desertieren, die Moral sinkt; Ausbildung läuft nur jeden zweiten Tag, Zuzug bleibt aus.",
                                 ))
                             .takeLast(2000),
                 )
         }
+        // v2.0: hungry soldiers desert – an army is only as large as the realm can feed.
+        if (starving && next.battleSession?.isActive != true) next = desert(next)
         val trainingProgress = !starving || next.day % 2 == 0
         if (trainingProgress) {
             val finished = next.trainingQueue.filter { it.daysRemaining <= 1 }

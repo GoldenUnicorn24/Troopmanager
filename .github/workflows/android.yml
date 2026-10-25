@@ -2,7 +2,7 @@ name: Android APK
 
 on:
   push:
-    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "main", "claude/**", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
   pull_request:
     branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
   workflow_dispatch:
@@ -14,6 +14,8 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     timeout-minutes: 25
 
     steps:
@@ -30,6 +32,24 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
+
+      # Stable test-build signature so new test APKs install as updates.
+      # A repository secret DEV_KEYSTORE_BASE64 (debug-style keystore) wins; otherwise the
+      # runner-generated debug key is kept in the Actions cache between builds.
+      - name: Restore stable debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: troopmanager-debug-keystore-v1
+
+      - name: Use repository signing key if configured
+        env:
+          DEV_KEYSTORE_BASE64: ${{ secrets.DEV_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$DEV_KEYSTORE_BASE64" ]; then
+            mkdir -p ~/.android
+            echo "$DEV_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          fi
 
       - name: Run unit tests
         run: gradle :app:testDebugUnitTest --stacktrace
@@ -50,16 +70,28 @@ jobs:
           from pathlib import Path
           badging = Path("build/apk-badging.txt").read_text()
           assert "name='com.goldenunicorn.troopmanager'" in badging
-          assert "versionCode='46'" in badging and "versionName='1.0.0'" in badging
+          assert "versionCode='51'" in badging and "versionName='2.1.0'" in badging
           PYAPK
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v1.0.0-debug
+          name: Realm-of-the-Last-Wall-v2.1.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish download without login
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build
+          cp app/build/outputs/apk/debug/app-debug.apk build/Realm-of-the-Last-Wall.apk
+          gh release delete dev-latest --yes --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create dev-latest build/Realm-of-the-Last-Wall.apk -R "$GITHUB_REPOSITORY" --prerelease \
+            --target "$GITHUB_SHA" --title "Neueste Testversion ($GITHUB_REF_NAME)" \
+            --notes "Automatisch gebaut aus $GITHUB_SHA auf $GITHUB_REF_NAME. Auf dem Handy herunterladen und öffnen."
 
       - name: Package APK signing helper
         run: |
@@ -80,7 +112,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v1.0.0-verification
+          name: Realm-of-the-Last-Wall-v2.1.0-verification
           path: |
             app/build/test-results/testDebugUnitTest
             app/build/reports/tests/testDebugUnitTest
@@ -93,7 +125,9 @@ jobs:
     name: Battle UI on Android 35
     runs-on: ubuntu-24.04
     needs: build
-    timeout-minutes: 25
+    timeout-minutes: 35
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -117,14 +151,40 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: |
-            gradle :app:connectedDebugAndroidTest --stacktrace
+            gradle :app:connectedDebugAndroidTest --stacktrace > /tmp/gradle-ui.log 2>&1 || touch /tmp/ui-tests-failed
+            tail -60 /tmp/gradle-ui.log
+            grep -E "^e: |FAILED|Process crashed" /tmp/gradle-ui.log | head -15 | sed 's/^/::error title=gradle::/' || true
+            adb logcat -d -s AndroidRuntime:E | tail -25 | sed 's/^/::error title=logcat::/' || true
             mkdir -p build/ui-screenshots
-            adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots
+            adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots || true
+            test ! -f /tmp/ui-tests-failed
+      - name: Report UI test failures as annotations
+        if: failure()
+        run: |
+          python3 - <<'PYUI'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob("app/build/outputs/androidTest-results/connected/**/*.xml", recursive=True):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  for failure in list(case.findall("failure")) + list(case.findall("error")):
+                      text = (failure.get("message") or failure.text or "").replace("\n", " ").replace("%", "%25")[:900]
+                      print(f"::error title={case.get('name')}::{text}")
+          PYUI
+      - name: Publish screenshots for design review
+        if: always() && github.event_name == 'push'
+        run: |
+          set -e
+          [ -d build/ui-screenshots ] || exit 0
+          mkdir -p /tmp/shots && cp -r build/ui-screenshots/. /tmp/shots/
+          cd /tmp/shots
+          git init -q && git checkout -q -b ui-screenshots
+          git config user.name "ci" && git config user.email "ci@users.noreply.github.com"
+          git add -A && git commit -q --allow-empty -m "Screenshots ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ui-screenshots
       - name: Upload UI evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v1.0.0-battle-ui
+          name: Realm-of-the-Last-Wall-v2.1.0-battle-ui
           path: |
             build/ui-screenshots
             app/build/reports/androidTests/connected

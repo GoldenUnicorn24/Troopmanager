@@ -115,6 +115,24 @@ fun GameSoundscape(state: GameState?, screen: String) {
             }) player.cue("horses")
         previousArmyTravel = armyTravel
     }
+    // v2.1 interface cues: dawn bell for a new day, fanfare for big moments, seal for decisions, coins for spending.
+    var lastDay by remember { mutableIntStateOf(state?.day ?: 0) }
+    var lastCelebrations by remember { mutableIntStateOf(state?.crown?.celebrations?.size ?: 0) }
+    var lastInbox by remember { mutableIntStateOf(state?.let { com.goldenunicorn.troopmanager.engine.InboxEngine.count(it) } ?: 0) }
+    var lastGold by remember { mutableIntStateOf(state?.resources?.gold ?: 0) }
+    var lastStatus by remember { mutableStateOf(battle?.status) }
+    LaunchedEffect(state) {
+        if (state == null) return@LaunchedEffect
+        val inbox = com.goldenunicorn.troopmanager.engine.InboxEngine.count(state)
+        if (settings.sound && foreground) when {
+            state.crown.celebrations.size > lastCelebrations -> player.cue("fanfare")
+            battle?.status == BattleStatus.VICTORY && lastStatus != BattleStatus.VICTORY -> player.cue("fanfare")
+            state.day > lastDay -> player.cue("dawn")
+            inbox < lastInbox && state.day == lastDay -> player.cue("seal")
+            state.resources.gold < lastGold - 50 && state.day == lastDay && battle?.isActive != true -> player.cue("coin")
+        }
+        lastDay = state.day; lastCelebrations = state.crown.celebrations.size; lastInbox = inbox; lastGold = state.resources.gold; lastStatus = battle?.status
+    }
     var previousLevel by remember { mutableIntStateOf(state?.player?.level ?: 1) }
     var previousBattle by remember { mutableStateOf(battle?.seed) }
     var previousMinute by remember { mutableIntStateOf(battle?.minute ?: 0) }
@@ -166,7 +184,8 @@ private class LocalSoundscape(private val context: Context) {
                 if (ambientName?.let { ids[it] } == id && soundEnabled) startAmbient(id)
             }
         }
-        listOf("swords", "arrows", "horn", "horses", "artillery", "monsters", "gates", "fire", "city", "market", "forge", "rain").forEach { name ->
+        listOf("swords", "arrows", "horn", "horses", "artillery", "monsters", "gates", "fire", "city", "market", "forge", "rain",
+            "fanfare", "dawn", "coin", "seal", "tap").forEach { name ->
             runCatching { context.assets.openFd("audio/cue_$name.wav").use { ids[name] = pool.load(it, 1) } }
         }
     }

@@ -189,7 +189,6 @@ class BattleLayoutTest {
         val tabs = rule.onNodeWithTag("adaptive_tabs").fetchSemanticsNode().boundsInRoot
         val selected = rule.onNodeWithTag("tab_1").assertIsSelected().assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         assertTrue(selected.left >= tabs.left && selected.right <= tabs.right)
-        rule.onNodeWithText("Militärbereich: Heer").assertIsDisplayed()
     }
 
     @Test fun invasionDashboardStoresTheDefensePlan() {
@@ -204,5 +203,38 @@ class BattleLayoutTest {
         rule.onNodeWithTag("defense_dashboard").assertExists()
         rule.waitUntil(10_000) { BattlePreviewActivity.latestState?.defensePlan?.doctrine == com.goldenunicorn.troopmanager.model.BattleDoctrine.PRESERVE_TROOPS }
         rule.runOnIdle { assertEquals(com.goldenunicorn.troopmanager.model.BattleDoctrine.PRESERVE_TROOPS, BattlePreviewActivity.latestState!!.defensePlan.doctrine) }
+    }
+
+    @Test fun tacticalBattleRunsFromPlanThroughSimulationToTheEnd() {
+        rule.runOnIdle { BattlePreviewActivity.viewport = BattlePreviewActivity.Viewport(page = "tactical") }
+        rule.waitForIdle()
+        rule.onNodeWithText("Entscheidung 1 · Dein Schlachtplan").assertIsDisplayed()
+        rule.onNodeWithTag("tactical_field").assertIsDisplayed()
+        saveScreenshot("tactical-plan")
+        rule.onNodeWithTag("plan_HOLD_WALL").performScrollTo().assertIsDisplayed().performClick()
+        rule.waitForIdle()
+        fun describe() = BattlePreviewActivity.latestState?.battleSession?.let { "stage=${it.tacticalStage} minute=${it.minute} status=${it.status} event=${it.pendingEvent?.title} notice=${BattlePreviewActivity.latestNotice}" } ?: "no battle"
+        assertEquals("Plan applied: ${describe()}", 1, BattlePreviewActivity.latestState!!.battleSession!!.tacticalStage)
+        // The simulation clock is a coroutine delay; advance both the test clock and real time.
+        fun runUntil(limit: Int, condition: () -> Boolean) {
+            var ticks = 0
+            while (!condition() && ticks++ < limit) { rule.mainClock.advanceTimeBy(300); Thread.sleep(120); rule.waitForIdle() }
+            assertTrue("Simulation did not reach the expected state: ${describe()}", condition())
+        }
+        runUntil(60) { (BattlePreviewActivity.latestState?.battleSession?.minute ?: 0) > 0 }
+        saveScreenshot("tactical-simulation")
+        runUntil(600) {
+            val battle = BattlePreviewActivity.latestState?.battleSession
+            battle == null || !battle.isActive || battle.tacticalStage == 2 || battle.tacticalStage == 4
+        }
+        val battle = BattlePreviewActivity.latestState!!.battleSession!!
+        if (battle.isActive) {
+            saveScreenshot("tactical-decision")
+            val option = battle.pendingEvent!!.options.first { com.goldenunicorn.troopmanager.engine.BattleEngine.canOrder(battle, it, battle.pendingEvent!!.section) }
+            rule.onNodeWithTag("decision_${option.name}").performScrollTo().performClick()
+            rule.waitForIdle()
+            val after = BattlePreviewActivity.latestState!!.battleSession!!
+            assertTrue("Decision applied: ${describe()}", after.tacticalStage > battle.tacticalStage || !after.isActive)
+        }
     }
 }

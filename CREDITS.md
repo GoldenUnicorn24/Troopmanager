@@ -29,3 +29,9 @@ The ground was generated for this project with OpenAI image generation on
 troops or structures. The generated 1536×1024 PNG was encoded to a 1024×683,
 215,876-byte WebP (quality 80). No third-party source image was used.
 See [production specification and rendering budget](docs/BATTLE-VISUALS-PHASE-1.md).
+
+## Schriften (v2.1)
+
+- **Cinzel** (Natanael Gama) – Überschriften, SIL Open Font License 1.1, aus github.com/google/fonts, auf lateinische Zeichen reduziert.
+- **Cormorant Garamond** (Christian Thalmann) – Erzähltexte, SIL Open Font License 1.1, aus github.com/google/fonts, auf lateinische Zeichen reduziert.
+Lizenztexte: `docs/OFL-Cinzel.txt`, `docs/OFL-Cormorant.txt`.

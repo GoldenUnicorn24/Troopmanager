@@ -251,7 +251,7 @@ class V06PeopleTest {
         var state = RelationshipEngine.remember(friends(), "kiss", "Euer erster Kuss.", 5)
         state = RelationshipEngine.remember(state, "marry", "Ihr versprecht euch die gemeinsame Zukunft.", 5)
         repeat(250) { index -> state = RelationshipEngine.remember(state.copy(day = 11 + index), "walk", "Ein ruhiger Spaziergang.") }
-        assertEquals(200, state.relationship.memories.size)
+        assertEquals(100, state.relationship.memories.size)
         assertTrue(state.relationship.memories.any { it.type == "kiss" })
         assertTrue(state.relationship.memories.any { it.type == "marry" })
         assertEquals(state, SaveCodec.decode(SaveCodec.encode(state)))

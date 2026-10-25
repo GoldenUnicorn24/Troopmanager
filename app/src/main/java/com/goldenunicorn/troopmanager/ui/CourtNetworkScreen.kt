@@ -118,10 +118,10 @@ fun CourtNetworkScreen(state: GameState, onState: (GameState) -> Unit, onNotice:
         }
         CourtGraph(visible, edges, onPerson = { selectedPerson = it }, onEdge = { selectedEdge = it })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("● Freunde", color = NetworkKind.FRIEND.color, fontSize = 10.sp)
-            Text("● Rivalen", color = NetworkKind.RIVAL.color, fontSize = 10.sp)
-            Text("● Familie", color = Gold, fontSize = 10.sp)
-            Text("● Partner", color = NetworkKind.PARTNER.color, fontSize = 10.sp)
+            Text("● Freunde", color = NetworkKind.FRIEND.color, fontSize = 11.sp)
+            Text("● Rivalen", color = NetworkKind.RIVAL.color, fontSize = 11.sp)
+            Text("● Familie", color = Gold, fontSize = 11.sp)
+            Text("● Partner", color = NetworkKind.PARTNER.color, fontSize = 11.sp)
         }
         Text("Blau: Meinung einer Hofperson zum Herrscher. Goldene Pfeile führen von Eltern zu Kindern. Minderjährige erscheinen nur in Familienbeziehungen.", color = Mist, fontSize = 11.sp)
         if (edges.isEmpty()) Text("In diesem Ausschnitt bestehen noch keine aufgezeichneten Verbindungen.", color = Mist)

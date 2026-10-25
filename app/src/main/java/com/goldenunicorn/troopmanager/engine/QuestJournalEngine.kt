@@ -133,6 +133,6 @@ object QuestJournalEngine {
             }
             task.copy(closedDay = state.day, outcome = outcome)
         }
-        return state.copy(journal = state.journal.copy(active = active, history = (state.journal.history + closed).takeLast(300)))
+        return state.copy(journal = state.journal.copy(active = active, history = (state.journal.history + closed).takeLast(80)))
     }
 }

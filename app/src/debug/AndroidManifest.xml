@@ -2,5 +2,6 @@
     <application>
         <activity android:name=".ui.BattlePreviewActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:name=".ui.TourActivity" android:exported="false" android:screenOrientation="portrait" />
     </application>
 </manifest>
