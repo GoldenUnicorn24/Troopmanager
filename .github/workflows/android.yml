@@ -152,6 +152,17 @@ jobs:
             gradle :app:connectedDebugAndroidTest --stacktrace
             mkdir -p build/ui-screenshots
             adb pull /sdcard/Download/troopmanager-battle build/ui-screenshots
+      - name: Report UI test failures as annotations
+        if: failure()
+        run: |
+          python3 - <<'PYUI'
+          import glob, xml.etree.ElementTree as ET
+          for path in glob.glob("app/build/outputs/androidTest-results/connected/**/*.xml", recursive=True):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  for failure in list(case.findall("failure")) + list(case.findall("error")):
+                      text = (failure.get("message") or failure.text or "").replace("\n", " ").replace("%", "%25")[:900]
+                      print(f"::error title={case.get('name')}::{text}")
+          PYUI
       - name: Upload UI evidence
         if: always()
         uses: actions/upload-artifact@v4
