@@ -60,11 +60,11 @@ internal fun fmt(value: Int): String = String.format(java.util.Locale.GERMANY, "
 internal fun fmt(value: Long): String = String.format(java.util.Locale.GERMANY, "%,d", value)
 
 @Composable
-private fun CrownCard(emphasized: Boolean = false, content: @Composable ColumnScope.() -> Unit) =
+internal fun CrownCard(emphasized: Boolean = false, content: @Composable ColumnScope.() -> Unit) =
     PremiumPanel(emphasized = emphasized, content = content)
 
 @Composable
-private fun CardTitle(title: String, subtitle: String? = null, pill: String? = null, pillColor: Color = Gold) {
+internal fun CardTitle(title: String, subtitle: String? = null, pill: String? = null, pillColor: Color = Gold) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
@@ -75,7 +75,7 @@ private fun CardTitle(title: String, subtitle: String? = null, pill: String? = n
 }
 
 @Composable
-private fun Meter(label: String, value: Int, max: Int = 100, color: Color = Gold) {
+internal fun Meter(label: String, value: Int, max: Int = 100, color: Color = Gold) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = Mist, fontSize = 12.sp)
@@ -91,7 +91,7 @@ private fun Meter(label: String, value: Int, max: Int = 100, color: Color = Gold
 }
 
 @Composable
-private fun InfoLine(label: String, value: String, color: Color = Color.White) {
+internal fun InfoLine(label: String, value: String, color: Color = Color.White) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = Muted, fontSize = 13.sp)
         Text(value, color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -99,10 +99,10 @@ private fun InfoLine(label: String, value: String, color: Color = Color.White) {
 }
 
 @Composable
-private fun PrimaryAction(text: String, onClick: () -> Unit) =
+internal fun PrimaryAction(text: String, onClick: () -> Unit) =
     GoldButton(text, onClick, Modifier.fillMaxWidth())
 
-private fun costLabel(cost: Resources): String = ResourceKind.entries
+internal fun costLabel(cost: Resources): String = ResourceKind.entries
     .filter { it.value(cost) > 0 }
     .joinToString(" · ") { "${fmt(it.value(cost))} ${it.label}" }
 
@@ -141,7 +141,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.landsTab(state: GameS
 }
 
 @Composable
-private fun ThreatCard(state: GameState, t: CrownThreat, apply: (GameEngine.ActionResult) -> Unit) {
+internal fun ThreatCard(state: GameState, t: CrownThreat, apply: (GameEngine.ActionResult) -> Unit) {
     val p = CrownEngine.province(state, t.targetId) ?: return
     val defense = CrownWarEngine.defensePower(p)
     val attack = CrownWarEngine.attackPower(t)
@@ -407,6 +407,15 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 ) {
     item(key = "looks") { LooksCard(state, onState) }
     if (state.companion.met) item(key = "companion_story") { CompanionStoryCard(state, onState) }
+    if (state.companion.met) item(key = "companion_gear") {
+        CrownCard {
+            val level = state.reign.companionGear
+            CardTitle("Ausrüstung für ${state.companion.name}", "Stufe $level / ${ReignEngine.GEAR_MAX} · Schwert ${state.companion.sword} · Bogen ${state.companion.bow} · Führung ${state.companion.leadership}")
+            if (level > 0) Text("Trägt: " + ReignEngine.gearNames.take(level).joinToString(" · "), color = Mist, fontSize = 12.sp)
+            if (level < ReignEngine.GEAR_MAX) PrimaryAction("${ReignEngine.gearNames[level]} schenken · ${fmt(ReignEngine.gearCost(state))} Gold") { apply(ReignEngine.upgradeCompanionGear(state)) }
+            else Text("Die beste Ausrüstung der Kronlande.", color = Emerald, fontSize = 12.sp)
+        }
+    }
     item {
         Text(
             if (state.crown.saga.partner != null) "Deine Partnerin triffst du nach etwa einer Woche. Gewinne sie als persönliche Feldherrin – die anderen Heldinnen kannst du als Feldherrinnen eigener Heere anwerben."

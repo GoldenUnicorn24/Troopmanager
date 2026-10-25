@@ -103,6 +103,8 @@ class GameEngineTest {
         val after = EconomyEngine.day(state)
         assertEquals(0, after.resources.food)
         assertEquals(72, after.armyPools.first().morale)
+        // v2.0: two percent of the hungry army deserts back into civilian life.
+        assertEquals(1960, after.armyPools.first().soldiers)
         assertEquals(3, after.trainingQueue.first().daysRemaining)
         assertEquals(state.population, after.population)
         val even = EconomyEngine.day(after)

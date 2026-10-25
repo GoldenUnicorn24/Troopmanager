@@ -16,11 +16,11 @@ object CrownWarEngine {
 
     private val hostile = setOf(ProvinceOwner.RIVAL, ProvinceOwner.HORDE, ProvinceOwner.BANDITS, ProvinceOwner.REBELS)
 
-    fun militia(p: CrownProvince): Int = p.population / 50
+    fun militia(p: CrownProvince): Int = p.population / 35 + p.development * 150
 
-    /** Defensive value of one of your provinces, including stationed troops, militia and walls. */
+    /** Defensive value of one of your provinces, including stationed troops, militia, walls and loyal people. */
     fun defensePower(p: CrownProvince): Long =
-        ((p.garrison.toLong() * p.garrisonQuality.coerceAtLeast(8) + militia(p) * 7L) * (1.0 + p.fortification * 0.25)).toLong()
+        ((p.garrison.toLong() * p.garrisonQuality.coerceAtLeast(8) + militia(p) * 8L) * (1.0 + p.fortification * 0.35) * (0.85 + p.loyalty / 200.0)).toLong()
 
     fun attackPower(t: CrownThreat): Long = t.soldiers.toLong() * t.quality
 
@@ -37,15 +37,15 @@ object CrownWarEngine {
 
     private fun interval(state: GameState): Int {
         val owned = state.crown.ownedProvinces.size
-        val base = when (state.settings.difficulty) { Difficulty.STORY -> 14; Difficulty.VETERAN -> 7; else -> 10 }
-        return (base - owned / 6).coerceAtLeast(4)
+        val base = when (state.settings.difficulty) { Difficulty.STORY -> 16; Difficulty.VETERAN -> 9; else -> 12 }
+        return (base - owned / 8).coerceAtLeast(6)
     }
 
     private fun spawnThreats(state: GameState): GameState {
         val owned = state.crown.ownedProvinces
         if (owned.isEmpty() || state.day < 10 || state.crown.godMode) return state
         if (state.day - state.crown.lastThreatDay < interval(state)) return state
-        if (state.crown.threats.size >= 1 + owned.size / 10) return state
+        if (state.crown.threats.size >= 1 + owned.size / 15) return state
         val targeted = state.crown.threats.map { it.targetId }.toSet()
         val pairs = state.crown.provinces.filter {
             it.owner in hostile && it.garrison >= 200 &&
@@ -59,9 +59,9 @@ object CrownWarEngine {
         val rng = Random(state.day * 4099 + owned.size * 131)
         // Attackers prefer weak, rich provinces.
         val (source, target) = pairs.sortedBy { (_, t) -> defensePower(t) / (t.wealth + 1) }.take(4).let { it[rng.nextInt(it.size)] }
-        val horde = if (source.owner == ProvinceOwner.HORDE) owned.size * 120 else 0
+        val horde = if (source.owner == ProvinceOwner.HORDE) (owned.size * 60).coerceAtMost(2_000) else 0
         val soldiers = (source.garrison * 0.55).toInt() + horde
-        val days = 4
+        val days = 5
         val threat = CrownThreat(
             id = "threat_${state.crown.nextId}", targetId = target.id, sourceId = source.id, attacker = source.owner,
             soldiers = soldiers, quality = source.garrisonQuality, announcedDay = state.day, arrivalDay = state.day + days,
@@ -89,7 +89,7 @@ object CrownWarEngine {
                 next = CrownEngine.chronicle(next, "${p.name} hält stand", "Der Angriff von ${t.label} (${t.soldiers} Krieger) zerbricht an Mauern, Miliz und Besatzung. Verluste der Besatzung: $loss.")
             } else {
                 val survivors = (t.soldiers * (1.0 - (defense / attack.coerceAtLeast(1.0)) * 0.5)).toInt().coerceAtLeast(1)
-                next = replace(next, p.copy(owner = t.attacker, garrison = survivors, baseGarrison = survivors, garrisonQuality = t.quality,
+                next = replace(next, p.copy(owner = t.attacker, garrison = survivors, baseGarrison = survivors, garrisonQuality = (t.quality * 4 / 5).coerceAtLeast(6),
                     loyalty = 30, unrest = 0, acquiredDay = null, favor = 0))
                 next = next.copy(realm = next.realm.copy(territory = (next.realm.territory - 1).coerceAtLeast(1)))
                 next = CrownEngine.chronicle(next, "${p.name} gefallen", "${t.label} erobert ${p.name}. Hole dir die Provinz mit einem Feldzug zurück.")

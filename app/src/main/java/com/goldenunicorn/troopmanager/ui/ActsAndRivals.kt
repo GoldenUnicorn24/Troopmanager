@@ -109,6 +109,9 @@ internal fun RivalsPanel(state: GameState, onState: (GameState) -> Unit, onNotic
                         Box(Modifier.weight(1f)) { SmallAction("Geschenk · ${fmt(RivalEngine.giftCost(ready))}") { apply(RivalEngine.gift(ready, def.id)) } }
                         if (r.status != RivalStatus.ALLIED) Box(Modifier.weight(1f)) { SmallAction("Bündnis (Haltung 40)") { apply(RivalEngine.proposeAlliance(ready, def.id)) } }
                     }
+                    SmallAction("Bestechen · ${fmt(com.goldenunicorn.troopmanager.engine.ReignEngine.bribeCost(ready, def.id))} Gold · Haltung +30") {
+                        apply(com.goldenunicorn.troopmanager.engine.ReignEngine.bribe(ready, def.id))
+                    }
                 } else Text("Sein Reich ist zerfallen. Die übrigen Provinzen sind freies Land.", color = Muted, fontSize = 13.sp)
             }
         }

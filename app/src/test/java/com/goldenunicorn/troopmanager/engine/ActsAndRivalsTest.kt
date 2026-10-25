@@ -23,6 +23,7 @@ class ActsAndRivalsTest {
         var state = HeroineSagaEngine.recruitImmediately(game(), "alina")
         listOf("gm_eschenhof", "gm_rabenfurt", "gm_kraehenstein", "gm_moorwacht").forEach { state = CrownEngine.acquire(state, it, "Kauf") }
         state = state.copy(crown = state.crown.copy(celebrations = emptyList(), saga = state.crown.saga.copy(pendingScene = null)))
+        state = CrownEngine.addSoldiers(state, UnitType.HUMAN_SWORD, (1_500 - state.armySize).coerceAtLeast(0), 30, 80)
         assertTrue(ActEngine.goalsMet(state))
         state = ActEngine.tick(state)
         assertEquals("boss_1", state.crown.saga.pendingScene?.key)

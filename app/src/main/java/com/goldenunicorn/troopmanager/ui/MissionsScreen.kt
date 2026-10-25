@@ -25,21 +25,6 @@ import com.goldenunicorn.troopmanager.engine.WorldEngine
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
-internal fun MissionsScreen(
-    state: GameState,
-    onState: (GameState) -> Unit,
-    onNotice: (String) -> Unit,
-) {
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { PageTitle("MISSIONEN", "${state.awayArmySize} Soldaten unterwegs") }
-        item { MissionsSection(state, onState, onNotice) }
-    }
-}
-
-@Composable
 internal fun MissionsSection(
     state: GameState,
     onState: (GameState) -> Unit,
@@ -58,7 +43,7 @@ internal fun MissionsSection(
             }
         }
         if (tab == 0) {
-            Text("Schnellzugriff · Missionen auch über die Weltkarte starten", color = Mist, fontSize = 12.sp)
+            Text("Wähle einen Auftrag und stelle die Truppe zusammen.", color = Mist, fontSize = 12.sp)
             MissionType.entries.forEach { mission ->
                 Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
                     Column(

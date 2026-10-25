@@ -23,7 +23,7 @@ data class PortraitSpec(
 )
 
 @Serializable
-enum class CelebrationKind { TITLE, MILESTONE, HEROINE, ACT, BOSS, KING, WEDDING, CORONATION }
+enum class CelebrationKind { TITLE, MILESTONE, HEROINE, ACT, BOSS, KING, WEDDING, CORONATION, WONDER, FEAST, ACHIEVEMENT, VICTORY }
 
 @Serializable
 data class Celebration(val kind: CelebrationKind, val title: String, val text: String, val day: Int)

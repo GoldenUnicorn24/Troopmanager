@@ -40,6 +40,7 @@ internal fun FrontierScreen(
     state: GameState,
     onState: (GameState) -> Unit,
     onNotice: (String) -> Unit,
+    extraTop: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var expandedAlly by remember { mutableStateOf<AllyPeople?>(null) }
@@ -58,7 +59,7 @@ internal fun FrontierScreen(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            PageTitle("FRONTIER & MAUER", "Die Grenze deines Reiches")
+            PageTitle("FRONT & MAUER", "Orks, Uruk-hai und Tao Tei – an der Mauer und in den Kronlanden")
             TabRow(selectedTabIndex = tab, containerColor = Panel, contentColor = Gold) {
                 listOf("Lage", "Verbündete", "Mauer", "Regimenter", "Posten").forEachIndexed { index, label ->
                     Tab(
@@ -80,6 +81,7 @@ internal fun FrontierScreen(
             }
             when (tab) {
                 0 -> {
+                    extraTop()
                     state.frontier.pendingDecision?.let { decision ->
                         item {
                             FrontierCard {
@@ -180,7 +182,16 @@ internal fun FrontierScreen(
                                 Text("Garnison ${guard.name}: ${guard.total} Soldaten · ${guard.supplyDays} Tage Vorrat", color = Success, fontSize = 12.sp)
                                 FrontierAction("Garnison zurückmarschieren lassen", !inBattle) { apply(WorldEngine.recall(state, guard.id)) }
                             } else if (post.level >= 2) {
-                                Text("Keine Garnison vor Ort. Ein Feldheer muss über die Weltkarte hierhin marschieren.", color = Mist, fontSize = 12.sp)
+                                Text("Keine Garnison vor Ort. Entsende einen Trupp; nach der Ankunft kannst du ihn als Garnison einsetzen.", color = Mist, fontSize = 12.sp)
+                                if (state.world.playerFieldArmies.none { it.destinationId == post.regionId || it.regionId == post.regionId })
+                                    FrontierAction("500 Soldaten entsenden", !inBattle && state.homeArmySize >= 100) {
+                                        val home = state.homeArmySize.coerceAtLeast(1)
+                                        val units = state.armyPools.mapNotNull { pool ->
+                                            val n = (state.homeSoldiers(pool.type).toLong() * minOf(500, home) / home).toInt()
+                                            if (n > 0) UnitAllocation(pool.type, n) else null
+                                        }
+                                        apply(WorldEngine.dispatch(state, post.regionId, null, units))
+                                    }
                                 state.world.playerFieldArmies.filter { it.regionId == post.regionId && it.status == WorldArmyStatus.HOLDING }.forEach { army ->
                                     FrontierAction("${army.name} als Garnison", !inBattle && post.integrity > 0) { apply(OutpostEngine.assignGarrison(state, post.id, army.id)) }
                                 }

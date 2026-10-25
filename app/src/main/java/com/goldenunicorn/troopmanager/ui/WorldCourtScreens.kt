@@ -41,174 +41,15 @@ import com.goldenunicorn.troopmanager.model.*
 
 @Composable
 internal fun WorldScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    var selectedRegionId by remember { mutableStateOf(state.regions.firstOrNull()?.id) }
-    var missionRegion by remember { mutableStateOf<WorldRegion?>(null) }
-    var battleSetup by remember { mutableStateOf(false) }
-    val selectedRegion = state.regions.firstOrNull { it.id == selectedRegionId }
     LazyColumn(
         modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { PageTitle("WELT & MISSIONEN", "${state.regions.count { it.owned }} eigene Regionen · Ruhm ${state.renown} · Bedrohung ${state.realm.threat}%") }
-        state.invasion?.let { invasion ->
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Danger)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(invasion.enemy.label, color = Danger, fontWeight = FontWeight.Bold)
-                        Text(if (invasion.arrivalDay > state.day) "Ankunft in ${invasion.arrivalDay - state.day} Tagen" else "Der Angriff steht vor den Toren!", color = Color.White)
-                        Text("${state.invasionStrengthEstimate()} Feinde · Mauer ${state.realm.wallIntegrity}%", color = Mist)
-                        if (invasion.devices.isNotEmpty()) Text(invasion.devices.joinToString(" · ") { it.label }, color = Mist, fontSize = 12.sp)
-                        SmallAction("Mauern reparieren") {
-                            val result = GameEngine.repairWall(state); onState(result.state); onNotice(result.message)
-                        }
-                        OutlinedButton(enabled = !invasion.alliesRequested, onClick = {
-                            val result = GameEngine.requestAllies(state); onState(result.state); onNotice(result.message)
-                        }, modifier = Modifier.fillMaxWidth()) { Text(if (invasion.alliesRequested) "Verbündete angefordert" else "Verbündete anfordern") }
-                        state.activeMissions.filter { it.status == MissionStatus.ACTIVE }.forEach { mission ->
-                            SmallAction("${mission.missionType.label}: zurückrufen (${mission.total})") {
-                                val result = MissionEngine.recall(state, mission.id); onState(result.state); onNotice(result.message)
-                            }
-                        }
-                        Text("Truppen zuweisen und Ausbildung starten: im Armeemenü. Rückgerufene Soldaten benötigen Heimreisezeit.", color = Mist, fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-        item { SectionTitle("Regionen") }
-        item {
-            BoxWithConstraints(
-                Modifier.fillMaxWidth().height(360.dp).clip(RoundedCornerShape(20.dp)).background(Panel)
-            ) {
-                val positions = listOf(0.08f to 0.63f, 0.50f to 0.65f, 0.08f to 0.14f, 0.60f to 0.15f, 0.40f to 0.42f, 0.64f to 0.39f, 0.12f to 0.39f)
-                Canvas(Modifier.fillMaxSize()) {
-                    drawRect(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFF17242A), Color(0xFF26372F), Color(0xFF151B20))
-                        )
-                    )
-                    repeat(6) { i ->
-                        val cx = size.width * (.15f + (i * .139f % .72f))
-                        val cy = size.height * (.16f + ((i * 31) % 61) / 100f)
-                        drawOval(
-                            color = if (i % 2 == 0) Color(0xFF405443) else Color(0xFF5C5741),
-                            topLeft = Offset(cx - size.width * .16f, cy - size.height * .10f),
-                            size = Size(size.width * .32f, size.height * .20f),
-                        )
-                    }
-                    val river = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(size.width * .02f, size.height * .27f)
-                        cubicTo(
-                            size.width * .24f, size.height * .20f,
-                            size.width * .39f, size.height * .47f,
-                            size.width * .56f, size.height * .38f,
-                        )
-                        cubicTo(
-                            size.width * .75f, size.height * .27f,
-                            size.width * .84f, size.height * .57f,
-                            size.width * .99f, size.height * .50f,
-                        )
-                    }
-                    drawPath(river, Color(0xFF426B79), style = androidx.compose.ui.graphics.drawscope.Stroke(11.dp.toPx()))
-                    drawPath(river, Color(0xFF8AA8B0).copy(alpha = .25f), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-                    positions.take(state.regions.take(7).size).zipWithNext().forEach { (a, b) ->
-                        drawLine(
-                            PaleGold.copy(alpha = .34f),
-                            Offset(size.width * a.first, size.height * a.second),
-                            Offset(size.width * b.first, size.height * b.second),
-                            2.dp.toPx(),
-                        )
-                    }
-                    state.regions.take(7).forEachIndexed { index, region ->
-                        val (x, y) = positions[index % positions.size]
-                        val center = Offset(size.width * x, size.height * y)
-                        val color = if (region.owned) Success else ModernBlue
-                        drawCircle(color.copy(alpha = .14f), 28.dp.toPx(), center)
-                        drawCircle(color.copy(alpha = .65f), 21.dp.toPx(), center, style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
-                    }
-                }
-                state.regions.take(7).forEachIndexed { index, region ->
-                    val (x, y) = positions[index % positions.size]
-                    Surface(onClick = { selectedRegionId = region.id }, modifier = Modifier.offset(x = maxWidth * x, y = maxHeight * y).heightIn(min = 48.dp),
-                        color = if (selectedRegionId == region.id) Gold else Panel.copy(alpha = 0.92f), shape = RoundedCornerShape(8.dp), border = BorderStroke(1.dp, if (region.owned) Success else Gold.copy(alpha = .6f))) {
-                        Text(region.name, color = if (selectedRegionId == region.id) Ink else Color.White, fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(max = 94.dp).padding(7.dp))
-                    }
-                }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                state.regions.take(7).forEach { region ->
-                    FilterChip(selected = selectedRegionId == region.id, onClick = { selectedRegionId = region.id }, label = { Text(region.name) })
-                }
-            }
-        }
-        if (state.regions.size > 7) item {
-            Column {
-                Text("Weitere eigene Gebiete",color=PaleGold,fontWeight=FontWeight.Bold)
-                state.regions.drop(7).chunked(2).forEach { row ->
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                        row.forEach { region ->
-                            FilterChip(selected=selectedRegionId==region.id,onClick={selectedRegionId=region.id},label={Text(region.name)},modifier=Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        }
-        selectedRegion?.let { region ->
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(region.name, color = PaleGold, fontWeight = FontWeight.Bold)
-                        Text("${region.type.label} · ${if (region.owned) "Unter deinem Schutz" else if (RegionEngine.canAcquire(region)) "Unabhängig" else "Gefährliches Gebiet"}", color = Mist, fontSize = 12.sp)
-                        val missionsHere = state.activeMissions.filter { it.regionId == region.id && it.status.isAway }
-                        if (missionsHere.isNotEmpty()) Text("${missionsHere.size} Mission(en) unterwegs · ${missionsHere.sumOf { it.total }} Soldaten", color = Gold, fontSize = 12.sp)
-                        if (RegionEngine.bonusDescription(region).isNotBlank()) Text(RegionEngine.bonusDescription(region), color = if (region.owned) Success else Mist, fontSize = 12.sp)
-                        region.mission?.let { mission -> GoldButton("${mission.label} vorbereiten", { missionRegion = region }, Modifier.fillMaxWidth()) }
-                        if (RegionEngine.canAcquire(region)) {
-                            OutlinedButton(enabled = state.resources.gold >= RegionEngine.purchaseCost(region) && state.battleSession?.isActive != true,
-                                onClick = { val result = RegionEngine.buy(state, region.id); onState(result.state); onNotice(result.message) }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Gebiet kaufen · ${RegionEngine.purchaseCost(region)} Gold")
-                            }
-                            OutlinedButton(enabled = RegionEngine.diplomacy(state) >= 35 && state.resources.gold >= RegionEngine.diplomaticCost(state, region) && state.battleSession?.isActive != true,
-                                onClick = { val result = RegionEngine.negotiate(state, region.id); onState(result.state); onNotice(result.message) }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Diplomatisch übernehmen · ${RegionEngine.diplomaticCost(state, region)} Gold")
-                            }
-                            Text("Verhandeln: mindestens 35 Diplomatie. Gefährtin unterstützt ab 45 Vertrauen.", color = Mist, fontSize = 11.sp)
-                        }
-                    }
-                }
-            }
-        }
+        item { PageTitle("MISSIONEN", "Patrouillen, Eskorten und Jagden bringen Gold, Ruhm und Erfahrung. Soldaten auf Mission fehlen daheim.") }
         item { StatGrid(listOf("Zu Hause" to "${state.homeArmySize} Soldaten", "Unterwegs" to "${state.awayArmySize} Soldaten")) }
-        item { SectionTitle("Missionen") }
         item { MissionsSection(state, onState, onNotice) }
-        state.battleSession?.takeIf { !it.isActive }?.let { battle ->
-            item {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(if (battle.status == BattleStatus.VICTORY) "Sieg auf dem Schlachtfeld" else "Schlacht verloren", color = PaleGold, fontWeight = FontWeight.Bold)
-                        Text("${battle.ownRemaining} von ${battle.ownStart} Soldaten zurück · ${battle.ownStart - battle.ownRemaining} Verluste", color = Mist)
-                        Text("Gegner: ${battle.enemyRemaining} verblieben · ${battle.lootGold} Gold Beute", color = Gold, fontSize = 12.sp)
-                        battle.log.takeLast(4).forEach { Text("${it.minute}′ ${it.text}", color = Mist, fontSize = 12.sp) }
-                        SmallAction("Bericht schließen") { onState(state.copy(battleSession = null)) }
-                    }
-                }
-            }
-        }
-        item { SectionTitle("Schlachtaufstellung") }
-        item {
-            EmptyCard(if (state.world.initialized)
-                "Entsende dein Feldheer über die Kampagnenkarte. Trifft es einen tatsächlichen Gegner, beginnt die Schlacht. Vor dem ersten Gefecht verteilst du die angereisten Kommandos auf Flügel, Zentrum und Reserve. Invasionen erreichen die Stadt über ihren Marschweg."
-                else "Verteile verfügbare Kommandos auf Flügel, Zentrum und Reserve. Soldaten auf Missionen fehlen. Die Schlacht entwickelt sich Schritt für Schritt mit deinen Entscheidungen.")
-        }
-        if (!state.world.initialized) item { GoldButton("Schlacht vorbereiten", { battleSetup = true }, Modifier.fillMaxWidth()) }
         item { Spacer(Modifier.height(16.dp)) }
     }
-    missionRegion?.let { region -> region.mission?.let { mission ->
-        MissionPreparationDialog(state, mission, region, { missionRegion = null }, onState, onNotice)
-    } }
-    if (battleSetup) BattleSetupDialog(state, { battleSetup = false }, onState, onNotice)
 }
 
 @Composable
@@ -496,22 +337,3 @@ private fun skillImpact(skill: String): String = when (skill) {
     else -> "Mehr Gold bei Handelsbonus und günstigere Gebietsverhandlungen."
 }
 
-@Composable
-private fun RelationshipAction(
-    label: String,
-    state: GameState,
-    action: String,
-    onState: (GameState) -> Unit,
-    onNotice: (String) -> Unit
-) {
-    val cost = if (action in listOf("command", "court")) 2 else 1
-    val spent = if (state.relationship.actionDay == state.day) state.relationship.spentActions else 0
-    OutlinedButton(
-        enabled = spent + cost <= 2 && !state.commanderAway(COMPANION_COMMANDER_ID) && state.battleSession?.isActive != true,
-        onClick = {
-            val result = GameEngine.companionAction(state, action)
-            onState(result.state)
-            onNotice(result.message)
-        }, modifier = Modifier.fillMaxWidth()
-    ) { Text(label) }
-}

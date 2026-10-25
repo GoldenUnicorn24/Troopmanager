@@ -55,7 +55,12 @@ class BattlePreviewActivity : ComponentActivity() {
                             when (view.page) {
                                 "army" -> Column(Modifier.fillMaxSize()) {
                                     ResourceStrip(state.resources)
-                                    Box(Modifier.weight(1f)) { ArmyHubScreen(state.copy(battleSession = null), ::update, ::notice) }
+                                    var armyTab by remember { mutableStateOf(1) }
+                                    var armySub by remember { mutableStateOf(0) }
+                                    Box(Modifier.weight(1f)) {
+                                        AreaHub(com.goldenunicorn.troopmanager.model.MainArea.ARMY, armyTab, armySub, { armyTab = it; armySub = 0 }, { armySub = it },
+                                            HubContext(state.copy(battleSession = null), ::update, ::notice, {}, {}, {}))
+                                    }
                                 }
                                 "defense" -> DefenseDashboard(state.copy(battleSession = null), ::update, ::notice) {}
                                 else -> LiveBattleScreen(state, ::update, ::notice)

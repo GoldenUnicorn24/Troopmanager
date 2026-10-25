@@ -228,10 +228,10 @@ object RelationshipEngine {
         while (state.relationship.memories.any { it.id == id }) { suffix++; id = "memory_${state.day}_${type}_$suffix" }
         val memory = RelationshipMemory(id, state.day, type, emotionalWeight = weight, text = text, tags = tags, location = state.realm.settlementName)
         val all = state.relationship.memories + memory
-        val preserved = if (all.size <= 200) all else {
-            val milestones = all.filter { it.emotionalWeight >= 4 || it.type in setOf("kiss", "marry", "bereavement", "npc_breakup", "child_arrival") }.take(40)
+        val preserved = if (all.size <= 100) all else {
+            val milestones = all.filter { it.emotionalWeight >= 4 || it.type in setOf("kiss", "marry", "bereavement", "npc_breakup", "child_arrival") }.take(30)
             val ids = milestones.map { it.id }.toSet()
-            val keep = ids + all.filterNot { it.id in ids }.takeLast(200 - milestones.size).map { it.id }
+            val keep = ids + all.filterNot { it.id in ids }.takeLast(100 - milestones.size).map { it.id }
             all.filter { it.id in keep }
         }
         return state.copy(relationship = state.relationship.copy(memories = preserved))

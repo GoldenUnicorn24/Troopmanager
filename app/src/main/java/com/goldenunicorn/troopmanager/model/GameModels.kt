@@ -263,6 +263,7 @@ data class GameState(
     val campaign: CampaignPulseState = CampaignPulseState(),
     /** v1.1 crown layer: provinces, trade, mercenaries, heroines, combat arts. */
     val crown: CrownState = CrownState(),
+    val reign: ReignState = ReignState(),
     val settings: GameSettings = GameSettings(),
     /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
     val foundingCultures: Set<Culture> = emptySet(),

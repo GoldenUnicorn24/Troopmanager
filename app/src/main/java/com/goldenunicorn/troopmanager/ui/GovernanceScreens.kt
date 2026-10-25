@@ -14,14 +14,6 @@ import com.goldenunicorn.troopmanager.engine.PresenceEngine
 import com.goldenunicorn.troopmanager.model.*
 
 @Composable
-internal fun GovernanceScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        CoRulerPanel(state,onState,onNotice)
-    }
-}
-
-@Composable
 internal fun CoRulerPanel(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
     var page by remember { mutableStateOf(0) }
     fun apply(result: GameEngine.ActionResult) { onState(result.state); onNotice(result.message) }

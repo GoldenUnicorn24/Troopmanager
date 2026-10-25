@@ -149,8 +149,9 @@ object CrownEngine {
                         garrisonQuality = 10, loyalty = 20, unrest = 0, population = population, acquiredDay = null)
                 } else p.copy(loyalty = loyalty, unrest = unrest, population = population)
             } else {
-                val regen = (p.baseGarrison / 50).coerceAtLeast(5)
-                p.copy(garrison = (p.garrison + regen).coerceAtMost(p.baseGarrison))
+                val cap = if (p.owner == ProvinceOwner.FREE) p.baseGarrison else garrisonCap(state, p)
+                val regen = (cap / 40).coerceAtLeast(5)
+                p.copy(garrison = (p.garrison + regen).coerceAtMost(cap))
             }
         }
         var next = state.copy(crown = state.crown.withProvinces(provinces))
@@ -255,6 +256,7 @@ object CrownEngine {
                 resources = def.sells.withValue(resources, safe(def.sells.value(resources).toLong() + imported))
                 gained = gold
             }
+            gained = (gained * ReignEngine.tradeFactor(next)).toInt()
             income += gained
             p.copy(
                 relation = (p.relation + 1 + if (freeTrade) 1 else 0).coerceAtMost(100),
@@ -522,7 +524,11 @@ object CrownEngine {
     )
 
     fun campaignsAllowed(state: GameState): Int =
-        2 + (if (state.crown.arts.level(CombatArt.STRATEGY) >= 5) 1 else 0) + (if (state.crown.godMode) 50 else 0)
+        1 + (if (state.crown.act.act >= 2) 1 else 0) + (if (state.crown.arts.level(CombatArt.STRATEGY) >= 5) 1 else 0) + (if (state.crown.godMode) 50 else 0)
+
+    /** Enemy garrisons grow as the war escalates: each act makes unconquered lands harder. */
+    fun garrisonCap(state: GameState, p: CrownProvince): Int =
+        (p.baseGarrison * (1.0 + 0.7 * (state.crown.act.act - 1).coerceIn(0, 3) + state.day / 400.0)).toInt()
 
     fun campaignsLeft(state: GameState): Int {
         val used = if (state.crown.lastCampaignDay == state.day) state.crown.campaignsToday else 0
@@ -568,8 +574,8 @@ object CrownEngine {
         val companion = if (state.companion.met && state.crown.saga.companionId != null)
             (state.companion.leadership + state.companion.tactics) / 900.0 else 0.0
         val generals = state.crown.saga.heroines.count { it.stage == HeroineStage.GENERAL } * 0.04
-        return 1.0 + state.player.leadership / 500.0 + state.player.tactics / 500.0 +
-            (arts.level(CombatArt.WARCRY) + arts.level(CombatArt.STRATEGY)) * 0.02 + companion + generals
+        return (1.0 + state.player.leadership / 500.0 + state.player.tactics / 500.0 +
+            (arts.level(CombatArt.WARCRY) + arts.level(CombatArt.STRATEGY)) * 0.02 + companion + generals) * ReignEngine.powerFactor(state)
     }
 
     private fun committed(state: GameState, sharePercent: Int): Map<UnitType, Int> =
@@ -606,7 +612,7 @@ object CrownEngine {
             else -> "Unterlegen"
         }
         return CampaignPreview(total, ownPower, p.garrison, enemyPower, ratio, (total * lossFraction).roundToInt(),
-            (total / 8).coerceAtLeast(50), (total / 2).coerceAtLeast(100), label)
+            (total / 8).coerceAtLeast(50), ((total / 2) * ReignEngine.provisionFactor(state)).toInt().coerceAtLeast(100), label)
     }
 
     fun conquer(state: GameState, id: String, sharePercent: Int): GameEngine.ActionResult {
@@ -802,6 +808,8 @@ object CrownEngine {
         return ok(next, "Lieferung erhalten: " + def.goods.joinToString(" · ") { "${it.second} ${it.first.label}" })
     }
 
+    private fun fmtN(n: Int): String = String.format(java.util.Locale.GERMANY, "%,d", n)
+
     // ------------------------------------------------------------ mass training
 
     /** Trains every available recruit of each culture into the chosen unit type. */
@@ -812,18 +820,14 @@ object CrownEngine {
         choices.forEach { (culture, type) ->
             if (type.culture != culture) return@forEach
             if (ArmyEngine.recruitable(next, culture) <= 0) return@forEach
-            // Fall back to smaller batches when gold or military goods run short.
-            var message = ""
-            val success = listOf(100, 50, 25, 10).any { percent ->
-                val result = GameEngine.recruit(next, type, percent)
-                message = result.message
-                if (result.state != next) {
-                    next = result.state
-                    done += if (percent == 100) type.label else "${type.label} ($percent %)"
-                    true
-                } else false
-            }
-            if (!success) failed += "${type.label}: $message"
+            // Train as many as gold and military goods allow; explain the bottleneck otherwise.
+            val all = ArmyEngine.recruitable(next, culture)
+            val n = GameEngine.maxRecruit(next, type)
+            val result = if (n > 0) GameEngine.recruitAmount(next, type, n) else GameEngine.recruitAmount(next, type, all)
+            if (result.state != next) {
+                next = result.state
+                done += if (n >= all) "${fmtN(n)} ${type.label}" else "${fmtN(n)} ${type.label} (von ${fmtN(all)})"
+            } else failed += "${type.label}: ${result.message}"
         }
         val text = when {
             done.isEmpty() && failed.isEmpty() -> "Keine Rekruten verfügbar. Rufe den Heerbann aus oder erobere Provinzen."

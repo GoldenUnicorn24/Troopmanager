@@ -34,7 +34,8 @@ internal fun CelebrationOverlay(celebration: Celebration, remaining: Int, animat
     val accent = when (celebration.kind) {
         CelebrationKind.BOSS, CelebrationKind.KING -> Crimson
         CelebrationKind.HEROINE, CelebrationKind.WEDDING -> Color(0xFFE58FB0)
-        CelebrationKind.ACT -> ModernBlue
+        CelebrationKind.ACT, CelebrationKind.ACHIEVEMENT -> ModernBlue
+        CelebrationKind.VICTORY -> Emerald
         else -> Gold
     }
     val eyebrow = when (celebration.kind) {
@@ -46,6 +47,10 @@ internal fun CelebrationOverlay(celebration: Celebration, remaining: Int, animat
         CelebrationKind.KING -> "EIN REICH FÄLLT"
         CelebrationKind.WEDDING -> "HOCHZEIT"
         CelebrationKind.CORONATION -> "KRÖNUNG"
+        CelebrationKind.WONDER -> "GROSSBAU VOLLENDET"
+        CelebrationKind.FEAST -> "KÖNIGSFEST"
+        CelebrationKind.ACHIEVEMENT -> "ERFOLG"
+        CelebrationKind.VICTORY -> "SIEG"
     }
     val entry = remember(celebration) { Animatable(if (animations) 0f else 1f) }
     LaunchedEffect(celebration) { if (animations) entry.animateTo(1f, spring(dampingRatio = .55f, stiffness = 180f)) }

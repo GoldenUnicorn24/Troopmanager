@@ -1,6 +1,10 @@
-# Realm of the Last Wall — Troopmanager v1.3.0
+# Realm of the Last Wall — Troopmanager v2.0.0
 
 **Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v2.0: die große Überarbeitung
+
+Eine Entscheidungs-Inbox für alle Ereignisse, eine aufgeräumte Navigation (5 Bereiche, höchstens 4 Reiter), taktische Schlachten mit drei Entscheidungen und sichtbarer Simulation, Großbauten, Königsfeste, Wochenereignisse, 30 Erfolge, Provinzwerkstätten und eine komplett neu abgestimmte Spielkurve. Siehe [v2.0](docs/V2.0-UEBERARBEITUNG.md).
 
 ## v1.3: Akte, Rivalen-Könige, Feldzug-Ereignisse, Porträts
 

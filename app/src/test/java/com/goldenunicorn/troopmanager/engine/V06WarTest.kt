@@ -283,9 +283,9 @@ class V06WarTest {
         assertEquals(earlier.casualties, latest.war.history.first().casualties)
         assertNull(latest.war.history.first().replay)
         assertTrue(latest.war.history.first().inputs.isEmpty())
-        // v1.3 keeps replays only for the newest five battles to bound the save size.
-        assertEquals(5, latest.war.history.count { it.replay != null })
-        assertTrue(latest.war.history.dropLast(3).all { it.exchanges.isEmpty() })
+        // v2.0 keeps the replay and exchange details only for the newest battle.
+        assertEquals(1, latest.war.history.count { it.replay != null })
+        assertTrue(latest.war.history.dropLast(1).all { it.exchanges.isEmpty() })
         assertEquals(latest, SaveCodec.decode(SaveCodec.encode(latest)))
     }
 

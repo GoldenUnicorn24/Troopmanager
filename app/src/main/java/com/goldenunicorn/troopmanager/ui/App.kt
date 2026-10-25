@@ -1,5 +1,7 @@
 package com.goldenunicorn.troopmanager.ui
 
+import com.goldenunicorn.troopmanager.engine.InboxEngine
+
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -525,33 +527,28 @@ private fun GameShell(
     onAdvanceDay: () -> Unit,
     controller: GameViewModel,
 ) {
-    var screen by rememberSaveable { mutableStateOf(GameDestination.TODAY) }
-    var realmTab by rememberSaveable { mutableIntStateOf(0) }
-    var armyTab by rememberSaveable { mutableIntStateOf(0) }
-    var courtTab by rememberSaveable { mutableIntStateOf(0) }
+    var areaName by rememberSaveable { mutableStateOf(MainArea.TODAY.name) }
+    val area = MainArea.valueOf(areaName)
+    var tabs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { 0 }) }
+    var subs by rememberSaveable { mutableStateOf(List(MainArea.entries.size) { 0 }) }
     var showMore by rememberSaveable { mutableStateOf(false) }
     var showCensus by rememberSaveable { mutableStateOf(false) }
     var showDefense by rememberSaveable { mutableStateOf(false) }
     var dismissedScene by rememberSaveable { mutableStateOf<String?>(null) }
-    fun open(destination: GameDestination, tab: Int = -1) {
+    fun open(spot: Spot) {
         showMore = false
-        val (area, defaultTab) = areaFor(destination)
-        val chosen = if (tab >= 0) tab else defaultTab
-        when (area) {
-            MainArea.REALM -> realmTab = chosen
-            MainArea.ARMY -> armyTab = chosen
-            MainArea.COURT -> courtTab = chosen
-            else -> Unit
-        }
-        screen = destination
+        areaName = spot.area.name
+        tabs = tabs.toMutableList().also { it[spot.area.ordinal] = spot.tab }
+        subs = subs.toMutableList().also { it[spot.area.ordinal] = spot.sub }
     }
-    val area = if (screen == GameDestination.TODAY) MainArea.TODAY else areaFor(screen).first
-    BackHandler(enabled = showMore || screen != GameDestination.TODAY) {
-        if (showMore) showMore = false else screen = GameDestination.TODAY
+    fun openLegacy(destination: GameDestination) = open(Navigation.spotFor(destination))
+    BackHandler(enabled = showMore || area != MainArea.TODAY || tabs[0] != 0) {
+        if (showMore) showMore = false else open(Spot.INBOX)
     }
     var showTutorial by remember(state.tutorialSeen) { mutableStateOf(false) }
-    val battleVisible = !showMore && state.battleSession != null && screen != GameDestination.CITY && area != MainArea.COURT
+    val battleVisible = !showMore && state.battleSession != null
     val sagaScene = state.crown.saga.pendingScene
+    val inboxCount = remember(state) { InboxEngine.count(state) }
     Scaffold(
         containerColor = Ink,
         topBar = {
@@ -574,7 +571,7 @@ private fun GameShell(
                             color = Gold.copy(alpha = .13f),
                             shape = RoundedCornerShape(12.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = .25f)),
-                            modifier = Modifier.clickable { open(GameDestination.CHARACTER, 7) },
+                            modifier = Modifier.clickable { open(Spot.SKILLS) },
                         ) {
                             Text("${state.player.skillPoints} SKILL", color = PaleGold, fontSize = 11.sp, fontWeight = FontWeight.Black,
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
@@ -586,16 +583,15 @@ private fun GameShell(
 
                 ResourceStrip(state.resources, EconomyEngine.production(state).net)
 
-                val pendingCampaignDecision = state.campaign.pendingDecision
                 val nearestThreat = state.frontier.hordes.filter { it.discovered }.minByOrNull { it.daysToArrival }
                 val crownThreat = state.crown.threats.minByOrNull { it.arrivalDay }
                 val warningText = when {
                     state.crown.duel != null -> "Duell gegen ${state.crown.duel.opponentName} wartet"
                     sagaScene != null -> "${sagaScene.title} · ${sagaScene.location}"
-                    pendingCampaignDecision != null -> "${pendingCampaignDecision.title} · bis Tag ${pendingCampaignDecision.expiresDay}"
                     crownThreat != null -> "Angriff auf ${CrownEngine.province(state, crownThreat.targetId)?.name ?: "Provinz"} in ${(crownThreat.arrivalDay - state.day).coerceAtLeast(0)} T."
-                    nearestThreat != null -> "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
                     state.invasion != null -> "${state.invasion.enemy.label} · ${(state.invasion.arrivalDay - state.day).coerceAtLeast(0)} T. · ${state.invasionStrengthEstimate()}"
+                    nearestThreat != null -> "${nearestThreat.name} · ${nearestThreat.daysToArrival} T. · ${nearestThreat.estimatedStrengthLabel}"
+                    inboxCount > 0 && !(area == MainArea.TODAY && tabs[0] == 0) -> "$inboxCount Entscheidung${if (inboxCount == 1) "" else "en"} warten"
                     state.war.wounded.isNotEmpty() -> "${state.war.wounded.sumOf { it.soldiers }} Verwundete warten auf Versorgung"
                     EconomyEngine.production(state).net.food < 0 -> "Nahrung ${EconomyEngine.production(state).net.food}/Tag"
                     else -> null
@@ -605,13 +601,13 @@ private fun GameShell(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 5.dp).heightIn(min = 48.dp).clickable {
                             showMore = false
                             when {
-                                state.crown.duel != null -> open(GameDestination.KINGDOM, 0)
+                                state.crown.duel != null -> open(Spot.ARTS)
                                 sagaScene != null -> dismissedScene = null
-                                pendingCampaignDecision != null -> open(GameDestination.DECISIONS)
-                                crownThreat != null -> open(GameDestination.KINGDOM, 0)
+                                crownThreat != null -> open(Spot.FRONT)
                                 nearestThreat != null || state.invasion != null -> showDefense = true
-                                state.war.wounded.isNotEmpty() -> open(GameDestination.HOSPITAL)
-                                else -> open(GameDestination.CITY)
+                                inboxCount > 0 -> open(Spot.INBOX)
+                                state.war.wounded.isNotEmpty() -> open(Spot.HOSPITAL)
+                                else -> open(Spot.CITY_VIEW)
                             }
                         },
                         color = Color(0xFF221719),
@@ -632,6 +628,7 @@ private fun GameShell(
             }
         },
         bottomBar = {
+            if (!battleVisible) {
             val itemColors = NavigationBarItemDefaults.colors(
                 selectedIconColor = Color.White,
                 selectedTextColor = Color.White,
@@ -654,28 +651,26 @@ private fun GameShell(
                     tonalElevation = 0.dp,
                 ) {
                     NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp, modifier = Modifier.height(70.dp)) {
-                        val urgent = state.crown.duel != null || sagaScene != null || state.campaign.pendingDecision != null || state.crown.threats.isNotEmpty()
+                        val frontAlarm = state.crown.threats.isNotEmpty() || state.invasion != null
                         listOf(
-                            Triple(MainArea.TODAY, GameDestination.TODAY, Icons.Outlined.Home),
-                            Triple(MainArea.REALM, GameDestination.KINGDOM, Icons.Outlined.Crown),
-                            Triple(MainArea.ARMY, GameDestination.MILITARY, Icons.Outlined.Shield),
-                            Triple(MainArea.COURT, GameDestination.COURT, Icons.Outlined.FavoriteBorder),
-                            Triple(MainArea.CITY, GameDestination.CITY, Icons.Outlined.LocationCity),
-                        ).forEach { (target, destination, icon) ->
+                            MainArea.TODAY to Icons.Outlined.Home,
+                            MainArea.REALM to Icons.Outlined.Crown,
+                            MainArea.ARMY to Icons.Outlined.Shield,
+                            MainArea.COURT to Icons.Outlined.FavoriteBorder,
+                            MainArea.CITY to Icons.Outlined.LocationCity,
+                        ).forEach { (target, icon) ->
                             val selected = !showMore && area == target
                             NavigationBarItem(
                                 selected = selected,
-                                onClick = {
-                                    showMore = false
-                                    screen = when (target) {
-                                        MainArea.REALM -> GameDestination.KINGDOM
-                                        MainArea.ARMY -> GameDestination.MILITARY
-                                        MainArea.COURT -> GameDestination.COURT
-                                        else -> destination
-                                    }
-                                },
+                                onClick = { showMore = false; areaName = target.name },
                                 icon = {
-                                    BadgedBox(badge = { if (target == MainArea.TODAY && urgent) Badge(containerColor = Danger) }) { Icon(icon, null) }
+                                    BadgedBox(badge = {
+                                        when {
+                                            target == MainArea.TODAY && (inboxCount > 0 || sagaScene != null) -> Badge(containerColor = Danger) { Text("${inboxCount + if (sagaScene != null) 1 else 0}") }
+                                            target == MainArea.ARMY && frontAlarm -> Badge(containerColor = Danger)
+                                            target == MainArea.COURT && state.relationship.pendingEvent != null -> Badge(containerColor = Color(0xFFE58FB0))
+                                        }
+                                    }) { Icon(icon, null) }
                                 },
                                 label = { Text(target.label, fontSize = 11.sp, fontWeight = if (selected) FontWeight.Black else FontWeight.Medium) },
                                 colors = itemColors,
@@ -684,48 +679,26 @@ private fun GameShell(
                     }
                 }
             }
+            }
         },
     ) { padding ->
         if (showCensus) PopulationDialog(state, onState, onNotice) { showCensus = false }
         if (showDefense) DefenseDashboard(state, onState, onNotice) { showDefense = false }
         Box(Modifier.fillMaxSize().padding(padding)) {
             val duel = state.crown.duel
+            val ctx = HubContext(state, onState, onNotice, ::open, onAdvanceDay) { dismissedScene = null }
             if (showMore) {
-                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination -> open(destination) }
+                MoreScreen(state, onMenu, onDelete, { showTutorial = true }, onState, onNotice, controller) { destination -> openLegacy(destination) }
             } else if (duel != null) {
                 DuelPanel(state, duel) { result -> onState(result.state); onNotice(result.message) }
             } else if (battleVisible) {
-                LiveBattleScreen(state, { next -> onState(next) }, onNotice)
-            } else androidx.compose.animation.Crossfade(targetState = screen, animationSpec = androidx.compose.animation.core.tween(if (state.settings.animations) 220 else 0), label = "area") { screen -> when (screen) {
-                GameDestination.TODAY -> TodayScreen(state, onAdvanceDay) { destination, tab -> if (destination == GameDestination.COURT && tab == 0 && sagaScene != null) dismissedScene = null; open(destination, tab) }
-                GameDestination.COMMAND -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay)
-                GameDestination.DECISIONS -> CommandCenterScreen(state, onState, onNotice, { open(it) }, onAdvanceDay, initialPage = 1)
-                GameDestination.CITY ->
-                    CityScreen(
-                        state, onState, onNotice, onAdvanceDay,
-                        onNavigate = { type ->
-                            when (type) {
-                                BuildingType.BARRACKS, BuildingType.STABLES -> open(GameDestination.MILITARY)
-                                BuildingType.ARSENAL -> open(GameDestination.MILITARY, 6)
-                                BuildingType.HOSPITAL -> open(GameDestination.HOSPITAL)
-                                BuildingType.PALACE -> open(GameDestination.PALACE)
-                                BuildingType.ACADEMY -> open(GameDestination.RESEARCH)
-                                BuildingType.EMBASSY -> open(GameDestination.WORLD, 2)
-                                BuildingType.WALL, BuildingType.TOWER -> open(GameDestination.FRONTIER)
-                                else -> Unit
-                            }
-                        },
-                    )
-                GameDestination.KINGDOM, GameDestination.WORLD -> RealmArea(state, onState, onNotice, realmTab) { realmTab = it }
-                GameDestination.MILITARY, GameDestination.MISSIONS, GameDestination.HOSPITAL, GameDestination.FRONTIER ->
-                    ArmyArea(state, onState, onNotice, armyTab) { armyTab = it }
-                GameDestination.COURT, GameDestination.RULERS, GameDestination.FAMILY, GameDestination.COUNCIL, GameDestination.CHARACTER ->
-                    CourtArea(state, onState, onNotice, courtTab) { courtTab = it }
-                GameDestination.PALACE -> PalaceHubScreen(state) { open(it) }
-                GameDestination.JOURNAL -> QuestJournalScreen(state) { open(it) }
-                GameDestination.CHRONICLE -> ChronicleScreen(state)
-                GameDestination.RESEARCH -> ResearchPanel(state, onState, onNotice)
-            } }
+                TacticalBattleScreen(state, onState, onNotice)
+            } else androidx.compose.animation.Crossfade(targetState = area, animationSpec = androidx.compose.animation.core.tween(if (state.settings.animations) 220 else 0), label = "area") { shown ->
+                AreaHub(shown, tabs[shown.ordinal], subs[shown.ordinal],
+                    onTab = { t -> tabs = tabs.toMutableList().also { it[shown.ordinal] = t }; subs = subs.toMutableList().also { it[shown.ordinal] = 0 } },
+                    onSub = { v -> subs = subs.toMutableList().also { it[shown.ordinal] = v } },
+                    ctx = ctx)
+            }
         }
     }
 

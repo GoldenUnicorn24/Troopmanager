@@ -71,12 +71,6 @@ private fun CourtDomainCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun PeopleAction(label: String, action: String, state: GameState, apply: (GameEngine.ActionResult) -> Unit) {
-    OutlinedButton(onClick = { apply(RelationshipEngine.action(state, action)) }, modifier = Modifier.fillMaxWidth(),
-        enabled = !state.commanderAway(COMPANION_COMMANDER_ID) && state.battleSession?.isActive != true && !state.war.unavailableCommander(COMPANION_COMMANDER_ID)) { Text(label) }
-}
-
-@Composable
 private fun <T> PeopleMenu(label: String, options: List<T>, optionLabel: (T) -> String, onSelect: (T) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {

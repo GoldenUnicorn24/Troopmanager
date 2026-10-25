@@ -250,6 +250,7 @@ object GameEngine {
         next = InvasionEngine.day(next)
         next = FrontierEngine.tick(next)
         next = CrownEngine.tick(next)
+        next = ReignEngine.tick(next)
         next = ProgressionEngine.update(next)
         next = PresentationEngine.tick(next)
         next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
@@ -290,7 +291,7 @@ object GameEngine {
         val barracks = state.realm.level(BuildingType.BARRACKS)
         val stable = if (type == UnitType.KNIGHT) state.realm.level(BuildingType.STABLES).coerceAtMost(2) else 0
         val base = maxOf(2, type.trainingDays - barracks - stable)
-        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state) * CrownEngine.trainingFactor(state)).toInt().coerceAtLeast(if (CrownEngine.has(state, CrownEdict.WAR_ECONOMY)) 1 else 2)
+        return kotlin.math.ceil(base * DoctrineEngine.trainingFactor(state) * CrownEngine.trainingFactor(state) / ReignEngine.trainingCapacityFactor(state)).toInt().coerceAtLeast(if (CrownEngine.has(state, CrownEdict.WAR_ECONOMY) || ReignEngine.has(state, WonderKind.WAR_ACADEMY)) 1 else 2)
     }
 
     fun recruit(state: GameState, type: UnitType, percent: Int): ActionResult {
@@ -303,7 +304,28 @@ object GameEngine {
         if (percent !in 1..100) return ActionResult(state, "Ungültiger Rekrutierungsanteil.")
         val available = ArmyEngine.recruitable(state, type.culture)
         if (available <= 0) return ActionResult(state, "Keine passenden Rekruten verfügbar.")
-        val amount = ceil(available * percent / 100.0).toInt()
+        return recruitAmount(state, type, ceil(available * percent / 100.0).toInt())
+    }
+
+    /** Largest batch of [type] that recruits, gold and military goods allow right now. */
+    fun maxRecruit(state: GameState, type: UnitType): Int {
+        var n = ArmyEngine.recruitable(state, type.culture)
+        if (n <= 0) return 0
+        val goldEach = type.goldCost * CrownEngine.recruitCostFactor(state)
+        if (goldEach > 0) n = minOf(n, (state.resources.gold / goldEach).toInt())
+        MilitaryGood.entries.forEach { good ->
+            val per = MilitaryEconomyEngine.requirements(type, 1000)[good] ?: 0
+            if (per > 0) n = minOf(n, (state.militaryStock.amount(good).toLong() * 1000 / per).toInt())
+        }
+        while (n > 0 && MilitaryEconomyEngine.missing(state.militaryStock, MilitaryEconomyEngine.requirements(type, n)).isNotEmpty()) n = n * 98 / 100
+        return n.coerceAtLeast(0)
+    }
+
+    fun recruitAmount(state: GameState, type: UnitType, requested: Int): ActionResult {
+        if (busy(state)) return ActionResult(state, "Rekrutierung nach der Schlacht möglich.")
+        if (!isUnitUnlocked(state, type)) return ActionResult(state, "Diese Kultur benötigt zuerst eine eigene Bevölkerung durch Bündnisse oder Immigration.")
+        val amount = requested.coerceAtMost(ArmyEngine.recruitable(state, type.culture))
+        if (amount <= 0) return ActionResult(state, "Keine passenden Rekruten verfügbar.")
         val gold = ceil(amount.toLong() * type.goldCost * CrownEngine.recruitCostFactor(state)).toLong()
         if (gold > state.resources.gold)
             return ActionResult(state, "Benötigt: $gold Gold.")

@@ -22,40 +22,20 @@ import com.goldenunicorn.troopmanager.model.*
 import com.goldenunicorn.troopmanager.R
 
 @Composable
-internal fun CommandCenterScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit,
-                                 onNavigate: (GameDestination) -> Unit, onAdvanceDay: () -> Unit, initialPage: Int = 0) {
-    var page by remember(initialPage) { mutableStateOf(initialPage) }
-    Column(Modifier.fillMaxSize()) {
-        ModernTabStrip(
-            labels = listOf("Tageslage", "Entscheidungen", "Aufgaben", "Tagesbericht", "Chronik"),
-            selected = page,
-            onSelect = { page = it },
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-        )
-        Box(Modifier.weight(1f)) {
-            when (page) {
-                0 -> CommandOverview(state, onNavigate, onAdvanceDay, onState, onNotice)
-                1 -> RealmDashboard(state, onState, onNotice, { onNavigate(GameDestination.CITY) },
-                    { onNavigate(GameDestination.WORLD) }, { onNavigate(GameDestination.MILITARY) },
-                    { onNavigate(GameDestination.COURT) }, onAdvanceDay)
-                2 -> QuestJournalScreen(state, onNavigate)
-                3 -> LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    item { PageTitle("TAGESBERICHT · TAG ${state.day}", "Entscheidungen, Herkunft und Folgen deiner Tageslage.") }
-                    items(state.dailyReport.entries, key = { "${it.category}:${it.title}:${it.detail}" }) { row ->
-                        CommandCard(row.title, { onNavigate(reportDestination(row)) }) {
-                            Text(row.category.label, color = Gold, fontSize = 12.sp)
-                            Text(row.detail, color = Mist)
-                        }
-                    }
-                }
-                else -> ChronicleScreen(state)
+internal fun DailyReportList(state: GameState, onNavigate: (GameDestination) -> Unit) {
+    LazyColumn(contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { PageTitle("TAGESBERICHT · TAG ${state.day}", "Entscheidungen, Herkunft und Folgen deiner Tageslage.") }
+        items(state.dailyReport.entries, key = { "${it.category}:${it.title}:${it.detail}" }) { row ->
+            CommandCard(row.title, { onNavigate(reportDestination(row)) }) {
+                Text(row.category.label, color = Gold, fontSize = 12.sp)
+                Text(row.detail, color = Mist)
             }
         }
     }
 }
 
 @Composable
-private fun CommandOverview(
+internal fun CommandOverview(
     state: GameState,
     onNavigate: (GameDestination) -> Unit,
     onAdvanceDay: () -> Unit,
@@ -213,41 +193,6 @@ private fun CommandOverview(
             }
         }
 
-        item { ModernSectionHeader("Navigation", "Direktzugriff") }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ModernActionTile(
-                    "Heer",
-                    "${state.homeArmySize} bereit",
-                    accent = Gold,
-                    onClick = { onNavigate(GameDestination.MILITARY) },
-                    modifier = Modifier.weight(1f),
-                )
-                ModernActionTile(
-                    "Welt",
-                    "${state.frontier.hordes.count { it.discovered }} Meldungen",
-                    accent = ModernBlue,
-                    onClick = { onNavigate(GameDestination.WORLD) },
-                    modifier = Modifier.weight(1f),
-                )
-                ModernActionTile(
-                    "Palast",
-                    "${CoRulerEngine.councilCases(state).size} Ratsfragen",
-                    accent = Success,
-                    onClick = { onNavigate(GameDestination.PALACE) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        item {
-            GoldButton(
-                if (state.campaign.pendingDecision != null) "Tag fortsetzen · Entscheidung offen"
-                else "Nächsten Tag beginnen",
-                onAdvanceDay,
-                Modifier.fillMaxWidth(),
-            )
-        }
     }
 }
 
@@ -378,24 +323,6 @@ internal fun CampaignPulseCard(
 }
 
 @Composable
-private fun RulerIdentity(name: String, title: String, portrait: String, location: String, modifier: Modifier) {
-    Column(modifier) {
-        AsyncImage(portrait, name, Modifier.fillMaxWidth().height(112.dp), contentScale = ContentScale.Crop,
-            error = painterResource(if (portrait.contains("companion")) R.drawable.portrait_companion else R.drawable.portrait_knight))
-        Text(name, color = PaleGold, fontWeight = FontWeight.Bold)
-        Text("$title · $location", color = Mist, fontSize = 11.sp)
-    }
-}
-
-@Composable
-private fun Metric(label: String, value: Int, trend: Int?, bar: Boolean = false, negative: Boolean = false) {
-    val direction = when { trend == null -> ""; trend > 0 -> " ↑ +$trend"; trend < 0 -> " ↓ $trend"; else -> " →" }
-    val color = when { trend == null || trend == 0 -> Mist; (trend > 0) xor negative -> Success; else -> Danger }
-    Text("$label $value$direction", color = color, fontSize = 12.sp)
-    if (bar) LinearProgressIndicator(progress = { value.coerceIn(0, 100) / 100f }, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), color = if (negative) Danger else Gold)
-}
-
-@Composable
 internal fun QuestJournalScreen(state: GameState, onNavigate: (GameDestination) -> Unit) {
     var category by remember { mutableStateOf<JournalCategory?>(null) }
     var history by remember { mutableStateOf(false) }
@@ -417,52 +344,6 @@ internal fun QuestJournalScreen(state: GameState, onNavigate: (GameDestination) 
                 Text(task.outcome ?: task.dueDay?.let { "Frist / Ankunft: Tag $it · noch ${(it - state.day).coerceAtLeast(0)} Tage" } ?: "Seit Tag ${task.startedDay}", color = Gold, fontSize = 12.sp)
                 Text("Öffnen: ${task.destination.label}", color = PaleGold, fontSize = 11.sp)
             }
-        }
-    }
-}
-
-@Composable
-internal fun PalaceHubScreen(state: GameState, onNavigate: (GameDestination) -> Unit) {
-    val rooms = listOf(
-        Triple("Thronsaal", "Reichsentscheidungen, Audienzen und Grundsatzfragen", GameDestination.DECISIONS),
-        Triple("Kriegsrat", "Strategie, Mitregentin und offene Ratsfragen", GameDestination.COUNCIL),
-        Triple("Privatgemächer", "Beziehung, gemeinsame Zeit und Erinnerungen", GameDestination.RULERS),
-        Triple("Familie", "Dynastie, Nachfolge und Haus des Herrschers", GameDestination.FAMILY),
-        Triple("Hof", "Ämter, Persönlichkeiten und politische Netzwerke", GameDestination.COURT),
-    )
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp, 14.dp, 16.dp, 30.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { RulerPairHero(state) }
-        item {
-            PremiumPanel(emphasized = true) {
-                Text("PALASTBEZIRK", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
-                Text(
-                    if (state.relationship.romanceStage == RomanceStage.CO_RULERS)
-                        "Das politische Herz eurer gemeinsamen Herrschaft."
-                    else
-                        "Audienzen, Rat und das persönliche Leben des Herrscherhauses.",
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "Offene Ratsfragen: ${CoRulerEngine.councilCases(state).size} · Hofämter frei: ${CourtOffice.entries.count { it !in state.court.offices }}",
-                    color = Muted,
-                    fontSize = 11.sp,
-                )
-            }
-        }
-        items(rooms, key = { it.first }) { room ->
-            SituationCard(
-                eyebrow = "Palast",
-                title = room.first,
-                detail = room.second,
-                urgent = room.third == GameDestination.COUNCIL && CoRulerEngine.councilCases(state).isNotEmpty(),
-                onClick = { onNavigate(room.third) },
-            )
         }
     }
 }

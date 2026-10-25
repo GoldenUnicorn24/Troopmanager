@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
  */
 
 /** Chronicle entries kept in the save; older lines fade out so long campaigns stay small and fast. */
-const val CHRONICLE_LIMIT = 700
+const val CHRONICLE_LIMIT = 250
 
 @Serializable
 enum class CrownLand(val label: String, val description: String) {

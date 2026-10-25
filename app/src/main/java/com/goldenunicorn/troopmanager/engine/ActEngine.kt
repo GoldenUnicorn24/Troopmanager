@@ -26,16 +26,20 @@ object ActEngine {
         return when (crown.act.act) {
             1 -> listOf(
                 Goal("Provinzen der Grenzmark", crown.ownedProvinces.count { it.land == CrownLand.GRENZMARK }, 4),
+                Goal("Soldaten", state.armySize, 1_500),
                 Goal("Feldherrin an deiner Seite", if (state.companion.met) 1 else 0, 1),
             )
             2 -> listOf(
                 Goal("Titel König", if (state.title in royal) 1 else 0, 1),
-                Goal("Kronprovinzen", crown.ownedProvinces.size, 12),
+                Goal("Kronprovinzen", crown.ownedProvinces.size, 18),
+                Goal("Soldaten", state.armySize, 12_000),
                 Goal("Rivalen-Könige unterworfen oder verbündet", RivalEngine.subdued(state), 2),
             )
             3 -> listOf(
-                Goal("Kronprovinzen", crown.ownedProvinces.size, 24),
-                Goal("Provinzen im Hordenland", crown.ownedProvinces.count { it.land == CrownLand.ASCHESTEPPE }, 2),
+                Goal("Kronprovinzen", crown.ownedProvinces.size, 30),
+                Goal("Provinzen im Hordenland", crown.ownedProvinces.count { it.land == CrownLand.ASCHESTEPPE }, 3),
+                Goal("Soldaten", state.armySize, 40_000),
+                Goal("Rivalen-Könige unterworfen oder verbündet", RivalEngine.subdued(state), 4),
             )
             else -> emptyList()
         }
@@ -83,7 +87,7 @@ object ActEngine {
             state, boss.enemy, Tactic.HOLD,
             enemyStrength = bossStrength(state, boss), location = boss.location,
             enemyArmyName = "${boss.name}, ${boss.title}", enemyFactionName = CrownCatalog.hordeName(boss.enemy),
-            enemyExperience = 20 + act.number * 20, enemyMorale = 90,
+            enemyExperience = 5 + act.number * 10, enemyMorale = 85,
         )
         if (result.state.battleSession == null) return ok(state, result.message)
         val next = result.state.copy(crown = result.state.crown.copy(act = result.state.crown.act.copy(
