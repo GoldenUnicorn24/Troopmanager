@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -76,7 +77,7 @@ internal fun TacticalBattleScreen(state: GameState, onState: (GameState) -> Unit
 
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding()) {
         BattleHeader(state, battle, stage, onExpert = { expert = true })
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp)) {
+        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 10.dp).testTag("tactical_field")) {
             BattleSimulation(battle, state.settings.animations, Modifier.fillMaxSize())
             if (battle.isActive && (stage == Stage.MIDDLE || stage == Stage.FINAL)) {
                 DecisionOverlay(state, battle, stage, Modifier.align(Alignment.BottomCenter)) { decision ->
@@ -336,7 +337,7 @@ private fun PlanPicker(state: GameState, battle: BattleSession, onPlan: (Tactica
                     Column(
                         Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(Color(0xFF17212B))
                             .border(1.dp, if (best) Gold else Color.White.copy(alpha = .08f), RoundedCornerShape(14.dp))
-                            .clickable { onPlan(plan) }.padding(10.dp),
+                            .clickable { onPlan(plan) }.testTag("plan_${plan.name}").padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(3.dp),
                     ) {
                         Text(plan.label + if (best) " ★" else "", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -375,7 +376,7 @@ private fun DecisionOverlay(state: GameState, battle: BattleSession, stage: Stag
             Text(event.title, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Black)
             Text(event.text, color = Mist, fontSize = 13.sp, lineHeight = 18.sp)
             choices.forEach { choice ->
-                Surface(onClick = { onDecide(choice.decision) }, color = Color(0xFF1C2834), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Surface(onClick = { onDecide(choice.decision) }, color = Color(0xFF1C2834), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("decision_${choice.decision.name}")) {
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                         Text(choice.label, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         Text(choice.detail, color = Muted, fontSize = 12.sp, lineHeight = 15.sp)
@@ -395,6 +396,6 @@ private fun BattleResultPanel(state: GameState, battle: BattleSession, onClose: 
         Text("Eigene Verluste: ${fmt(battle.ownStart - battle.ownRemaining)} (${battle.casualties.dead} gefallen, ${battle.casualties.wounded} verwundet) · Feind: ${fmt(battle.enemyStart - battle.enemyRemaining)}", color = Mist, fontSize = 13.sp)
         if (victory) Text("Beute ${fmt(battle.lootGold)} Gold, ${fmt(battle.lootFood)} Nahrung · +${battle.renownReward} Ruhm · +${battle.xpReward} XP", color = Gold, fontSize = 13.sp)
         TacticalBattleEngine.plan(battle)?.let { Text("Dein Plan: ${it.label}", color = Muted, fontSize = 12.sp) }
-        GoldButton("Weiter", onClose, Modifier.fillMaxWidth())
+        GoldButton("Weiter", onClose, Modifier.fillMaxWidth().testTag("battle_result_continue"))
     }
 }

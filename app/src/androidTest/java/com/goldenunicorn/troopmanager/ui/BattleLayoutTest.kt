@@ -204,4 +204,26 @@ class BattleLayoutTest {
         rule.waitUntil(10_000) { BattlePreviewActivity.latestState?.defensePlan?.doctrine == com.goldenunicorn.troopmanager.model.BattleDoctrine.PRESERVE_TROOPS }
         rule.runOnIdle { assertEquals(com.goldenunicorn.troopmanager.model.BattleDoctrine.PRESERVE_TROOPS, BattlePreviewActivity.latestState!!.defensePlan.doctrine) }
     }
+
+    @Test fun tacticalBattleRunsFromPlanThroughSimulationToTheEnd() {
+        rule.runOnIdle { BattlePreviewActivity.viewport = BattlePreviewActivity.Viewport(page = "tactical") }
+        rule.waitForIdle()
+        rule.onNodeWithText("Entscheidung 1 · Dein Schlachtplan").assertIsDisplayed()
+        rule.onNodeWithTag("tactical_field").assertIsDisplayed()
+        saveScreenshot("tactical-plan")
+        rule.onNodeWithTag("plan_HOLD_WALL").performClick()
+        rule.waitUntil(30_000) { (BattlePreviewActivity.latestState?.battleSession?.minute ?: 0) > 0 }
+        saveScreenshot("tactical-simulation")
+        rule.waitUntil(120_000) {
+            val battle = BattlePreviewActivity.latestState?.battleSession
+            battle == null || !battle.isActive || battle.tacticalStage == 2 || battle.tacticalStage == 4
+        }
+        val battle = BattlePreviewActivity.latestState!!.battleSession!!
+        if (battle.isActive) {
+            saveScreenshot("tactical-decision")
+            val option = battle.pendingEvent!!.options.first { com.goldenunicorn.troopmanager.engine.BattleEngine.canOrder(battle, it, battle.pendingEvent!!.section) }
+            rule.onNodeWithTag("decision_${option.name}").performScrollTo().performClick()
+            rule.waitUntil(10_000) { BattlePreviewActivity.latestState!!.battleSession!!.tacticalStage in setOf(3, 5) || !BattlePreviewActivity.latestState!!.battleSession!!.isActive }
+        }
+    }
 }

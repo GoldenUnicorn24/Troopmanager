@@ -58,6 +58,7 @@ class BattlePreviewActivity : ComponentActivity() {
                                     Box(Modifier.weight(1f)) { ArmyScreen(state.copy(battleSession = null), ::update, ::notice) }
                                 }
                                 "defense" -> DefenseDashboard(state.copy(battleSession = null), ::update, ::notice) {}
+                                "tactical" -> TacticalBattleScreen(state, ::update, ::notice)
                                 else -> LiveBattleScreen(state, ::update, ::notice)
                             }
                         }
