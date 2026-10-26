@@ -33,6 +33,8 @@ GameState
 | `PartyEngine` | Gefolge: Einladung (eigene Entscheidung der Person), Söldner mit Handgeld/Sold, Abzug ohne Sold, Bindung durch Reisen, Kampfkraft, Beförderung zum Hauptmann |
 | `SkirmishEngine` | Persönliche Gefechte (Feldzug, Hinterhalt, Jagd, Duell), Runden mit fünf Aktionen, Wunden, Gefangenschaft, Flucht/Lösegeld |
 | `MarketEngine` | Begehbarer Marktplatz (`WalkGrid`), Schmied/Krämer/Heilerin, Ausrüstung (sichtbar am Charakter), Geschenke |
+| `NpcSocialEngine` | Beziehungsnetz (`NpcBond`), Weitergabe von Sympathie, Eifersucht, Bindungsdynamik als Klatsch, wandernde Reisende, eigenes Leben der Gefährtin |
+| `BarracksEngine` | Begehbarer Kasernenhof, Training mit abnehmendem Ertrag, Stadtwache, Wachdienst |
 | `TavernEngine` | 12×9-Kachel-Raum, A*-Wegfindung ohne Ecken-Schneiden, Sitzplatzvergabe, Betreten/Verlassen, Würfeln, Schlägerei, Tavernenereignisse |
 
 ### Tagesablauf
@@ -70,7 +72,7 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 
 ## Bekannte Grenzen dieser Ausbaustufe
 
-- Begehbar sind Taverne und Markt. Kaserne und Burghof sind Daten-Orte (`LifePlace`) ohne eigene Szene.
+- Begehbar sind Taverne, Markt und Kaserne. Der Burghof fehlt noch.
 - Persönliche Gefechte laufen über die eigene `SkirmishEngine`; die großen Schlachten der Combat Engine 3.0 kennen den Spieler als Person noch nicht.
 - Der Weltpuls ist bewusst leichtgewichtig; erst nach dem Lehnseid laufen die vollen KI-Engines.
 - Personen an Sitzplätzen werden stehend gezeichnet; Sitz-Posen fehlen.

@@ -117,8 +117,8 @@ fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Markt von ${LifeEngine.locationName(state)}", color = Gold, fontFamily = Cinzel, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text("Tag ${state.day} · ${state.life.timeSlot.label} · " + if (MarketEngine.open(state)) "geöffnet" else "geschlossen", color = Mist, fontSize = 12.sp)
+                    Text("Markt", color = Gold, fontFamily = Cinzel, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("${LifeEngine.locationName(state)} · Tag ${state.day} · ${state.life.timeSlot.label} · " + if (MarketEngine.open(state)) "geöffnet" else "geschlossen", color = Mist, fontSize = 12.sp)
                 }
                 Text("${LifeEngine.money(state)} Gold", color = PaleGold, fontWeight = FontWeight.Black)
                 Spacer(Modifier.width(8.dp))

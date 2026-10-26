@@ -95,8 +95,8 @@ fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (St
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Kaserne von ${LifeEngine.locationName(state)}", color = Gold, fontFamily = Cinzel, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text("${state.life.timeSlot.label} · Übungen heute: ${BarracksEngine.sessionsLeft(state)}/${BarracksEngine.SESSIONS_PER_DAY}" +
+                    Text("Kaserne", color = Gold, fontFamily = Cinzel, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("${LifeEngine.locationName(state)} · ${state.life.timeSlot.label} · Übungen heute: ${BarracksEngine.sessionsLeft(state)}/${BarracksEngine.SESSIONS_PER_DAY}" +
                         if (state.life.enlisted) " · Stadtwache" else "", color = Mist, fontSize = 12.sp)
                 }
                 Text("${LifeEngine.money(state)} Gold", color = PaleGold, fontWeight = FontWeight.Black)

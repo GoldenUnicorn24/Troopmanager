@@ -74,3 +74,9 @@ Bestehende Tests angepasst: vier Stellen, die die Schemanummer 5 fest erwarteten
 Neue Tests in `RebirthRoadTest` (11): Freund lehnt ab bzw. schließt sich an und folgt auf Reisen · Söldner kosten Handgeld und Sold und ziehen unbezahlt ab · gekaufte Rüstung ändert Aussehen und Porträt, Waffe die Kampfkraft, Heilerin senkt Wunden · Geschenke nach Geschmack wirken stärker, eins pro Tag · Wolfsjagd wird persönlich ausgefochten, deterministisch, mit Lohn/Scheitern · Gefährten kämpfen mit und erinnern sich · Niederlage verwundet, Gefangenschaft blockiert Reisen und endet nach Ablauf · Lösegeld befreit sofort · Duell ist nicht tödlich und wird erinnert · Hinterhalte auf gefährlichen Straßen, Reise geht nach dem Kampf weiter · Lehnseid übergibt Gefährtin (Kommandantin) und Söldner (Hauptleute).
 
 Kampfbalance per Simulation (40 Läufe je Zeile, 4 Wegelagerer): Schwert 60 allein gewinnt gegen Stärke 40–55 fast immer und verliert gegen 70; mit zwei Gefährten werden auch Stärke-70-Gegner besiegbar. Das Gefolge ist bewusst spielentscheidend, kostet aber Sold.
+
+## 6. Meilenstein 3 (Menschen untereinander, Kaserne)
+
+Neue Tests in `RebirthPeopleTest` (9): Beziehungsnetz pro Stadt (Paare nur bei gegenseitiger Offenheit, deterministisch, gespeichert) · Weitergabe von Sympathie an Freunde und umgekehrt an Rivalen · Eifersucht und Bindungsabzug beim Flirt mit Vergebenen · Reisende ziehen um, Klatsch entsteht · nie besuchte Gefährtin zieht weiter und wird erwähnt · befreundete Gefährtin sucht den Spieler auf · Training mit abnehmendem Ertrag und Tageslimit · Stadtwache mit Sold, Ruf und Beförderung · Rollen-Themen lehren und erzählen ohne offene Platzhalter.
+
+Lokal: **498 Tests grün**. CI- und Emulator-Ergebnis siehe PR #14.
