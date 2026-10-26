@@ -100,7 +100,7 @@ enum class CareerRank(val label: String, val renown: Int) {
 enum class LifePlace(val label: String, val walkable: Boolean) {
     TOWN("Stadtplatz", false),
     TAVERN("Taverne", true),
-    MARKET("Markt", false),
+    MARKET("Markt", true),
     BARRACKS("Kaserne", false),
     AWAY("Unterwegs", false),
 }
@@ -273,6 +273,9 @@ enum class NpcRole(val label: String) {
     NOBLE("Adlige"),
     BARD("Spielmann"),
     COMPANION("Mögliche Gefährtin"),
+    SELLSWORD("Söldner"),
+    SMITH("Schmied"),
+    HEALER("Heilerin"),
 }
 
 /** Social stage between the player and one person. Romance stages are never reached automatically. */
@@ -404,6 +407,9 @@ data class LifeJob(
     val accepted: Boolean = false,
     val done: Boolean = false,
     val failed: Boolean = false,
+    /** Fought out personally in a skirmish instead of a single skill check. */
+    val combat: Boolean = false,
+    val enemy: String = "",
 )
 
 /** Something that happened in the world, heard as a rumor in taverns. */
@@ -459,12 +465,102 @@ data class LifeState(
     val pendingGossip: List<String> = emptyList(),
     /** Tavern events already resolved: "day:slot:province:key". */
     val eventsDone: List<String> = emptyList(),
+    // ---- Milestone 2: on the road, at the market, in the fight
+    val party: List<PartyMember> = emptyList(),
+    val gear: PlayerGear = PlayerGear(),
+    val gifts: Map<GiftKind, Int> = emptyMap(),
+    /** 0..100; reduces fighting and travel ability until healed. */
+    val wound: Int = 0,
+    val captiveUntil: Int? = null,
+    val captor: String? = null,
+    val skirmish: Skirmish? = null,
+    val battles: Int = 0,
+    val battleVictories: Int = 0,
     val nextId: Long = 1,
 ) {
     fun npc(id: String): NpcIdentity? = npcs.firstOrNull { it.id == id }
     val companion: NpcIdentity? get() = companionNpcId?.let(::npc)
     val partner: NpcIdentity? get() = npcs.firstOrNull { it.relation.stage in setOf(SocialStage.PARTNER, SocialStage.ENGAGED, SocialStage.MARRIED) }
+    fun inParty(id: String): Boolean = party.any { it.npcId == id }
+    val captive: Boolean get() = captiveUntil != null
 }
+
+/** Someone travelling and fighting with the player: a friend who joined, or a paid sellsword. */
+@Serializable
+data class PartyMember(val npcId: String, val joinedDay: Int, val wage: Int = 0, val wounded: Int = 0)
+
+@Serializable
+data class PlayerGear(val weaponTier: Int = 0, val armorTier: Int = 0)
+
+data class GearItem(val tier: Int, val name: String, val price: Int, val bonus: Int, val appearanceIndex: Int, val description: String)
+
+object GearCatalog {
+    val weapons = listOf(
+        GearItem(0, "Abgenutzte Klinge", 0, 0, 0, "Was du mitgebracht hast."),
+        GearItem(1, "Geschmiedetes Langschwert", 25, 6, 0, "Ehrliche Arbeit eines Dorfschmieds."),
+        GearItem(2, "Aldmarker Stahlschwert", 70, 12, 0, "Federnder Stahl, gute Balance."),
+        GearItem(3, "Meisterklinge", 180, 20, 0, "Eine Waffe, nach der sich Söldner umdrehen."),
+    )
+    val armor = listOf(
+        GearItem(0, "Reisekleidung", 0, 0, 0, "Kein Schutz außer Glück."),
+        GearItem(1, "Lederrüstung", 20, 10, 1, "Gehärtetes Leder, leicht und leise."),
+        GearItem(2, "Kettenhemd", 60, 20, 2, "Hält Klingen ab, nicht aber Keulen."),
+        GearItem(3, "Schuppenpanzer", 140, 28, 3, "Schwer, aber sicher."),
+        GearItem(4, "Plattenrüstung", 300, 36, 4, "Die Rüstung eines Ritters."),
+    )
+}
+
+/** Small presents. A gift that matches what someone likes counts far more than an expensive one. */
+@Serializable
+enum class GiftKind(val label: String, val price: Int, val keywords: List<String>) {
+    FLOWERS("Wiesenblumen", 2, listOf("Ruhe", "Kräuterkunde", "Bescheidenheit")),
+    BOOK("Abgegriffenes Buch", 8, listOf("Bücher", "Geschichten", "Sternkunde", "Neugier")),
+    WINE("Flasche Aldmarker", 6, listOf("gutes Essen", "Kochen", "Humor")),
+    STRINGS("Lautensaiten", 5, listOf("Musik", "alte Lieder")),
+    DAGGER("Gut gearbeiteter Dolch", 14, listOf("Mut", "Schwertkampf", "Jagd", "Abenteuer")),
+    PENDANT("Silberner Anhänger", 18, listOf("Großzügigkeit", "Höflichkeit")),
+}
+
+@Serializable
+enum class SkirmishKind(val label: String) { CAMPAIGN("Feldzug"), AMBUSH("Hinterhalt"), DUEL("Duell"), BEASTS("Jagd") }
+
+@Serializable
+enum class SkirmishAction(val label: String, val hint: String) {
+    ATTACK("Angreifen", "Schwert und Mut – viel Schaden, aber offen für Treffer"),
+    DEFEND("Verteidigen", "Halten, Wunden vermeiden, auf die Lücke warten"),
+    RANGED("Bogen", "Am stärksten, solange der Feind noch nicht heran ist"),
+    RALLY("Anführen", "Führung: Gefährten stärken, Feindmoral brechen"),
+    RETREAT("Rückzug", "Reiten entscheidet, ob du heil davonkommst"),
+}
+
+@Serializable
+enum class SkirmishOutcome(val label: String) { VICTORY("Sieg"), DEFEAT("Niederlage"), RETREAT("Rückzug"), CAPTURED("Gefangen") }
+
+/** A personal fight, saved between rounds. Deterministic per id and round. */
+@Serializable
+data class Skirmish(
+    val id: String,
+    val kind: SkirmishKind,
+    val title: String,
+    val provinceId: String,
+    val enemyName: String,
+    val enemyCount: Int,
+    val enemyPower: Int,
+    val enemyHealth: Int = 100,
+    val enemyMorale: Int = 100,
+    val playerHealth: Int = 100,
+    val allyIds: List<String> = emptyList(),
+    val round: Int = 0,
+    val rallied: Int = 0,
+    val log: List<String> = emptyList(),
+    val outcome: SkirmishOutcome? = null,
+    val reward: Int = 0,
+    val renown: Int = 0,
+    val jobId: String? = null,
+    val opponentNpcId: String? = null,
+    /** A journey interrupted by an ambush continues here after the fight. */
+    val travelTo: String? = null,
+)
 
 @Serializable
 data class LifeTravel(val fromProvinceId: String, val toProvinceId: String, val arrivalDay: Int)

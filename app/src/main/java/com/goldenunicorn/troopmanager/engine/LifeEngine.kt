@@ -158,7 +158,7 @@ object LifeEngine {
     /** Dexterity-like value for dice, archery and brawls. Alcohol hurts it quickly. */
     fun dexterity(state: GameState): Int {
         val i = state.life.intoxication
-        return ((state.player.bow + state.player.sword) / 2 - i / 3 - (if (state.life.hangover) 5 else 0)).coerceIn(0, 100)
+        return ((state.player.bow + state.player.sword) / 2 - i / 3 - (if (state.life.hangover) 5 else 0) - state.life.wound / 3).coerceIn(0, 100)
     }
 
     fun intoxicationLabel(value: Int): String = when {
@@ -302,6 +302,8 @@ object LifeEngine {
         val before = state
         var next = state.copy(day = state.day + 1)
         next = dailyLife(next)
+        next = PartyEngine.daily(next)
+        next = releaseIfDue(next)
         next = arriveIfTraveling(next)
         next = worldPulse(next)
         next = deliverGossip(next)
@@ -322,8 +324,17 @@ object LifeEngine {
             hangover = hangover,
             fatigue = if (life.roomPaidDay == state.day - 1) 0 else (life.fatigue - 30).coerceIn(0, 100),
             fed = false,
+            // Wounds heal slowly; a paid bed and a full belly help.
+            wound = (life.wound - (if (life.roomPaidDay == state.day - 1) 12 else 7) - (if (life.fed) 3 else 0)).coerceAtLeast(0),
             npcs = life.npcs.map { it.copy(intoxication = 0, relation = it.relation.copy(topicsThisSlot = emptyList())) },
         ))
+    }
+
+    private fun releaseIfDue(state: GameState): GameState {
+        val until = state.life.captiveUntil ?: return state
+        if (state.day < until) return state
+        return log(state.copy(life = state.life.copy(captiveUntil = null, captor = null, place = LifePlace.TOWN)),
+            "${state.life.captor ?: "Die Entführer"} lassen dich laufen – ohne Gold, aber lebendig.")
     }
 
     // ------------------------------------------------------------ travel
@@ -342,12 +353,23 @@ object LifeEngine {
     fun travelBlocker(state: GameState, toId: String): String? {
         if (state.life.landed) return "Als Herrscher reist du mit deinem Heer über die Kronlande-Karte."
         if (state.life.travel != null) return "Du bist bereits unterwegs."
+        if (state.life.captive) return "Du bist gefangen."
+        if (state.life.skirmish != null) return "Erst der Kampf."
+        if (state.life.wound >= 70) return "Mit diesen Wunden kommst du keine Meile weit. Erst heilen."
         if (toId == state.life.provinceId) return "Du bist bereits hier."
         val province = CrownEngine.province(state, toId) ?: return "Unbekannter Ort."
         if (province.owner == ProvinceOwner.HORDE) return "${province.name} ist in der Hand der ${province.ownerLabel}. Kein Reisender kehrt von dort zurück."
         val cost = travelDays(state.life.provinceId, toId) * 3
         if (state.life.purse < cost) return "Für Proviant und Fährgeld brauchst du $cost Gold."
         return null
+    }
+
+    /** Chance of an ambush on the road: dangerous lands, few companions, bad roads. */
+    fun ambushChance(state: GameState, toId: String): Int {
+        val lands = listOf(CrownCatalog.info(state.life.provinceId).land, CrownCatalog.info(toId).land)
+        val danger = state.crown.provinces.count { it.land in lands && (it.owner == ProvinceOwner.BANDITS || it.owner == ProvinceOwner.HORDE) }
+        val threatened = if (threatened(state, toId) || threatened(state, state.life.provinceId)) 15 else 0
+        return (10 + danger * 6 + threatened - state.life.party.size * 4).coerceIn(4, 55)
     }
 
     fun travel(state: GameState, toId: String): Result {
@@ -357,9 +379,27 @@ object LifeEngine {
         var next = pay(state, cost)
         next = next.copy(life = next.life.copy(travel = LifeTravel(state.life.provinceId, toId, state.day + days), place = LifePlace.AWAY))
         next = log(next, "Aufbruch nach ${CrownCatalog.info(toId).name} ($days Tage).")
-        // The days on the road pass right away; the world keeps turning meanwhile.
+        val roll = Math.floorMod(state.day * 7919 + toId.hashCode() + state.life.nextId.toInt() * 31, 100)
+        if (roll < ambushChance(state, toId)) {
+            val hordeLand = CrownCatalog.info(toId).land in setOf(CrownLand.SONNENHAIN, CrownLand.KRANICHWALL) || toId == "as_freistatt"
+            val enemy = if (hordeLand) "Ork-Späher" else "Wegelagerer"
+            val count = 3 + roll % 4
+            val power = 38 + state.life.renown / 6 + count * 3
+            next = SkirmishEngine.start(next, SkirmishKind.AMBUSH, "Hinterhalt auf der Straße", enemy, count, power,
+                reward = 6 + count * 3, renown = 3, travelTo = toId)
+            return Result(next, "Auf halbem Weg: ein Hinterhalt!")
+        }
+        return completeTravel(next, toId)
+    }
+
+    /** The days on the road pass; followers grow closer; the world keeps turning meanwhile. */
+    fun completeTravel(state: GameState, toId: String): Result {
+        val days = travelDays(state.life.travel?.fromProvinceId ?: state.life.provinceId, toId).coerceAtLeast(1)
+        var next = state.copy(life = state.life.copy(travel = (state.life.travel ?: LifeTravel(state.life.provinceId, toId, state.day + days)), place = LifePlace.AWAY))
+        next = PartyEngine.travelledTogether(next, toId, days)
         var message = ""
         repeat(days) { val r = advanceLandlessDay(next); next = r.state; message = r.message }
+        if (next.life.travel != null) next = next.copy(life = next.life.copy(provinceId = toId, place = LifePlace.TOWN, travel = null))
         return Result(next, "Nach $days Tag${if (days == 1) "" else "en"} auf der Straße erreichst du ${CrownCatalog.info(toId).name}. $message")
     }
 
@@ -451,7 +491,7 @@ object LifeEngine {
         val town = CrownCatalog.info(province).name
         val templates = buildList {
             add(Triple("Ratten im Weinkeller", "Der Keller ist voller Ratten. Jemand mit ruhiger Hand und einem Knüppel soll aufräumen.", "sword"))
-            add(Triple("Wölfe am Weidezaun", "Wölfe reißen Schafe vor $town. Ein guter Schütze wird gebraucht.", "bow"))
+            add(Triple("Wölfe am Weidezaun", "Wölfe reißen Schafe vor $town. Wer sie vertreibt, wird bezahlt – mit Bogen oder Klinge.", "bow"))
             add(Triple("Brief nach Eschenhof", "Ein versiegelter Brief muss heute noch übergeben werden. Schnell und verschwiegen.", "riding"))
             add(Triple("Schulden eintreiben", "Ein Händler schuldet Geld. Mit Worten oder mit Nachdruck – Hauptsache, er zahlt.", "diplomacy"))
             add(Triple("Wache für die Nacht", "Eine Karawane braucht Wachen bis zum Morgen.", "tactics"))
@@ -460,10 +500,12 @@ object LifeEngine {
         val (title, text, skill) = templates[r.nextInt(templates.size)]
         val giver = givers[r.nextInt(givers.size)]
         val difficulty = 35 + r.nextInt(35) + if (threatened) 10 else 0
+        val fights = title.startsWith("Wölfe") || title.startsWith("Flüchtlinge")
         val job = LifeJob(
             id = "job${state.life.nextId}", title = title, description = text, giverId = giver.id, provinceId = province,
             skill = skill, difficulty = difficulty, reward = 8 + difficulty / 3 + (if (threatened) 12 else 0), renown = 3 + difficulty / 12,
             slots = if (skill == "tactics") 2 else 1, offeredDay = state.day,
+            combat = fights, enemy = if (title.startsWith("Wölfe")) "Wölfe" else if (fights) "Plünderer" else "",
         )
         return state.copy(life = state.life.copy(jobs = open + job, nextId = state.life.nextId + 1))
     }
@@ -493,6 +535,14 @@ object LifeEngine {
         val job = state.life.jobs.firstOrNull { it.id == jobId && it.accepted && !it.done && !it.failed } ?: return Result(state, "Kein offener Auftrag.")
         if (slotsLeft(state) < job.slots) return Result(state, "Dafür reicht der Tag nicht mehr. Morgen früh.")
         if (state.life.intoxication >= 50) return Result(state, "So betrunken wirst du diesen Auftrag verpfuschen. Erst nüchtern werden.")
+        if (job.combat) {
+            if (state.life.wound >= 50) return Result(state, "Mit diesen Wunden kämpfst du nicht. Erst heilen.")
+            val fightState = passTime(state, job.slots).state
+            val count = if (job.enemy == "Wölfe") 4 else 3 + job.difficulty / 25
+            val kind = if (job.enemy == "Wölfe") SkirmishKind.BEASTS else SkirmishKind.CAMPAIGN
+            return Result(SkirmishEngine.start(fightState, kind, job.title, job.enemy.ifBlank { "Feinde" }, count, job.difficulty - 5,
+                job.reward, job.renown, jobId = job.id), "Zu den Waffen: ${job.title}.")
+        }
         val variance = Random(state.day * 31L + job.id.hashCode()).nextInt(-12, 13)
         val score = skillValue(state, job.skill) - state.life.intoxication / 2 - state.life.fatigue / 5 + variance
         val success = score >= job.difficulty
@@ -566,9 +616,53 @@ object LifeEngine {
             rank = "Grenzhauptmann",
             renown = state.renown + state.life.renown,
         )
+        next = handOverFollowers(next)
         next = next.copy(chronicle = next.chronicle + ChronicleEntry(next.day, "Herr der Grenzfeste",
             "${next.player.name} leistet den Lehnseid und übernimmt die Grenzfeste – mit Gebiet, Vorräten und einer stehenden Armee."))
         return Result(next, "Du bist jetzt Grenzherr. Reich, Heer und Stadt stehen dir offen.")
+    }
+
+    /**
+     * With the keep, the following becomes part of the realm: the closest friend (or the designed
+     * companion) becomes the companion at court and commander; sellswords become captains.
+     */
+    fun handOverFollowers(state: GameState): GameState {
+        var next = state
+        val members = PartyEngine.members(state)
+        val friend = members.filter { m -> state.life.party.first { it.npcId == m.id }.wage == 0 }
+            .maxByOrNull { (if (it.designedByPlayer) 1000 else 0) + it.relation.trust + it.relation.affinity }
+        if (friend != null && !state.companion.met) {
+            val r = friend.relation
+            val romance = when (r.stage) {
+                SocialStage.FLIRT -> RomanceStage.INTEREST
+                SocialStage.LOVER -> RomanceStage.ROMANCE
+                SocialStage.PARTNER -> RomanceStage.PARTNERSHIP
+                SocialStage.ENGAGED -> RomanceStage.ENGAGED
+                SocialStage.MARRIED -> RomanceStage.MARRIED
+                else -> RomanceStage.NONE
+            }
+            next = next.copy(
+                companion = CompanionProfile(
+                    met = true, name = friend.name, age = friend.age, species = friend.species,
+                    armorStyle = AppearanceOptions.armor[friend.appearance.armor], weapon = AppearanceOptions.weapons[friend.appearance.weapon],
+                    sword = 40 + friend.appearance.muscle / 3, bow = 40 + friend.personality.curiosity / 3, riding = 45,
+                    leadership = 30 + friend.personality.boldness / 3, tactics = 30 + friend.personality.honor / 4, diplomacy = 30 + friend.personality.warmth / 3,
+                    trust = r.trust, respect = (r.affinity + 100) / 2, affection = r.attraction, role = "Gefährtin",
+                ),
+                relationship = next.relationship.copy(romanceStage = romance, attraction = r.attraction, commitment = if (romance.ordinal >= RomanceStage.PARTNERSHIP.ordinal) 60 else 0),
+                crown = next.crown.copy(saga = next.crown.saga.copy(companionId = "legacy")),
+            )
+            next = RelationshipEngine.syncCommander(next)
+        }
+        val swords = members.filter { m -> state.life.party.first { it.npcId == m.id }.wage > 0 }
+        val baseId = (next.commanders.maxOfOrNull { it.id } ?: 0L) + 1
+        val captains = swords.mapIndexed { i, npc ->
+            Commander(baseId + i, npc.name, npc.culture, "knight", sword = 50 + npc.appearance.muscle / 4, bow = 40,
+                leadership = 35 + npc.personality.boldness / 4, tactics = 35, loyalty = 60 + npc.relation.trust / 4,
+                trait = "Ehemaliger Söldner", rank = "Hauptmann")
+        }
+        next = next.copy(commanders = next.commanders + captains, life = next.life.copy(party = emptyList()))
+        return next
     }
 
     // ------------------------------------------------------------ validation
@@ -576,7 +670,10 @@ object LifeEngine {
     fun validate(state: GameState) {
         val life = state.life
         require(life.purse >= 0 && life.renown >= 0) { "Ungültige Börse." }
-        require(life.intoxication in 0..100 && life.fatigue in 0..100) { "Ungültiger Zustand des Charakters." }
+        require(life.intoxication in 0..100 && life.fatigue in 0..100 && life.wound in 0..100) { "Ungültiger Zustand des Charakters." }
+        require(life.party.size <= PartyEngine.MAX_PARTY && life.party.all { m -> life.npc(m.npcId) != null }) { "Ungültiges Gefolge." }
+        require(life.gear.weaponTier in GearCatalog.weapons.indices && life.gear.armorTier in GearCatalog.armor.indices) { "Ungültige Ausrüstung." }
+        require(life.gifts.values.all { it >= 0 }) { "Ungültige Geschenke." }
         require(life.npcs.map { it.id }.distinct().size == life.npcs.size) { "Doppelte Personen." }
         life.npcs.forEach(NpcEngine::validate)
         require(life.companionNpcId == null || life.npc(life.companionNpcId) != null) { "Gefährtin fehlt." }

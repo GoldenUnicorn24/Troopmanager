@@ -17,11 +17,18 @@ object TavernEngine {
 
     enum class SeatKind { BAR, TABLE, FIRE, STAGE, STAND }
 
+    /** Anything you can walk on: the tavern, the market square, later more places. */
+    interface WalkGrid {
+        val width: Int
+        val height: Int
+        fun walkable(c: Cell): Boolean
+    }
+
     data class Seat(val cell: Cell, val kind: SeatKind)
 
     data class Layout(
-        val width: Int,
-        val height: Int,
+        override val width: Int,
+        override val height: Int,
         val counter: List<Cell>,
         val tables: List<Cell>,
         val hearth: List<Cell>,
@@ -32,12 +39,12 @@ object TavernEngine {
         val barFront: Cell,
         val stairFoot: Cell,
         val seats: List<Seat>,
-    ) {
+    ) : WalkGrid {
         val blocked: Set<Cell> = (counter + tables + hearth + stairs + barrels).toSet() +
             (0 until width).map { Cell(it, 0) } + // back wall
             (1..4).map { Cell(it, 1) } // behind the bar: staff only
 
-        fun walkable(c: Cell): Boolean = c.x in 0 until width && c.y in 0 until height && c !in blocked
+        override fun walkable(c: Cell): Boolean = c.x in 0 until width && c.y in 0 until height && c !in blocked
     }
 
     /** One hand-designed common room, 12×9 tiles, used by every tavern (names and people differ). */
@@ -72,7 +79,7 @@ object TavernEngine {
      * A* over the tile grid with diagonal steps that never cut furniture corners.
      * Returns the cells after [from] up to [to]; empty if unreachable or already there.
      */
-    fun path(from: Cell, to: Cell, occupied: Set<Cell> = emptySet(), l: Layout = layout): List<Cell> {
+    fun path(from: Cell, to: Cell, occupied: Set<Cell> = emptySet(), l: WalkGrid = layout): List<Cell> {
         if (from == to || !l.walkable(to)) return emptyList()
         fun free(c: Cell) = l.walkable(c) && (c !in occupied || c == to)
         val open = java.util.PriorityQueue<Pair<Cell, Int>>(compareBy { it.second })
@@ -102,7 +109,7 @@ object TavernEngine {
     }
 
     /** Closest free tile next to a person or object, to walk up and talk. */
-    fun approach(target: Cell, from: Cell, occupied: Set<Cell>, l: Layout = layout): Cell? =
+    fun approach(target: Cell, from: Cell, occupied: Set<Cell>, l: WalkGrid = layout): Cell? =
         steps.map { target + it }.filter { l.walkable(it) && it !in occupied }
             .minByOrNull { abs(it.x - from.x) + abs(it.y - from.y) }
 
@@ -274,7 +281,7 @@ object TavernEngine {
         val message: String = when (eventKey to optionId) {
             "recruit" to "join" -> {
                 val job = LifeJob("job${next.life.nextId}", "Feldzug mit der Kompanie", "Mit ${npc?.name ?: "der Kompanie"} gegen die Plünderer vor der Stadt.",
-                    npc?.id ?: "", next.life.provinceId, "sword", 60, 60, 12, 2, next.day, accepted = true)
+                    npc?.id ?: "", next.life.provinceId, "sword", 60, 60, 12, 2, next.day, accepted = true, combat = true, enemy = "Plünderer")
                 next = next.copy(life = next.life.copy(jobs = next.life.jobs + job, nextId = next.life.nextId + 1,
                     career = if (next.life.career == CareerRank.COMMONER || next.life.career == CareerRank.RECRUIT) CareerRank.MERCENARY else next.life.career))
                 if (npc != null) next = LifeEngine.updateNpc(next, bump(npc, 8, "joined", "du hast dich meiner Kompanie angeschlossen", 2))

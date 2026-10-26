@@ -74,6 +74,8 @@ data class DialogueTopic(
     val coolSuccessLines: List<String> = emptyList(),
     val failLines: List<String> = emptyList(),
     val oncePerSlot: Boolean = true,
+    /** Handled by a dedicated engine instead of the generic social check: invite, dismiss, hire, duel, gift. */
+    val special: String? = null,
 )
 
 object DialogueCatalog {
@@ -233,6 +235,27 @@ object DialogueCatalog {
             successLines = listOf("{npc} nickt langsam. „Wenn du meinst.“ Die Stimme bleibt fest. Die Augen nicht."),
             coolSuccessLines = listOf("„Gut. Dann weiß ich, woran ich bin.“"),
         ),
+        // ------------------------------------------------------------ road and blade (milestone 2)
+        DialogueTopic(
+            "invite", TopicKind.FRIENDLY, "Begleite mich auf meinen Wegen", "„Zieh mit mir. Ich kann jemanden wie dich gebrauchen – und ich mag deine Gesellschaft.“",
+            req = TopicReq(minStage = SocialStage.ACQUAINTANCE, minTrust = 20,
+                roles = setOf(NpcRole.REGULAR, NpcRole.TRAVELER, NpcRole.MERCENARY_CAPTAIN, NpcRole.BARD, NpcRole.COMPANION)),
+            special = "invite", successLines = listOf(""),
+        ),
+        DialogueTopic(
+            "dismiss", TopicKind.FRIENDLY, "Unsere Wege trennen sich hier", "„Ich glaube, hier trennen sich unsere Wege.“",
+            special = "dismiss", successLines = listOf(""), oncePerSlot = false,
+        ),
+        DialogueTopic(
+            "hire", TopicKind.BUSINESS, "Söldner anwerben (20 Gold, 2 Gold/Tag)", "„Ich brauche eine Klinge. Wen kannst du entbehren?“",
+            req = TopicReq(roles = setOf(NpcRole.MERCENARY_CAPTAIN)), special = "hire", successLines = listOf(""), oncePerSlot = false,
+        ),
+        DialogueTopic(
+            "duel", TopicKind.CONFLICT, "Zum Übungsduell fordern", "„Lust, die Klingen zu kreuzen? Bis zum ersten Blut, nicht weiter.“",
+            req = TopicReq(minStage = SocialStage.ACQUAINTANCE, maxPlayerIntox = 60,
+                roles = setOf(NpcRole.MERCENARY_CAPTAIN, NpcRole.SELLSWORD, NpcRole.TRAVELER, NpcRole.COMPANION)),
+            special = "duel", successLines = listOf(""),
+        ),
         // ------------------------------------------------------------ conflict
         DialogueTopic(
             "apologize", TopicKind.CONFLICT, "Dich entschuldigen", "„Es tut mir leid. Wirklich.“",
@@ -255,4 +278,11 @@ object DialogueCatalog {
     )
 
     fun topic(id: String): DialogueTopic? = topics.firstOrNull { it.id == id }
+        ?: id.removePrefix("gift_").takeIf { id.startsWith("gift_") }?.let { name -> GiftKind.entries.firstOrNull { it.name == name } }?.let(::giftTopic)
+
+    /** One synthetic topic per gift kind the player carries. */
+    fun giftTopic(kind: GiftKind) = DialogueTopic(
+        "gift_${kind.name}", TopicKind.FRIENDLY, "${kind.label} schenken", "Du reichst {npc} ${kind.label}.",
+        special = "gift", successLines = listOf(""),
+    )
 }

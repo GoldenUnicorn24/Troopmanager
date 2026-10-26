@@ -123,6 +123,9 @@ object NpcEngine {
         NpcRole.NOBLE -> NpcRoutine(LifePlace.AWAY, LifePlace.AWAY, LifePlace.TOWN, LifePlace.TAVERN, LifePlace.AWAY, random.around(30, 10))
         NpcRole.BARD -> NpcRoutine(LifePlace.AWAY, LifePlace.TOWN, LifePlace.MARKET, LifePlace.TAVERN, LifePlace.TAVERN, random.around(80, 10))
         NpcRole.COMPANION -> NpcRoutine(LifePlace.MARKET, LifePlace.TOWN, LifePlace.MARKET, LifePlace.TAVERN, LifePlace.AWAY, 60)
+        NpcRole.SELLSWORD -> NpcRoutine(LifePlace.BARRACKS, LifePlace.TAVERN, LifePlace.BARRACKS, LifePlace.TAVERN, LifePlace.TAVERN, 70)
+        NpcRole.SMITH -> NpcRoutine(LifePlace.MARKET, LifePlace.MARKET, LifePlace.MARKET, LifePlace.TAVERN, LifePlace.AWAY, 85)
+        NpcRole.HEALER -> NpcRoutine(LifePlace.MARKET, LifePlace.MARKET, LifePlace.MARKET, LifePlace.AWAY, LifePlace.AWAY, 90)
     }
 
     private fun professionFor(role: NpcRole, gender: Gender, random: Random): String = when (role) {
@@ -137,6 +140,9 @@ object NpcEngine {
         NpcRole.NOBLE -> if (gender == Gender.FEMALE) "Edeldame (inkognito)" else "Edelmann (inkognito)"
         NpcRole.BARD -> if (gender == Gender.FEMALE) "Spielfrau" else "Spielmann"
         NpcRole.COMPANION -> "Kriegerin"
+        NpcRole.SELLSWORD -> if (gender == Gender.FEMALE) "Söldnerin" else "Söldner"
+        NpcRole.SMITH -> if (gender == Gender.FEMALE) "Schmiedin" else "Schmied"
+        NpcRole.HEALER -> if (gender == Gender.FEMALE) "Heilerin" else "Heiler"
     }
 
     private fun standingFor(role: NpcRole): String = when (role) {
@@ -300,6 +306,8 @@ object NpcEngine {
      */
     fun placeOf(npc: NpcIdentity, day: Int, slot: TimeSlot, world: GameState? = null): Pair<String, LifePlace> {
         if (npc.departed) return npc.homeProvinceId to LifePlace.AWAY
+        // Followers go where the player goes.
+        if (world != null && world.life.inParty(npc.id)) return world.life.provinceId to world.life.place
         val usual = npc.routine.at(slot)
         val roll = dailyRoll(npc, day, slot)
         if (npc.role == NpcRole.TRAVELER || npc.role == NpcRole.NOBLE) {

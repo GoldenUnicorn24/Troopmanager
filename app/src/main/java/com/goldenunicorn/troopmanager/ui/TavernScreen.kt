@@ -343,7 +343,7 @@ private fun RoomPanel(state: GameState, onState: (GameState) -> Unit, onNotice: 
 // ------------------------------------------------------------ conversation
 
 @Composable
-private fun ConversationPanel(
+internal fun ConversationPanel(
     state: GameState,
     npc: NpcIdentity,
     npcLine: String,

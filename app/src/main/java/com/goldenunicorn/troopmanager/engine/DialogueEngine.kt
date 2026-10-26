@@ -104,7 +104,8 @@ object DialogueEngine {
 
     fun options(state: GameState, npcId: String): List<Option> {
         val npc = state.life.npc(npcId) ?: return emptyList()
-        return DialogueCatalog.topics.mapNotNull { topic ->
+        val gifts = state.life.gifts.filter { it.value > 0 }.keys.map(DialogueCatalog::giftTopic)
+        return (DialogueCatalog.topics + gifts).mapNotNull { topic ->
             val structural = structuralBlock(state, npc, topic)
             if (structural) return@mapNotNull null
             val reason = softBlock(state, npc, topic)
@@ -129,6 +130,10 @@ object DialogueEngine {
         if (q.needsGrievance && !grievance(npc)) return true
         if (topic.id == "flirt" && r.stage.ordinal >= SocialStage.PARTNER.ordinal) return true
         if (topic.id == "talk_interest" && npc.interests.isEmpty()) return true
+        if (topic.id == "invite" && (!PartyEngine.canAsk(state, npc) || state.life.landed)) return true
+        if (topic.id == "dismiss" && !state.life.inParty(npc.id)) return true
+        if (topic.id == "hire" && state.life.landed) return true
+        if (topic.special == "gift" && npc.role == NpcRole.INNKEEPER && npc.relation.timesMet < 2) return true
         return false
     }
 
@@ -162,6 +167,7 @@ object DialogueEngine {
         val topic = DialogueCatalog.topic(topicId) ?: return Reply(state, "", Outcome.UNAVAILABLE)
         if (structuralBlock(state, npc, topic)) return Reply(state, "", Outcome.UNAVAILABLE, summary = "Das passt gerade nicht.")
         softBlock(state, npc, topic)?.let { return Reply(state, "", Outcome.UNAVAILABLE, summary = it) }
+        topic.special?.let { return special(state, npc, topic) }
         var next = state
         if (topic.req.cost > 0) next = LifeEngine.pay(next, LifeEngine.priced(next, topic.req.cost))
         val playerLine = fill(topic.playerLine, next, npc)
@@ -215,6 +221,27 @@ object DialogueEngine {
         val verdict = when (outcome) { Outcome.SUCCESS -> "gut aufgenommen"; Outcome.FAILURE -> "misslungen"; Outcome.DECLINED -> "abgelehnt"; Outcome.UNAVAILABLE -> "nicht möglich" }
         next = LifeEngine.log(next, "${fill(topic.label, next, npc)} – ${npc.name}: $verdict")
         return Reply(next, line, outcome, playerLine, fade, brawl = outcome == Outcome.FAILURE && topic.failure.brawl, summary = (summary(npc, updated) + extra).trim())
+    }
+
+    /** Topics that start something bigger than a line of dialogue. */
+    private fun special(state: GameState, npc: NpcIdentity, topic: DialogueTopic): Reply {
+        val playerLine = fill(topic.playerLine, state, npc)
+        fun mark(s: GameState) = s.life.npc(npc.id)?.let { n -> LifeEngine.updateNpc(s, n.copy(relation = n.relation.copy(topicsThisSlot = n.relation.topicsThisSlot + topic.id))) } ?: s
+        return when (topic.special) {
+            "invite" -> {
+                val r = PartyEngine.invite(state, npc.id)
+                Reply(mark(r.state), r.message, if (r.state.life.inParty(npc.id)) Outcome.SUCCESS else Outcome.DECLINED, playerLine,
+                    summary = if (r.state.life.inParty(npc.id)) "${npc.firstName} gehört jetzt zu deinem Gefolge." else "")
+            }
+            "dismiss" -> PartyEngine.dismiss(state, npc.id).let { Reply(it.state, it.message, Outcome.SUCCESS, playerLine) }
+            "hire" -> PartyEngine.hire(state, npc.id).let { Reply(it.state, it.message, if (it.state.life.party.size > state.life.party.size) Outcome.SUCCESS else Outcome.FAILURE, playerLine) }
+            "duel" -> SkirmishEngine.duel(state, npc.id).let { Reply(mark(it.state), it.message, if (it.state.life.skirmish != null) Outcome.SUCCESS else Outcome.FAILURE, playerLine) }
+            "gift" -> {
+                val kind = GiftKind.entries.first { "gift_${it.name}" == topic.id }
+                MarketEngine.give(state, npc.id, kind)
+            }
+            else -> Reply(state, "", Outcome.UNAVAILABLE)
+        }
     }
 
     private fun newStage(current: SocialStage, target: SocialStage, topic: DialogueTopic): SocialStage =
