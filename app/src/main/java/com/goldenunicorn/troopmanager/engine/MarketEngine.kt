@@ -155,6 +155,7 @@ object MarketEngine {
         updated = updated.copy(relation = updated.relation.copy(stage = if (updated.relation.stage.romantic) updated.relation.stage else NpcEngine.stageFor(updated.relation)))
         var next = state.copy(life = state.life.copy(gifts = state.life.gifts + (kind to ((state.life.gifts[kind] ?: 1) - 1))))
         next = LifeEngine.updateNpc(next, updated)
+        next = NpcSocialEngine.ripple(next, npc.id, value)
         val line = if (taste) "${npc.firstName} strahlt. „${kind.label}? Woher wusstest du…? Danke, wirklich.“"
             else "„Oh. Danke.“ ${npc.firstName} lächelt höflich."
         return DialogueEngine.Reply(LifeEngine.log(next, "${kind.label} an ${npc.name} verschenkt."), line, DialogueEngine.Outcome.SUCCESS,

@@ -157,7 +157,7 @@ object TavernEngine {
     fun enter(state: GameState): LifeEngine.Result {
         if (LifeEngine.town(state) == null) return LifeEngine.Result(state, "Hier gibt es keine Taverne.")
         if (state.life.travel != null) return LifeEngine.Result(state, "Du bist unterwegs.")
-        val next = state.copy(life = state.life.copy(place = LifePlace.TAVERN))
+        val next = NpcSocialEngine.ensureBonds(state.copy(life = state.life.copy(place = LifePlace.TAVERN)))
         val town = LifeEngine.town(next)!!
         val count = present(next).size
         val mood = when {
@@ -215,6 +215,7 @@ object TavernEngine {
         val variance = Math.floorMod(npc.id.hashCode() + state.day * 11, 21) - 10
         val won = me + variance >= them
         var next = state.copy(life = state.life.copy(brawls = state.life.brawls + 1, fatigue = (state.life.fatigue + if (won) 15 else 30).coerceAtMost(100)))
+        next = NpcSocialEngine.ripple(next, npc.id, -12)
         val keeper = next.life.npcs.firstOrNull { it.role == NpcRole.INNKEEPER && it.homeProvinceId == next.life.provinceId }
         if (keeper != null) next = LifeEngine.updateNpc(next, NpcEngine.remember(keeper.copy(relation = keeper.relation.copy(affinity = keeper.relation.affinity - 8)),
             "brawl_${next.day}", next.day, "du hast in meiner Schänke eine Schlägerei angefangen", -2))

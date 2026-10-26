@@ -101,7 +101,7 @@ enum class LifePlace(val label: String, val walkable: Boolean) {
     TOWN("Stadtplatz", false),
     TAVERN("Taverne", true),
     MARKET("Markt", true),
-    BARRACKS("Kaserne", false),
+    BARRACKS("Kaserne", true),
     AWAY("Unterwegs", false),
 }
 
@@ -276,6 +276,7 @@ enum class NpcRole(val label: String) {
     SELLSWORD("Söldner"),
     SMITH("Schmied"),
     HEALER("Heilerin"),
+    SERGEANT("Ausbilder"),
 }
 
 /** Social stage between the player and one person. Romance stages are never reached automatically. */
@@ -476,6 +477,13 @@ data class LifeState(
     val skirmish: Skirmish? = null,
     val battles: Int = 0,
     val battleVictories: Int = 0,
+    // ---- Milestone 3: people among people, the barracks
+    val bonds: List<NpcBond> = emptyList(),
+    val trainingDay: Int = -1,
+    val trainingSessions: Int = 0,
+    val enlisted: Boolean = false,
+    val lastGuardDay: Int = -1,
+    val lastSocialDay: Int = 0,
     val nextId: Long = 1,
 ) {
     fun npc(id: String): NpcIdentity? = npcs.firstOrNull { it.id == id }
@@ -483,6 +491,16 @@ data class LifeState(
     val partner: NpcIdentity? get() = npcs.firstOrNull { it.relation.stage in setOf(SocialStage.PARTNER, SocialStage.ENGAGED, SocialStage.MARRIED) }
     fun inParty(id: String): Boolean = party.any { it.npcId == id }
     val captive: Boolean get() = captiveUntil != null
+}
+
+@Serializable
+enum class BondKind(val label: String) { FRIENDS("Befreundet"), RIVALS("Verfeindet"), COUPLE("Ein Paar"), SIBLINGS("Geschwister") }
+
+/** A relationship between two non-player people. Players' deeds ripple along these lines. */
+@Serializable
+data class NpcBond(val a: String, val b: String, val kind: BondKind, val strength: Int = 50, val sinceDay: Int = 0) {
+    fun involves(id: String) = a == id || b == id
+    fun other(id: String) = if (a == id) b else a
 }
 
 /** Someone travelling and fighting with the player: a friend who joined, or a paid sellsword. */

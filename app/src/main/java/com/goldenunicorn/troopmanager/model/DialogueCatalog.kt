@@ -55,6 +55,8 @@ data class TopicEffect(
     val brawl: Boolean = false,
     val passSlots: Int = 0,
     val clearGrievance: Boolean = false,
+    /** Teaches the player: attribute name (sword, bow, riding, leadership, tactics, diplomacy) +1. */
+    val teaches: String? = null,
 )
 
 data class DialogueTopic(
@@ -234,6 +236,57 @@ object DialogueCatalog {
             success = TopicEffect(affinity = -25, trust = -20, attraction = -20, stage = SocialStage.FRIEND, memoryKey = "breakup", memoryText = "du hast dich von mir getrennt", memoryWeight = -3),
             successLines = listOf("{npc} nickt langsam. „Wenn du meinst.“ Die Stimme bleibt fest. Die Augen nicht."),
             coolSuccessLines = listOf("„Gut. Dann weiß ich, woran ich bin.“"),
+        ),
+        // ------------------------------------------------------------ what each kind of person knows (milestone 3)
+        DialogueTopic(
+            "local_history", TopicKind.TALK, "Erzähl mir von {town}", "„Was ist das hier eigentlich für ein Ort?“",
+            req = TopicReq(roles = setOf(NpcRole.INNKEEPER, NpcRole.REGULAR), lacksMemory = "told_town"),
+            success = TopicEffect(affinity = 4, trust = 3, memoryKey = "told_town", memoryText = "ich habe dir von unserer Stadt erzählt"),
+            successLines = listOf("„{townFlavor}“ {npc} lehnt sich zurück. „Und wer hier lange genug sitzt, hört alles.“"),
+        ),
+        DialogueTopic(
+            "tactics_talk", TopicKind.TALK, "Was macht einen guten Hauptmann aus?", "„Du führst Leute. Worauf kommt es an?“",
+            req = TopicReq(roles = setOf(NpcRole.MERCENARY_CAPTAIN, NpcRole.SERGEANT), minStage = SocialStage.ACQUAINTANCE, lacksMemory = "taught_tactics"),
+            difficulty = 30, traits = mapOf(Trait.WARMTH to 10, Trait.HONOR to 10),
+            success = TopicEffect(affinity = 4, trust = 4, teaches = "tactics", memoryKey = "taught_tactics", memoryText = "ich habe dir beigebracht, wie man Leute führt", memoryWeight = 2),
+            failure = TopicEffect(affinity = 1),
+            successLines = listOf("„Nie die Flanke offen lassen. Nie den Rückzug vergessen. Und nie die Leute hungern lassen.“ (+1 Taktik)"),
+            failLines = listOf("„Das lernt man nicht beim Bier. Komm wieder, wenn du Blut gesehen hast.“"),
+        ),
+        DialogueTopic(
+            "politics", TopicKind.TALK, "Wie steht es um die Kronen?", "„Ihr seht nicht aus wie jemand, der nur auf der Durchreise ist. Was hört man aus den Höfen?“",
+            req = TopicReq(roles = setOf(NpcRole.NOBLE), minTrust = 15, lacksMemory = "told_politics"),
+            difficulty = 45, traits = mapOf(Trait.CURIOSITY to 15, Trait.HONOR to -10),
+            success = TopicEffect(trust = 6, teaches = "diplomacy", memoryKey = "told_politics", memoryText = "ich habe dir mehr über die Höfe erzählt, als ich sollte", memoryWeight = 2),
+            failure = TopicEffect(trust = -3),
+            successLines = listOf("Ein Blick zur Tür, dann leise: „{crownNews}“ (+1 Diplomatie)"),
+            failLines = listOf("„Ich weiß nicht, wovon Ihr sprecht. Ich bin Tuchhändler.“"),
+        ),
+        DialogueTopic(
+            "learn_song", TopicKind.FRIENDLY, "Bring mir ein Lied bei", "„Das Lied von vorhin – bringst du es mir bei?“",
+            req = TopicReq(roles = setOf(NpcRole.BARD), lacksMemory = "taught_song"),
+            difficulty = 25, traits = mapOf(Trait.HUMOR to 15, Trait.WARMTH to 10),
+            success = TopicEffect(affinity = 8, teaches = "diplomacy", memoryKey = "taught_song", memoryText = "ich habe dir das Lied von der letzten Mauer beigebracht", memoryWeight = 2),
+            successLines = listOf("Eine Stunde, drei Strophen und viel Gelächter später kannst du es halbwegs. (+1 Diplomatie)"),
+            failLines = listOf("„Nicht heute. Meine Finger sind steif.“"),
+        ),
+        DialogueTopic(
+            "trade_tips", TopicKind.BUSINESS, "Wo lohnt sich der Handel?", "„Du kennst die Märkte. Wo wird gerade Geld verdient?“",
+            req = TopicReq(roles = setOf(NpcRole.MERCHANT), lacksMemory = "trade_tips"),
+            success = TopicEffect(affinity = 3, memoryKey = "trade_tips", memoryText = "ich habe dir einen Handelstipp gegeben"),
+            successLines = listOf("„{tradeTip}“"),
+        ),
+        DialogueTopic(
+            "ask_travels", TopicKind.TALK, "Wen hast du unterwegs getroffen?", "„Du kommst viel herum. Wer ist dir auf der Straße begegnet?“",
+            req = TopicReq(roles = setOf(NpcRole.TRAVELER, NpcRole.BARD, NpcRole.MERCHANT)),
+            success = TopicEffect(affinity = 2),
+            successLines = listOf("„{travelRumor}“"),
+        ),
+        DialogueTopic(
+            "ask_people", TopicKind.TALK, "Wer gehört hier zu wem?", "„Erzähl mal – wer versteht sich hier mit wem, und wer nicht?“",
+            req = TopicReq(minStage = SocialStage.ACQUAINTANCE, roles = setOf(NpcRole.INNKEEPER, NpcRole.REGULAR, NpcRole.BARD)),
+            success = TopicEffect(affinity = 1),
+            successLines = listOf("„{bondGossip}“"),
         ),
         // ------------------------------------------------------------ road and blade (milestone 2)
         DialogueTopic(

@@ -259,6 +259,7 @@ object GameEngine {
         next = CampaignPulseEngine.tick(before, next)
         next = QuestJournalEngine.refresh(next)
         next = LifeEngine.dailyLife(next)
+        if (next.life.npcs.isNotEmpty()) next = NpcSocialEngine.daily(next)
         next = next.copy(dailyReport = DailyReportEngine.build(before, next), chronicle = next.chronicle.takeLast(CHRONICLE_LIMIT))
         val message =
             if (next.battleSession?.isActive == true)

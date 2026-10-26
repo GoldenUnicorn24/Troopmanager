@@ -307,6 +307,7 @@ object LifeEngine {
         next = arriveIfTraveling(next)
         next = worldPulse(next)
         next = deliverGossip(next)
+        next = NpcSocialEngine.daily(next)
         next = refreshJobs(next)
         next = next.copy(chronicle = next.chronicle.takeLast(CHRONICLE_LIMIT))
         val headline = next.life.news.lastOrNull { it.day == next.day }?.title
@@ -674,6 +675,7 @@ object LifeEngine {
         require(life.party.size <= PartyEngine.MAX_PARTY && life.party.all { m -> life.npc(m.npcId) != null }) { "Ungültiges Gefolge." }
         require(life.gear.weaponTier in GearCatalog.weapons.indices && life.gear.armorTier in GearCatalog.armor.indices) { "Ungültige Ausrüstung." }
         require(life.gifts.values.all { it >= 0 }) { "Ungültige Geschenke." }
+        require(life.bonds.all { b -> b.a != b.b && life.npc(b.a) != null && life.npc(b.b) != null && b.strength in 0..100 }) { "Ungültige Beziehungen." }
         require(life.npcs.map { it.id }.distinct().size == life.npcs.size) { "Doppelte Personen." }
         life.npcs.forEach(NpcEngine::validate)
         require(life.companionNpcId == null || life.npc(life.companionNpcId) != null) { "Gefährtin fehlt." }

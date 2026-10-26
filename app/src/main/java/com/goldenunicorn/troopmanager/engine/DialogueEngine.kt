@@ -201,10 +201,18 @@ object DialogueEngine {
             stage = if (effect.stage != null && outcome == Outcome.SUCCESS) newStage(updated.relation.stage, effect.stage, topic) else NpcEngine.stageFor(updated.relation),
         ))
         next = LifeEngine.updateNpc(next, updated)
+        // Those close to this person feel a little of it too.
+        next = NpcSocialEngine.ripple(next, npcId, updated.relation.affinity - npc.relation.affinity)
+        effect.teaches?.takeIf { outcome == Outcome.SUCCESS }?.let { skill -> next = next.copy(player = BarracksEngine.raise(next.player, skill, 1)) }
         if (effect.renown != 0) next = LifeEngine.addRenown(next, effect.renown)
         if (effect.passSlots > 0) next = LifeEngine.passTime(next, effect.passSlots).state
         var fade: String? = null
         var extra = ""
+        if (outcome == Outcome.SUCCESS && (topic.id == "flirt" || topic.id == "kiss")) {
+            val j = NpcSocialEngine.jealousy(next, npcId, if (topic.id == "kiss") "geküsst" else "geflirtet")
+            next = j.first
+            extra += j.second
+        }
         if (outcome == Outcome.SUCCESS && (topic.id == "kiss" || effect.intimate)) {
             val affair = affair(next, updated)
             next = affair.first
@@ -287,7 +295,7 @@ object DialogueEngine {
             "propose", "wedding" -> r.trust + r.affinity / 2 + r.attraction / 3 + p.honor / 8
             else -> r.attraction + r.trust
         }
-        val needed = when (topic.id) {
+        val needed = NpcSocialEngine.loyaltyPenalty(state, npc) + when (topic.id) {
             "kiss" -> 72
             "night" -> if (r.stage.ordinal >= SocialStage.PARTNER.ordinal) 80 else 98
             "commit" -> 105
@@ -379,5 +387,10 @@ object DialogueEngine {
             .replace("{profession}", npc.profession)
             .replace("{like}", npc.likes.firstOrNull() ?: "Ehrlichkeit")
             .replace("{dislike}", npc.dislikes.firstOrNull() ?: "Lügen")
+            .replace("{townFlavor}", Towns.byProvince(state.life.provinceId)?.flavor ?: "Ein Ort wie jeder andere.")
+            .let { if ("{crownNews}" in it) it.replace("{crownNews}", NpcSocialEngine.crownNews(state)) else it }
+            .let { if ("{tradeTip}" in it) it.replace("{tradeTip}", NpcSocialEngine.tradeTip(state)) else it }
+            .let { if ("{travelRumor}" in it) it.replace("{travelRumor}", NpcSocialEngine.travelRumor(state, npc)) else it }
+            .let { if ("{bondGossip}" in it) it.replace("{bondGossip}", NpcSocialEngine.bondGossip(state, npc)) else it }
     }
 }
