@@ -1,3 +1,8 @@
+# Aktueller Arbeitsstand: v2.2.0 Project Rebirth (Branch `claude/project-rebirth-rpg`, PR #14)
+
+Lebensschicht (`LifeState`, Save-Schema 6), vier Spielmodi, Gefährtin-Frage, Charaktereditor, begehbare Taverne, Markt und Kaserne, Gefolge, persönliche Kämpfe, Wunden, Gefangenschaft, Beziehungsnetz der NPCs.
+Zuerst `docs/PROJECT-REBIRTH-AUDIT.md`, `docs/RPG-WORLD-ARCHITECTURE.md` und `docs/PROJECT-REBIRTH-ROADMAP.md` lesen.
+
 # Aktueller Arbeitsstand: v1.3 (Branch claude/v1.1-koenigreich-overhaul = main, Details in docs/V1.3-AKTE-UND-RIVALEN.md)
 
 # Vorheriger Stand: v1.0 Sprint A

@@ -240,7 +240,7 @@ data class Realm(
 
 @Serializable
 data class GameState(
-    val version: Int = 5,
+    val version: Int = 6,
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),
@@ -264,6 +264,8 @@ data class GameState(
     /** v1.1 crown layer: provinces, trade, mercenaries, heroines, combat arts. */
     val crown: CrownState = CrownState(),
     val reign: ReignState = ReignState(),
+    /** Project Rebirth: personal RPG layer (mode, whereabouts, people). Schema 6. */
+    val life: LifeState = LifeState(),
     val settings: GameSettings = GameSettings(),
     /** Cultures deliberately chosen when the realm was founded. Empty only on legacy saves. */
     val foundingCultures: Set<Culture> = emptySet(),

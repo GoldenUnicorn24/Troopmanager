@@ -227,6 +227,8 @@ object GameEngine {
 
     fun advanceDay(state: GameState): ActionResult {
         if (busy(state)) return ActionResult(state, "Entscheide zuerst die laufende Schlacht.")
+        // Landless characters live in the personal layer; their dormant keep is not simulated.
+        if (!state.life.landed) return LifeEngine.advanceLandlessDay(state).let { ActionResult(it.state, it.message) }
         val before = state
         var next = EconomyEngine.day(CityEngine.tick(WorldEngine.initialize(ActEngine.reconcile(CrownWarEngine.reconcile(CrownEngine.initialize(state))))))
         next = ResearchEngine.tick(next)
@@ -256,6 +258,8 @@ object GameEngine {
         next = CoRulerEngine.refreshRegency(PresenceEngine.day(next))
         next = CampaignPulseEngine.tick(before, next)
         next = QuestJournalEngine.refresh(next)
+        next = LifeEngine.dailyLife(next)
+        if (next.life.npcs.isNotEmpty()) next = NpcSocialEngine.daily(next)
         next = next.copy(dailyReport = DailyReportEngine.build(before, next), chronicle = next.chronicle.takeLast(CHRONICLE_LIMIT))
         val message =
             if (next.battleSession?.isActive == true)

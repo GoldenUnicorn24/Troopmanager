@@ -52,10 +52,14 @@ jobs:
           fi
 
       - name: Run unit tests
-        run: gradle :app:testDebugUnitTest --stacktrace
+        run: |
+          gradle :app:testDebugUnitTest --stacktrace > /tmp/unit.log 2>&1 || { python3 .github/annotate.py /tmp/unit.log; exit 1; }
+          tail -5 /tmp/unit.log
 
       - name: Android lint
-        run: gradle :app:lintDebug --stacktrace
+        run: |
+          gradle :app:lintDebug --stacktrace > /tmp/lint.log 2>&1 || { python3 .github/annotate.py /tmp/lint.log app/build/reports/lint-results-debug.txt; exit 1; }
+          tail -5 /tmp/lint.log
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
@@ -70,13 +74,13 @@ jobs:
           from pathlib import Path
           badging = Path("build/apk-badging.txt").read_text()
           assert "name='com.goldenunicorn.troopmanager'" in badging
-          assert "versionCode='51'" in badging and "versionName='2.1.0'" in badging
+          assert "versionCode='52'" in badging and "versionName='2.2.0'" in badging
           PYAPK
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v2.1.0-debug
+          name: Realm-of-the-Last-Wall-v2.2.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
@@ -112,7 +116,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v2.1.0-verification
+          name: Realm-of-the-Last-Wall-v2.2.0-verification
           path: |
             app/build/test-results/testDebugUnitTest
             app/build/reports/tests/testDebugUnitTest
@@ -184,7 +188,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Realm-of-the-Last-Wall-v2.1.0-battle-ui
+          name: Realm-of-the-Last-Wall-v2.2.0-battle-ui
           path: |
             build/ui-screenshots
             app/build/reports/androidTests/connected

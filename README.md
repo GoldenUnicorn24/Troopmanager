@@ -1,6 +1,10 @@
-# Realm of the Last Wall — Troopmanager v2.1.0
+# Realm of the Last Wall — Troopmanager v2.2.0
 
 **Download der neuesten Testversion (ohne Login):** [Realm-of-the-Last-Wall.apk](https://github.com/GoldenUnicorn24/Troopmanager/releases/download/dev-latest/Realm-of-the-Last-Wall.apk)
+
+## v2.2: Project Rebirth – vom Niemand zum König
+
+Ein neuer Anfang als Rollenspiel: vier Spielarten, Charakter-Editor, die Frage nach der Gefährtin, sieben Städte mit begehbarer Taverne, Markt, Kaserne und Burghof, über 70 dauerhafte Personen mit Erinnerungen und Beziehungen, Wetter und eigenen Preisen je Stadt, Gefolge, persönliche Kämpfe, Lehnsaufträge, Ritterschlag und Turniere – und der Lehnseid, mit dem das klassische Strategiespiel auf derselben Welt beginnt. Siehe [v2.2](docs/V2.2-PROJECT-REBIRTH.md).
 
 ## v2.1: Look & Feel
 

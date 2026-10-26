@@ -5,7 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ class TourActivity : ComponentActivity() {
         var page by mutableStateOf("spot:INBOX")
         var latestState: GameState? = null
         val rich: GameState by lazy { TourFixture.richState() }
+        val life: GameState by lazy { TourFixture.lifeState() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +34,19 @@ class TourActivity : ComponentActivity() {
                     key(current) {
                         var state by remember { mutableStateOf(when {
                             current.startsWith("battle") -> TourFixture.battle(rich)
+                            current == "market" -> TourFixture.roadState()
+                            current == "barracks" -> com.goldenunicorn.troopmanager.engine.BarracksEngine.enter(TourFixture.roadState().let { it.copy(life = it.life.copy(timeSlot = TimeSlot.NOON)) }).state
+                            current == "castle" -> com.goldenunicorn.troopmanager.engine.CastleEngine.let { c ->
+                                val base = TourFixture.roadState().let { it.copy(day = 14, life = it.life.copy(timeSlot = TimeSlot.NOON, renown = 40)) }
+                                c.askForTask(c.enter(base).state).state
+                            }
+                            current == "ruler-castle" -> com.goldenunicorn.troopmanager.engine.CastleEngine.enter(
+                                com.goldenunicorn.troopmanager.engine.LifeEngine.ensurePeople(rich).let { it.copy(life = it.life.copy(timeSlot = TimeSlot.MORNING, knighted = true)) }).state
+                            current == "skirmish" -> TourFixture.skirmishState()
+                            current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
+                            current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
+                            current.startsWith("life") -> life
+                            current.startsWith("tavern") -> life.copy(life = life.life.copy(place = LifePlace.TAVERN))
                             current == "scene" -> rich.copy(crown = rich.crown.copy(saga = rich.crown.saga.copy(pendingScene =
                                 SagaScene("march_night", "alina", "Mira hat einen Plan", "Marsch nach Rabenfurt",
                                     "Mira breitet eine Karte im Zelt aus. „Sie erwarten uns am Tag. Wenn wir heute Nacht angreifen, sind sie halb im Schlaf. Ich führe die Vorhut.“",
@@ -45,6 +60,16 @@ class TourActivity : ComponentActivity() {
                         when {
                             current == "menu" -> MainMenu(GameUiState(inMenu = true, hasSave = true), controller)
                             current == "create" -> CharacterCreation({}, {})
+                            current.startsWith("wizard-") -> current.removePrefix("wizard-").toInt().let { step ->
+                                NewGameWizard({}, {}, initialStep = step, initialCompanion = if (step >= 4) CompanionChoice.FULL else null)
+                            }
+                            current.startsWith("life-") -> LifeShell(state, { state = it }, {}, {}, initialTab = current.removePrefix("life-").toInt())
+                            current == "tavern" -> LifeShell(state, { state = it }, {}, {})
+                            current == "market" || current == "skirmish" || current == "captive" || current == "barracks" || current == "castle" -> LifeShell(state, { state = it }, {}, {})
+                            current == "ruler-castle" -> CastleScreen(state, { state = it }, {}, initialPanel = "lord")
+                            current == "party" -> LifeShell(state, { state = it }, {}, {}, initialTab = 2)
+                            current == "tavern-talk" -> LifeShell(state, { state = it }, {}, {}, initialTalk = "companion")
+                            current == "portraits" -> PortraitComparison(life)
                             current.startsWith("spot:") -> GameShell(state, { state = it }, {}, {}, {}, {}, controller,
                                 initialSpot = Spot.valueOf(current.removePrefix("spot:")))
                             else -> GameShell(state, { state = it }, {}, {}, {}, {}, controller)
@@ -52,6 +77,32 @@ class TourActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+}
+
+/** Old drawn portrait next to the new renderer, for the art comparison screenshot. */
+@androidx.compose.runtime.Composable
+private fun PortraitComparison(state: GameState) {
+    val player = state.life.appearance!!
+    val mira = state.life.companion!!
+    androidx.compose.foundation.layout.Column(
+        Modifier.fillMaxSize().background(Ink).padding(12.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        androidx.compose.material3.Text("ALT (v2.1 DrawnPortrait)  ·  NEU (Rebirth-Renderer)", color = Gold)
+        androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            DrawnPortrait(player.toPortraitSpec(), Modifier.weight(1f).aspectRatio(1f))
+            PaintedPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
+        }
+        androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            DrawnPortrait(mira.appearance.toPortraitSpec(), Modifier.weight(1f).aspectRatio(1f))
+            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
+        }
+        androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+            PaintedPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
+            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
+            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.HEAD)
         }
     }
 }

@@ -9,7 +9,7 @@ import java.security.MessageDigest
 
 /** Android-independent, versioned save format. Invalid data is never silently a new game. */
 object SaveCodec {
-    const val CURRENT_VERSION = 5
+    const val CURRENT_VERSION = 6
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -90,7 +90,7 @@ object SaveCodec {
     private fun checksum(payload: String): String = MessageDigest.getInstance("SHA-256")
         .digest(payload.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 
-    private fun migrateSchemaFour(previous: GameState): GameState = previous.copy(version = 5)
+    private fun migrateSchemaFour(previous: GameState): GameState = previous.copy(version = CURRENT_VERSION)
 
     private fun requireCoreStructure(root: JsonObject, version: Int) {
         require(root["day"] is JsonPrimitive) { "Tag fehlt." }
@@ -345,6 +345,7 @@ object SaveCodec {
         CoRulerEngine.validate(state)
         DynastyEngine.validate(state)
         V065StateValidation.validate(state)
+        LifeEngine.validate(state)
         require(state.city.housingCapacity >= 0 && ResourceKind.entries.all { it.value(state.city.storageCapacity) >= 0 }) {
             "Ungültige Stadt- oder Lagerkapazität."
         }

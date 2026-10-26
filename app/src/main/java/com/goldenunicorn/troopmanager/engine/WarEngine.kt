@@ -452,13 +452,16 @@ object WarEngine {
             }
         }
         var playerStatus = state.war.playerCondition
-        if (session.participation == BattleParticipation.PERSONAL && session.minute > 0 && rng.nextDouble() < 0.10 + casualties.total.toDouble() / session.ownStart.coerceAtLeast(1) * 0.4) {
+        if (session.participation == BattleParticipation.PERSONAL && session.minute > 0 && rng.nextDouble() < (0.10 + casualties.total.toDouble() / session.ownStart.coerceAtLeast(1) * 0.4) * (1 - SkirmishEngine.armorBonus(state) / 100.0)) {
             playerStatus = when {
                 !victory && !session.orderedRetreat && rng.nextDouble() < 0.25 -> CombatantStatus.CAPTURED
                 state.settings.permadeath && state.settings.dynasty && rng.nextDouble() < 0.04 -> CombatantStatus.DEAD
                 else -> CombatantStatus.WOUNDED
             }
         }
+        // A wound taken in the line is the same wound the character carries in town (Project Rebirth).
+        val life = if (playerStatus == CombatantStatus.WOUNDED && state.war.playerCondition != CombatantStatus.WOUNDED)
+            state.life.copy(wound = maxOf(state.life.wound, 35)) else state.life
         val damage = state.war.buildingDamage.toMutableMap()
         if (session.tactic == Tactic.FORTIFY) {
             val integrityLost = ((session.replayStart?.realm?.wallIntegrity ?: 100) - session.wallIntegrity).coerceAtLeast(0)
@@ -507,6 +510,7 @@ object WarEngine {
                 population = population,
                 militaryStock = militaryStock,
                 battleSession = final,
+                life = life,
                 war =
                     state.war.copy(
                         wounded = wounded,
