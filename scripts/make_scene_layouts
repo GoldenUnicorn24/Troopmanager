@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Write reviewable scene registrations. Kotlin tests compare these with the actual engines."""
+import json
+from pathlib import Path
+from asset_contract import ROOT, ASSETS, SCENES
+
+def cells(xs,y):return {(x,y) for x in xs}
+wall=cells(range(12),0)
+blocked={
+ 'tavern':wall|cells(range(1,5),1)|cells(range(1,5),2)|{(3,6),(7,5),(9,7),(8,1),(9,1),(11,4),(11,5),(0,2),(0,3)},
+ 'market':wall|{(1,2),(2,2),(3,2),(8,2),(9,2),(10,2),(1,6),(2,6),(2,1),(9,1),(1,5),(6,4),(6,5),(11,6),(11,7),(4,1)},
+ 'barracks':wall|{(1,3),(3,3),(8,1),(10,1),(10,6),(11,6),(10,7),(11,7),(2,6),(3,6),(4,1),(5,1),(6,2)},
+ 'castle':wall|{(5,1),(6,1),(7,1),(6,2),(4,2),(8,2),(1,4),(2,4),(1,6),(2,6),(0,1),(11,1),(9,5),(10,5),(11,5)},
+}
+for scene,wall_tiles in SCENES.items():
+    factor=1440/(wall_tiles+9*.66); floor=wall_tiles*factor
+    layout={'version':1,'width':2160,'height':1440,'columns':12,'rows':9,'wallTiles':wall_tiles,'cellRatio':.66,'image':'day.webp',
+       'floorPolygon':[[0,floor],[2160,floor],[2160,1440],[0,1440]],
+       'cells':[{'x':x,'y':y,'centerX':(x+.5)*180,'centerY':(wall_tiles+(y+.5)*.66)*factor,'walkable':(x,y) not in blocked[scene]} for y in range(9) for x in range(12)],
+       'foreground':[{'row':y,'path':f'foreground_{y}.webp'} for y in range(9)]}
+    folder=ASSETS/'scenes'/scene;folder.mkdir(parents=True,exist_ok=True);(folder/'layout.json').write_text(json.dumps(layout,indent=2)+'\n')
+    svg=[f'<svg xmlns="http://www.w3.org/2000/svg" width="2160" height="1440" viewBox="0 0 2160 1440"><rect width="2160" height="1440" fill="#18232c"/><text x="40" y="70" fill="white" font-family="sans-serif" font-size="42">{scene}: Engine-Layout 12 × 9 – nur Hilfsraster</text>']
+    for c in layout['cells']:
+        x,y=c['centerX'],c['centerY'];color='#274b3a' if c['walkable'] else '#823e36'
+        svg.append(f'<rect x="{x-90}" y="{y-.33*factor}" width="180" height="{.66*factor}" fill="{color}" stroke="#e8d6a8" stroke-width="1"/><circle cx="{x}" cy="{y}" r="5" fill="#e8d6a8"/><text x="{x-35}" y="{y-12}" fill="white" font-family="sans-serif" font-size="24">{c["x"]},{c["y"]}</text>')
+    svg.append('</svg>'); guide=ROOT/'docs/assets'/f'{scene}-layout-guide.svg';guide.write_text(''.join(svg)+'\n')
+    print(f'{scene}: {len(blocked[scene])} gesperrte Zellen, {108-len(blocked[scene])} begehbare Zellen')

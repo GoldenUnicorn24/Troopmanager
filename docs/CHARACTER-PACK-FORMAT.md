@@ -47,6 +47,9 @@ JSON-Schema: [character-pack.schema.json](character-pack/character-pack.schema.j
 Das Beispielpaket enthält ausschließlich selbst erstellte geometrische Testgrafiken;
 es dient dem Format- und Importtest, nicht als realistisches Spiel-Artwork.
 
+Vor dem Paketimport kann „Neue Person“ oder eine vorhandene Zielperson (auch die Spielerfigur) gewählt werden.
+Der Import befüllt diesen Entwurf; erst Speichern übernimmt die geprüften Daten und Bilder.
+
 Paketexport öffnet das Android-Teilen-Menü mit einer zeitlich freigegebenen Content-URI aus
 dem App-Cache. Es wird kein Netzwerkdienst benötigt. Die Originale werden intern kopiert.
 

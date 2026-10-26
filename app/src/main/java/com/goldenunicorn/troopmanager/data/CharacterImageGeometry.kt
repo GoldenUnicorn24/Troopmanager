@@ -37,6 +37,7 @@ object CharacterImageFrames {
     // Head crop retains the standard eye position; all screens use this same window.
     val head = intArrayOf(192, 160, 640, 800)
     fun sampleSize(width: Int, height: Int, targetWidth: Int, targetHeight: Int): Int {
+        require(width > 0 && height > 0 && targetWidth > 0 && targetHeight > 0)
         var sample = 1
         while (width / (sample * 2) >= targetWidth && height / (sample * 2) >= targetHeight) sample *= 2
         return sample

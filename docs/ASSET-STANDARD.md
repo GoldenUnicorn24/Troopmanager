@@ -37,3 +37,13 @@ kein animiertes Modell; es bleibt auch beim Gehen und Sitzen in seiner importier
 
 Der bisherige JSON-Spielstandexport enthält **keine Bilddateien**. Die Oberfläche weist darauf hin.
 Das Kopieren einer JSON-Datei auf ein anderes Gerät sichert eigene Bilder daher nicht.
+
+## Für Produktion und Prüfung
+
+Produktionsliste und Prompt je Datei: [ASSET-PRODUCTION.md](ASSET-PRODUCTION.md).
+Prüfung: `python3 -m pip install -r scripts/requirements-assets.txt`, dann `python3 scripts/check_assets`.
+Der Standardaufruf schlägt bei fehlenden Bildern fehl. `--allow-missing` ist für ausdrücklich gewählte
+Fallback-Builds vorgesehen; ungültige vorhandene Dateien bleiben dabei Fehler. Ein grüner Fallback-Build
+behauptet daher nicht, dass ein gemalter Satz fertig ist. `python3 scripts/make_asset_guides /tmp/troop-guides`
+erzeugt alle Hilfsraster außerhalb der Laufzeit-Assets.
+Die tatsächliche Motivregistrierung, Stilkonsistenz und Bildrechte erfordern eine zusätzliche Sichtprüfung.

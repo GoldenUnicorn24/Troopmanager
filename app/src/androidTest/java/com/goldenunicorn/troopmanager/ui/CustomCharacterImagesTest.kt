@@ -1,6 +1,7 @@
 package com.goldenunicorn.troopmanager.ui
 
 import android.net.Uri
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.goldenunicorn.troopmanager.data.*
@@ -25,6 +26,7 @@ class CustomCharacterImagesTest {
             val stored = images.load(id, CharacterImageKind.PORTRAIT, 1024)!!
             assertEquals(1024, stored.width)
             assertEquals(1280, stored.height)
+            assertSame(images.load(id,CharacterImageKind.PORTRAIT,80),CustomCharacterImages(instrumentation.targetContext).load(id,CharacterImageKind.PORTRAIT,100))
             assertNotNull(CustomCharacterImages(instrumentation.targetContext).load(id, CharacterImageKind.FULLBODY))
         } finally {
             images.file(id, CharacterImageKind.PORTRAIT).parentFile!!.deleteRecursively()
@@ -71,5 +73,33 @@ class CustomCharacterImagesTest {
     @Test fun invalidFileCannotCreateAnImage() {
         try { images.decode("not an image".toByteArray(), CharacterImageKind.PORTRAIT); fail() }
         catch (expected: IllegalArgumentException) { assertTrue(expected.message!!.contains("JPG")) }
+    }
+    @Test fun transparentPortraitAndOffscreenBodyAreRejected() {
+        val empty = android.graphics.Bitmap.createBitmap(1024,1280,android.graphics.Bitmap.Config.ARGB_8888)
+        try { images.install(empty); fail("An empty portrait must not replace the fallback") }
+        catch (_: IllegalArgumentException) { } finally { empty.recycle() }
+        val body = images.decode(fixture("adult-fullbody.png"),CharacterImageKind.FULLBODY)
+        try {
+            images.crop(body,CharacterImageKind.FULLBODY,CharacterImageCrop(x = 2000f))
+            fail("Moving the entire figure out of frame must not create an invisible actor")
+        } catch (_: IllegalStateException) { } finally { body.recycle() }
+    }
+    @Test fun multiplyTintPreservesTransparentBorders() {
+        val source = androidx.compose.ui.graphics.ImageBitmap(32,32)
+        val output = androidx.compose.ui.graphics.ImageBitmap(32,32)
+        val scope = androidx.compose.ui.graphics.drawscope.CanvasDrawScope()
+        scope.draw(androidx.compose.ui.unit.Density(1f),androidx.compose.ui.unit.LayoutDirection.Ltr,
+            androidx.compose.ui.graphics.Canvas(source),androidx.compose.ui.geometry.Size(32f,32f)) {
+            drawRect(androidx.compose.ui.graphics.Color.Gray,androidx.compose.ui.geometry.Offset(8f,8f),androidx.compose.ui.geometry.Size(16f,16f))
+        }
+        scope.draw(androidx.compose.ui.unit.Density(1f),androidx.compose.ui.unit.LayoutDirection.Ltr,
+            androidx.compose.ui.graphics.Canvas(output),androidx.compose.ui.geometry.Size(32f,32f)) {
+            drawTintedArt(source,androidx.compose.ui.graphics.Color(.2f,.8f,.2f))
+        }
+        val bitmap = output.asAndroidBitmap()
+        assertEquals(0,android.graphics.Color.alpha(bitmap.getPixel(0,0)))
+        val center = bitmap.getPixel(16,16)
+        assertEquals(255,android.graphics.Color.alpha(center))
+        assertTrue(android.graphics.Color.green(center) > android.graphics.Color.red(center) + 50)
     }
 }

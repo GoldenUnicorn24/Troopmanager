@@ -34,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.goldenunicorn.troopmanager.data.ArtResolution
 import com.goldenunicorn.troopmanager.model.CharacterAppearance
 import com.goldenunicorn.troopmanager.model.Gender
 import kotlin.math.cos
@@ -43,9 +44,8 @@ import kotlin.math.sin
  * Project Rebirth character art.
  *
  * Two renderers share one contract ([CharacterAppearance]):
- *  1. [LayeredAssetPortrait]: composes painted raster layers from `assets/portraits/` (see
- *     docs/CHARACTER-CREATION-DESIGN.md for the exact file list). Used automatically once a
- *     complete base set is installed.
+ *  1. MixedPortrait composes each available painted layer with its procedural replacement
+ *     from `assets/portraits/` (exact contract in docs/CHARACTER-CREATION-DESIGN.md).
  *  2. [PaintedPortrait]: the shipped fallback. A resolution-independent vector painting with
  *     directional light, soft shadows, lid and lip modelling, strand-based hair and fabric/metal
  *     shading. It is honest procedural art, not a painted asset.
@@ -96,8 +96,8 @@ private fun seedOf(a: CharacterAppearance) = a.hashCode()
 /** The portrait used everywhere (editor, tavern dialogue, people lists). */
 @Composable
 fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    PersonImage(appearance.customImageId, null, framing, modifier) {
-        MixedPortrait(appearance, gender, modifier, framing)
+    PersonImage(appearance.customImageId, null, framing, modifier) { targetWidth ->
+        MixedPortrait(appearance, gender, modifier, framing, targetWidth)
     }
 }
 
@@ -811,8 +811,19 @@ private fun DrawScope.drawDiadem(a: CharacterAppearance, g: FaceGeometry) {
  * Full figure standing on [feet]. [unit] is roughly 1/128 of the figure box height. In the
  * tavern the same function draws every person at small size, so looks stay recognisable.
  */
-internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false, customImage: ImageBitmap? = null) {
-    if (customImage != null) { drawCustomFigure(customImage, feet, unit); return }
+internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false, customImage: ImageBitmap? = null, paintedArt: FigureArt? = null, light: Color = Color.White) {
+    if (customImage != null) { drawCustomFigure(customImage, feet, unit, light = light); return }
+    paintedArt?.get(a,gender,walkPhase,seated)?.let { drawCustomFigure(it,feet,unit,shadow = false,light = light); return }
+    if (light == Color.White) { drawProceduralFullFigure(a,gender,feet,unit,detailed,walkPhase,seated); return }
+    val topLeft = Offset(feet.x - unit * 52f,feet.y - unit * 160f)
+    val bounds = Size(unit * 104f,unit * 168f)
+    drawContext.canvas.saveLayer(androidx.compose.ui.geometry.Rect(topLeft,bounds),androidx.compose.ui.graphics.Paint())
+    drawProceduralFullFigure(a,gender,feet,unit,detailed,walkPhase,seated)
+    drawRect(light,topLeft,bounds,blendMode = BlendMode.Modulate)
+    drawContext.canvas.restore()
+}
+
+private fun DrawScope.drawProceduralFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float, seated: Boolean) {
     val female = gender == Gender.FEMALE
     val heightScale = .86f + a.height / 100f * .2f + if (female) -.03f else 0f
     val u = unit * heightScale
@@ -956,8 +967,8 @@ private fun DrawScope.drawTinyHead(a: CharacterAppearance, gender: Gender, c: Of
  *  beard/{beard}.webp, marks/scar_{scar}.webp, marks/tattoo_{tattoo}.webp
  *  outfit/{clothing}.webp, armor/{armor}.webp, cloak/{cloak}.webp (greyscale where tinted)
  *
- * [layersFor] returns null until at least the base face for the requested gender exists, so the
- * painted vector fallback is used and nothing pretends to be finished premium art.
+ * Each successfully decoded component is returned independently; absent components retain
+ * their procedural drawing. Asset decoding runs on IO and is cached by sampled resolution.
  */
 object PortraitAssets {
     data class Layer(val bitmap: ImageBitmap, val tint: Color?)
@@ -990,29 +1001,30 @@ object PortraitAssets {
         return wanted.mapNotNull { (key, spec) ->
             val path = "portraits/${spec.first}"
             if (path !in files(context)) return@mapNotNull null
-            val cacheKey = "$path:$targetWidth"
-            val image = cache.get(cacheKey) ?: runCatching {
+            val sample = com.goldenunicorn.troopmanager.data.CharacterImageFrames.sampleSize(1024,1280,targetWidth,targetWidth * 5 / 4)
+            val cacheKey = "${context.packageName}:$path:$sample"
+            val image = synchronized(cache) { cache.get(cacheKey) ?: runCatching {
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 context.assets.open(path).use { BitmapFactory.decodeStream(it, null, bounds) }
                 require(bounds.outWidth == 1024 && bounds.outHeight == 1280)
                 val options = BitmapFactory.Options().apply {
-                    inSampleSize = com.goldenunicorn.troopmanager.data.CharacterImageFrames.sampleSize(1024, 1280, targetWidth, targetWidth * 5 / 4)
+                    inSampleSize = sample
                 }
                 context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }?.takeIf { it.hasAlpha() }?.asImageBitmap()
-            }.getOrNull()?.also { cache.put(cacheKey, it) }
+            }.getOrNull()?.also { cache.put(cacheKey, it) } }
             image?.let { key to Layer(it, spec.second) }
         }.toMap()
     }
 }
 
 @Composable
-private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier, framing: Framing) {
-    if (framing == Framing.FULL) { PaintedPortrait(appearance, gender, modifier, framing); return }
+private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier, framing: Framing, targetWidth: Int) {
+    if (framing == Framing.FULL) { PaintedFigurePortrait(appearance, gender, modifier); return }
     val context = LocalContext.current
     val a = remember(appearance) { appearance.normalized() }
-    var layers by remember(a, gender) { mutableStateOf<Map<String, PortraitAssets.Layer>>(emptyMap()) }
-    LaunchedEffect(a, gender) {
-        layers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender) }
+    var layers by remember(a, gender, targetWidth) { mutableStateOf<Map<String, PortraitAssets.Layer>>(emptyMap()) }
+    LaunchedEffect(a, gender, targetWidth) {
+        layers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender, targetWidth) }
     }
     Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
         val image = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
@@ -1038,8 +1050,8 @@ private fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gen
     val shoulder = (if (gender == Gender.FEMALE) 25f else 29f) + (a.build - 1) * 2f + (a.muscle - 50) / 25f
     fun layer(key: String, fallback: () -> Unit) {
         val image = layers[key]
-        if (image == null) fallback() else drawImage(image.bitmap, dstSize = androidx.compose.ui.unit.IntSize(1024, 1280),
-            colorFilter = image.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) })
+        if (ArtResolution.source(false, image != null) == ArtResolution.Source.VECTOR) fallback()
+        else drawTintedArt(image!!.bitmap,image.tint,target = androidx.compose.ui.unit.IntSize(1024,1280))
     }
     layer("hair_back") { if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, center, s, gender) }
     if (a.cloak == 3 && "cloak" !in layers) drawHood(a, center, s)

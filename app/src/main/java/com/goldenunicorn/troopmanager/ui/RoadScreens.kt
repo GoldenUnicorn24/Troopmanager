@@ -58,9 +58,10 @@ import kotlin.math.sin
  */
 @Composable
 fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    val figures = rememberFigureArt(state)
+    val sceneArt = rememberSceneArt("market")
     val layout = MarketEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { MarketEngine.placements(state) }
+    val figures = rememberFigureArt(state, placements.map { it.npc })
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
     var walkId by remember { mutableLongStateOf(0L) }
     val pos = remember { Animatable(Offset(layout.entry.x.toFloat(), layout.entry.y.toFloat()), Offset.VectorConverter) }
@@ -157,17 +158,17 @@ fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                         },
                 ) {
                     if (tw < 2f) return@Canvas
-                    drawMarketSquare(state.life.timeSlot, tw, th, backH, time, MarketEngine.open(state))
+                    if (!drawSceneBackground(sceneArt, state.life.timeSlot, false)) drawMarketSquare(state.life.timeSlot, tw, th, backH, time, MarketEngine.open(state))
                     for (row in 0..8) {
-                        drawMarketRow(row, tw, th, backH, MarketEngine.open(state))
+                        if (!drawSceneForeground(sceneArt, row, state.life.timeSlot, false)) drawMarketRow(row, tw, th, backH, MarketEngine.open(state))
                         placements.filter { it.cell.y == row }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), backH + th * (p.cell.y + .5f) + th * .3f)
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, customImage = figures[p.npc.appearance.customImageId])
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, customImage = figures[p.npc.appearance.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, false))
                         }
                         if (floor(pos.value.y + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), backH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId])
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, false))
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }

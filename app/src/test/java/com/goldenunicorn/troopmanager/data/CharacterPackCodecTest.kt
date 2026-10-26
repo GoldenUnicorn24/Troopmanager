@@ -53,4 +53,9 @@ class CharacterPackCodecTest {
         }
     }
     @Test fun compressedOversizedEntryIsRejected() = rejects(zip(files = mapOf("portrait.webp" to ByteArray(CharacterPackCodec.MAX_IMAGE + 1))))
+    @Test fun excessiveJsonNestingIsRejectedBeforeParsing() {
+        try { CharacterPackCodec.parseManifest("[".repeat(1000) + "0" + "]".repeat(1000)); fail() }
+        catch (expected: IllegalArgumentException) { assertTrue(expected.message!!.contains("verschachtelt")) }
+    }
+
 }

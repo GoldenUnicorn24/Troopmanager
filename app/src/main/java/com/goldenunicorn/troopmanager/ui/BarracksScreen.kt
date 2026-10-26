@@ -50,9 +50,10 @@ import kotlin.math.sin
 /** The walkable barracks yard: drill sergeant, dummies, archery butts, sparring ring, horse pen, map table. */
 @Composable
 fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
-    val figures = rememberFigureArt(state)
+    val sceneArt = rememberSceneArt("barracks")
     val layout = BarracksEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { BarracksEngine.placements(state) }
+    val figures = rememberFigureArt(state, placements.map { it.npc })
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
     var walkId by remember { mutableLongStateOf(0L) }
     val pos = remember { Animatable(Offset(layout.entry.x.toFloat(), layout.entry.y.toFloat()), Offset.VectorConverter) }
@@ -138,17 +139,17 @@ fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (St
                         },
                 ) {
                     if (tw < 2f) return@Canvas
-                    drawYard(state.life.timeSlot, tw, th, backH, time)
+                    if (!drawSceneBackground(sceneArt, state.life.timeSlot, false)) drawYard(state.life.timeSlot, tw, th, backH, time)
                     for (row in 0..8) {
-                        drawYardRow(row, tw, th, backH, time)
+                        if (!drawSceneForeground(sceneArt, row, state.life.timeSlot, false)) drawYardRow(row, tw, th, backH, time)
                         placements.filter { it.cell.y == row }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), backH + th * (p.cell.y + .5f) + th * .3f)
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (p.sergeant) 0f else time * .5f, customImage = figures[p.npc.appearance.customImageId])
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (p.sergeant) 0f else time * .5f, customImage = figures[p.npc.appearance.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, false))
                         }
                         if (floor(pos.value.y + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), backH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId])
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, false))
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }

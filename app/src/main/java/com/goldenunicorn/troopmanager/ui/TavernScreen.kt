@@ -62,9 +62,10 @@ fun TavernScreen(
     onExit: () -> Unit,
     initialTalk: String? = null,
 ) {
-    val figures = rememberFigureArt(state)
+    val sceneArt = rememberSceneArt("tavern")
     val layout = TavernEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { TavernEngine.placements(state) }
+    val figures = rememberFigureArt(state, placements.map { it.npc })
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
     var walkId by remember { mutableLongStateOf(0L) }
     val pos = remember { Animatable(Offset(layout.door.x.toFloat(), layout.door.y.toFloat()), Offset.VectorConverter) }
@@ -173,21 +174,21 @@ fun TavernScreen(
                         },
                 ) {
                     if (tw < 2f) return@Canvas
-                    drawTavernRoom(state, tw, th, wallH, time)
+                    if (!drawSceneBackground(sceneArt, state.life.timeSlot, true)) drawTavernRoom(state, tw, th, wallH, time)
                     // Depth-sorted actors and furniture rows.
                     val playerRow = pos.value.y
                     for (row in 0..8) {
-                        drawFurnitureRow(row, tw, th, wallH, time)
+                        if (!drawSceneForeground(sceneArt, row, state.life.timeSlot, true)) drawFurnitureRow(row, tw, th, wallH, time)
                         placements.filter { it.cell.y == row }.sortedBy { it.cell.x }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) + th * .3f)
                             val seated = p.npc.role != NpcRole.INNKEEPER && p.kind in setOf(TavernEngine.SeatKind.TABLE, TavernEngine.SeatKind.FIRE, TavernEngine.SeatKind.BAR)
                             val bob = if (seated) 0f else sin((time + p.cell.x * .13f) * 6.283f) * tw * .012f
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false, seated = seated, customImage = figures[p.npc.appearance.customImageId])
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false, seated = seated, customImage = figures[p.npc.appearance.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, true))
                         }
                         if (floor(playerRow + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), wallH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f, customImage = figures[playerLook.customImageId])
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f, customImage = figures[playerLook.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, true))
                         }
                     }
                     target?.let { t ->

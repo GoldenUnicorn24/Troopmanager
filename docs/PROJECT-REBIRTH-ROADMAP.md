@@ -62,3 +62,11 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 6. **Dialoginhalte:** pro Rolle eigene Themen (Wirt: Lokalgeschichte, Söldner: Taktik, Adlige: Politik), mehr Varianten je Persönlichkeit.
 7. **Animationen** (Trinken, Lachen, Gestik am Tisch), Musiklagen je Tageszeit in der Taverne.
 8. **Hof und Adel:** Thronsaal als Innenraum, Lehnsaufträge mit mehr Arten (Eskorte, Gesandtschaft), Turnierpartner als dauerhafte NPCs.
+
+## Folgebranch: Eigene Charaktere und Asset-Produktion
+
+Feature-Branch `codex/custom-character-art`: Schema 7, interner Bildspeicher, Photo Picker mit
+Zuschnitt, versionierte Offline-Pakete und zentrale Bildauflösung. Dazu registrierte Szenenlayouts,
+Figurenstandard, vollständige Produktionsprompts und ein Asset-Prüfwerkzeug.
+Der vollständige gemalte Ebenensatz bleibt offen; eine Einzelillustration dient als Stilreferenz.
+Verifizierter Status und noch offene Tour-/CI-Nachweise stehen in `CUSTOM-CHARACTER-TEST-REPORT.md`.

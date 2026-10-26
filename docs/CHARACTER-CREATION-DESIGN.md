@@ -60,11 +60,11 @@ Ehrliche Einordnung: Das ist deutlich detaillierter als v2.1, bleibt aber prozed
 
 ### Asset-Vertrag für echte gemalte Ebenen
 
-`PortraitAssets` nutzt automatisch gemalte Ebenen, sobald `assets/portraits/base/{female|male}_{faceShape}.webp` existiert (sonst Fallback). Alle Dateien: WebP mit Alpha, **1024 × 1280 px**, identische Kopfposition (Augenlinie bei y = 560, Gesichtsmitte x = 512), Licht von oben links, gemalter semi-realistischer Fantasy-Stil, neutraler Grauton für eingefärbte Ebenen.
+`PortraitAssets` verwendet jede erfolgreich geladene gemalte Ebene einzeln. Eine fehlende oder beschädigte Ebene wird durch dieselbe prozedurale Komponente ersetzt; ein Basisgesicht ist keine Voraussetzung für andere Ebenen. Alle Dateien: WebP mit Alpha, **1024 × 1280 px**, identische Kopfposition (Augenlinie bei y = 560, Gesichtsmitte x = 512), Licht von oben links, gemalter semi-realistischer Fantasy-Stil, neutraler Grauton für eingefärbte Ebenen.
 
 | Ordner | Dateien | Anzahl | Einfärbung |
 |---|---|---|---|
-| `base/` | `female_0..4.webp`, `male_0..4.webp` (Haut + Gesichtsform) | 10 | Hautton (Modulate) |
+| `base/` | `female_0..4.webp`, `male_0..4.webp` (Haut + Gesichtsform) | 10 | Hautton (Multiply mit Alpha-Maske) |
 | `eyes/` | `0..3.webp` (Augenform), `iris_mask.webp` | 5 | Iris: Augenfarbe |
 | `brows/` | `0..3.webp` | 4 | Haarfarbe |
 | `nose/` | `0..3.webp` | 4 | – |
@@ -77,4 +77,4 @@ Ehrliche Einordnung: Das ist deutlich detaillierter als v2.1, bleibt aber prozed
 | `armor/` | `1..4.webp` | 4 | – |
 | `cloak/` | `1..3.webp` | 3 | Akzentfarbe |
 
-Summe: **82 Ebenen** (≈ 6–9 MB als WebP q80). Ganzkörper-Ebenen sind ein späterer Schritt. Lizenz: nur eigens für das Projekt erstellte oder nachweislich frei nutzbare Bilder; Herkunft in `CREDITS.md` eintragen.
+Summe: **82 Ebenen** (≈ 6–9 MB als WebP q80). Der Ganzkörper-Standard (768 × 1536, Fußlinie y=1480, sechs Posen) und die Produktionsliste stehen in `ASSET-PRODUCTION.md`. Lizenz: nur eigens für das Projekt erstellte oder nachweislich frei nutzbare Bilder; Herkunft in `CREDITS.md` eintragen.

@@ -668,6 +668,7 @@ object LifeEngine {
             next = next.copy(
                 companion = CompanionProfile(
                     met = true, name = friend.name, age = friend.age, species = friend.species,
+                    portraitUri = friend.appearance.customImageId?.let(CustomImageReference::uri),
                     armorStyle = AppearanceOptions.armor[friend.appearance.armor], weapon = AppearanceOptions.weapons[friend.appearance.weapon],
                     sword = 40 + friend.appearance.muscle / 3, bow = 40 + friend.personality.curiosity / 3, riding = 45,
                     leadership = 30 + friend.personality.boldness / 3, tactics = 30 + friend.personality.honor / 4, diplomacy = 30 + friend.personality.warmth / 3,
@@ -681,7 +682,7 @@ object LifeEngine {
         val swords = members.filter { m -> state.life.party.first { it.npcId == m.id }.wage > 0 }
         val baseId = (next.commanders.maxOfOrNull { it.id } ?: 0L) + 1
         val captains = swords.mapIndexed { i, npc ->
-            Commander(baseId + i, npc.name, npc.culture, "knight", sword = 50 + npc.appearance.muscle / 4, bow = 40,
+            Commander(baseId + i, npc.name, npc.culture, "knight", portraitUri = npc.appearance.customImageId?.let(CustomImageReference::uri), sword = 50 + npc.appearance.muscle / 4, bow = 40,
                 leadership = 35 + npc.personality.boldness / 4, tactics = 35, loyalty = 60 + npc.relation.trust / 4,
                 trait = "Ehemaliger Söldner", rank = "Hauptmann")
         }

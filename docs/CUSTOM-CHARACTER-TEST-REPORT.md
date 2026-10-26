@@ -28,8 +28,8 @@ Frischer Lauf: Gradle 8.9 / Temurin 17, `:app:testDebugUnitTest :app:lintDebug
 - Keine Offline-Freistellung; transparente Ganzkörperbilder werden verlangt.
 - Eigene Ganzkörperbilder haben eine feste Pose; keine künstliche Gehanimation des Fotos.
 - Noch keine 82 gemalten Porträtebenen, Figurenebenen oder gemalten Ortsbilder ausgeliefert.
-- Paketimport/-export, Szenenlayout und Produktionswerkzeuge folgen den weiteren Schritten.
-- APK-Zuwachs noch nicht gemessen; es liegt kein neues APK vor.
+- Paketimport/-export und Szenen-/Produktionspipeline sind implementiert; aktuelle Nachweise siehe unten.
+- APK-Zuwachs Schritt 1 ist gemessen; Endstand nach den weiteren Änderungen wird neu gemessen.
 
 ## APK-Vergleich Schritt 1
 
@@ -48,3 +48,49 @@ Export über FileProvider und Android-Teilen-Menü, nur aus dem dafür vorgesehe
 Ein echtes Beispiel-ZIP mit selbst erstellten Testbildern ist unter `docs/character-pack/` enthalten;
 sein Manifest wurde lokal mit `jsonschema.validate` erfolgreich gegen das mitgelieferte JSON-Schema geprüft.
 Die 14 Kotlin-Pakettests liegen mit 0 Fehlern vor (XML-Bericht 2026-10-26 20:13:43 UTC). Der erneute vollständige Android-/Lint-Lauf läuft noch.
+
+## Schritt 3 – Pipeline und feste Raster
+
+Vier `layout.json` mit je 108 Zellen, Vordergrundzeilen und Bodenpolygon; neue Kotlin-Tests
+vergleichen diese Daten einschließlich Zellmittelpunkten mit den tatsächlichen Engine-Rastern.
+Figurenstandard: 768 × 1536, Mittelachse 384, Fußlinie 1480, stehend/sitzend/vier Gehphasen.
+Unvollständige Figurenposen verwenden die Vektorfigur. Importierte Ganzkörperbilder behalten ihre feste Pose.
+Tageszeit-Grading und Bodenschatten gelten auch für eigene Figuren; Wetter bleibt prozedural.
+
+9 Python-Tests des Prüfwerkzeugs: erfolgreich, Exit 0. Beispielpaket erneut gegen JSON-Schema,
+Dateinamen, tatsächliches WebP-Encoding, Maße und Alpha geprüft: erfolgreich, Exit 0.
+`make_asset_guides` erzeugte 686 Hilfsraster in einem temporären Verzeichnis, Exit 0.
+`check_assets --allow-missing --json`: **0/686** Produktionsbilder vorhanden, 686 fehlen, 0 ungültige vorhandene Dateien.
+Das ist ein bewusst zugelassener Fallback-Build, **kein** bestandener vollständiger Asset-Standard.
+Ein Standardaufruf ohne `--allow-missing` muss bis zur Produktion der fehlenden Bilder fehlschlagen.
+
+## Prüflauf nach Schritt 2
+
+577 Unit-Tests, 0 Fehler (57 Suites). APK und Test-APK gebaut. Gesamt-Exit 1 wegen
+`SuspiciousIndentation`; während dieses Lint-Laufs wurden bereits weitere Quelltexte geändert,
+sodass seine Zeilenbezüge nicht zum aktuellen Stand passten. Dieser Lauf zählt nicht als Freigabenachweis.
+Der nächste vollständige Lauf erfolgt ohne parallele Quelländerungen.
+
+## Lokaler Emulatorversuch
+
+Android 35 x86_64, Software-Emulation ohne KVM. ADB wurde erreichbar, Androids Systemstart
+war jedoch nicht abgeschlossen. Die APK-Installation scheiterte in Androids StorageManagerService
+(`PackageManagerInternal.freeStorage` auf null). Das ist kein bestandener Instrumentierungstest.
+Es liegen aus diesem Versuch keine App-Screenshots und kein Zwei-Sekunden-Nachweis vor.
+
+## Schritt 4 – Bildproduktion: ausdrücklich unvollständig
+
+Eine selbst erzeugte, anschließend malerisch überarbeitete erwachsene Stilreferenz liegt in
+`docs/assets/style-reference.png`; beide Prompts und Herkunft sind dokumentiert. Der Generator
+lieferte 1122 × 1402 statt 1024 × 1280 und keine garantierte Augenregistrierung. Die Illustration
+bleibt deshalb außerhalb der Laufzeit-Assets. Sie ist kein Ersatz für 82 isolierte, deckungsgleiche Ebenen.
+Die konsistente gemalte Asset-Produktion und ihre tatsächliche Motivabnahme stehen weiterhin aus.
+Gemalte Assets unterstützen derzeit diskrete Varianten; kontinuierliche Gesichtsdeformationen
+wie im Vektor-Renderer sind für Rasterebenen nicht nachgewiesen.
+
+## CI
+
+Der Feature-Branch ist für die bestehende Unit-/Lint-/APK-/Emulator-Pipeline vorgesehen.
+Zusätzlich werden Python-Prüfwerkzeug und Beispielpaket geprüft, fehlende Produktionsdateien
+als Fallback-Bericht hochgeladen. APK-/Screenshot-Artefakte dienen der Prüfung.
+Ein grüner Remote-CI-Lauf ist zum Zeitpunkt dieses Eintrags noch nicht nachgewiesen.

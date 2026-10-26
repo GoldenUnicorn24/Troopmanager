@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.goldenunicorn.troopmanager.model.Spot
 import org.junit.Rule
@@ -60,6 +61,7 @@ class TourTest {
             TourActivity.customReady = false
             page(it)
             rule.waitUntil(2_000) { TourActivity.customReady }
+            if (it == "custom-compare") rule.waitUntil(2_000) { rule.onAllNodesWithContentDescription("Eigenes Porträt").fetchSemanticsNodes().isNotEmpty() }
             shot("i-$it")
         }
         // Milestone 5: a ruler (and knight) visiting the castle of a town.

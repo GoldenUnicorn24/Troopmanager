@@ -578,14 +578,11 @@ private fun RulerMiniPortrait(
             horizontalArrangement = Arrangement.spacedBy(9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncImage(
-                model = uri ?: asset,
-                contentDescription = null,
-                modifier = Modifier.size(58.dp).clip(RoundedCornerShape(15.dp)),
-                contentScale = ContentScale.Crop,
-                placeholder = painterResource(fallback),
-                error = painterResource(fallback),
-            )
+            val portraitModifier = Modifier.size(58.dp).clip(RoundedCornerShape(15.dp))
+            PersonImage(null, uri, Framing.HEAD, portraitModifier) {
+                AsyncImage(asset, null, portraitModifier, contentScale = ContentScale.Crop,
+                    placeholder = painterResource(fallback), error = painterResource(fallback))
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 12.sp, maxLines = 1)
                 Text(subtitle, color = Mist, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)

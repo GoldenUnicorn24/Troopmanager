@@ -54,3 +54,4 @@ abgefragt und in den Charaktermetadaten gespeichert. Sie sind keine mitgeliefert
 - `docs/assets/market-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Markt-Engine-Layouts, CC0-1.0.
 - `docs/assets/barracks-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Kasernen-Engine-Layouts, CC0-1.0.
 - `docs/assets/castle-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Burghof-Engine-Layouts, CC0-1.0.
+- `docs/assets/style-reference.png`: für Troopmanager selbst erzeugte Stilreferenz mit dem OpenAI-Bildgenerator am 2026-10-26; zwei Produktionsschritte (Originalerzeugung und malerische Überarbeitung derselben Eigenproduktion), beide Prompts in `docs/assets/style-reference.prompt.txt`; keine externen Bilder, Künstlernamen oder realen Personen als Vorlage. Fiktive erwachsene Reisende (Promptalter ca. 35). Nur Stilreferenz; keine registrierte Produktions-Ebene.

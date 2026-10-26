@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Regenerate a complete per-file prompt list. Does not fabricate production artwork."""
+import json
+from asset_contract import ROOT, catalog
+items=catalog()
+(ROOT/'docs/asset-catalog.json').write_text(json.dumps({'version':1,'assets':items},indent=2)+'\n')
+intro='''# Asset-Produktion
+
+Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält für jede
+Datei den vollständigen Prompt, Maße, Alpha-/Graustufenanforderung, Registrierung und Größenbudget.
+Er wird mit `python3 scripts/produce_asset_prompts` reproduzierbar aus `scripts/asset_contract.py` erzeugt.
+Keine Führungsmaske wird als fertiges gemaltes Spiel-Asset installiert.
+
+## Gemalte Stilreferenz
+
+![Eigene Stilreferenz](assets/style-reference.png)
+
+Für dieses Projekt mit dem OpenAI-Bildgenerator ohne Bildvorlage erzeugt, fiktive erwachsene Figur.
+Diese Einzelillustration ist eine Stilreferenz und erfüllt keinen Ebenenvertrag: unter anderem
+weichen Bildmaße und Augenregistrierung vom Produktionsstandard ab. Sie ist kein mitgeliefertes
+Laufzeit-Asset und wird nicht als eine der 82 fertigen Ebenen gezählt.
+
+## Gemeinsamer Stil und Abnahme
+
+Semi-realistische gemalte Fantasy, natürliche erwachsene Anatomie, Licht von oben links,
+warme Kerzenbeleuchtung innen, natürliche Materialfarben und gedämpfte Kontraste, keine Comic-Optik.
+Tönbare Teile neutral grau; Alpha außen vollständig transparent. Keine Schrift oder Wasserzeichen.
+Augenlinie und Fußlinie sind Teil der Registrierung, nicht bloß ein späterer Bildschirmzuschnitt.
+Graue Ebenen werden zur Laufzeit mit Haut-, Haar- und Stofffarben multipliziert.
+
+Eine Illustration darf erst nach Sichtprüfung, `scripts/check_assets` und Herkunftseintrag in
+`CREDITS.md` nach `app/src/main/assets` übernommen werden. Pro Bild ist eine gleichnamige
+`.json`-Datei (z. B. `female_0.webp.json`) mit den `registration`-Werten aus dem Katalog und
+`source` sowie `license` erforderlich. Metadaten prüfen die erklärte Registrierung; die tatsächliche
+Anatomie und Motivposition muss zusätzlich ein Mensch prüfen. Das Werkzeug erkennt kein Gesicht.
+
+Figuren: zwei Basen `female` und `male`, je sechs Posen (`standing`, `sitting`, vier Gehphasen).
+Alle Teile derselben Pose liegen deckungsgleich auf 768 × 1536; Mittelachse x=384, Füße y=1480.
+Schatten ist eine eigene Ebene. Divers verwendet die gewählte prozedurale Basis, sofern keine eigene Grafik vorliegt.
+
+Szenen: ein Tagesbild pro Ort, Tageszeiten per Farbgrading. Perspektive und Boden kommen aus
+`layout.json`, 12 × 9 Zellen bleiben unverändert. Das Tagesbild enthält Wand und Boden;
+Vordergrundmöbel liegen in neun transparenten Zeilenebenen und werden nach Tiefe mit Figuren
+verschachtelt. Nicht walkable Zellen bleiben auch bei fehlenden Bildern gesperrt.
+
+Budgetziele: Porträts insgesamt 6–9 MiB, Figuren abhängig von Variantenzahl separat messen,
+Szenen nach Kompression separat messen. Die 256-KiB-Grenze pro Personenebene ist eine Obergrenze,
+kein APK-Gesamtbudget. Vor Freigabe den tatsächlichen APK-Zuwachs dokumentieren.
+
+## Vollständige Dateiliste
+
+Jede folgende Zeile ist ein Produktionsauftrag. Der vollständige Prompt steht unter demselben Pfad
+im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unverändert.
+
+| Datei | Maße | Alpha | Tönbar | Motiv / Pose |
+|---|---|---|---|---|
+'''
+rows=[]
+for a in items:
+ detail=a['prompt'].split('Natural muted material colors. ')[-1] if not a['neutral'] else a['prompt'].split('Neutral grayscale for runtime tint, preserve highlights and shadows. ')[-1]
+ rows.append(f"| `{a['path']}` | {a['width']}×{a['height']} | {'ja' if a['alpha'] else 'nein'} | {'ja' if a['neutral'] else 'nein'} | {detail} |")
+(ROOT/'docs/ASSET-PRODUCTION.md').write_text(intro+'\n'.join(rows)+'\n')
+print(f'{len(items)} Produktionsaufträge, davon 82 Porträtebenen.')

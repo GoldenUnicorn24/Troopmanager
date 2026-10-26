@@ -49,7 +49,26 @@ class SchemaSevenMigrationTest {
         val replaced = CustomCharacterEngine.apply(remembered, record.copy(id = "test-two"), "file:///internal/custom/test-two/portrait.webp")
         assertEquals("Erinnerung", replaced.life.npc("test")!!.memories.single().text)
     }
+    @Test fun importingCommanderDataUpdatesTheDisplayedCourtAge() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val commander = base.commanders.first()
+        val record = CustomCharacter("commander-image","commander:${commander.id}",CustomCharacterDefinition("Mira",29,origin = "Rabenfurt"),"Eigenes Bild")
+        val imported = CustomCharacterEngine.apply(base,record,CustomImageReference.uri(record.id))
+        assertEquals(29,imported.court.characters.first { it.commanderId == commander.id }.age)
+        assertEquals("Rabenfurt",imported.court.characters.first { it.commanderId == commander.id }.origin)
+    }
     @Test(expected = IllegalArgumentException::class) fun minorsCannotBeImported() {
         CustomCharacterDefinition("Mira", 17).validate()
+    }
+    @Test fun customPhotoReferenceSurvivesBecomingACommanderAndReplacement() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val record = CustomCharacter("old-image","npc:photo-sword",CustomCharacterDefinition("Mira",27),"Eigenes Bild")
+        val added = CustomCharacterEngine.apply(base,record,CustomImageReference.uri(record.id))
+        val atCourt = added.copy(commanders = added.commanders + Commander(999,"Mira",Culture.HUMAN,"knight",portraitUri = CustomImageReference.uri(record.id)))
+        val replaced = CustomCharacterEngine.apply(atCourt,record.copy(id = "new-image"),CustomImageReference.uri("new-image"))
+        assertEquals("custom://new-image/portrait",replaced.commanders.first { it.id == 999L }.portraitUri)
+        assertEquals("new-image",replaced.life.npc("photo-sword")!!.appearance.customImageId)
+        assertNull(CustomImageReference.idFromUri("custom://bad.id/portrait"))
+        assertNull(CustomImageReference.idFromUri("custom://old-image/../../private"))
     }
 }

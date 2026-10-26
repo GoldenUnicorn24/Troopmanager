@@ -43,6 +43,18 @@ object CharacterPackCodec {
 
     fun parseManifest(raw: String): CharacterPackManifest {
         require(raw.toByteArray(Charsets.UTF_8).size <= MAX_MANIFEST) { "Das Manifest ist zu groß." }
+        var depth = 0
+        var quoted = false
+        var escaped = false
+        raw.forEach { c ->
+            if (quoted) {
+                if (escaped) escaped = false else if (c == '\\') escaped = true else if (c == '"') quoted = false
+            } else when (c) {
+                '"' -> quoted = true
+                '{', '[' -> { depth++; require(depth <= 32) { "Das Manifest ist zu tief verschachtelt." } }
+                '}', ']' -> { depth--; require(depth >= 0) { "Das Manifest ist ungültig." } }
+            }
+        }
         val root = json.parseToJsonElement(raw) as? JsonObject ?: error("Das Manifest muss ein JSON-Objekt sein.")
         val version = root["version"] as? JsonPrimitive
         require(version != null && !version.isString && version.intOrNull != null) { "Die Paketversion muss als ganze Zahl angegeben werden." }

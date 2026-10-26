@@ -40,12 +40,15 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 internal val LocalOpenCustomCharacters = staticCompositionLocalOf<((String?) -> Unit)?> { null }
+internal val LocalCustomCharacterDefinitions = staticCompositionLocalOf<Map<String, CustomCharacterDefinition>> { emptyMap() }
 
 @Composable
 internal fun CustomCharactersHost(state: GameState?, onState: (GameState) -> Unit, content: @Composable () -> Unit) {
     var target by remember { mutableStateOf<String?>(null) }
     var open by remember { mutableStateOf(false) }
-    CompositionLocalProvider(LocalOpenCustomCharacters provides if (state == null) null else { value -> target = value; open = true }) { content() }
+    val definitions = remember(state?.customCharacters) { state?.customCharacters?.associate { it.id to it.definition }.orEmpty() }
+    CompositionLocalProvider(LocalCustomCharacterDefinitions provides definitions,
+        LocalOpenCustomCharacters provides if (state == null) null else { value -> target = value; open = true }) { content() }
     if (open && state != null) Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         CustomCharactersScreen(state, onState, { open = false }, target)
     }
@@ -72,6 +75,7 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     var definition by remember(target) { mutableStateOf(initialDefinition()) }
     var age by remember(target) { mutableStateOf(if (target == "new" || target.startsWith("commander:")) "" else definition.age.toString()) }
     var interests by remember(target) { mutableStateOf(initialDefinition().interests.joinToString(", ")) }
+    var showExports by remember { mutableStateOf(false) }
     var pendingPack by remember { mutableStateOf<ImportedCharacterPack?>(null) }
     var source by remember(target) { mutableStateOf(state.customCharacters.firstOrNull { it.target == target }?.source ?: "") }
     var portrait by remember(target) { mutableStateOf<Bitmap?>(null) }
@@ -101,7 +105,6 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
             scope.launch {
                 try {
                     val imported = withContext(Dispatchers.IO) { CharacterPackSharing(context).read(uri) }
-                    target = "new"
                     pendingPack = imported
                     error = null
                 } catch (e: Exception) { error = e.message ?: "Das Charakterpaket ist ungültig." }
@@ -111,7 +114,7 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     }
     LaunchedEffect(pendingPack, target) {
         val imported = pendingPack
-        if (imported != null && target == "new") {
+        if (imported != null) {
             definition = imported.manifest.character
             age = definition.age.toString()
             source = imported.manifest.source
@@ -139,14 +142,17 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
         return
     }
     BackHandler(enabled = !busy) { onBack() }
-    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).testTag("custom_characters"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val scroll = rememberScrollState()
+    LaunchedEffect(error) { if (error != null) scroll.animateScrollTo(0) }
+    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(scroll).padding(16.dp).testTag("custom_characters"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("Eigene Charaktere", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
         Text("Nur eigene oder erlaubte Bilder verwenden. Keine Bilder Minderjähriger als erwachsene Figuren. Alles bleibt auf diesem Gerät.", color = Mist)
+        error?.let { Text(it, color = Danger, modifier = Modifier.testTag("custom_error")) }
         TextButton(onClick = onBack, enabled = !busy) { Text("Zurück") }
         OutlinedButton(enabled = !busy, onClick = { packagePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Charakterpaket importieren (.zip)") }
         if (state.customCharacters.isNotEmpty()) {
-            Text("Eigene Charakterpakete teilen", color = PaleGold)
-            state.customCharacters.forEach { record ->
+            TextButton(onClick = { showExports = !showExports }) { Text(if (showExports) "Paketliste schließen" else "Eigene Charakterpakete teilen") }
+            if (showExports) state.customCharacters.forEach { record ->
                 TextButton(enabled = !busy, onClick = {
                     busy = true
                     scope.launch {
@@ -164,6 +170,11 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
         }
         OutlinedTextField(definition.name, { definition = definition.copy(name = it) }, label = { Text("Name") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(age, { age = it.filter(Char::isDigit).take(5) }, label = { Text("Alter (Pflicht, mindestens 18)") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
+        portrait?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Porträt-Vorschau", Modifier.height(220.dp).aspectRatio(.8f)) }
+        fullbody?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Ganzkörper-Vorschau", Modifier.height(220.dp).aspectRatio(.5f).background(Steel)) }
+        OutlinedButton(onClick = { kind = CharacterImageKind.PORTRAIT; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Porträt wählen und zuschneiden") }
+        OutlinedButton(onClick = { kind = CharacterImageKind.FULLBODY; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Ganzkörper wählen (optional, transparent)") }
+        Text("Ohne Ganzkörperbild bleibt die Figur gezeichnet. PNG/WebP mit Transparenz sind für Ganzkörper erforderlich.", color = Muted)
         ChoiceRow("Geschlecht", Gender.entries, definition.gender, { it.label }) { definition = definition.copy(gender = it) }
         ChoiceRow("Volk", Species.entries, definition.species, { it.label }) { definition = definition.copy(species = it) }
         ChoiceRow("Kultur", Culture.entries, definition.culture, { it.label }) { definition = definition.copy(culture = it) }
@@ -180,18 +191,12 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
             Slider(value.toFloat(), { definition = definition.copy(personality = change(it.toInt())) }, valueRange = 0f..100f)
         }
         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(definition.romanceable, { definition = definition.copy(romanceable = it) }); Text("Romantik offen (keine automatische Beziehung)", color = Mist) }
-        portrait?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Porträt-Vorschau", Modifier.height(220.dp).aspectRatio(.8f)) }
-        fullbody?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Ganzkörper-Vorschau", Modifier.height(220.dp).aspectRatio(.5f).background(Steel)) }
-        OutlinedButton(onClick = { kind = CharacterImageKind.PORTRAIT; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Porträt wählen und zuschneiden") }
-        OutlinedButton(onClick = { kind = CharacterImageKind.FULLBODY; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Ganzkörper wählen (optional, transparent)") }
-        Text("Ohne Ganzkörperbild bleibt die Figur gezeichnet. PNG/WebP mit Transparenz sind für Ganzkörper erforderlich.", color = Muted)
         OutlinedTextField(source, { source = it }, label = { Text("Bildherkunft / Lizenz") }, modifier = Modifier.fillMaxWidth())
         Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(rights, { rights = it }); Text("Ich habe die Bildrechte; alle abgebildeten Personen sind erwachsen.", color = Mist) }
-        error?.let { Text(it, color = Danger, modifier = Modifier.testTag("custom_error")) }
         if (busy) CircularProgressIndicator()
         Button(enabled = !busy && rights && portrait != null, onClick = {
             val d = definition.copy(age = age.toIntOrNull() ?: 0, appearance = definition.appearance.copy(customImageId = null))
-            val validation = runCatching { d.validate(); require(source.isNotBlank()) { "Bitte Bildherkunft und Nutzungsrechte angeben." } }
+            val validation = runCatching { d.validate(); require(source.isNotBlank() && source.length <= 2000) { "Bitte Bildherkunft und Nutzungsrechte mit höchstens 2000 Zeichen angeben." } }
             if (validation.isFailure) error = validation.exceptionOrNull()?.message else {
                 busy = true
                 scope.launch {
@@ -223,13 +228,14 @@ internal fun CharacterCropEditor(bitmap: Bitmap, kind: CharacterImageKind, onCan
     var crop by remember(bitmap) { mutableStateOf(CharacterImageCrop()) }
     var confirmed by remember(bitmap) { mutableStateOf(false) }
     val latestCrop by rememberUpdatedState(crop)
+    val currentBusy by rememberUpdatedState(busy)
     BackHandler(enabled = !busy) { onCancel() }
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).testTag("character_crop"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Bild zuschneiden", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
         Text(if (kind == CharacterImageKind.PORTRAIT) "Gesicht im Oval, Augen auf die goldene Linie, Schultern auf die untere Linie ausrichten." else "Körper mittig, Füße auf die goldene Linie ausrichten. Hintergrund muss transparent sein.", color = Mist)
         Canvas(Modifier.widthIn(max = if (kind == CharacterImageKind.PORTRAIT) 352.dp else 220.dp).fillMaxWidth().aspectRatio(kind.width.toFloat() / kind.height).background(Steel).clipToBounds().pointerInput(bitmap, kind) {
             detectTransformGestures { _, pan, zoom, rotation ->
-                if (!busy) crop = latestCrop.copy(zoom = (latestCrop.zoom * zoom).coerceIn(1f, 6f), x = latestCrop.x + pan.x * kind.width / size.width,
+                if (!currentBusy) crop = latestCrop.copy(zoom = (latestCrop.zoom * zoom).coerceIn(1f, 6f), x = latestCrop.x + pan.x * kind.width / size.width,
                     y = latestCrop.y + pan.y * kind.width / size.width, rotation = (latestCrop.rotation + rotation).coerceIn(-180f, 180f))
             }
         }) {

@@ -2,6 +2,7 @@ package com.goldenunicorn.troopmanager.ui
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import com.goldenunicorn.troopmanager.model.WeatherKind
@@ -20,7 +21,7 @@ internal fun DrawScope.drawWeather(kind: WeatherKind, unit: Float, time: Float) 
             for (k in 0 until n) {
                 val x = (k * 137 % 1000) / 1000f * w
                 val y = ((k * 271 % 1000) / 1000f + time * (if (storm) 3f else 2f)) % 1f * h
-                drawLine(Color(0xFFB8C8DA).copy(alpha = .45f), Offset(x, y), Offset(x - slant, y + unit * .55f), unit * .035f, StrokeCap.Round)
+                drawLine(Color(0xFFB8C8DA).copy(alpha = .28f), Offset(x, y), Offset(x - slant, y + unit * .55f), unit * .02f, StrokeCap.Round)
             }
         }
         WeatherKind.SNOW -> {
@@ -29,10 +30,10 @@ internal fun DrawScope.drawWeather(kind: WeatherKind, unit: Float, time: Float) 
                 val drift = kotlin.math.sin((time + k * .13f) * 6.283f) * unit * .15f
                 val x = (k * 211 % 1000) / 1000f * w + drift
                 val y = ((k * 389 % 1000) / 1000f + time * .6f) % 1f * h
-                drawCircle(Color.White.copy(alpha = .8f), unit * (.04f + (k % 3) * .015f), Offset(x, y))
+                drawCircle(Color(0xFFE5EAF0).copy(alpha = .35f + (k % 3) * .12f), unit * (.025f + (k % 3) * .012f), Offset(x, y))
             }
         }
-        WeatherKind.FOG -> drawRect(Color(0xFFD8DDE2).copy(alpha = .26f))
+        WeatherKind.FOG -> drawRect(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFFBFCAD2).copy(alpha = .12f), Color(0xFFCED4D8).copy(alpha = .34f)), startY = h * .18f, endY = h))
         WeatherKind.FROST -> drawRect(Color(0xFFCFE4F5).copy(alpha = .1f))
         WeatherKind.HEAT -> drawRect(Color(0xFFFFC870).copy(alpha = .07f))
         WeatherKind.CLEAR -> Unit

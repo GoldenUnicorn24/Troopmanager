@@ -30,6 +30,8 @@ internal fun CustomCharacterTour(page: String, base: GameState) {
             val portrait = images.decode(bytes, CharacterImageKind.PORTRAIT)
             val fullbody = TourActivity.customFullbodyBytes?.let { images.decode(it, CharacterImageKind.FULLBODY) }
             val id = images.install(portrait, fullbody)
+            images.load(id,CharacterImageKind.PORTRAIT,512)
+            if (fullbody != null) images.load(id,CharacterImageKind.FULLBODY,192)
             val record = CustomCharacter(id, "npc:tour-custom", CustomCharacterDefinition("Mira Testfigur", 27, role = NpcRole.REGULAR,
                 homeProvinceId = base.life.provinceId), "Selbst erstellte geometrische Testfigur, CC0-1.0", fullbody = if (fullbody != null) "fullbody.webp" else null)
             val state = CustomCharacterEngine.apply(base.copy(life = base.life.copy(timeSlot = TimeSlot.EVENING)), record,

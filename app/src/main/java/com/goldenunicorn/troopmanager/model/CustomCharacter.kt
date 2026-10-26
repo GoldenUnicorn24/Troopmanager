@@ -48,3 +48,20 @@ data class CustomCharacter(
         require(portrait == "portrait.webp" && (fullbody == null || fullbody == "fullbody.webp")) { "Ungültiger interner Bildpfad." }
     }
 }
+
+/** Save-stable URI for engines that do not know Android's per-installation filesDir. */
+object CustomImageReference {
+    fun uri(id: String): String {
+        require(id.matches(Regex("[a-zA-Z0-9-]{1,80}")))
+        return "custom://$id/portrait"
+    }
+    fun idFromUri(raw: String?): String? = runCatching {
+        val uri = java.net.URI(raw ?: return@runCatching null)
+        val id = when (uri.scheme) {
+            "custom" -> uri.host?.takeIf { uri.path == "/portrait" }
+            "file" -> java.io.File(uri).takeIf { it.name == "portrait.webp" && it.parentFile?.parentFile?.name == "custom" }?.parentFile?.name
+            else -> null
+        }
+        id?.takeIf { it.matches(Regex("[a-zA-Z0-9-]{1,80}")) }
+    }.getOrNull()
+}

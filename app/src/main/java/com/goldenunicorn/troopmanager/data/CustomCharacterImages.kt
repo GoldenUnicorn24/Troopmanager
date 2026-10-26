@@ -62,6 +62,10 @@ class CustomCharacterImages(private val context: Context) {
         }
         val oriented = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
         if (oriented !== raw) raw.recycle()
+        if (!hasVisibleContent(oriented)) {
+            oriented.recycle()
+            error("Das Bild ist vollständig oder fast vollständig transparent. Bitte eine sichtbare erwachsene Figur verwenden.")
+        }
         if (kind == CharacterImageKind.FULLBODY && !hasTransparency(oriented)) {
             oriented.recycle()
             error("Ganzkörperbilder brauchen einen transparenten Hintergrund. Bitte ein freigestelltes PNG oder WebP wählen; es wird kein Netz zur Freistellung verwendet.")
@@ -79,13 +83,17 @@ class CustomCharacterImages(private val context: Context) {
         val scale = crop.scale(bitmap.width, bitmap.height, kind)
         canvas.scale(scale, scale)
         canvas.drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+        if (!hasVisibleContent(result) || (kind == CharacterImageKind.FULLBODY && !hasTransparency(result))) {
+            result.recycle()
+            error("Bitte die sichtbare Figur im Rahmen lassen; Ganzkörperbilder brauchen auch nach dem Zuschnitt transparente Ränder.")
+        }
         return result
     }
 
     /** A new immutable directory keeps existing saves valid if a replacement is interrupted. */
     fun install(portrait: Bitmap, fullbody: Bitmap? = null): String {
-        require(portrait.width == 1024 && portrait.height == 1280)
-        require(fullbody == null || (fullbody.width == 768 && fullbody.height == 1536 && hasTransparency(fullbody)))
+        require(portrait.width == 1024 && portrait.height == 1280 && hasVisibleContent(portrait)) { "Das Porträt braucht eine sichtbare Figur im Standardformat 1024 × 1280." }
+        require(fullbody == null || (fullbody.width == 768 && fullbody.height == 1536 && hasVisibleContent(fullbody) && hasTransparency(fullbody))) { "Das Ganzkörperbild braucht eine sichtbare Figur, transparente Ränder und 768 × 1536 Pixel." }
         val id = UUID.randomUUID().toString()
         val root = File(context.filesDir, "custom").apply { check(mkdirs() || isDirectory) }
         val staging = File(root, ".$id").apply { check(mkdir()) }
@@ -107,17 +115,27 @@ class CustomCharacterImages(private val context: Context) {
 
     fun load(id: String?, kind: CharacterImageKind, targetWidth: Int = 512): Bitmap? {
         if (id == null) return null
-        val source = runCatching { file(id, kind) }.getOrNull() ?: return null
-        val key = "${source.absolutePath}:$targetWidth"
-        cache.get(key)?.let { return it }
-        if (!source.isFile) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(source.path, bounds)
-        if (bounds.outWidth != kind.width || bounds.outHeight != kind.height || source.length() > MAX_BYTES) return null
-        val sample = CharacterImageFrames.sampleSize(kind.width, kind.height, targetWidth, targetWidth * kind.height / kind.width)
-        val bitmap = BitmapFactory.decodeFile(source.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
-        cache.put(key, bitmap)
-        return bitmap
+        require(targetWidth in 1..4096)
+        val source = runCatching { file(id,kind) }.getOrNull() ?: return null
+        val sample = CharacterImageFrames.sampleSize(kind.width,kind.height,targetWidth,targetWidth * kind.height / kind.width)
+        val key = "${source.absolutePath}:$sample"
+        return synchronized(cache) {
+            cache.get(key) ?: run {
+                if (!source.isFile || source.length() > MAX_BYTES) return@run null
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(source.path,bounds)
+                if (bounds.outWidth != kind.width || bounds.outHeight != kind.height) return@run null
+                BitmapFactory.decodeFile(source.path,BitmapFactory.Options().apply { inSampleSize = sample })?.also { cache.put(key,it) }
+            }
+        }
+    }
+
+    private fun hasVisibleContent(bitmap: Bitmap): Boolean {
+        var visible = 0
+        for (y in 0 until bitmap.height step maxOf(1,bitmap.height / 128))
+            for (x in 0 until bitmap.width step maxOf(1,bitmap.width / 64))
+                if (Color.alpha(bitmap.getPixel(x,y)) > 40) visible++
+        return visible >= 80
     }
 
     private fun hasTransparency(bitmap: Bitmap): Boolean {
