@@ -49,6 +49,11 @@ fun LifeShell(
         CaptiveScreen(state, onState, onNotice)
         return
     }
+    if (state.life.place == LifePlace.BARRACKS) {
+        GameSoundscape(state, "military")
+        BarracksScreen(state, onState, onNotice)
+        return
+    }
     if (state.life.place == LifePlace.MARKET) {
         GameSoundscape(state, "city")
         MarketScreen(state, onState, onNotice)
@@ -178,6 +183,19 @@ private fun PlaceTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
             }
         }
     }
+    if (town != null) {
+        Surface(onClick = { val r = com.goldenunicorn.troopmanager.engine.BarracksEngine.enter(state); onState(r.state); onNotice(r.message) }, color = Color.Transparent,
+            shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().testTag("enter_barracks")) {
+            Box(Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A2A2A), Color(0xFF120E0E))))
+                .border(1.dp, Danger.copy(alpha = .35f), RoundedCornerShape(22.dp))) {
+                Column(Modifier.align(Alignment.CenterStart).padding(18.dp)) {
+                    Text("KASERNE", color = Danger, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text("Training · Stadtwache · Söldner", color = Color.White, fontFamily = Cinzel, fontSize = 18.sp)
+                    Text(if (life.enlisted) "Du dienst in der Stadtwache." else "Übungen kosten ${com.goldenunicorn.troopmanager.engine.BarracksEngine.TRAINING_PRICE} Gold.", color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+    }
     if (life.wound > 0) PremiumPanel {
         Text("Verwundet", color = Danger, fontWeight = FontWeight.Bold)
         RelationBar("Wunden", life.wound, Danger)
@@ -278,6 +296,13 @@ private fun PeopleTab(state: GameState) {
                     RelationBar("Vertrauen", npc.relation.trust, ModernBlue)
                 }
             }
+            // What the player has learned about this person's own ties.
+            com.goldenunicorn.troopmanager.engine.NpcSocialEngine.bondsOf(state, npc.id)
+                .filter { b -> state.life.npc(b.other(npc.id))?.relation?.timesMet ?: 0 > 0 }
+                .forEach { b ->
+                    val other = state.life.npc(b.other(npc.id))!!
+                    Text("${b.kind.label}: ${other.name}", color = if (b.kind == BondKind.RIVALS) Danger.copy(alpha = .9f) else ModernBlue, fontSize = 12.sp)
+                }
             val memories = npc.memories.filter { it.key != "met" }.takeLast(3)
             memories.forEach { m -> Text("„${m.text.replaceFirstChar { it.uppercase() }}.“ · Tag ${m.day}", color = if (m.weight < 0) Danger else Muted, fontSize = 12.sp, fontStyle = FontStyle.Italic) }
         }

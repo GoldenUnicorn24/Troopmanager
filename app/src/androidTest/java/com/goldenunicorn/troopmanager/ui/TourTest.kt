@@ -47,5 +47,7 @@ class TourTest {
             "tavern", "tavern-talk", "portraits").forEach { page(it); shot("d-$it") }
         // Milestone 2: market, personal fight, following, captivity.
         listOf("market", "skirmish", "party", "captive").forEach { page(it); shot("e-$it") }
+        // Milestone 3: the barracks yard.
+        listOf("barracks").forEach { page(it); shot("f-$it") }
     }
 }
