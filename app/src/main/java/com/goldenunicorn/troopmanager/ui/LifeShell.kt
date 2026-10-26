@@ -49,6 +49,11 @@ fun LifeShell(
         CaptiveScreen(state, onState, onNotice)
         return
     }
+    if (state.life.place == LifePlace.CASTLE) {
+        GameSoundscape(state, "military")
+        CastleScreen(state, onState, onNotice)
+        return
+    }
     if (state.life.place == LifePlace.BARRACKS) {
         GameSoundscape(state, "military")
         BarracksScreen(state, onState, onNotice)
@@ -196,6 +201,25 @@ private fun PlaceTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
             }
         }
     }
+    if (town != null) {
+        val castle = com.goldenunicorn.troopmanager.engine.CastleEngine
+        val tourney = castle.tournamentToday(state)
+        Surface(onClick = { val r = castle.enter(state); onState(r.state); onNotice(r.message) }, color = Color.Transparent,
+            shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().testTag("enter_castle")) {
+            Box(Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A3424), Color(0xFF12100A))))
+                .border(1.dp, Gold.copy(alpha = .35f), RoundedCornerShape(22.dp))) {
+                Column(Modifier.align(Alignment.CenterStart).padding(18.dp)) {
+                    Text("BURGHOF", color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text("Burgvogt · Aufträge · Turnier", color = Color.White, fontFamily = Cinzel, fontSize = 18.sp)
+                    Text(when {
+                        life.lordQuest != null -> "Lehnsauftrag offen: ${CrownCatalog.info(life.lordQuest.targetProvinceId).name}."
+                        tourney -> "Heute ist Turniertag!"
+                        else -> "Nächstes Turnier an Tag ${castle.nextTournamentDay(state)}."
+                    }, color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+    }
     if (life.wound > 0) PremiumPanel {
         Text("Verwundet", color = Danger, fontWeight = FontWeight.Bold)
         RelationBar("Wunden", life.wound, Danger)
@@ -243,7 +267,7 @@ private fun PlaceTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
         Text("Die Grenzfeste", color = PaleGold, fontFamily = Cinzel, fontSize = 18.sp)
         Text("Die Krone sucht einen Herrn für die verwaiste Grenzfeste. Wer genug Ruf und Gold hat, kann den Lehnseid leisten – und erhält Gebiet, Vorräte und eine stehende Armee.", color = Mist, fontSize = 13.sp)
         RelationBar("Ruf", (life.renown * 100 / LifeEngine.KEEP_RENOWN).coerceAtMost(100), Gold)
-        RelationBar("Gold", (life.purse * 100 / LifeEngine.KEEP_GOLD).coerceAtMost(100), PaleGold)
+        RelationBar("Gold", (life.purse * 100 / LifeEngine.keepGold(state)).coerceAtMost(100), PaleGold)
         if (blocker == null) GoldButton("Lehnseid leisten", { val r = LifeEngine.claimKeep(state); onState(r.state); onNotice(r.message) }, Modifier.fillMaxWidth())
         else Text(blocker, color = Muted, fontSize = 12.sp)
     }

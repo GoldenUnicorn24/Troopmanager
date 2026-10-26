@@ -593,10 +593,14 @@ object LifeEngine {
 
     // ------------------------------------------------------------ claiming a fief
 
+    /** A knight is trusted with the keep for half the usual surety. */
+    fun keepGold(state: GameState): Int = if (state.life.knighted) CastleEngine.KNIGHT_KEEP_GOLD else KEEP_GOLD
+
     fun keepBlocker(state: GameState): String? = when {
         state.life.landed -> "Du herrschst bereits."
         state.life.renown < KEEP_RENOWN -> "Die Krone vergibt die Grenzfeste nur an bekannte Leute (Ruf ${state.life.renown}/$KEEP_RENOWN)."
-        state.life.purse < KEEP_GOLD -> "Für Lehnseid und Ausrüstung brauchst du $KEEP_GOLD Gold (${state.life.purse})."
+        state.life.purse < keepGold(state) -> "Für Lehnseid und Ausrüstung brauchst du ${keepGold(state)} Gold (${state.life.purse})" +
+            (if (state.life.knighted) "." else " – als Ritter nur ${CastleEngine.KNIGHT_KEEP_GOLD}.")
         else -> null
     }
 
@@ -676,6 +680,9 @@ object LifeEngine {
         require(life.gear.weaponTier in GearCatalog.weapons.indices && life.gear.armorTier in GearCatalog.armor.indices) { "Ungültige Ausrüstung." }
         require(life.gifts.values.all { it >= 0 }) { "Ungültige Geschenke." }
         require(life.bonds.all { b -> b.a != b.b && life.npc(b.a) != null && life.npc(b.b) != null && b.strength in 0..100 }) { "Ungültige Beziehungen." }
+        require(life.lordQuestsDone >= 0 && life.tournamentsWon >= 0) { "Ungültige Taten." }
+        life.lordQuest?.let { q -> require(q.enemyCount in 1..20 && q.enemyPower in 1..150 && q.reward >= 0) { "Ungültiger Lehnsauftrag." } }
+        life.tournament?.let { t -> require(t.round in 0..3 && t.opponents.size <= 3) { "Ungültiges Turnier." } }
         require(life.npcs.map { it.id }.distinct().size == life.npcs.size) { "Doppelte Personen." }
         life.npcs.forEach(NpcEngine::validate)
         require(life.companionNpcId == null || life.npc(life.companionNpcId) != null) { "Gefährtin fehlt." }

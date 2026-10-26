@@ -62,6 +62,7 @@ fun RealmGameApp(saves: SaveRepository) {
                     !state.life.landed -> LifeShell(state, { controller.update(state, it) }, { controller.notice(it) }, controller::menu)
                     // Rulers can visit a tavern too; while inside, the walkable scene replaces the shell.
                     state.life.skirmish != null -> SkirmishScreen(state, { controller.update(state, it) }, { controller.notice(it) })
+                    state.life.place == LifePlace.CASTLE -> CastleScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.BARRACKS -> BarracksScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.TAVERN -> TavernScreen(state, { controller.update(state, it) }, { controller.notice(it) }, onExit = {})
                     else -> GameShell(state, { controller.update(state, it) }, { controller.notice(it) },

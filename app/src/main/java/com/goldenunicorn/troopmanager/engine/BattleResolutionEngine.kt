@@ -348,11 +348,18 @@ object BattleResolutionEngine {
             (if (c.type == UnitType.KNIGHT) battle.cavalryWeather else 1.0) * battle.seasonPenalty *
             (if (state.resources.food == 0) .70 else 1.0) *
             (if (battle.participation == BattleParticipation.PERSONAL && battle.personalSection == c.section && c.commanderId == null)
-                if (battle.heroPerk) 1.22 else 1.10 else 1.0) *
+                personalFactor(state, battle.heroPerk) else 1.0) *
             (if (state.doctrine == MilitaryDoctrine.FOREST_WARFARE && terrain == BattleTerrain.FOREST) 1.12 else 1.0) *
             (if (state.doctrine == MilitaryDoctrine.DISCIPLINED_LINE && !ranged && c.type != UnitType.KNIGHT) 1.05 else 1.0) *
             (if (state.war.eliteUnits.any { it.type == c.type && "Unbeugsam" in it.traits }) 1.05 else 1.0)
     }
+
+    /**
+     * The ruler fighting in person: the classic hero bonus, plus the gear bought as a landless
+     * character and minus unhealed wounds. Without gear and wounds it is exactly the old 1.10/1.22.
+     */
+    fun personalFactor(state: GameState, heroPerk: Boolean): Double =
+        (if (heroPerk) 1.22 else 1.10) + SkirmishEngine.weaponBonus(state) / 200.0 + SkirmishEngine.armorBonus(state) / 400.0 - state.life.wound / 400.0
 
     private fun enemyQuality(unit: EnemyBattleUnit, front: BattleFront): Double =
         (.5 + front.morale / 200.0) * (.5 + unit.equipment / 200.0) * (1 + unit.experience / 200.0) *

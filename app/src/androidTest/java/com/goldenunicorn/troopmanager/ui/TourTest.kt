@@ -49,5 +49,7 @@ class TourTest {
         listOf("market", "skirmish", "party", "captive").forEach { page(it); shot("e-$it") }
         // Milestone 3: the barracks yard.
         listOf("barracks").forEach { page(it); shot("f-$it") }
+        // Milestone 4: the castle courtyard on a tournament day, seated guests in the tavern.
+        listOf("castle", "tavern").forEach { page(it); shot("g-$it") }
     }
 }

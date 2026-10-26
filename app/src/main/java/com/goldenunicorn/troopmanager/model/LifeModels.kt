@@ -91,6 +91,7 @@ enum class CareerRank(val label: String, val renown: Int) {
     SOLDIER("Erfahrener Soldat", 25),
     MERCENARY("Söldner", 25),
     CAPTAIN("Hauptmann", 70),
+    KNIGHT("Ritter", 100),
     COMMANDER("Kommandant", 130),
     LORD("Burgherr", 200),
 }
@@ -102,6 +103,7 @@ enum class LifePlace(val label: String, val walkable: Boolean) {
     TAVERN("Taverne", true),
     MARKET("Markt", true),
     BARRACKS("Kaserne", true),
+    CASTLE("Burghof", true),
     AWAY("Unterwegs", false),
 }
 
@@ -277,6 +279,7 @@ enum class NpcRole(val label: String) {
     SMITH("Schmied"),
     HEALER("Heilerin"),
     SERGEANT("Ausbilder"),
+    LORD("Burgvogt"),
 }
 
 /** Social stage between the player and one person. Romance stages are never reached automatically. */
@@ -484,6 +487,13 @@ data class LifeState(
     val enlisted: Boolean = false,
     val lastGuardDay: Int = -1,
     val lastSocialDay: Int = 0,
+    // ---- Milestone 4: the castle courtyard
+    val lordQuest: LordQuest? = null,
+    val lordQuestsDone: Int = 0,
+    val knighted: Boolean = false,
+    val tournament: TournamentRun? = null,
+    val tournamentsWon: Int = 0,
+    val lastAudienceDay: Int = -1,
     val nextId: Long = 1,
 ) {
     fun npc(id: String): NpcIdentity? = npcs.firstOrNull { it.id == id }
@@ -492,6 +502,14 @@ data class LifeState(
     fun inParty(id: String): Boolean = party.any { it.npcId == id }
     val captive: Boolean get() = captiveUntil != null
 }
+
+/** A task from the local lord: free a province from bandits – a personal deed that changes the strategic map. */
+@Serializable
+data class LordQuest(val id: String, val lordId: String, val targetProvinceId: String, val enemyCount: Int, val enemyPower: Int, val reward: Int, val renown: Int, val givenDay: Int)
+
+/** A tournament in progress: three bouts against knights of rising strength. */
+@Serializable
+data class TournamentRun(val provinceId: String, val day: Int, val round: Int = 0, val opponents: List<String> = emptyList(), val lost: Boolean = false)
 
 @Serializable
 enum class BondKind(val label: String) { FRIENDS("Befreundet"), RIVALS("Verfeindet"), COUPLE("Ein Paar"), SIBLINGS("Geschwister") }

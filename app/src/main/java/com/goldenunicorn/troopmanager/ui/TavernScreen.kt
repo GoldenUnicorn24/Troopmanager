@@ -179,8 +179,9 @@ fun TavernScreen(
                         drawFurnitureRow(row, tw, th, wallH, time)
                         placements.filter { it.cell.y == row }.sortedBy { it.cell.x }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) + th * .3f)
-                            val bob = sin((time + p.cell.x * .13f) * 6.283f) * tw * .012f
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false)
+                            val seated = p.npc.role != NpcRole.INNKEEPER && p.kind in setOf(TavernEngine.SeatKind.TABLE, TavernEngine.SeatKind.FIRE, TavernEngine.SeatKind.BAR)
+                            val bob = if (seated) 0f else sin((time + p.cell.x * .13f) * 6.283f) * tw * .012f
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false, seated = seated)
                         }
                         if (floor(playerRow + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), wallH + th * (pos.value.y + .5f) + th * .3f)

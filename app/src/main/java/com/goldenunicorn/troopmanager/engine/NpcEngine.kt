@@ -127,6 +127,7 @@ object NpcEngine {
         NpcRole.SMITH -> NpcRoutine(LifePlace.MARKET, LifePlace.MARKET, LifePlace.MARKET, LifePlace.TAVERN, LifePlace.AWAY, 85)
         NpcRole.HEALER -> NpcRoutine(LifePlace.MARKET, LifePlace.MARKET, LifePlace.MARKET, LifePlace.AWAY, LifePlace.AWAY, 90)
         NpcRole.SERGEANT -> NpcRoutine(LifePlace.BARRACKS, LifePlace.BARRACKS, LifePlace.BARRACKS, LifePlace.BARRACKS, LifePlace.AWAY, 100)
+        NpcRole.LORD -> NpcRoutine(LifePlace.CASTLE, LifePlace.CASTLE, LifePlace.CASTLE, LifePlace.CASTLE, LifePlace.AWAY, 100)
     }
 
     private fun professionFor(role: NpcRole, gender: Gender, random: Random): String = when (role) {
@@ -145,6 +146,7 @@ object NpcEngine {
         NpcRole.SMITH -> if (gender == Gender.FEMALE) "Schmiedin" else "Schmied"
         NpcRole.HEALER -> if (gender == Gender.FEMALE) "Heilerin" else "Heiler"
         NpcRole.SERGEANT -> if (gender == Gender.FEMALE) "Ausbilderin" else "Ausbilder"
+        NpcRole.LORD -> if (gender == Gender.FEMALE) "Burgvögtin" else "Burgvogt"
     }
 
     private fun standingFor(role: NpcRole): String = when (role) {

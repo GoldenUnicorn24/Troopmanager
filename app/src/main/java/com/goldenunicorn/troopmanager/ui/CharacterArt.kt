@@ -819,89 +819,110 @@ private fun DrawScope.drawDiadem(a: CharacterAppearance, g: FaceGeometry) {
  * Full figure standing on [feet]. [unit] is roughly 1/128 of the figure box height. In the
  * tavern the same function draws every person at small size, so looks stay recognisable.
  */
-internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f) {
+internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false) {
     val female = gender == Gender.FEMALE
     val heightScale = .86f + a.height / 100f * .2f + if (female) -.03f else 0f
     val u = unit * heightScale
+    // Seated figures keep their feet on the floor; everything from the hips up sinks onto the stool.
+    val f = if (seated) Offset(feet.x, feet.y + 22f * u) else feet
     val widthScale = .9f + a.build * .07f + (a.muscle - 50) / 500f
     val fabric = ArtPalette.fabric[a.primaryColor]
     val accent = ArtPalette.fabric[a.accentColor]
     val tone = ArtPalette.skin[a.skinTone]
     val lean = when (a.posture) { 1 -> 1.2f; 3 -> -1.5f; else -> 0f }
     val swing = sin(walkPhase * 6.283f)
-    val hip = Offset(feet.x, feet.y - 56f * u)
-    val shoulderY = feet.y - 94f * u
+    val hip = Offset(f.x, f.y - 56f * u)
+    val shoulderY = f.y - 94f * u
     val sw = (if (female) 13f else 15.5f) * widthScale
     val hw = (if (female) 12f else 11f) * widthScale
     // Shadow on the floor.
     drawOval(Color.Black.copy(alpha = .35f), Offset(feet.x - 16f * u, feet.y - 3f * u), Size(32f * u, 6f * u))
     if (a.cloak in 1..3) {
+        val cloakBottom = if (seated) hip.y + 10f * u else f.y - 6f * u
         val cloak = if (a.cloak == 2) Color(0xFF4A3524) else accent.shade(.2f)
         drawPath(Path().apply {
-            moveTo(feet.x - sw * u, shoulderY)
-            cubicTo(feet.x - (sw + 6f) * u, shoulderY + 30f * u, feet.x - (sw + 8f) * u, feet.y - 20f * u, feet.x - (sw + 6f) * u, feet.y - 6f * u)
-            lineTo(feet.x + (sw + 6f) * u, feet.y - 6f * u)
-            cubicTo(feet.x + (sw + 8f) * u, feet.y - 20f * u, feet.x + (sw + 6f) * u, shoulderY + 30f * u, feet.x + sw * u, shoulderY)
+            moveTo(f.x - sw * u, shoulderY)
+            cubicTo(f.x - (sw + 6f) * u, shoulderY + 30f * u, f.x - (sw + 8f) * u, cloakBottom - 14f * u, f.x - (sw + 6f) * u, cloakBottom)
+            lineTo(f.x + (sw + 6f) * u, cloakBottom)
+            cubicTo(f.x + (sw + 8f) * u, cloakBottom - 14f * u, f.x + (sw + 6f) * u, shoulderY + 30f * u, f.x + sw * u, shoulderY)
             close()
-        }, Brush.horizontalGradient(listOf(cloak.tint(.05f), cloak.shade(.5f)), feet.x - sw * u, feet.x + sw * u))
+        }, Brush.horizontalGradient(listOf(cloak.tint(.05f), cloak.shade(.5f)), f.x - sw * u, f.x + sw * u))
     }
-    if (a.weapon == 1) drawLine(ArtPalette.leather.tint(.2f), Offset(feet.x + 10f * u, shoulderY - 6f * u), Offset(feet.x - 12f * u, hip.y + 4f * u), 1.6f * u, StrokeCap.Round)
-    // Legs (or skirt).
-    val legColor = if (a.clothing == 2) fabric.shade(.1f) else Color(0xFF3A2E26).mix(fabric, .25f)
-    if (a.clothing == 2) {
-        drawPath(Path().apply {
-            moveTo(hip.x - hw * u, hip.y - 6f * u)
-            lineTo(hip.x - (hw + 7f) * u, feet.y - 6f * u)
-            cubicTo(hip.x - 4f * u, feet.y - 3f * u, hip.x + 4f * u, feet.y - 3f * u, hip.x + (hw + 7f) * u, feet.y - 6f * u)
-            lineTo(hip.x + hw * u, hip.y - 6f * u)
-            close()
+    if (a.weapon == 1) drawLine(ArtPalette.leather.tint(.2f), Offset(f.x + 10f * u, shoulderY - 6f * u), Offset(f.x - 12f * u, hip.y + 4f * u), 1.6f * u, StrokeCap.Round)
+    if (seated) {
+        // Stool under the hips, then foreshortened thighs and shins down to the floor.
+        val stool = Color(0xFF5A3A20)
+        drawRect(stool, Offset(hip.x - (hw + 5f) * u, hip.y + 1f * u), Size((hw + 5f) * 2f * u, 4f * u))
+        for (side in listOf(-1f, 1f)) drawLine(stool.shade(.3f), Offset(hip.x + side * (hw + 3f) * u, hip.y + 4f * u), Offset(hip.x + side * (hw + 4f) * u, feet.y - 1f * u), 2.4f * u)
+        val legColor = if (a.clothing == 2) fabric.shade(.1f) else Color(0xFF3A2E26).mix(fabric, .25f)
+        for (side in listOf(-1f, 1f)) {
+            val knee = Offset(hip.x + side * 6.5f * u, hip.y + 7f * u)
+            drawLine(legColor.tint(.08f), Offset(hip.x + side * 4.5f * u, hip.y), knee, 8.2f * u * widthScale, StrokeCap.Round)
+            drawLine(legColor.shade(if (side > 0) .3f else .1f), knee, Offset(hip.x + side * 6f * u, feet.y - 7f * u), 6.6f * u * widthScale, StrokeCap.Round)
+            drawRoundRect(Color(0xFF2A1D14), Offset(hip.x + side * 6f * u - 4.2f * u, feet.y - 9f * u), Size(8.4f * u, 8f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+        }
+        if (a.clothing == 2) drawPath(Path().apply {
+            moveTo(hip.x - hw * u, hip.y - 6f * u); lineTo(hip.x - (hw + 6f) * u, hip.y + 12f * u)
+            lineTo(hip.x + (hw + 6f) * u, hip.y + 12f * u); lineTo(hip.x + hw * u, hip.y - 6f * u); close()
         }, Brush.horizontalGradient(listOf(fabric.tint(.1f), fabric.shade(.45f)), hip.x - hw * u, hip.x + hw * u))
-    } else for (side in listOf(-1f, 1f)) {
-        val step = side * swing * 4f * u
-        drawLine(legColor.shade(if (side > 0) .25f else 0f), Offset(hip.x + side * 4.5f * u, hip.y), Offset(hip.x + side * 5f * u + step, feet.y - 7f * u), 7f * u * widthScale, StrokeCap.Round)
-    }
-    for (side in listOf(-1f, 1f)) {
-        val step = if (a.clothing == 2) 0f else side * swing * 4f * u
-        drawRoundRect(Color(0xFF2A1D14), Offset(hip.x + side * 5f * u + step - 4.2f * u, feet.y - 9f * u), Size(8.4f * u, 8f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+    } else {
+        // Legs (or skirt).
+        val legColor = if (a.clothing == 2) fabric.shade(.1f) else Color(0xFF3A2E26).mix(fabric, .25f)
+        if (a.clothing == 2) {
+            drawPath(Path().apply {
+                moveTo(hip.x - hw * u, hip.y - 6f * u)
+                lineTo(hip.x - (hw + 7f) * u, f.y - 6f * u)
+                cubicTo(hip.x - 4f * u, f.y - 3f * u, hip.x + 4f * u, f.y - 3f * u, hip.x + (hw + 7f) * u, f.y - 6f * u)
+                lineTo(hip.x + hw * u, hip.y - 6f * u)
+                close()
+            }, Brush.horizontalGradient(listOf(fabric.tint(.1f), fabric.shade(.45f)), hip.x - hw * u, hip.x + hw * u))
+        } else for (side in listOf(-1f, 1f)) {
+            val step = side * swing * 4f * u
+            drawLine(legColor.shade(if (side > 0) .25f else 0f), Offset(hip.x + side * 4.5f * u, hip.y), Offset(hip.x + side * 5f * u + step, f.y - 7f * u), 7f * u * widthScale, StrokeCap.Round)
+        }
+        for (side in listOf(-1f, 1f)) {
+            val step = if (a.clothing == 2) 0f else side * swing * 4f * u
+            drawRoundRect(Color(0xFF2A1D14), Offset(hip.x + side * 5f * u + step - 4.2f * u, f.y - 9f * u), Size(8.4f * u, 8f * u), androidx.compose.ui.geometry.CornerRadius(2f * u))
+        }
     }
     // Torso.
     val torso = Path().apply {
-        moveTo(feet.x - sw * u + lean * u, shoulderY)
-        lineTo(feet.x + sw * u + lean * u, shoulderY)
-        cubicTo(feet.x + (sw + 1f) * u, shoulderY + 14f * u, feet.x + hw * u, hip.y - 14f * u, feet.x + hw * u, hip.y + 2f * u)
-        lineTo(feet.x - hw * u, hip.y + 2f * u)
-        cubicTo(feet.x - hw * u, hip.y - 14f * u, feet.x - (sw + 1f) * u, shoulderY + 14f * u, feet.x - sw * u + lean * u, shoulderY)
+        moveTo(f.x - sw * u + lean * u, shoulderY)
+        lineTo(f.x + sw * u + lean * u, shoulderY)
+        cubicTo(f.x + (sw + 1f) * u, shoulderY + 14f * u, f.x + hw * u, hip.y - 14f * u, f.x + hw * u, hip.y + 2f * u)
+        lineTo(f.x - hw * u, hip.y + 2f * u)
+        cubicTo(f.x - hw * u, hip.y - 14f * u, f.x - (sw + 1f) * u, shoulderY + 14f * u, f.x - sw * u + lean * u, shoulderY)
         close()
     }
     val armorColor = when (a.armor) { 1 -> ArtPalette.leather; 2, 4 -> ArtPalette.metal; 3 -> ArtPalette.metal.mix(accent, .35f); else -> fabric }
-    drawPath(torso, Brush.linearGradient(listOf(armorColor.tint(.25f), armorColor, armorColor.shade(.5f)), Offset(feet.x - sw * u, shoulderY), Offset(feet.x + sw * u, hip.y)))
-    if (a.armor == 0 && a.clothing == 1) drawLine(ArtPalette.leather.tint(.3f), Offset(feet.x, shoulderY + 4f * u), Offset(feet.x, hip.y), 1f * u)
-    if (a.armor == 4) drawLine(Color.White.copy(alpha = .4f), Offset(feet.x - .5f * u, shoulderY + 6f * u), Offset(feet.x - .5f * u, hip.y - 4f * u), 1f * u)
+    drawPath(torso, Brush.linearGradient(listOf(armorColor.tint(.25f), armorColor, armorColor.shade(.5f)), Offset(f.x - sw * u, shoulderY), Offset(f.x + sw * u, hip.y)))
+    if (a.armor == 0 && a.clothing == 1) drawLine(ArtPalette.leather.tint(.3f), Offset(f.x, shoulderY + 4f * u), Offset(f.x, hip.y), 1f * u)
+    if (a.armor == 4) drawLine(Color.White.copy(alpha = .4f), Offset(f.x - .5f * u, shoulderY + 6f * u), Offset(f.x - .5f * u, hip.y - 4f * u), 1f * u)
     // Belt.
-    drawRect(ArtPalette.leather.shade(.2f), Offset(feet.x - hw * u, hip.y - 4f * u), Size(hw * 2f * u, 4f * u))
-    drawRect(ArtPalette.gold, Offset(feet.x - 1.8f * u, hip.y - 4f * u), Size(3.6f * u, 4f * u))
+    drawRect(ArtPalette.leather.shade(.2f), Offset(f.x - hw * u, hip.y - 4f * u), Size(hw * 2f * u, 4f * u))
+    drawRect(ArtPalette.gold, Offset(f.x - 1.8f * u, hip.y - 4f * u), Size(3.6f * u, 4f * u))
     // Arms.
     for (side in listOf(-1f, 1f)) {
-        val sh = Offset(feet.x + side * (sw - 1f) * u + lean * u, shoulderY + 3f * u)
-        val hand = Offset(feet.x + side * (sw + 2.5f) * u - side * swing * 2f * u, hip.y + 4f * u)
+        val sh = Offset(f.x + side * (sw - 1f) * u + lean * u, shoulderY + 3f * u)
+        val hand = Offset(f.x + side * (sw + 2.5f) * u - side * swing * 2f * u, hip.y + 4f * u)
         drawLine((if (a.armor >= 2) ArtPalette.metal else fabric).shade(if (side > 0) .3f else .05f), sh, hand, 5.6f * u * widthScale, StrokeCap.Round)
         drawCircle(tone.base, 2.6f * u, hand)
         if (a.armor == 4 || a.armor == 1) drawCircle(armorColor.tint(.2f), 4.6f * u, sh)
     }
     // Weapon.
     when (a.weapon) {
-        0 -> drawLine(ArtPalette.metal.tint(.3f), Offset(feet.x - (hw + 2f) * u, hip.y - 2f * u), Offset(feet.x - (hw + 9f) * u, hip.y + 26f * u), 1.6f * u, StrokeCap.Round)
-        2 -> drawLine(Color(0xFF7A5634), Offset(feet.x + (sw + 3f) * u, shoulderY - 30f * u), Offset(feet.x + (sw + 3f) * u, feet.y - 2f * u), 1.4f * u).also {
-            drawPath(Path().apply { moveTo(feet.x + (sw + 3f) * u, shoulderY - 38f * u); lineTo(feet.x + (sw + 5f) * u, shoulderY - 30f * u); lineTo(feet.x + (sw + 1f) * u, shoulderY - 30f * u); close() }, ArtPalette.metal.tint(.3f))
+        0 -> drawLine(ArtPalette.metal.tint(.3f), Offset(f.x - (hw + 2f) * u, hip.y - 2f * u), Offset(f.x - (hw + 9f) * u, hip.y + 26f * u), 1.6f * u, StrokeCap.Round)
+        2 -> drawLine(Color(0xFF7A5634), Offset(f.x + (sw + 3f) * u, shoulderY - 30f * u), Offset(f.x + (sw + 3f) * u, feet.y - 2f * u), 1.4f * u).also {
+            drawPath(Path().apply { moveTo(f.x + (sw + 3f) * u, shoulderY - 38f * u); lineTo(f.x + (sw + 5f) * u, shoulderY - 30f * u); lineTo(f.x + (sw + 1f) * u, shoulderY - 30f * u); close() }, ArtPalette.metal.tint(.3f))
         }
-        3 -> drawLine(Color(0xFF7A5634), Offset(feet.x - (hw + 2f) * u, hip.y - 6f * u), Offset(feet.x - (hw + 6f) * u, hip.y + 18f * u), 1.6f * u)
-        5 -> drawLine(Color(0xFF6A4A2A), Offset(feet.x + (sw + 3f) * u, shoulderY - 18f * u), Offset(feet.x + (sw + 3f) * u, feet.y - 2f * u), 1.8f * u, StrokeCap.Round)
-        4 -> for (side in listOf(-1f, 1f)) drawLine(ArtPalette.metal.tint(.4f), Offset(feet.x + side * 4f * u, hip.y - 1f * u), Offset(feet.x + side * 6f * u, hip.y + 9f * u), 1.1f * u)
+        3 -> drawLine(Color(0xFF7A5634), Offset(f.x - (hw + 2f) * u, hip.y - 6f * u), Offset(f.x - (hw + 6f) * u, hip.y + 18f * u), 1.6f * u)
+        5 -> drawLine(Color(0xFF6A4A2A), Offset(f.x + (sw + 3f) * u, shoulderY - 18f * u), Offset(f.x + (sw + 3f) * u, feet.y - 2f * u), 1.8f * u, StrokeCap.Round)
+        4 -> for (side in listOf(-1f, 1f)) drawLine(ArtPalette.metal.tint(.4f), Offset(f.x + side * 4f * u, hip.y - 1f * u), Offset(f.x + side * 6f * u, hip.y + 9f * u), 1.1f * u)
     }
-    if (a.cloak in 1..3) drawCircle(ArtPalette.gold, 1.6f * u, Offset(feet.x - 6f * u, shoulderY + 3f * u))
+    if (a.cloak in 1..3) drawCircle(ArtPalette.gold, 1.6f * u, Offset(f.x - 6f * u, shoulderY + 3f * u))
     // Neck and head.
-    drawLine(tone.base.shade(.1f), Offset(feet.x + lean * u, shoulderY - 6f * u), Offset(feet.x + lean * u, shoulderY + 1f * u), 6f * u)
-    val headCenter = Offset(feet.x + lean * 1.3f * u, shoulderY - 23f * u)
+    drawLine(tone.base.shade(.1f), Offset(f.x + lean * u, shoulderY - 6f * u), Offset(f.x + lean * u, shoulderY + 1f * u), 6f * u)
+    val headCenter = Offset(f.x + lean * 1.3f * u, shoulderY - 23f * u)
     val hs = u * .62f
     if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, headCenter, hs, gender)
     if (detailed) drawHead(a, gender, headCenter, hs, detailed = false) else drawTinyHead(a, gender, headCenter, hs)

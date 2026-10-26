@@ -236,6 +236,7 @@ object SkirmishEngine {
         val fight = state.life.skirmish ?: return LifeEngine.Result(state, "")
         if (fight.outcome == null) return LifeEngine.Result(state, "Der Kampf läuft noch.")
         var next = state.copy(life = state.life.copy(skirmish = null))
+        next = CastleEngine.afterBout(CastleEngine.afterFight(next, fight), fight)
         if (fight.travelTo != null && fight.outcome != SkirmishOutcome.CAPTURED) return LifeEngine.completeTravel(next, fight.travelTo)
         if (next.life.place == LifePlace.AWAY && next.life.captiveUntil == null) next = next.copy(life = next.life.copy(place = LifePlace.TOWN))
         return LifeEngine.Result(next, "")

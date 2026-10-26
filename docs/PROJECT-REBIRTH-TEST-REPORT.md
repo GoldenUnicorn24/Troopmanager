@@ -57,9 +57,9 @@ Bestehende Tests angepasst: vier Stellen, die die Schemanummer 5 fest erwarteten
 
 - **Porträtqualität:** Kein Bildgenerator verfügbar. Der neue Renderer ist deutlich detaillierter als v2.1 (Licht, Lider, Iris, Strähnen, Rüstungsmaterialien, Ganzkörper), erreicht aber **kein** semi-realistisches gemaltes Niveau. Die Ebenen-Pipeline ist fertig und wartet auf 82 Assets (`CHARACTER-CREATION-DESIGN.md`).
 - **Kein manueller Playtest auf echtem Gerät** in dieser Umgebung; nur Emulator-Screenshots und automatisierte Tests. Tap-to-Move wurde logisch (Wegfindung) getestet, die Gestenbedienung nicht automatisiert.
-- Nur die Taverne ist begehbar; Markt/Kaserne/Burghof fehlen.
-- Personen sitzen nicht (stehen an Sitzplätzen).
-- Persönliche Schlachtteilnahme/Verwundung/Gefangenschaft noch nicht an Combat Engine 3.0 gebunden.
+- Begehbar: Taverne, Markt (M2), Kaserne (M3), Burghof (M4).
+- Sitz-Pose seit M4 (einfache Frontalansicht).
+- Große Schlachten: Ausrüstung und Wunden wirken als Faktor (M4); der Spieler ist dort keine einzeln gesteuerte Figur.
 - Der Weltpuls für landlose Spiele ist leichtgewichtig; die vollen KI-Engines laufen erst nach dem Lehnseid.
 - Der CI-Push auf `claude/**` aktualisiert die öffentliche Testversion `dev-latest` und den Screenshot-Branch – so ist der Workflow eingerichtet.
 
@@ -80,3 +80,11 @@ Kampfbalance per Simulation (40 Läufe je Zeile, 4 Wegelagerer): Schwert 60 alle
 Neue Tests in `RebirthPeopleTest` (9): Beziehungsnetz pro Stadt (Paare nur bei gegenseitiger Offenheit, deterministisch, gespeichert) · Weitergabe von Sympathie an Freunde und umgekehrt an Rivalen · Eifersucht und Bindungsabzug beim Flirt mit Vergebenen · Reisende ziehen um, Klatsch entsteht · nie besuchte Gefährtin zieht weiter und wird erwähnt · befreundete Gefährtin sucht den Spieler auf · Training mit abnehmendem Ertrag und Tageslimit · Stadtwache mit Sold, Ruf und Beförderung · Rollen-Themen lehren und erzählen ohne offene Platzhalter.
 
 Lokal: **498 Tests grün**. CI- und Emulator-Ergebnis siehe PR #14.
+
+## 7. Meilenstein 4 (Burghof, Ritterschaft, Turniere)
+
+Neue Tests in `RebirthCastleTest` (10): jede Stadt hat einen erwachsenen, nicht romantisch verfügbaren Burgvogt, der Burghof ist von der Pforte aus vollständig begehbar und nachts geschlossen · Audienz nur nüchtern, tagsüber und mit Ruf · Lehnsauftrag zielt auf eine Räuberprovinz; Niederlage lässt die Karte unverändert, Sieg setzt die Provinz auf der gemeinsamen Kronkarte frei (Nachricht, Chronik, Erinnerung und Vertrauen beim Burgvogt), speichersicher · der Sturm wird persönlich und deterministisch ausgefochten · Ritterschlag nur nach zwei Aufträgen und Ruf 100, senkt den Goldbedarf der Grenzfeste auf 400 · Turnier nur an Turniertagen, Startgeld einmal, drei stärker werdende Gegner, Sieg wird gezählt und chronikiert · verlorene Runde beendet das Turnier für den Tag · persönlicher Schlachtfaktor exakt 1,10/1,22 ohne Ausrüstung/Wunden, höher mit Ausrüstung, niedriger mit Wunden · Paare sitzen in der Taverne nebeneinander, Rivalen erzeugen „Alte Feindschaft“ mit Folgen · ungültige Turnier-/Auftragsdaten werden abgelehnt.
+
+Alle bisherigen Kampf- und Kampagnentests (Combat Engine 3.0, V06/V10-Abnahme) bleiben unverändert grün – die Kopplung ändert nichts, solange keine Ausrüstung gekauft wurde.
+
+Lokal: **508 Tests grün**. CI- und Emulator-Ergebnis (neue Seiten `g-castle`, `g-tavern` mit Sitz-Pose) siehe PR #14.

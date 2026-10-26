@@ -134,7 +134,10 @@ object TavernEngine {
         val result = mutableListOf<Placement>()
         val free = layout.seats.toMutableList()
         fun take(npc: NpcIdentity, prefer: SeatKind?) {
-            val pool = free.filter { prefer == null || it.kind == prefer }.ifEmpty { free }
+            // Couples sit together: next to the partner if the partner already has a seat.
+            val partnerCell = NpcSocialEngine.partnerOf(state, npc.id)?.let { p -> result.firstOrNull { it.npc.id == p.id }?.cell }
+            val pool = (partnerCell?.let { pc -> free.filter { it.cell.dist(pc) <= 1 }.ifEmpty { free.filter { it.cell.dist(pc) <= 2 } } } ?: emptyList())
+                .ifEmpty { free.filter { prefer == null || it.kind == prefer } }.ifEmpty { free }
             if (pool.isEmpty()) return
             val seat = pool[Math.floorMod(npc.id.hashCode() + state.day * 7 + state.life.timeSlot.ordinal * 3, pool.size)]
             free.remove(seat)
@@ -258,6 +261,14 @@ object TavernEngine {
             if (hothead != null && slot >= TimeSlot.EVENING) add(TavernEvent("quarrel", "Streit am Tresen",
                 "${hothead.name} brüllt einen Fischer an. Ein Becher fliegt. Gleich kracht es.",
                 hothead.id, listOf(EventOption("calm", "Schlichten", "Diplomatie gegen Hitzkopf"), EventOption("join", "Mitmischen", "Schlägerei"), EventOption("ignore", "Wegsehen", "Nichts passiert"))))
+            rivalsPresent(state, people)?.let { (x, y) ->
+                if (slot >= TimeSlot.AFTERNOON) add(TavernEvent("rivals", "Alte Feindschaft",
+                    "${x.name} und ${y.name} stehen sich gegenüber. Jeder hier weiß, dass die beiden sich nicht ausstehen können. Ein falsches Wort, und es fliegen Fäuste.",
+                    x.id, listOf(EventOption("calm", "Dazwischengehen", "Diplomatie gegen beider Temperament – gelingt es, wird die Feindschaft milder"),
+                        EventOption("side_a", "${x.firstName} beistehen", "${x.firstName} mag dich mehr, ${y.firstName} weniger"),
+                        EventOption("side_b", "${y.firstName} beistehen", "${y.firstName} mag dich mehr, ${x.firstName} weniger"),
+                        EventOption("ignore", "Wegsehen", "Nichts passiert"))))
+            }
             val noble = people.firstOrNull { it.role == NpcRole.NOBLE }
             if (noble != null) add(TavernEvent("incognito", "Ein zu feiner Mantel",
                 "Am Ecktisch sitzt jemand, der sich Mühe gibt, gewöhnlich zu wirken. Die Stiefel verraten es: zu teuer für diese Schänke.",
@@ -269,6 +280,13 @@ object TavernEngine {
         }.filter { eventKey(state, it.key) !in state.life.eventsDone }
         if (candidates.isEmpty()) return null
         return candidates[Math.floorMod(state.day * 5 + slot.ordinal, candidates.size)]
+    }
+
+    /** Two people present who cannot stand each other. */
+    fun rivalsPresent(state: GameState, people: List<NpcIdentity>): Pair<NpcIdentity, NpcIdentity>? {
+        val ids = people.map { it.id }.toSet()
+        val bond = state.life.bonds.filter { it.kind == BondKind.RIVALS && it.a in ids && it.b in ids }.minByOrNull { it.a + it.b } ?: return null
+        return (state.life.npc(bond.a) ?: return null) to (state.life.npc(bond.b) ?: return null)
     }
 
     fun resolve(state: GameState, eventKey: String, optionId: String): LifeEngine.Result {
@@ -312,6 +330,34 @@ object TavernEngine {
                 } else {
                     if (npc != null) next = LifeEngine.updateNpc(next, bump(npc, -4))
                     "„Halt dich da raus!“ Der Streit tobt weiter, bis die Wache kommt."
+                }
+            }
+            "rivals" to "calm", "rivals" to "side_a", "rivals" to "side_b" -> {
+                val (x, y) = rivalsPresent(next, present(next)) ?: return LifeEngine.Result(next, "Die beiden sind fort.")
+                when (optionId) {
+                    "calm" -> {
+                        val ok = LifeEngine.socialSkill(next) + 15 >= (x.personality.temper + y.personality.temper) / 2 + 10
+                        if (ok) {
+                            next = LifeEngine.addRenown(next, 2)
+                            next = LifeEngine.updateNpc(next, bump(next.life.npc(x.id)!!, 4, "parted_${y.id}", "du hast mich und ${y.firstName} auseinandergebracht"))
+                            next = LifeEngine.updateNpc(next, bump(next.life.npc(y.id)!!, 4, "parted_${x.id}", "du hast mich und ${x.firstName} auseinandergebracht"))
+                            next = next.copy(life = next.life.copy(bonds = next.life.bonds.mapNotNull { b ->
+                                if (b.kind == BondKind.RIVALS && b.involves(x.id) && b.involves(y.id)) b.copy(strength = b.strength - 15).takeIf { it.strength > 0 } else b
+                            }))
+                            "Du stellst dich zwischen die beiden und redest, bis sie sich murrend abwenden. Ihre Feindschaft hat heute etwas von ihrer Schärfe verloren."
+                        } else {
+                            next = LifeEngine.updateNpc(next, bump(next.life.npc(x.id)!!, -3))
+                            next = LifeEngine.updateNpc(next, bump(next.life.npc(y.id)!!, -3))
+                            "„Misch dich nicht ein!“ – ausnahmsweise sind sich die beiden einig. Gegen dich."
+                        }
+                    }
+                    else -> {
+                        val (friend, foe) = if (optionId == "side_a") x to y else y to x
+                        next = LifeEngine.updateNpc(next, bump(next.life.npc(friend.id)!!, 8, "sided_${foe.id}", "du hast mir gegen ${foe.firstName} beigestanden", 2))
+                        next = LifeEngine.updateNpc(next, bump(next.life.npc(foe.id)!!, -10, "sided_against_${friend.id}", "du hast dich auf die Seite von ${friend.firstName} geschlagen", 2))
+                        next = NpcSocialEngine.ripple(next, friend.id, 4)
+                        "Du stellst dich neben ${friend.firstName}. ${foe.firstName} spuckt aus und geht – das wird man dir nicht vergessen."
+                    }
                 }
             }
             "quarrel" to "join" -> if (npc != null) brawl(next, npc.id).also { next = it.state }.text else "Niemand da."

@@ -36,6 +36,10 @@ class TourActivity : ComponentActivity() {
                             current.startsWith("battle") -> TourFixture.battle(rich)
                             current == "market" -> TourFixture.roadState()
                             current == "barracks" -> com.goldenunicorn.troopmanager.engine.BarracksEngine.enter(TourFixture.roadState().let { it.copy(life = it.life.copy(timeSlot = TimeSlot.NOON)) }).state
+                            current == "castle" -> com.goldenunicorn.troopmanager.engine.CastleEngine.let { c ->
+                                val base = TourFixture.roadState().let { it.copy(day = 14, life = it.life.copy(timeSlot = TimeSlot.NOON, renown = 40)) }
+                                c.askForTask(c.enter(base).state).state
+                            }
                             current == "skirmish" -> TourFixture.skirmishState()
                             current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
                             current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
@@ -59,7 +63,7 @@ class TourActivity : ComponentActivity() {
                             }
                             current.startsWith("life-") -> LifeShell(state, { state = it }, {}, {}, initialTab = current.removePrefix("life-").toInt())
                             current == "tavern" -> LifeShell(state, { state = it }, {}, {})
-                            current == "market" || current == "skirmish" || current == "captive" || current == "barracks" -> LifeShell(state, { state = it }, {}, {})
+                            current == "market" || current == "skirmish" || current == "captive" || current == "barracks" || current == "castle" -> LifeShell(state, { state = it }, {}, {})
                             current == "party" -> LifeShell(state, { state = it }, {}, {}, initialTab = 2)
                             current == "tavern-talk" -> LifeShell(state, { state = it }, {}, {}, initialTalk = "companion")
                             current == "portraits" -> PortraitComparison(life)
