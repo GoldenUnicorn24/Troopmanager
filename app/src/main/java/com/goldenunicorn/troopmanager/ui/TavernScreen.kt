@@ -261,7 +261,7 @@ fun TavernScreen(
     }
 }
 
-private data class WalkRequest(val path: List<Cell>, val then: (() -> Unit)?, val id: Long)
+internal data class WalkRequest(val path: List<Cell>, val then: (() -> Unit)?, val id: Long)
 
 // ------------------------------------------------------------ HUD and bars
 

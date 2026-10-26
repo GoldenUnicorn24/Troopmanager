@@ -61,6 +61,7 @@ fun RealmGameApp(saves: SaveRepository) {
                     // Project Rebirth: landless characters live in the personal layer.
                     !state.life.landed -> LifeShell(state, { controller.update(state, it) }, { controller.notice(it) }, controller::menu)
                     // Rulers can visit a tavern too; while inside, the walkable scene replaces the shell.
+                    state.life.skirmish != null -> SkirmishScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.TAVERN -> TavernScreen(state, { controller.update(state, it) }, { controller.notice(it) }, onExit = {})
                     else -> GameShell(state, { controller.update(state, it) }, { controller.notice(it) },
                         controller::menu, controller::delete, controller::advanceDay, controller)

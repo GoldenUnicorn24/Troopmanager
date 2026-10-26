@@ -76,4 +76,26 @@ object TourFixture {
         }
         return s.copy(life = s.life.copy(place = LifePlace.TOWN))
     }
+
+    /** Milestone 2: Mira and a sellsword in the party, gear bought, a skirmish under way. */
+    fun roadState(): GameState {
+        var s = lifeState()
+        val mira = s.life.companion!!
+        s = LifeEngine.updateNpc(s, mira.copy(relation = mira.relation.copy(stage = SocialStage.FRIEND, trust = 60, affinity = 55, timesMet = 4)))
+        s = PartyEngine.invite(s, "companion").state
+        s = s.copy(life = s.life.copy(purse = 300, timeSlot = TimeSlot.MORNING))
+        val captain = s.life.npcs.first { it.role == NpcRole.MERCENARY_CAPTAIN && it.homeProvinceId == s.life.provinceId }
+        s = PartyEngine.hire(s, captain.id).state
+        s = MarketEngine.buyArmor(MarketEngine.enter(s).state, 2).state
+        s = MarketEngine.buyGift(s, GiftKind.BOOK).state
+        return s
+    }
+
+    fun skirmishState(): GameState {
+        var s = roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
+        s = SkirmishEngine.start(s, SkirmishKind.AMBUSH, "Hinterhalt auf der Straße", "Wegelagerer", 5, 52, 21, 3)
+        s = SkirmishEngine.act(s, SkirmishAction.RANGED).state
+        s = SkirmishEngine.act(s, SkirmishAction.ATTACK).state
+        return s
+    }
 }

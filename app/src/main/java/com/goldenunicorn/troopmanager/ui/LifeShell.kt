@@ -40,6 +40,20 @@ fun LifeShell(
     initialTab: Int = 0,
     initialTalk: String? = null,
 ) {
+    if (state.life.skirmish != null) {
+        GameSoundscape(state, "battle")
+        SkirmishScreen(state, onState, onNotice)
+        return
+    }
+    if (state.life.captive) {
+        CaptiveScreen(state, onState, onNotice)
+        return
+    }
+    if (state.life.place == LifePlace.MARKET) {
+        GameSoundscape(state, "city")
+        MarketScreen(state, onState, onNotice)
+        return
+    }
     if (state.life.place == LifePlace.TAVERN) {
         GameSoundscape(state, "city")
         TavernScreen(state, onState, onNotice, onExit = {}, initialTalk = initialTalk)
@@ -70,7 +84,7 @@ fun LifeShell(
             when (tab) {
                 0 -> PlaceTab(state, onState, onNotice)
                 1 -> WorldTab(state, onState, onNotice)
-                2 -> PeopleTab(state)
+                2 -> { PartySection(state, onState, onNotice); PeopleTab(state) }
                 else -> SelfTab(state, onState, onNotice, onMenu) { editLook = true }
             }
         }
@@ -149,6 +163,25 @@ private fun PlaceTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
                 }
             }
         }
+    }
+    if (town != null) {
+        val open = com.goldenunicorn.troopmanager.engine.MarketEngine.open(state)
+        Surface(onClick = { val r = com.goldenunicorn.troopmanager.engine.MarketEngine.enter(state); onState(r.state); onNotice(r.message) }, color = Color.Transparent,
+            shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().testTag("enter_market")) {
+            Box(Modifier.fillMaxWidth().height(96.dp).clip(RoundedCornerShape(22.dp)).background(Brush.linearGradient(listOf(Color(0xFF243447), Color(0xFF0E151D))))
+                .border(1.dp, ModernBlue.copy(alpha = .35f), RoundedCornerShape(22.dp))) {
+                Column(Modifier.align(Alignment.CenterStart).padding(18.dp)) {
+                    Text("MARKT", color = ModernBlue, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                    Text("Schmied · Krämer · Heilerin", color = Color.White, fontFamily = Cinzel, fontSize = 18.sp)
+                    Text(if (open) "Die Stände sind offen." else "Geschlossen – morgen früh wieder.", color = Mist, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+    if (life.wound > 0) PremiumPanel {
+        Text("Verwundet", color = Danger, fontWeight = FontWeight.Bold)
+        RelationBar("Wunden", life.wound, Danger)
+        Text(if (life.wound >= 70) "Reisen ist unmöglich. Ein Bett und die Heilerin helfen." else "Heilt mit der Zeit; ein Bett und die Heilerin beschleunigen es.", color = Muted, fontSize = 12.sp)
     }
     val jobs = life.jobs.filter { it.accepted && !it.done && !it.failed }
     if (jobs.isNotEmpty()) {
@@ -269,6 +302,14 @@ private fun SelfTab(state: GameState, onState: (GameState) -> Unit, onNotice: (S
                 .forEach { (label, v) -> RelationBar("$label $v", v, Gold) }
             RbAction("Aussehen ändern", onClick = onEditLook)
         }
+    }
+    PremiumPanel {
+        Text("Ausrüstung & Gepäck", color = PaleGold, fontWeight = FontWeight.Bold)
+        Text("Waffe: ${GearCatalog.weapons[life.gear.weaponTier].name} (+${GearCatalog.weapons[life.gear.weaponTier].bonus})", color = Mist, fontSize = 13.sp)
+        Text("Rüstung: ${GearCatalog.armor[life.gear.armorTier].name} (Schutz +${GearCatalog.armor[life.gear.armorTier].bonus})", color = Mist, fontSize = 13.sp)
+        val gifts = life.gifts.filter { it.value > 0 }
+        Text(if (gifts.isEmpty()) "Keine Geschenke im Gepäck." else "Geschenke: " + gifts.entries.joinToString { "${it.value}× ${it.key.label}" }, color = Muted, fontSize = 12.sp)
+        Text("Kämpfe: ${life.battles} · Siege: ${life.battleVictories}" + if (life.wound > 0) " · Wunden ${life.wound}" else "", color = Muted, fontSize = 12.sp)
     }
     if (life.backstory.isNotBlank()) PremiumPanel {
         Text("Herkunft", color = PaleGold, fontWeight = FontWeight.Bold)

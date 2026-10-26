@@ -34,6 +34,10 @@ class TourActivity : ComponentActivity() {
                     key(current) {
                         var state by remember { mutableStateOf(when {
                             current.startsWith("battle") -> TourFixture.battle(rich)
+                            current == "market" -> TourFixture.roadState()
+                            current == "skirmish" -> TourFixture.skirmishState()
+                            current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
+                            current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
                             current.startsWith("life") -> life
                             current.startsWith("tavern") -> life.copy(life = life.life.copy(place = LifePlace.TAVERN))
                             current == "scene" -> rich.copy(crown = rich.crown.copy(saga = rich.crown.saga.copy(pendingScene =
@@ -54,6 +58,8 @@ class TourActivity : ComponentActivity() {
                             }
                             current.startsWith("life-") -> LifeShell(state, { state = it }, {}, {}, initialTab = current.removePrefix("life-").toInt())
                             current == "tavern" -> LifeShell(state, { state = it }, {}, {})
+                            current == "market" || current == "skirmish" || current == "captive" -> LifeShell(state, { state = it }, {}, {})
+                            current == "party" -> LifeShell(state, { state = it }, {}, {}, initialTab = 2)
                             current == "tavern-talk" -> LifeShell(state, { state = it }, {}, {}, initialTalk = "companion")
                             current == "portraits" -> PortraitComparison(life)
                             current.startsWith("spot:") -> GameShell(state, { state = it }, {}, {}, {}, {}, controller,

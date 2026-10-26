@@ -45,5 +45,7 @@ class TourTest {
         // Project Rebirth: start wizard, landless life, walkable tavern, conversation, portraits.
         listOf("wizard-0", "wizard-1", "wizard-2", "wizard-4", "wizard-5", "life-0", "life-1", "life-2", "life-3",
             "tavern", "tavern-talk", "portraits").forEach { page(it); shot("d-$it") }
+        // Milestone 2: market, personal fight, following, captivity.
+        listOf("market", "skirmish", "party", "captive").forEach { page(it); shot("e-$it") }
     }
 }
