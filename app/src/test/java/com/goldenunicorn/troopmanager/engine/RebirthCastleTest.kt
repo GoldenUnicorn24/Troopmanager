@@ -101,11 +101,11 @@ class RebirthCastleTest {
 
     @Test fun twoDeedsAndRenownEarnTheAccoladeWhichLowersTheKeepPrice() {
         var s = CastleEngine.enter(at(start(), TimeSlot.MORNING)).state
-        s = s.copy(life = s.life.copy(renown = 120, lordQuestsDone = 1))
+        s = s.copy(life = s.life.copy(renown = 150, lordQuestsDone = CastleEngine.KNIGHT_QUESTS - 1))
         assertNotNull(CastleEngine.knightBlocker(s))
-        s = s.copy(life = s.life.copy(lordQuestsDone = 2, renown = 90))
+        s = s.copy(life = s.life.copy(lordQuestsDone = CastleEngine.KNIGHT_QUESTS, renown = CastleEngine.KNIGHT_RENOWN - 10))
         assertNotNull(CastleEngine.knightBlocker(s))
-        s = s.copy(life = s.life.copy(renown = 120))
+        s = s.copy(life = s.life.copy(renown = CastleEngine.KNIGHT_RENOWN + 10))
         assertNull(CastleEngine.knightBlocker(s))
         assertEquals(LifeEngine.KEEP_GOLD, LifeEngine.keepGold(s))
         val noble = s.life.npcs.first { it.role == NpcRole.NOBLE }

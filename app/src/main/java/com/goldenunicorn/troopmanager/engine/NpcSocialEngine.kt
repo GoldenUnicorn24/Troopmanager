@@ -211,7 +211,10 @@ object NpcSocialEngine {
     fun tradeTip(state: GameState): String {
         val rich = state.crown.provinces.filter { Towns.byProvince(it.id) != null }.maxByOrNull { it.wealth } ?: return "Kauf billig, verkauf teuer."
         val danger = state.life.news.lastOrNull { it.severity >= 2 }
-        return "In ${rich.name} sitzt das Geld locker." + (danger?.let { " Und wo Krieg ist – ${CrownCatalog.info(it.provinceId).name} –, zahlen sie jeden Preis für Klingen und Brot." } ?: "")
+        val stall = listOf(MarketEngine.Stall.SMITH, MarketEngine.Stall.TRADER, MarketEngine.Stall.HEALER)[Math.floorMod(state.day, 3)]
+        val cheap = CrownCatalog.info(MarketEngine.cheapestTown(stall)).name
+        val what = when (stall) { MarketEngine.Stall.SMITH -> "Klingen und Rüstungen"; MarketEngine.Stall.TRADER -> "Tand und Geschenke"; else -> "Kräuter und Heilkunst" }
+        return "$what kaufst du am billigsten in $cheap. In ${rich.name} sitzt das Geld locker." + (danger?.let { " Und wo Krieg ist – ${CrownCatalog.info(it.provinceId).name} –, zahlen sie jeden Preis für Klingen und Brot." } ?: "")
     }
 
     fun crownNews(state: GameState): String {

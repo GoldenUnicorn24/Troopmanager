@@ -465,6 +465,7 @@ object DialogueEngine {
             .let { if ("{tourneyInfo}" in it) it.replace("{tourneyInfo}",
                 if (CastleEngine.tournamentToday(state)) "Heute! Die Schranken stehen im Burghof, das Startgeld ist ${CastleEngine.TOURNAMENT_FEE} Gold."
                 else "Hier in ${LifeEngine.locationName(state)} an Tag ${CastleEngine.nextTournamentDay(state)}. In Aldenburg öfter – dort lieben sie das Lanzenbrechen.") else it }
+            .replace("{weather}", TownWeather.smallTalk(TownWeather.here(state)))
             .let { if ("{bondGossip}" in it) it.replace("{bondGossip}", NpcSocialEngine.bondGossip(state, npc)) else it }
     }
 }

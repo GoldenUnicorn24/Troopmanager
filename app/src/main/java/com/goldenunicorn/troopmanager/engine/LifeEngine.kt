@@ -360,7 +360,8 @@ object LifeEngine {
         if (toId == state.life.provinceId) return "Du bist bereits hier."
         val province = CrownEngine.province(state, toId) ?: return "Unbekannter Ort."
         if (province.owner == ProvinceOwner.HORDE) return "${province.name} ist in der Hand der ${province.ownerLabel}. Kein Reisender kehrt von dort zurück."
-        val cost = travelDays(state.life.provinceId, toId) * 3
+        if (TownWeather.here(state) == WeatherKind.STORM) return "Bei diesem Sturm bricht niemand auf. Morgen vielleicht."
+        val cost = travelCost(state, toId)
         if (state.life.purse < cost) return "Für Proviant und Fährgeld brauchst du $cost Gold."
         return null
     }
@@ -370,13 +371,21 @@ object LifeEngine {
         val lands = listOf(CrownCatalog.info(state.life.provinceId).land, CrownCatalog.info(toId).land)
         val danger = state.crown.provinces.count { it.land in lands && (it.owner == ProvinceOwner.BANDITS || it.owner == ProvinceOwner.HORDE) }
         val threatened = if (threatened(state, toId) || threatened(state, state.life.provinceId)) 15 else 0
-        return (10 + danger * 6 + threatened - state.life.party.size * 4).coerceIn(4, 55)
+        val fog = if (TownWeather.here(state) == WeatherKind.FOG) 12 else 0
+        return (10 + danger * 6 + threatened + fog - state.life.party.size * 4).coerceIn(4, 60)
+    }
+
+    /** Provisions and ferries; snow and frost make the road dearer. */
+    fun travelCost(state: GameState, toId: String): Int {
+        val days = travelDays(state.life.provinceId, toId)
+        val w = TownWeather.here(state)
+        return days * (if (w == WeatherKind.SNOW || w == WeatherKind.FROST) 5 else 3)
     }
 
     fun travel(state: GameState, toId: String): Result {
         travelBlocker(state, toId)?.let { return Result(state, it) }
         val days = travelDays(state.life.provinceId, toId)
-        val cost = days * 3
+        val cost = travelCost(state, toId)
         var next = pay(state, cost)
         next = next.copy(life = next.life.copy(travel = LifeTravel(state.life.provinceId, toId, state.day + days), place = LifePlace.AWAY))
         next = log(next, "Aufbruch nach ${CrownCatalog.info(toId).name} ($days Tage).")
@@ -480,12 +489,18 @@ object LifeEngine {
 
     // ------------------------------------------------------------ jobs
 
+    /** Up to two new offers a day, so an industrious character can make a living. */
     fun refreshJobs(state: GameState): GameState {
         if (state.life.landed) return state
+        val once = offerJob(state)
+        return if (once.life.nextId != state.life.nextId) offerJob(once, second = true) else once
+    }
+
+    private fun offerJob(state: GameState, second: Boolean = false): GameState {
         val province = state.life.provinceId
         val open = state.life.jobs.filter { (it.accepted && !it.done && !it.failed) || (!it.accepted && state.day - it.offeredDay <= 2) }
         if (open.count { it.provinceId == province && !it.accepted } >= 3) return state.copy(life = state.life.copy(jobs = open))
-        val r = Random(state.day * 131L + province.hashCode())
+        val r = Random(state.day * 131L + province.hashCode() + if (second) 7L else 0L)
         val givers = state.life.npcs.filter { it.homeProvinceId == province && !it.designedByPlayer && !it.departed }
         if (givers.isEmpty()) return state.copy(life = state.life.copy(jobs = open))
         val threatened = threatened(state, province)

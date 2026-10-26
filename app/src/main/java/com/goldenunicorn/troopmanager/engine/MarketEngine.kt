@@ -41,7 +41,29 @@ object MarketEngine {
         standing = listOf(Cell(5, 3), Cell(7, 3), Cell(4, 5), Cell(8, 5), Cell(5, 6), Cell(7, 6), Cell(9, 6), Cell(3, 4), Cell(10, 4), Cell(4, 7), Cell(8, 7)),
     )
 
-    fun open(state: GameState): Boolean = state.life.timeSlot in setOf(TimeSlot.MORNING, TimeSlot.NOON, TimeSlot.AFTERNOON)
+    fun open(state: GameState): Boolean = state.life.timeSlot in setOf(TimeSlot.MORNING, TimeSlot.NOON, TimeSlot.AFTERNOON) &&
+        TownWeather.here(state) != WeatherKind.STORM
+
+    /**
+     * Every town has its own prices: armourers are cheap in the tournament town, goods in the free
+     * port, herbs among the elves; the refugee camp at the edge of the horde lands pays for all.
+     */
+    fun townFactor(provinceId: String, stall: Stall): Double = when (provinceId) {
+        "gm_rabenfurt" -> when (stall) { Stall.TRADER -> .9; else -> 1.0 }
+        "gm_eschenhof" -> when (stall) { Stall.TRADER -> .9; Stall.SMITH -> 1.1; else -> 1.0 }
+        "al_aldenburg" -> when (stall) { Stall.SMITH -> .85; Stall.TRADER -> 1.15; else -> 1.0 }
+        "ks_saltmere" -> when (stall) { Stall.TRADER -> .8; Stall.SMITH -> 1.1; else -> 1.0 }
+        "kw_jadehain" -> when (stall) { Stall.HEALER -> .8; Stall.SMITH -> .95; else -> .9 }
+        "wh_mondquell" -> when (stall) { Stall.HEALER -> .75; Stall.SMITH -> 1.2; else -> 1.0 }
+        "as_freistatt" -> 1.25
+        else -> 1.0
+    }
+
+    fun price(state: GameState, stall: Stall, base: Int): Int =
+        if (base == 0) 0 else LifeEngine.priced(state, (base * townFactor(state.life.provinceId, stall)).toInt().coerceAtLeast(1))
+
+    /** The town with the best price for a stall, for trade tips. */
+    fun cheapestTown(stall: Stall): String = Towns.all.minBy { townFactor(it.provinceId, stall) }.provinceId
 
     /** Smith and healer exist per town; created deterministically when first needed. */
     fun ensureStallkeepers(state: GameState): GameState {
@@ -84,6 +106,7 @@ object MarketEngine {
         val ready = ensureStallkeepers(LifeEngine.ensurePeople(state))
         val next = ready.copy(life = ready.life.copy(place = LifePlace.MARKET))
         return LifeEngine.Result(next, if (open(next)) "Der Markt von ${LifeEngine.locationName(next)}: Rufe, Gerüche, Gedränge."
+            else if (TownWeather.here(next) == WeatherKind.STORM) "Bei diesem Sturm haben die Händler ihre Stände abgebaut."
             else "Die Stände sind geschlossen. Nur der Brunnen plätschert.")
     }
 
@@ -94,7 +117,7 @@ object MarketEngine {
     fun buyWeapon(state: GameState, tier: Int): LifeEngine.Result {
         val item = GearCatalog.weapons.getOrNull(tier) ?: return LifeEngine.Result(state, "")
         if (tier <= state.life.gear.weaponTier) return LifeEngine.Result(state, "Du besitzt schon Besseres.")
-        val price = LifeEngine.priced(state, item.price)
+        val price = price(state, Stall.SMITH, item.price)
         if (!LifeEngine.canPay(state, price)) return LifeEngine.Result(state, "${item.name} kostet $price Gold.")
         val next = LifeEngine.pay(state, price).let { it.copy(life = it.life.copy(gear = it.life.gear.copy(weaponTier = tier))) }
         return LifeEngine.Result(LifeEngine.log(next, "${item.name} gekauft."), "${item.name} liegt gut in der Hand. (+${item.bonus} im Kampf)")
@@ -103,7 +126,7 @@ object MarketEngine {
     fun buyArmor(state: GameState, tier: Int): LifeEngine.Result {
         val item = GearCatalog.armor.getOrNull(tier) ?: return LifeEngine.Result(state, "")
         if (tier <= state.life.gear.armorTier) return LifeEngine.Result(state, "Du besitzt schon Besseres.")
-        val price = LifeEngine.priced(state, item.price)
+        val price = price(state, Stall.SMITH, item.price)
         if (!LifeEngine.canPay(state, price)) return LifeEngine.Result(state, "${item.name} kostet $price Gold.")
         var next = LifeEngine.pay(state, price)
         // The new armor is visible everywhere: editor, tavern figure, portraits.
@@ -114,13 +137,13 @@ object MarketEngine {
     }
 
     fun buyGift(state: GameState, kind: GiftKind): LifeEngine.Result {
-        val price = LifeEngine.priced(state, kind.price)
+        val price = price(state, Stall.TRADER, kind.price)
         if (!LifeEngine.canPay(state, price)) return LifeEngine.Result(state, "${kind.label} kostet $price Gold.")
         val next = LifeEngine.pay(state, price).let { it.copy(life = it.life.copy(gifts = it.life.gifts + (kind to ((it.life.gifts[kind] ?: 0) + 1)))) }
         return LifeEngine.Result(next, "${kind.label} eingepackt.")
     }
 
-    fun healPrice(state: GameState) = LifeEngine.priced(state, 6)
+    fun healPrice(state: GameState) = price(state, Stall.HEALER, 6)
 
     fun heal(state: GameState): LifeEngine.Result {
         if (state.life.wound <= 0 && state.life.party.none { it.wounded > 0 }) return LifeEngine.Result(state, "„Dir fehlt nichts. Geh.“")

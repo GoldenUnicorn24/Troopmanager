@@ -40,13 +40,15 @@ object CastleEngine {
         entry = Cell(6, 8),
         audience = Cell(6, 3),
         listsFront = Cell(10, 6),
-        standing = listOf(Cell(3, 3), Cell(9, 3), Cell(4, 5), Cell(7, 5), Cell(3, 7), Cell(8, 7), Cell(5, 6), Cell(9, 7)),
+        standing = listOf(Cell(3, 3), Cell(9, 3), Cell(4, 5), Cell(8, 6), Cell(3, 7), Cell(8, 7), Cell(5, 6), Cell(9, 7)),
     )
 
     const val TOURNAMENT_FEE = 10
     const val AUDIENCE_RENOWN = 15
-    const val KNIGHT_RENOWN = 100
-    const val KNIGHT_QUESTS = 2
+    const val KNIGHT_RENOWN = 120
+    const val KNIGHT_QUESTS = 3
+    /** Days the lord needs before he has the next task: deeds are rare, not a daily job. */
+    const val QUEST_PAUSE = 5
     const val KNIGHT_KEEP_GOLD = 400
 
     fun open(state: GameState): Boolean = state.life.timeSlot != TimeSlot.NIGHT
@@ -116,6 +118,8 @@ object CastleEngine {
     fun askForTask(state: GameState): LifeEngine.Result {
         audienceBlocker(state)?.let { return LifeEngine.Result(state, it) }
         if (state.life.lordQuest != null) return LifeEngine.Result(state, "„Erledige erst, was ich dir aufgetragen habe.“")
+        if (state.life.lordQuestsDone > 0 && state.day - state.life.lastQuestDoneDay < QUEST_PAUSE)
+            return LifeEngine.Result(state, "„Gute Arbeit, letztes Mal. Komm in ${QUEST_PAUSE - (state.day - state.life.lastQuestDoneDay)} Tagen wieder, dann habe ich Neues.“")
         val lord = lord(state) ?: return LifeEngine.Result(state, "")
         val target = questTarget(state) ?: return LifeEngine.Result(state, "„Die Räuber sind vertrieben. Für den Moment habe ich nichts für dich.“")
         val count = (target.garrison / 120).coerceIn(4, 9)
@@ -163,7 +167,7 @@ object CastleEngine {
                 affinity = (lord.relation.affinity + 15).coerceAtMost(100), trust = (lord.relation.trust + 15).coerceAtMost(100))),
                 "quest_done_${q.id}", next.day, "du hast ${CrownCatalog.info(q.targetProvinceId).name} für die Krone befreit", 4))
         }
-        return next.copy(life = next.life.copy(lordQuest = null, lordQuestsDone = next.life.lordQuestsDone + 1))
+        return next.copy(life = next.life.copy(lordQuest = null, lordQuestsDone = next.life.lordQuestsDone + 1, lastQuestDoneDay = next.day))
     }
 
     // ------------------------------------------------------------ rulers: the court day
@@ -263,11 +267,21 @@ object CastleEngine {
         var next = if (run == null) LifeEngine.pay(state, TOURNAMENT_FEE) else state
         val round = run?.round ?: 0
         next = next.copy(life = next.life.copy(tournament = TournamentRun(state.life.provinceId, state.day, round, opponents)))
-        val power = 46 + round * 10 + state.life.tournamentsWon * 3
+        val power = boutPower(state, round)
         next = SkirmishEngine.start(next, SkirmishKind.DUEL, "Turnier · Runde ${round + 1}/3", opponents[round], 1, power,
             if (round == 2) 60 else 0, if (round == 2) 10 else 2)
         return LifeEngine.Result(next, "Der Herold ruft: „${opponents[round]}!“")
     }
+
+    fun boutPower(state: GameState, round: Int): Int = 46 + round * 10 + state.life.tournamentsWon * 3
+
+    /** Odds for the next bout (or the first one), in percent. */
+    fun boutOdds(state: GameState): Int {
+        val run = state.life.tournament?.takeIf { it.day == state.day && !it.lost }
+        return SkirmishEngine.odds(state, SkirmishKind.DUEL, 1, boutPower(state, run?.round ?: 0))
+    }
+
+    fun questOdds(state: GameState): Int? = state.life.lordQuest?.let { SkirmishEngine.odds(state, SkirmishKind.CAMPAIGN, it.enemyCount, it.enemyPower) }
 
     /** After a bout: advance, or leave the lists. */
     fun afterBout(state: GameState, fight: Skirmish): GameState {

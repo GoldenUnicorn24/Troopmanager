@@ -495,6 +495,7 @@ data class LifeState(
     val tournamentsWon: Int = 0,
     val lastAudienceDay: Int = -1,
     val lastCourtDay: Int = -99,
+    val lastQuestDoneDay: Int = -99,
     val nextId: Long = 1,
 ) {
     fun npc(id: String): NpcIdentity? = npcs.firstOrNull { it.id == id }

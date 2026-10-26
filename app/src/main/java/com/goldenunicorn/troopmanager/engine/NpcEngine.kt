@@ -330,6 +330,10 @@ object NpcEngine {
             LifePlace.AWAY -> if (slot == TimeSlot.EVENING || slot == TimeSlot.NIGHT) LifePlace.TAVERN else LifePlace.MARKET
             else -> if (roll % 2 == 0) LifePlace.TAVERN else LifePlace.AWAY
         }
+        // Rain, storm and snow drive the townsfolk into the tavern in the afternoon and evening.
+        if ((slot == TimeSlot.AFTERNOON || slot == TimeSlot.EVENING) && place in setOf(LifePlace.TOWN, LifePlace.MARKET) &&
+            npc.role in setOf(NpcRole.REGULAR, NpcRole.TRAVELER) && TownWeather.foul(TownWeather.today(day, npc.homeProvinceId)))
+            return npc.homeProvinceId to LifePlace.TAVERN
         return npc.homeProvinceId to place
     }
 

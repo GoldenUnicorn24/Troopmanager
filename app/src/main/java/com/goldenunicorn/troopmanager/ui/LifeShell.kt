@@ -135,6 +135,7 @@ private fun LifeHeader(state: GameState) {
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ModernPill("Tag ${state.day}", Gold)
             ModernPill("${life.timeSlot.label} ${life.timeSlot.clock}", ModernBlue)
+            ModernPill(com.goldenunicorn.troopmanager.engine.TownWeather.here(state).label, Mist)
             if (life.intoxication > 0 || life.hangover) ModernPill(if (life.hangover) "Kater" else LifeEngine.intoxicationLabel(life.intoxication), Danger)
         }
     }
@@ -255,7 +256,7 @@ private fun PlaceTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(CrownCatalog.info(t.provinceId).name, color = if (blocker == null) Color.White else Muted, fontWeight = FontWeight.Bold)
-                    Text(blocker ?: "${CrownCatalog.info(t.provinceId).land.label} · $days Tag(e) · ${days * 3} Gold Proviant", color = Muted, fontSize = 12.sp)
+                    Text(blocker ?: "${CrownCatalog.info(t.provinceId).land.label} · $days Tag(e) · ${LifeEngine.travelCost(state, t.provinceId)} Gold Proviant", color = Muted, fontSize = 12.sp)
                 }
                 Text("›", color = Gold, fontSize = 22.sp)
             }

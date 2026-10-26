@@ -330,6 +330,11 @@ object DialogueCatalog {
             successLines = listOf("{npc} lässt sich nicht reizen. „Geh deinen Rausch ausschlafen.“"),
             failLines = listOf("Ein Stuhl kippt. {npc} ist schneller auf den Beinen, als du denkst –"),
         ),
+        DialogueTopic(
+            "talk_weather", TopicKind.TALK, "Übers Wetter reden", "„Was für ein Wetter, was?“",
+            success = TopicEffect(affinity = 1),
+            successLines = listOf("„{weather}“"),
+        ),
         // Milestone 5: deeds, the lord, a ruler among the people.
         DialogueTopic(
             "brag", TopicKind.FRIENDLY, "Von deinen Taten erzählen", "„Hast du schon gehört, was mir passiert ist?“",

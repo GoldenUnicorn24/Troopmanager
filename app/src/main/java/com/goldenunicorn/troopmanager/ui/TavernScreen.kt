@@ -272,7 +272,7 @@ private fun TavernHud(state: GameState, name: String, onLeave: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(name, color = Gold, fontFamily = Cinzel, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("${LifeEngine.locationName(state)} · Tag ${state.day} · ${life.timeSlot.label} ${life.timeSlot.clock}", color = Mist, fontSize = 12.sp)
+            Text("${LifeEngine.locationName(state)} · Tag ${state.day} · ${life.timeSlot.label} ${life.timeSlot.clock} · ${com.goldenunicorn.troopmanager.engine.TownWeather.here(state).label}", color = Mist, fontSize = 12.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
             Text("${LifeEngine.money(state)} Gold", color = PaleGold, fontWeight = FontWeight.Black, fontSize = 14.sp)

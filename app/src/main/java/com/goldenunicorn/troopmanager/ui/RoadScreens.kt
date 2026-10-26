@@ -170,6 +170,7 @@ fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }
+                    drawWeather(com.goldenunicorn.troopmanager.engine.TownWeather.here(state), tw, time)
                     placements.forEach { p ->
                         val label = p.stall?.label ?: if (p.npc.relation.timesMet > 0) p.npc.firstName else p.npc.profession.substringBefore(' ').take(14)
                         val m = measurer.measure(label, TextStyle(color = if (p.stall != null) PaleGold else Mist, fontSize = 10.sp, fontWeight = FontWeight.Bold))
@@ -240,20 +241,20 @@ private fun StallPanel(state: GameState, stall: MarketEngine.Stall, line: String
             SectionTitle("Waffen · im Besitz: ${GearCatalog.weapons[state.life.gear.weaponTier].name}")
             GearCatalog.weapons.drop(1).forEach { item ->
                 val owned = item.tier <= state.life.gear.weaponTier
-                ShopRow("${item.name} · ${LifeEngine.priced(state, item.price)} Gold", "${item.description} Kampf +${item.bonus}",
-                    !owned && LifeEngine.canPay(state, LifeEngine.priced(state, item.price)), if (owned) "Besitzt du" else null) { onResult(MarketEngine.buyWeapon(state, item.tier)) }
+                ShopRow("${item.name} · ${MarketEngine.price(state, MarketEngine.Stall.SMITH, item.price)} Gold", "${item.description} Kampf +${item.bonus}",
+                    !owned && LifeEngine.canPay(state, MarketEngine.price(state, MarketEngine.Stall.SMITH, item.price)), if (owned) "Besitzt du" else null) { onResult(MarketEngine.buyWeapon(state, item.tier)) }
             }
             SectionTitle("Rüstung · im Besitz: ${GearCatalog.armor[state.life.gear.armorTier].name}")
             GearCatalog.armor.drop(1).forEach { item ->
                 val owned = item.tier <= state.life.gear.armorTier
-                ShopRow("${item.name} · ${LifeEngine.priced(state, item.price)} Gold", "${item.description} Schutz +${item.bonus}",
-                    !owned && LifeEngine.canPay(state, LifeEngine.priced(state, item.price)), if (owned) "Besitzt du" else null) { onResult(MarketEngine.buyArmor(state, item.tier)) }
+                ShopRow("${item.name} · ${MarketEngine.price(state, MarketEngine.Stall.SMITH, item.price)} Gold", "${item.description} Schutz +${item.bonus}",
+                    !owned && LifeEngine.canPay(state, MarketEngine.price(state, MarketEngine.Stall.SMITH, item.price)), if (owned) "Besitzt du" else null) { onResult(MarketEngine.buyArmor(state, item.tier)) }
             }
         }
         MarketEngine.Stall.TRADER -> {
             SectionTitle("Geschenke")
             GiftKind.entries.forEach { g ->
-                val price = LifeEngine.priced(state, g.price)
+                val price = MarketEngine.price(state, MarketEngine.Stall.TRADER, g.price)
                 ShopRow("${g.label} · $price Gold", "Im Gepäck: ${state.life.gifts[g] ?: 0} · Passt zu: ${g.keywords.joinToString()}",
                     LifeEngine.canPay(state, price), null) { onResult(MarketEngine.buyGift(state, g)) }
             }

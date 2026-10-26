@@ -83,7 +83,7 @@ Lokal: **498 Tests grün**. CI- und Emulator-Ergebnis siehe PR #14.
 
 ## 7. Meilenstein 4 (Burghof, Ritterschaft, Turniere)
 
-Neue Tests in `RebirthCastleTest` (10): jede Stadt hat einen erwachsenen, nicht romantisch verfügbaren Burgvogt, der Burghof ist von der Pforte aus vollständig begehbar und nachts geschlossen · Audienz nur nüchtern, tagsüber und mit Ruf · Lehnsauftrag zielt auf eine Räuberprovinz; Niederlage lässt die Karte unverändert, Sieg setzt die Provinz auf der gemeinsamen Kronkarte frei (Nachricht, Chronik, Erinnerung und Vertrauen beim Burgvogt), speichersicher · der Sturm wird persönlich und deterministisch ausgefochten · Ritterschlag nur nach zwei Aufträgen und Ruf 100, senkt den Goldbedarf der Grenzfeste auf 400 · Turnier nur an Turniertagen, Startgeld einmal, drei stärker werdende Gegner, Sieg wird gezählt und chronikiert · verlorene Runde beendet das Turnier für den Tag · persönlicher Schlachtfaktor exakt 1,10/1,22 ohne Ausrüstung/Wunden, höher mit Ausrüstung, niedriger mit Wunden · Paare sitzen in der Taverne nebeneinander, Rivalen erzeugen „Alte Feindschaft“ mit Folgen · ungültige Turnier-/Auftragsdaten werden abgelehnt.
+Neue Tests in `RebirthCastleTest` (10): jede Stadt hat einen erwachsenen, nicht romantisch verfügbaren Burgvogt, der Burghof ist von der Pforte aus vollständig begehbar und nachts geschlossen · Audienz nur nüchtern, tagsüber und mit Ruf · Lehnsauftrag zielt auf eine Räuberprovinz; Niederlage lässt die Karte unverändert, Sieg setzt die Provinz auf der gemeinsamen Kronkarte frei (Nachricht, Chronik, Erinnerung und Vertrauen beim Burgvogt), speichersicher · der Sturm wird persönlich und deterministisch ausgefochten · Ritterschlag nur nach drei Aufträgen und Ruf 120, senkt den Goldbedarf der Grenzfeste auf 400 · Turnier nur an Turniertagen, Startgeld einmal, drei stärker werdende Gegner, Sieg wird gezählt und chronikiert · verlorene Runde beendet das Turnier für den Tag · persönlicher Schlachtfaktor exakt 1,10/1,22 ohne Ausrüstung/Wunden, höher mit Ausrüstung, niedriger mit Wunden · Paare sitzen in der Taverne nebeneinander, Rivalen erzeugen „Alte Feindschaft“ mit Folgen · ungültige Turnier-/Auftragsdaten werden abgelehnt.
 
 Alle bisherigen Kampf- und Kampagnentests (Combat Engine 3.0, V06/V10-Abnahme) bleiben unverändert grün – die Kopplung ändert nichts, solange keine Ausrüstung gekauft wurde.
 
@@ -94,3 +94,18 @@ Lokal: **508 Tests grün**. CI- und Emulator-Ergebnis (neue Seiten `g-castle`, `
 Neue Tests in `RebirthRulerTest` (9): Gefährtin und angeworbene Söldner ziehen an den Hof und erscheinen an 20 Abenden in keiner Taverne mehr, Nachricht für alle Städte · ein Ritter wird als Ritter chronikiert · Herrscher zahlen am Markt aus der Schatzkammer, Ausrüstung erhöht den Schlachtfaktor, Kaserne und Burghof sind zugänglich · Hoftag: nur für Herrscher, genau die angekündigten Freiwilligen, 7 Tage Pause, mehr für Ritter/Lehnsaufträge · Leute bemerken jede Tat genau einmal, leere „gehört“-Notizen erscheinen nie als Erinnerung · Herrscher werden mit „Herr“ begrüßt, Bittgesuch kostet Gold, wirkt und ist einmalig, für Landlose nicht verfügbar · Prahlen nur mit Taten, ohne offene Platzhalter · Turniertermin stimmt mit der Engine überein · in 90 Tavernenszenen steht niemand direkt vor jemand anderem.
 
 Lokal: **517 Tests grün**. CI- und Emulator-Ergebnis (neue Seite `h-ruler-castle`) siehe PR #14.
+
+## 9. Meilenstein 6 (Fertigstellung: Wetter, Preise, Aussichten, Balancing)
+
+Neue Tests in `RebirthWorldTest` (7): Wetter deterministisch, zweitägig, jahreszeitlich (kein Schnee im Sommer, Schnee im Winter, an der Küste mehr Stürme) · bei Regen ist nachmittags niemand der Stammgäste/Reisenden auf Straße oder Markt · Sturm schließt den Markt und verhindert den Aufbruch, Schnee verteuert, Nebel gefährdet die Reise · Preise je Stadt, Kauf kostet genau den angezeigten Preis, Handelstipp nennt eine echte Stadt · Aussichten sind deterministisch, steigen mit Stärke und verändern den Spielstand nicht · Wetter als Gesprächsthema · Lehnsaufträge mit Pause, der nächste zielt auf eine andere Provinz.
+
+**Langzeit-Spieltest** `CareerPlaythroughTest` (2): Ein Bot spielt ausschließlich über die Aktionen der Oberfläche (Aufträge, Kämpfe, Heilerin, Ausrüstung, Burgvogt, Turniere, Ritterschlag, Lehnseid) und regiert danach mit den empfohlenen Schlachtplänen weiter. Alle 25 Tage werden der Spielstand geprüft und Speichern/Laden verglichen.
+
+| Start | Ritterschlag | Grenzfeste | Gefechte (Siege) | Gefangenschaft | Ende |
+|---|---|---|---|---|---|
+| Söldnerin, Schwert 60 | Tag 15 | Tag 33 | 17 (17) | 0 Tage | Tag 261, Reich stabil |
+| Dorfbewohnerin, Schwert 45 | Tag 28 | Tag 32 | 16 (16) | 0 Tage | Tag 321, Reich stabil |
+
+Vor dem Balancing erreichte derselbe Bot die Grenzfeste **nie**: Er kam mit 136 Gefechten nur auf 56 Siege, war oft in Gefangenschaft, und das an den Ruf gekoppelte Lösegeld (bis über 100 Gold) fraß jedes Ersparte. Die Änderungen stehen in der Roadmap (Meilenstein 6). Der Bot nutzt die neue Anzeige „Aussichten“ und reitet nur bei mindestens 60 %. Genau diese Information bekommt jetzt auch der Mensch.
+
+Lokal: **528 Tests grün**.

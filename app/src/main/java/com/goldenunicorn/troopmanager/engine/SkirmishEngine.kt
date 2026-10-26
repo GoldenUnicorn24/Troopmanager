@@ -36,6 +36,34 @@ object SkirmishEngine {
         return state.copy(life = state.life.copy(skirmish = fight, nextId = state.life.nextId + 1))
     }
 
+    /**
+     * Honest odds before a fight: the same rules played through 16 times with straightforward
+     * tactics (attack, fall back when badly hurt). Shown to the player as a judgement of the
+     * situation, so nobody rides blindly into a hopeless assault.
+     */
+    fun odds(state: GameState, kind: SkirmishKind, enemyCount: Int, enemyPower: Int): Int {
+        var wins = 0
+        val runs = 16
+        for (i in 0 until runs) {
+            var s = start(state.copy(life = state.life.copy(skirmish = null, nextId = 100_000L + i * 7919L)), kind, "", "", enemyCount, enemyPower, 0, 0)
+            var guard = 0
+            while (s.life.skirmish?.outcome == null && guard++ < 14) {
+                val f = s.life.skirmish ?: break
+                s = act(s, if (f.playerHealth < 25) SkirmishAction.RETREAT else SkirmishAction.ATTACK).state
+            }
+            if (s.life.skirmish?.outcome == SkirmishOutcome.VICTORY) wins++
+        }
+        return wins * 100 / runs
+    }
+
+    fun oddsLabel(percent: Int): String = when {
+        percent >= 80 -> "sehr gut"
+        percent >= 60 -> "gut"
+        percent >= 40 -> "offen"
+        percent >= 20 -> "schlecht"
+        else -> "aussichtslos"
+    }
+
     private fun opening(kind: SkirmishKind, enemy: String, count: Int, allies: Int): String {
         val with = if (allies > 0) " $allies Gefährte${if (allies == 1) "" else "n"} an deiner Seite." else " Du bist allein."
         return when (kind) {
@@ -105,7 +133,9 @@ object SkirmishEngine {
                 line = "Du hältst stand und lässt sie anrennen (−$dmg). ${hurtLine(taken)}"
             }
             SkirmishAction.RANGED -> {
-                val dmg = hitEnemy(p.bow + weaponBonus(state) / 2 + (if (early) 18 else -15) - cond + allyPower / 2, 100)
+                // Rain, storm and fog spoil the aim (the same factors the great battles use).
+                val weather = ((1.0 - TownWeather.here(state).rangedFactor) * 40).toInt()
+                val dmg = hitEnemy(p.bow + weaponBonus(state) / 2 + (if (early) 18 else -15) - cond - weather + allyPower / 2, 100)
                 val taken = hitMe(if (early) 45 else 110)
                 enemyHealth -= dmg; enemyMorale -= dmg * 6 / 10; playerHealth -= taken
                 line = (if (early) "Pfeil um Pfeil schlägt in ihre Reihen (−$dmg). " else "Zu nah für den Bogen – du triffst trotzdem (−$dmg). ") + hurtLine(taken)
@@ -254,7 +284,7 @@ object SkirmishEngine {
             captiveUntil = state.life.captiveUntil!! + 1, nextId = state.life.nextId + 1)), "Sie erwischen dich. Ein weiterer Tag in Ketten – und Prügel.")
     }
 
-    fun ransomPrice(state: GameState) = 30 + state.life.renown / 5
+    fun ransomPrice(state: GameState) = (30 + state.life.renown / 10).coerceAtMost(80)
 
     fun ransom(state: GameState): LifeEngine.Result {
         val price = ransomPrice(state)

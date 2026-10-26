@@ -72,7 +72,7 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 ### Person und Reich (Meilenstein 4)
 
 - Ein Lehnsauftrag wird persönlich als `SkirmishEngine`-Gefecht ausgefochten. Ein Sieg setzt die Zielprovinz in `state.crown.provinces` von `BANDITS` auf `FREE` – dieselbe Karte, die nach dem Lehnseid regiert wird. Nachricht und Chronik entstehen dabei.
-- Ritterschlag (2 Aufträge, Ruf 100) senkt den Goldbedarf für die Grenzfeste von 800 auf 400.
+- Ritterschlag (3 Aufträge, Ruf 120) senkt den Goldbedarf für die Grenzfeste von 800 auf 400.
 - In großen Schlachten (`BattleResolutionEngine.personalFactor`) zählen gekaufte Waffe und Rüstung sowie offene Wunden, wenn der Herrscher persönlich kämpft. Ohne Ausrüstung und Wunden bleibt der Faktor exakt 1,10/1,22. Rüstung senkt die Verwundungswahrscheinlichkeit (`WarEngine`), eine Verwundung in der Schlacht ist dieselbe Wunde, die der Charakter in der Stadt trägt.
 - Taverne: Paare sitzen nebeneinander; verfeindete Anwesende erzeugen die Szene „Alte Feindschaft“ (schlichten oder Partei ergreifen, mit Erinnerung und Weitergabe).
 

@@ -151,6 +151,7 @@ fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (St
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }
+                    drawWeather(com.goldenunicorn.troopmanager.engine.TownWeather.here(state), tw, time)
                     placements.forEach { p ->
                         val label = if (p.sergeant) p.npc.profession else if (p.npc.relation.timesMet > 0) p.npc.firstName else p.npc.profession.substringBefore(' ').take(14)
                         val m = measurer.measure(label, TextStyle(color = if (p.sergeant) PaleGold else Mist, fontSize = 10.sp, fontWeight = FontWeight.Bold))

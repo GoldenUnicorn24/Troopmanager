@@ -10,9 +10,9 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 | 3 Porträts | Neuer Renderer, Ganzkörper, Ebenen-Pipeline + Asset-Vertrag | ◐ Pipeline und Renderer fertig, **gemalte Ebenen fehlen** (82 Dateien, siehe Design-Dokument) |
 | 4 Taverne | Begehbare 2.5D-Szene, Tap-to-Move, Wirt, Getränke/Rausch, Essen, Zimmer, Würfeln, Aufträge, Ereignisse, Schlägerei, Verlassen | ✅ |
 | 5 Soziales Leben | Datengetriebene Dialoge, Erinnerungen, Freundschaft, Flirt, Date, Kuss, Nacht (Fade-to-Black), Beziehung, Antrag, Hochzeit, Trennung, Grenzen, Affären-Folgen | ✅ Grundsystem, Beziehungsnetz der NPCs mit Eifersucht und Klatsch, Rollen-Themen (M3); ☐ mehr Inhalte |
-| 6 Weltintegration | Gemeinsame Kronprovinzen, Weltpuls, Gerüchte, Preise/Werber bei Bedrohung, Reisen zwischen 7 Städten, Hinterhalte auf gefährlichen Straßen, **begehbarer Markt** (M2), **begehbare Kaserne**, wandernde Reisende (M3), **begehbarer Burghof**, Lehnsaufträge befreien Provinzen der gemeinsamen Kronkarte (M4) | ◐ ☐ Wetter, Handelspreise je Stadt |
+| 6 Weltintegration | Gemeinsame Kronprovinzen, Weltpuls, Gerüchte, Preise/Werber bei Bedrohung, Reisen zwischen 7 Städten, Hinterhalte auf gefährlichen Straßen, **begehbarer Markt** (M2), **begehbare Kaserne**, wandernde Reisende (M3), **begehbarer Burghof**, Lehnsaufträge befreien Provinzen der gemeinsamen Kronkarte (M4), **Wetter und Preise je Stadt** (M6) | ✅ |
 | 7 Aufstieg | Laufbahn, **Gefolge** (Freunde + Söldner mit Sold), **persönliche Kämpfe** (Feldzug, Hinterhalt, Wolfsjagd, Duell), **Wunden**, **Gefangenschaft**, **Ausrüstung**, Lehnseid übergibt Gefährtin und Söldner an das Reich (M2), **Audienz, Lehnsauftrag, Ritterschlag, Turniere**, Ausrüstung/Wunden wirken in großen Schlachten (M4) | ◐ ☐ Spieler als einzeln gesteuerte Figur in der taktischen Schlacht |
-| 8 Stabilisierung | Tests, Save-Migration, CI-Build, Emulator-Screenshots | ◐ siehe TEST-REPORT; ☐ Balancing, Langzeit-Playtests |
+| 8 Stabilisierung | Tests, Save-Migration, CI-Build, Emulator-Screenshots, **Langzeit-Spieltest per Bot und Balancing** (M6) | ✅ automatisiert; ☐ manueller Spieltest auf echtem Gerät |
 
 ## Meilenstein 2 (umgesetzt)
 
@@ -32,7 +32,7 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 
 - `CastleEngine` + begehbarer Burghof: Jede der sieben Städte hat einen Burgvogt (erwachsen, nicht romantisch verfügbar), der tagsüber auf dem Thron sitzt. Audienz nur nüchtern und mit Ruf ≥ 15 (Adelsherkunft ausgenommen).
 - **Lehnsauftrag:** Ziel ist die nächstgelegene Räuberprovinz der Kronkarte. Der Sturm wird persönlich (mit Gefolge) ausgefochten. Ein Sieg setzt die Provinz auf „frei“, erzeugt Nachricht und Chronik und bringt Vertrauen beim Burgvogt. Niederlagen ändern die Karte nicht, der Auftrag bleibt offen.
-- **Ritterschlag:** nach zwei Aufträgen und Ruf 100. Laufbahn „Ritter“, Adlige mögen den Spieler mehr, die Grenzfeste kostet nur noch 400 statt 800 Gold.
+- **Ritterschlag:** nach drei Aufträgen und Ruf 120. Laufbahn „Ritter“, Adlige mögen den Spieler mehr, die Grenzfeste kostet nur noch 400 statt 800 Gold.
 - **Turniere:** in Aldenburg jeden 5., sonst jeden 7. Tag (vormittags bis nachmittags). Startgeld 10 Gold, drei Zweikämpfe gegen stärker werdende Ritter, 60 Gold und Ruhm für den Sieg; wer verliert, scheidet für den Tag aus. Zuschauer aus der Stadt sind beeindruckt.
 - Große Schlachten: Waffe, Rüstung und Wunden des Charakters wirken auf den persönlichen Faktor; Rüstung senkt das Verwundungsrisiko, Schlachtwunden heilen wie andere Wunden.
 - Taverne: Paare sitzen nebeneinander, Gäste an Tischen, Tresen und Feuer sitzen (neue Sitz-Pose), Rivalen geraten aneinander („Alte Feindschaft“).
@@ -45,6 +45,13 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 - **Ruf in Gesprächen:** Die Leute haben von Ritterschlag, Turniersiegen, befreiten Provinzen und dem Lehnseid gehört und sprechen es einmal an. Ehrenhafte bewundern das mehr, Hitzköpfe weniger. Herrscher werden mit „Herr/Herrin“ begrüßt.
 - **Neue Themen:** von den eigenen Taten erzählen (gelingt nicht bei jedem), Rat des Burgvogts (+1 Führung), Turniertermine, Bittgesuche der Leute für Herrscher (10 Gold, deutlich mehr Sympathie).
 - Taverne: Niemand steht mehr direkt vor jemand anderem; Paare sitzen bevorzugt Seite an Seite.
+
+## Meilenstein 6 – Fertigstellung (umgesetzt)
+
+- **Wetter** je Stadt (deterministisch, ohne Speicheränderung): Regen/Sturm/Schnee treiben Leute in die Taverne; Sturm schließt den Markt und verhindert Aufbruch; Schnee/Frost verteuern Reisen; Nebel erhöht die Hinterhaltsgefahr; Regen/Sturm/Nebel schwächen den Bogen im Gefecht (gleiche Faktoren wie die großen Schlachten). Sichtbar als Wetter-Anzeige und Regen/Schnee/Nebel über Markt, Kaserne und Burghof; Gesprächsthema „Wetter“.
+- **Preise je Stadt** für Schmied, Krämer und Heilerin; Handelstipps nennen die tatsächlich billigste Stadt.
+- **Aussichten** vor Lehnsauftrag und Turniergang (ehrliche Vorausberechnung mit denselben Regeln).
+- **Balancing aus dem Langzeit-Spieltest:** Lösegeld 30 + Ruf/10 (höchstens 80) statt 30 + Ruf/5; bis zu zwei neue Aufträge pro Tag; Ritterschlag nach drei Taten und Ruf 120; der Burgvogt hat nach einer Tat erst nach fünf Tagen Neues. Ergebnis: Aufstieg zur Grenzfeste nach etwa 30–35 Tagen bei vernünftigem Spiel, danach läuft das Reich stabil weiter.
 
 ## Nächste realistische Schritte
 

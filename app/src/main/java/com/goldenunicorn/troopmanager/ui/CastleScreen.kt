@@ -148,6 +148,7 @@ fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }
+                    drawWeather(com.goldenunicorn.troopmanager.engine.TownWeather.here(state), tw, time)
                     if (state.life.timeSlot == TimeSlot.NIGHT || state.life.timeSlot == TimeSlot.EVENING)
                         drawRect(Color(0xFF05070C).copy(alpha = if (state.life.timeSlot == TimeSlot.NIGHT) .45f else .18f))
                     placements.forEach { p ->
@@ -226,6 +227,9 @@ private fun LordPanel(state: GameState, summary: String, onResult: (LifeEngine.R
         val name = CrownCatalog.info(quest.targetProvinceId).name
         InfoBox("Lehnsauftrag: $name von den Räuberbaronen befreien. ${quest.enemyCount} Räuber, Stärke ${quest.enemyPower}. Lohn ${quest.reward} Gold. " +
             "Ein Sieg macht $name auf der Kronkarte wieder frei.")
+        val odds = remember(state.life.lordQuest, state.life.party, state.life.gear, state.life.wound, state.player.sword) { CastleEngine.questOdds(state) ?: 0 }
+        Text("Aussichten: ${com.goldenunicorn.troopmanager.engine.SkirmishEngine.oddsLabel(odds)} ($odds %)" +
+            if (odds < 40) " – mehr Gefolge, bessere Ausrüstung oder Training helfen." else "", color = if (odds >= 60) Gold else if (odds >= 40) Mist else Danger, fontSize = 13.sp)
         CastleEngine.questBlocker(state)?.let { Text(it, color = Muted, fontSize = 12.sp) }
         GoldButton("Nach $name reiten (2 Tageszeiten)", { onResult(CastleEngine.ride(state)) }, Modifier.fillMaxWidth())
     } else if (blocker == null && !life.landed) {
@@ -260,6 +264,10 @@ private fun ListsPanel(state: GameState, summary: String, onResult: (LifeEngine.
         }, color = Mist)
     }
     Text("Turniersiege bisher: ${life.tournamentsWon}", color = Muted, fontSize = 12.sp)
+    if (CastleEngine.tournamentToday(state)) {
+        val odds = remember(state.life.tournament, state.life.gear, state.life.wound, state.player.sword) { CastleEngine.boutOdds(state) }
+        Text("Aussichten im nächsten Gang: ${com.goldenunicorn.troopmanager.engine.SkirmishEngine.oddsLabel(odds)} ($odds %)", color = if (odds >= 60) Gold else Mist, fontSize = 13.sp)
+    }
     val blocker = CastleEngine.tournamentBlocker(state)
     if (blocker != null) Text(blocker, color = Muted, fontSize = 13.sp)
     else if (run == null || (!run.lost && run.round < 3))
