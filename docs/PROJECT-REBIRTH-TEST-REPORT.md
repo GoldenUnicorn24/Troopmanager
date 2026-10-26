@@ -108,4 +108,4 @@ Neue Tests in `RebirthWorldTest` (7): Wetter deterministisch, zweitägig, jahres
 
 Vor dem Balancing erreichte derselbe Bot die Grenzfeste **nie**: Er kam mit 136 Gefechten nur auf 56 Siege, war oft in Gefangenschaft, und das an den Ruf gekoppelte Lösegeld (bis über 100 Gold) fraß jedes Ersparte. Die Änderungen stehen in der Roadmap (Meilenstein 6). Der Bot nutzt die neue Anzeige „Aussichten“ und reitet nur bei mindestens 60 %. Genau diese Information bekommt jetzt auch der Mensch.
 
-Lokal: **528 Tests grün**.
+Lokal: **526 Tests grün**.
