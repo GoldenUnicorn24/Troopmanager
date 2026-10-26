@@ -240,7 +240,8 @@ data class Realm(
 
 @Serializable
 data class GameState(
-    val version: Int = 6,
+    val version: Int = 7,
+    val customCharacters: List<CustomCharacter> = emptyList(),
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),

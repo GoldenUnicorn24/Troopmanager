@@ -57,13 +57,7 @@ internal fun RulerPairScreen(
     var companionAge by remember(state.companion.age) { mutableStateOf(state.companion.age.toString()) }
     var companionArmor by remember(state.companion.armorStyle) { mutableStateOf(state.companion.armorStyle) }
     var companionWeapon by remember(state.companion.weapon) { mutableStateOf(state.companion.weapon) }
-    val companionPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            onState(GameEngine.updateCompanionIdentity(state, state.companion.name, uri.toString()))
-            onNotice("Portrait der Gefährtin gespeichert.")
-        }
-    }
+    val openCustom = LocalOpenCustomCharacters.current
     val nightPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -236,7 +230,7 @@ internal fun RulerPairScreen(
             "Gefährtin" -> {
                 item {
                     RulerCard {
-                        RulerPortrait(state.companion.portraitUri, "companion", state.companion.name, Modifier.fillMaxWidth(), 230) { companionPicker.launch(arrayOf("image/*")) }
+                        RulerPortrait(state.companion.portraitUri, "companion", state.companion.name, Modifier.fillMaxWidth(), 230) { openCustom?.invoke("companion") }
                         Text("Portrait antippen, um ein lokales Bild zu wählen.", color = Mist, fontSize = 11.sp)
                         Text("${state.companion.age} Jahre · ${state.companion.species.label} · ${state.companion.role}", color = Gold)
                         Text("${presence.companion.location.label}: ${presence.companion.detail}", color = if (presence.companion.available) Mist else Danger)
@@ -382,8 +376,7 @@ private fun RulerCard(content: @Composable ColumnScope.() -> Unit) {
 private fun RulerPortrait(uri: String?, key: String, name: String, modifier: Modifier, height: Int = 130, onPortrait: (() -> Unit)? = null) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val imageModifier = Modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape(14.dp)).clickable(enabled = onPortrait != null) { onPortrait?.invoke() }
-        if (uri != null) AsyncImage(uri, "Portrait von $name", imageModifier, contentScale = ContentScale.Crop)
-        else Image(painterResource(portraitResource(key)), "Portrait von $name", imageModifier, contentScale = ContentScale.Crop)
+        PersonImage(null, uri, Framing.BUST, imageModifier) { Image(painterResource(portraitResource(key)), "Portrait von $name", imageModifier, contentScale = ContentScale.Crop) }
         Text(name, color = PaleGold, fontWeight = FontWeight.Bold)
     }
 }

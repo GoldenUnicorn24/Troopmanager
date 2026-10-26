@@ -307,6 +307,8 @@ private fun WorldTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
 @Composable
 private fun PeopleTab(state: GameState) {
     val known = state.life.npcs.filter { it.relation.timesMet > 0 }.sortedByDescending { it.relation.affinity + it.relation.trust }
+    val openCustom = LocalOpenCustomCharacters.current
+    if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Eigene Charaktere") }
     PageTitle("Leute", "Wen du kennst – und was sie über dich denken.")
     if (known.isEmpty()) EmptyCard("Du kennst hier noch niemanden. Tavernen sind ein guter Anfang.")
     known.forEach { npc ->

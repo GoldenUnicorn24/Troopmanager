@@ -44,6 +44,7 @@ fun CharacterEditor(
     templateKind: String,
     modifier: Modifier = Modifier,
 ) {
+    val openCustom = LocalOpenCustomCharacters.current
     val context = LocalContext.current
     var framing by rememberSaveable { mutableStateOf(Framing.BUST) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -76,6 +77,7 @@ fun CharacterEditor(
                 }
             }
         } }
+        if (openCustom != null) OutlinedButton(onClick = { openCustom(if (templateKind == "player") "player" else "companion") }) { Text("Eigene Charaktere / Bilder") }
         Text(
             "Vorschau-Renderer: gezeichnete Vektormalerei. Gemalte Porträt-Ebenen werden automatisch genutzt, sobald sie installiert sind.",
             color = Muted, fontSize = 11.sp, lineHeight = 15.sp,

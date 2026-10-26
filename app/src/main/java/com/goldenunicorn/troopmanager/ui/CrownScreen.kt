@@ -439,10 +439,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 @Composable
 internal fun Portrait(key: String, uri: String?, diameter: Int = 64, look: PortraitSpec? = null) {
     val modifier = Modifier.size(diameter.dp).clip(CircleShape).background(Steel)
-    when {
-        uri != null -> AsyncImage(uri, null, modifier, contentScale = ContentScale.Crop)
-        look != null -> DrawnPortrait(look, modifier)
-        else -> Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
+    PersonImage(look?.customImageId, uri, Framing.HEAD, modifier) {
+        if (look != null) CharacterPortrait(appearanceFromPortrait(look), if (key == "knight") Gender.MALE else Gender.FEMALE, modifier, Framing.HEAD)
+        else Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
     }
 }
 

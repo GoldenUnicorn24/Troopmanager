@@ -58,6 +58,7 @@ import kotlin.math.sin
  */
 @Composable
 fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    val figures = rememberFigureArt(state)
     val layout = MarketEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { MarketEngine.placements(state) }
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
@@ -161,12 +162,12 @@ fun MarketScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                         drawMarketRow(row, tw, th, backH, MarketEngine.open(state))
                         placements.filter { it.cell.y == row }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), backH + th * (p.cell.y + .5f) + th * .3f)
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false)
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, customImage = figures[p.npc.appearance.customImageId])
                         }
                         if (floor(pos.value.y + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), backH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f)
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId])
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }

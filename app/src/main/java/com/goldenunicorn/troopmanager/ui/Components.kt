@@ -256,22 +256,9 @@ internal fun CharacterPanel(
 ) {
     Surface(color = Panel, shape = RoundedCornerShape(18.dp)) {
         Column {
-            if (uri != null) {
-                AsyncImage(
-                    model = uri,
-                    contentDescription = null,
-                    modifier =
-                        Modifier.fillMaxWidth().height(250.dp).clickable(onClick = onPortrait),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Image(
-                    painterResource(fallback),
-                    contentDescription = null,
-                    modifier =
-                        Modifier.fillMaxWidth().height(250.dp).clickable(onClick = onPortrait),
-                    contentScale = ContentScale.Crop,
-                )
+            val imageModifier = Modifier.fillMaxWidth().height(250.dp).clickable(onClick = onPortrait)
+            PersonImage(null, uri, Framing.BUST, imageModifier) {
+                Image(painterResource(fallback), null, imageModifier, contentScale = ContentScale.Crop)
             }
             Column(Modifier.padding(14.dp)) {
                 Text(title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)

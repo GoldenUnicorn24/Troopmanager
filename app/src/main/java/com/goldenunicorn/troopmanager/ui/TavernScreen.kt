@@ -62,6 +62,7 @@ fun TavernScreen(
     onExit: () -> Unit,
     initialTalk: String? = null,
 ) {
+    val figures = rememberFigureArt(state)
     val layout = TavernEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { TavernEngine.placements(state) }
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
@@ -181,12 +182,12 @@ fun TavernScreen(
                             val feet = Offset(tw * (p.cell.x + .5f), wallH + th * (p.cell.y + .5f) + th * .3f)
                             val seated = p.npc.role != NpcRole.INNKEEPER && p.kind in setOf(TavernEngine.SeatKind.TABLE, TavernEngine.SeatKind.FIRE, TavernEngine.SeatKind.BAR)
                             val bob = if (seated) 0f else sin((time + p.cell.x * .13f) * 6.283f) * tw * .012f
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false, seated = seated)
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet + Offset(0f, bob), tw * 2.4f / 140f, detailed = false, seated = seated, customImage = figures[p.npc.appearance.customImageId])
                         }
                         if (floor(playerRow + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), wallH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f)
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 6f else 0f, customImage = figures[playerLook.customImageId])
                         }
                     }
                     target?.let { t ->

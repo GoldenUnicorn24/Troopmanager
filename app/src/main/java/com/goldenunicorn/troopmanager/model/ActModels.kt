@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PortraitSpec(
     val skin: Int = 1,
+    val customImageId: String? = null,
     val hair: Int = 0,
     val hairColor: Int = 0,
     val eyes: Int = 0,

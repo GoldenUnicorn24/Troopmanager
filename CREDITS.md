@@ -35,3 +35,14 @@ See [production specification and rendering budget](docs/BATTLE-VISUALS-PHASE-1.
 - **Cinzel** (Natanael Gama) – Überschriften, SIL Open Font License 1.1, aus github.com/google/fonts, auf lateinische Zeichen reduziert.
 - **Cormorant Garamond** (Christian Thalmann) – Erzähltexte, SIL Open Font License 1.1, aus github.com/google/fonts, auf lateinische Zeichen reduziert.
 Lizenztexte: `docs/OFL-Cinzel.txt`, `docs/OFL-Cormorant.txt`.
+
+## Eigene Charaktere – neue Hilfs- und Testgrafiken
+
+- `docs/assets/portrait-guide.svg`: selbst erstellte geometrische Führungsmaske, Codex für dieses Projekt (2026-10-26); CC0-1.0.
+- `docs/assets/fullbody-guide.svg`: selbst erstellte geometrische Führungsmaske, Codex für dieses Projekt (2026-10-26); CC0-1.0.
+
+Eigene importierte Bilder stammen von Nutzenden. Herkunft und Nutzungsrechte werden beim Import
+abgefragt und in den Charaktermetadaten gespeichert. Sie sind keine mitgelieferten Projekt-Assets.
+- `app/src/androidTest/assets/adult-portrait.png`: selbst erstellte geometrische Testfigur (explizites Testalter 27), Pillow-Zeichnung für dieses Projekt, CC0-1.0; kein realistisches Produkt-Artwork.
+- `app/src/androidTest/assets/adult-fullbody.png`: selbst erstellte transparente geometrische Testfigur (Alter 27), CC0-1.0; nur Testzwecke.
+- `app/src/androidTest/assets/adult-exif.jpg`: verkleinerte, gedrehte Variante von `adult-portrait.png` mit EXIF-Orientierung 6, gleiche Herkunft und CC0-1.0.

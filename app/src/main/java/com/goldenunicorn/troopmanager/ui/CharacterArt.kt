@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
@@ -91,10 +93,9 @@ private fun seedOf(a: CharacterAppearance) = a.hashCode()
 /** The portrait used everywhere (editor, tavern dialogue, people lists). */
 @Composable
 fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    val context = LocalContext.current
-    val layered = remember(appearance, gender, framing) { PortraitAssets.layersFor(context, appearance, gender, framing) }
-    if (layered != null) LayeredAssetPortrait(layered, appearance, modifier)
-    else PaintedPortrait(appearance, gender, modifier, framing)
+    PersonImage(appearance.customImageId, null, framing, modifier) {
+        MixedPortrait(appearance, gender, modifier, framing)
+    }
 }
 
 @Composable
@@ -394,23 +395,8 @@ private fun faceOutline(g: FaceGeometry): Path = Path().apply {
 internal fun DrawScope.drawHead(a: CharacterAppearance, gender: Gender, c: Offset, s: Float, detailed: Boolean) {
     val g = FaceGeometry(a, gender, c, s)
     val tone = ArtPalette.skin[a.skinTone]
-    drawEars(a, g, tone, front = false)
-    val face = faceOutline(g)
-    drawPath(face, Brush.radialGradient(listOf(tone.light, tone.base, tone.shadow), Offset(g.x(-.35f), g.c.y - g.halfH * .35f * s), g.halfW * 2.1f * s))
-    clipPath(face) {
-        // Form shadow on the far side and under the cheekbones.
-        drawRect(Brush.horizontalGradient(listOf(Color.Transparent, tone.shadow.copy(alpha = .55f)), g.x(.2f), g.x(1.05f)))
-        for (side in listOf(-1f, 1f)) {
-            drawOval(Brush.radialGradient(listOf(tone.shadow.copy(alpha = .3f), Color.Transparent), Offset(g.x(side * .62f), g.noseY + 1.5f * s), 5.5f * s),
-                Offset(g.x(side * .62f) - 5.5f * s, g.noseY - 4f * s), Size(11f * s, 11f * s))
-            drawCircle(Brush.radialGradient(listOf(tone.blush.copy(alpha = if (g.female) .38f else .18f), Color.Transparent), Offset(g.x(side * .55f), g.noseY - 1f * s), 5f * s),
-                5f * s, Offset(g.x(side * .55f), g.noseY - 1f * s))
-        }
-        // Jaw and chin shading.
-        drawRect(Brush.verticalGradient(listOf(Color.Transparent, tone.shadow.copy(alpha = .35f)), g.mouthY, g.chinY))
-        if (a.beard == 1 || (a.beard >= 2 && !g.female)) stubble(a, g)
-    }
-    drawEars(a, g, tone, front = true)
+    drawFaceBase(a, g, tone)
+    if (a.beard == 1 || (a.beard >= 2 && !g.female)) stubble(a, g)
     drawEyes(a, g, tone, detailed)
     drawBrows(a, g)
     drawNose(a, g, tone)
@@ -467,7 +453,7 @@ private fun DrawScope.drawEars(a: CharacterAppearance, g: FaceGeometry, tone: Ar
     }
 }
 
-private fun DrawScope.drawEyes(a: CharacterAppearance, g: FaceGeometry, tone: ArtPalette.Tone, detailed: Boolean) {
+private fun DrawScope.drawEyes(a: CharacterAppearance, g: FaceGeometry, tone: ArtPalette.Tone, detailed: Boolean, drawIris: Boolean = true, irisOnly: Boolean = false) {
     val s = g.s
     val ew = g.halfW * .3f * s * (if (a.eyeShape == 2) 1.05f else 1f)
     val eh = ew * when (a.eyeShape) { 1 -> .62f; 2 -> .36f; else -> .48f }
@@ -479,17 +465,18 @@ private fun DrawScope.drawEyes(a: CharacterAppearance, g: FaceGeometry, tone: Ar
         val cy = g.eyeY
         val inner = Offset(cx - side * ew, cy + tilt * .4f)
         val outer = Offset(cx + side * ew, cy - tilt)
-        // Socket shadow.
-        drawOval(Brush.radialGradient(listOf(tone.shadow.copy(alpha = .4f), Color.Transparent), Offset(cx, cy - eh * .6f), ew * 1.5f),
-            Offset(cx - ew * 1.6f, cy - eh * 2.6f), Size(ew * 3.2f, eh * 4f))
         val eye = Path().apply {
             moveTo(inner.x, inner.y)
             cubicTo(cx - side * ew * .45f, cy - eh * 1.5f * squint, cx + side * ew * .55f, cy - eh * 1.45f * squint - tilt * .5f, outer.x, outer.y)
             cubicTo(cx + side * ew * .5f, cy + eh * .95f, cx - side * ew * .4f, cy + eh * 1.05f, inner.x, inner.y)
             close()
         }
-        drawPath(eye, Brush.verticalGradient(listOf(Color(0xFFD9D2C8), Color(0xFFF4EFE8)), cy - eh, cy + eh))
-        clipPath(eye) {
+        if (!irisOnly) {
+            drawOval(Brush.radialGradient(listOf(tone.shadow.copy(alpha = .4f), Color.Transparent), Offset(cx, cy - eh * .6f), ew * 1.5f),
+                Offset(cx - ew * 1.6f, cy - eh * 2.6f), Size(ew * 3.2f, eh * 4f))
+            drawPath(eye, Brush.verticalGradient(listOf(Color(0xFFD9D2C8), Color(0xFFF4EFE8)), cy - eh, cy + eh))
+        }
+        if (drawIris) clipPath(eye) {
             val ir = eh * 1.05f
             val ic = Offset(cx + side * ew * .05f, cy - eh * .05f)
             drawCircle(Brush.radialGradient(listOf(iris.tint(.35f), iris, iris.shade(.55f)), ic, ir), ir, ic)
@@ -501,6 +488,7 @@ private fun DrawScope.drawEyes(a: CharacterAppearance, g: FaceGeometry, tone: Ar
             drawCircle(Color.Black.copy(alpha = .35f), ir * 1.4f, ic + Offset(0f, -ir * 1.3f))
             drawCircle(Color.White.copy(alpha = .9f), ir * .2f, ic + Offset(-ir * .35f, -ir * .35f))
         }
+        if (!irisOnly) {
         // Upper lid line, lashes and crease.
         val lid = Path().apply {
             moveTo(inner.x, inner.y)
@@ -521,6 +509,7 @@ private fun DrawScope.drawEyes(a: CharacterAppearance, g: FaceGeometry, tone: Ar
             moveTo(inner.x + side * ew * .3f, cy + eh * .9f)
             cubicTo(cx, cy + eh * 1.3f, cx + side * ew * .5f, cy + eh * 1.2f, outer.x, outer.y)
         }, tone.shadow.copy(alpha = .45f), style = Stroke(.3f * s, cap = StrokeCap.Round))
+        }
     }
 }
 
@@ -819,7 +808,8 @@ private fun DrawScope.drawDiadem(a: CharacterAppearance, g: FaceGeometry) {
  * Full figure standing on [feet]. [unit] is roughly 1/128 of the figure box height. In the
  * tavern the same function draws every person at small size, so looks stay recognisable.
  */
-internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false) {
+internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false, customImage: ImageBitmap? = null) {
+    if (customImage != null) { drawCustomFigure(customImage, feet, unit); return }
     val female = gender == Gender.FEMALE
     val heightScale = .86f + a.height / 100f * .2f + if (female) -.03f else 0f
     val u = unit * heightScale
@@ -968,66 +958,134 @@ private fun DrawScope.drawTinyHead(a: CharacterAppearance, gender: Gender, c: Of
  */
 object PortraitAssets {
     data class Layer(val bitmap: ImageBitmap, val tint: Color?)
-
-    private val cache = LruCache<String, ImageBitmap>(24)
+    private val cache = object : LruCache<String, ImageBitmap>(20 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
+    }
     @Volatile private var index: Set<String>? = null
-
     private fun files(context: android.content.Context): Set<String> = index ?: run {
         val found = mutableSetOf<String>()
-        runCatching {
-            context.assets.list("portraits")?.forEach { dir ->
-                context.assets.list("portraits/$dir")?.forEach { found += "portraits/$dir/$it" }
-            }
-        }
+        runCatching { context.assets.list("portraits")?.forEach { dir ->
+            context.assets.list("portraits/$dir")?.filter { it.endsWith(".webp") }?.forEach { found += "portraits/$dir/$it" }
+        } }
         found.also { index = it }
     }
-
-    private fun load(context: android.content.Context, path: String): ImageBitmap? {
-        cache.get(path)?.let { return it }
-        val bitmap = runCatching { context.assets.open(path).use { BitmapFactory.decodeStream(it) } }.getOrNull() ?: return null
-        return bitmap.asImageBitmap().also { cache.put(path, it) }
-    }
-
     fun installedCount(context: android.content.Context): Int = files(context).size
-
-    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, framing: Framing): List<Layer>? {
-        if (framing == Framing.FULL) return null
-        val all = files(context)
+    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512): Map<String, Layer> {
         val sex = if (gender == Gender.FEMALE) "female" else "male"
-        val base = "portraits/base/${sex}_${a.faceShape}.webp"
-        if (base !in all) return null
-        val hair = ArtPalette.hair[a.hairColor]
-        val fabric = ArtPalette.fabric[a.primaryColor]
-        val wanted = listOf(
-            "portraits/hair_back/${a.hairStyle}.webp" to hair,
-            "portraits/outfit/${a.clothing}.webp" to fabric,
-            "portraits/armor/${a.armor}.webp" to null,
-            "portraits/cloak/${a.cloak}.webp" to ArtPalette.fabric[a.accentColor],
-            base to ArtPalette.skin[a.skinTone].base,
-            "portraits/eyes/${a.eyeShape}.webp" to null,
-            "portraits/eyes/iris_mask.webp" to ArtPalette.eyes[a.eyeColor],
-            "portraits/brows/${a.browStyle}.webp" to hair,
-            "portraits/nose/${a.noseShape}.webp" to null,
-            "portraits/mouth/${a.expression}.webp" to null,
-            "portraits/marks/scar_${a.scar}.webp" to null,
-            "portraits/marks/tattoo_${a.tattoo}.webp" to null,
-            "portraits/beard/${a.beard}.webp" to hair,
-            "portraits/hair_front/${a.hairStyle}_${a.hairTexture}.webp" to hair,
+        val wanted = mapOf(
+            "base" to ("base/${sex}_${a.faceShape}.webp" to ArtPalette.skin[a.skinTone].base),
+            "eyes" to ("eyes/${a.eyeShape}.webp" to null), "iris" to ("eyes/iris_mask.webp" to ArtPalette.eyes[a.eyeColor]),
+            "brows" to ("brows/${a.browStyle}.webp" to ArtPalette.hair[a.hairColor]),
+            "nose" to ("nose/${a.noseShape}.webp" to null), "mouth" to ("mouth/${a.expression}.webp" to null),
+            "hair_back" to ("hair_back/${a.hairStyle}.webp" to ArtPalette.hair[a.hairColor]),
+            "hair_front" to ("hair_front/${a.hairStyle}_${a.hairTexture}.webp" to ArtPalette.hair[a.hairColor]),
+            "beard" to ("beard/${a.beard}.webp" to ArtPalette.hair[a.hairColor]),
+            "scar" to ("marks/scar_${a.scar}.webp" to null), "tattoo" to ("marks/tattoo_${a.tattoo}.webp" to null),
+            "outfit" to ("outfit/${a.clothing}.webp" to ArtPalette.fabric[a.primaryColor]),
+            "armor" to ("armor/${a.armor}.webp" to null), "cloak" to ("cloak/${a.cloak}.webp" to ArtPalette.fabric[a.accentColor]),
         )
-        return wanted.filter { it.first in all }.mapNotNull { (path, tint) -> load(context, path)?.let { Layer(it, tint) } }
+        return wanted.mapNotNull { (key, spec) ->
+            val path = "portraits/${spec.first}"
+            if (path !in files(context)) return@mapNotNull null
+            val cacheKey = "$path:$targetWidth"
+            val image = cache.get(cacheKey) ?: runCatching {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.assets.open(path).use { BitmapFactory.decodeStream(it, null, bounds) }
+                require(bounds.outWidth == 1024 && bounds.outHeight == 1280)
+                val options = BitmapFactory.Options().apply {
+                    inSampleSize = com.goldenunicorn.troopmanager.data.CharacterImageFrames.sampleSize(1024, 1280, targetWidth, targetWidth * 5 / 4)
+                }
+                context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }?.takeIf { it.hasAlpha() }?.asImageBitmap()
+            }.getOrNull()?.also { cache.put(cacheKey, it) }
+            image?.let { key to Layer(it, spec.second) }
+        }.toMap()
     }
 }
 
 @Composable
-private fun LayeredAssetPortrait(layers: List<PortraitAssets.Layer>, appearance: CharacterAppearance, modifier: Modifier) {
-    Box(modifier) {
-        Canvas(Modifier.fillMaxSize()) {
-            drawRect(Brush.radialGradient(ArtPalette.backgrounds[appearance.background], Offset(size.width * .32f, size.height * .28f), size.maxDimension))
-        }
-        layers.forEach { layer ->
-            Image(layer.bitmap, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
-                colorFilter = layer.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) })
-        }
+private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier, framing: Framing) {
+    if (framing == Framing.FULL) { PaintedPortrait(appearance, gender, modifier, framing); return }
+    val context = LocalContext.current
+    val a = remember(appearance) { appearance.normalized() }
+    val layers by androidx.compose.runtime.produceState<Map<String, PortraitAssets.Layer>>(emptyMap(), a, gender) {
+        value = emptyMap()
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender) }
     }
+    Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
+        val image = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
+        CanvasDrawScope().draw(this, layoutDirection, androidx.compose.ui.graphics.Canvas(image), size) {
+            drawRect(Brush.radialGradient(ArtPalette.backgrounds[a.background], Offset(size.width * .3f, size.height * .25f), size.maxDimension))
+            val frame = if (framing == Framing.HEAD) intArrayOf(192, 160, 640, 800) else intArrayOf(0, 0, 1024, 1280)
+            val factor = maxOf(size.width / frame[2], size.height / frame[3])
+            withTransform({
+                translate((size.width - frame[2] * factor) / 2f - frame[0] * factor, (size.height - frame[3] * factor) / 2f - frame[1] * factor)
+                scale(factor, factor, Offset.Zero)
+            }) { drawRegisteredPortrait(a, gender, layers) }
+        }
+        onDrawBehind { drawImage(image) }
+    })
 }
 
+/** Every missing/invalid asset replaces exactly its own procedural component. */
+private fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gender, layers: Map<String, PortraitAssets.Layer>) {
+    val s = 16f
+    val center = Offset(512f, 560f + (19.5f + when (a.faceShape) { 4 -> 2.2f; 1 -> -1.4f; 3 -> .4f; else -> 0f }) * .04f * s)
+    val g = FaceGeometry(a, gender, center, s)
+    val tone = ArtPalette.skin[a.skinTone]
+    val shoulder = (if (gender == Gender.FEMALE) 25f else 29f) + (a.build - 1) * 2f + (a.muscle - 50) / 25f
+    fun layer(key: String, fallback: () -> Unit) {
+        val image = layers[key]
+        if (image == null) fallback() else drawImage(image.bitmap, dstSize = androidx.compose.ui.unit.IntSize(1024, 1280),
+            colorFilter = image.tint?.let { ColorFilter.tint(it, BlendMode.Modulate) })
+    }
+    layer("hair_back") { if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, center, s, gender) }
+    if (a.cloak == 3 && "cloak" !in layers) drawHood(a, center, s)
+    if (a.cloak in 1..3 && "cloak" !in layers) drawCloakBack(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s)
+    // Neck is part of base. The garment covers its lower edge.
+    layer("base") { drawRegisteredBase(a, gender, center, s) }
+    layer("outfit") { drawTorso(a.copy(armor = 0, cloak = 0, jewelry = 0), gender, center, s, shoulder) }
+    layer("armor") { drawArmor(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s) }
+    layer("cloak") { if (a.cloak in 1..3) drawCloakFront(a, center, s, shoulder, center.y + 28f * s) }
+    layer("eyes") { drawEyes(a, g, tone, true, drawIris = "iris" !in layers) }
+    layer("iris") { if ("eyes" in layers) drawEyes(a, g, tone, true, irisOnly = true) }
+    layer("brows") { drawBrows(a, g) }
+    layer("nose") { drawNose(a, g, tone) }
+    layer("mouth") { drawMouth(a, g, tone) }
+    layer("scar") { drawMarks(a.copy(tattoo = 0), g, tone) }
+    layer("tattoo") { drawMarks(a.copy(scar = 0), g, tone) }
+    layer("beard") { if (a.beard == 1) stubble(a, g) else if (a.beard >= 2) drawBeard(a, g) }
+    layer("hair_front") { drawFrontHair(a, g, gender) }
+    if (a.jewelry == 4) drawDiadem(a, g)
+}
+
+/** Same appearance recipe for the older court/saga entry points. */
+internal fun appearanceFromPortrait(spec: com.goldenunicorn.troopmanager.model.PortraitSpec) = CharacterAppearance(
+    customImageId = spec.customImageId, skinTone = spec.skin, hairStyle = when (spec.hair) { 0 -> 1; 1 -> 2; 2 -> 3; 3 -> 4; 4 -> 6; else -> 7 },
+    hairColor = spec.hairColor, eyeColor = spec.eyes, ears = if (spec.elfEars) 1 else 0, beard = spec.beard,
+    armor = when (spec.armor) { 0 -> 4; 1 -> 1; 2 -> 0; else -> 2 }, primaryColor = spec.armorColor, background = spec.background,
+).normalized()
+
+private fun DrawScope.drawFaceBase(a: CharacterAppearance, g: FaceGeometry, tone: ArtPalette.Tone) {
+    val s = g.s
+    drawEars(a, g, tone, front = false)
+    val face = faceOutline(g)
+    drawPath(face, Brush.radialGradient(listOf(tone.light, tone.base, tone.shadow), Offset(g.x(-.35f), g.c.y - g.halfH * .35f * s), g.halfW * 2.1f * s))
+    clipPath(face) {
+        // Form shadow on the far side and under the cheekbones.
+        drawRect(Brush.horizontalGradient(listOf(Color.Transparent, tone.shadow.copy(alpha = .55f)), g.x(.2f), g.x(1.05f)))
+        for (side in listOf(-1f, 1f)) {
+            drawOval(Brush.radialGradient(listOf(tone.shadow.copy(alpha = .3f), Color.Transparent), Offset(g.x(side * .62f), g.noseY + 1.5f * s), 5.5f * s),
+                Offset(g.x(side * .62f) - 5.5f * s, g.noseY - 4f * s), Size(11f * s, 11f * s))
+            drawCircle(Brush.radialGradient(listOf(tone.blush.copy(alpha = if (g.female) .38f else .18f), Color.Transparent), Offset(g.x(side * .55f), g.noseY - 1f * s), 5f * s),
+                5f * s, Offset(g.x(side * .55f), g.noseY - 1f * s))
+        }
+        // Jaw and chin shading.
+        drawRect(Brush.verticalGradient(listOf(Color.Transparent, tone.shadow.copy(alpha = .35f)), g.mouthY, g.chinY))
+    }
+    drawEars(a, g, tone, front = true)
+}
+private fun DrawScope.drawRegisteredBase(a: CharacterAppearance, gender: Gender, c: Offset, s: Float) {
+    val tone = ArtPalette.skin[a.skinTone]
+    drawLine(tone.base, Offset(c.x, c.y + 12f * s), Offset(c.x, c.y + 34f * s), 12f * s, StrokeCap.Round)
+    drawFaceBase(a, FaceGeometry(a, gender, c, s), tone)
+}

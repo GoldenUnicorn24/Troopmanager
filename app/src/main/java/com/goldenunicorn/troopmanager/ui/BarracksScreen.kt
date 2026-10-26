@@ -50,6 +50,7 @@ import kotlin.math.sin
 /** The walkable barracks yard: drill sergeant, dummies, archery butts, sparring ring, horse pen, map table. */
 @Composable
 fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    val figures = rememberFigureArt(state)
     val layout = BarracksEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { BarracksEngine.placements(state) }
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
@@ -142,12 +143,12 @@ fun BarracksScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (St
                         drawYardRow(row, tw, th, backH, time)
                         placements.filter { it.cell.y == row }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), backH + th * (p.cell.y + .5f) + th * .3f)
-                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (p.sergeant) 0f else time * .5f)
+                            drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (p.sergeant) 0f else time * .5f, customImage = figures[p.npc.appearance.customImageId])
                         }
                         if (floor(pos.value.y + .5f).toInt() == row) {
                             val feet = Offset(tw * (pos.value.x + .5f), backH + th * (pos.value.y + .5f) + th * .3f)
                             drawOval(Gold.copy(alpha = .55f), Offset(feet.x - tw * .42f, feet.y - th * .2f), Size(tw * .84f, th * .42f), style = Stroke(tw * .04f))
-                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f)
+                            drawFullFigure(playerLook, state.life.gender, feet, tw * 2.4f / 140f, detailed = false, walkPhase = if (walking) time * 8f else 0f, customImage = figures[playerLook.customImageId])
                         }
                     }
                     target?.let { t -> drawCircle(Gold.copy(alpha = .5f), tw * .22f, Offset(tw * (t.x + .5f), backH + th * (t.y + .5f)), style = Stroke(tw * .035f)) }

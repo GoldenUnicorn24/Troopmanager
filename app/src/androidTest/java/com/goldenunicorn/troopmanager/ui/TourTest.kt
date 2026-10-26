@@ -23,7 +23,9 @@ class TourTest {
         rule.waitForIdle()
         val roots = rule.onAllNodes(isRoot())
         val count = roots.fetchSemanticsNodes().size
+        val started = android.os.SystemClock.elapsedRealtime()
         val bitmap = roots[count - 1].captureToImage().asAndroidBitmap()
+        org.junit.Assert.assertTrue("$name überschreitet 2 s Zeichenzeit", android.os.SystemClock.elapsedRealtime() - started <= 2000)
         val resolver = rule.activity.contentResolver
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, "$name.png")
@@ -51,6 +53,15 @@ class TourTest {
         listOf("barracks").forEach { page(it); shot("f-$it") }
         // Milestone 4: the castle courtyard on a tournament day, seated guests in the tavern.
         listOf("castle", "tavern").forEach { page(it); shot("g-$it") }
+        val testContext = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().context
+        TourActivity.customPortraitBytes = testContext.assets.open("adult-portrait.png").use { it.readBytes() }
+        TourActivity.customFullbodyBytes = testContext.assets.open("adult-fullbody.png").use { it.readBytes() }
+        listOf("custom-import", "custom-crop", "custom-tavern", "custom-compare").forEach {
+            TourActivity.customReady = false
+            page(it)
+            rule.waitUntil(2_000) { TourActivity.customReady }
+            shot("i-$it")
+        }
         // Milestone 5: a ruler (and knight) visiting the castle of a town.
         listOf("ruler-castle").forEach { page(it); shot("h-$it") }
     }

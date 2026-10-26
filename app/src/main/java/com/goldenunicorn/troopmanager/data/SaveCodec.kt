@@ -9,7 +9,7 @@ import java.security.MessageDigest
 
 /** Android-independent, versioned save format. Invalid data is never silently a new game. */
 object SaveCodec {
-    const val CURRENT_VERSION = 6
+    const val CURRENT_VERSION = 7
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -297,6 +297,11 @@ object SaveCodec {
     }
 
     private fun validate(state: GameState) {
+        require(state.customCharacters.size <= 200) { "Höchstens 200 eigene Charaktere." }
+        require(state.customCharacters.map { it.id }.distinct().size == state.customCharacters.size) { "Doppelte eigene Charaktere." }
+        state.customCharacters.forEach { it.validate() }
+        val imageIds = listOfNotNull(state.life.appearance?.customImageId, state.crown.playerLook?.customImageId) + state.life.npcs.mapNotNull { it.appearance.customImageId }
+        require(imageIds.all { it.matches(Regex("[a-zA-Z0-9-]{1,80}")) }) { "Ungültige Bildreferenz." }
         require(BattleEngine.validPlan(state.defensePlan)) { "Ungültiger gespeicherter Verteidigungsplan." }
         require(state.day >= 1 && state.player.name.isNotBlank()) { "Ungültiger Spieler oder Tag." }
         require(

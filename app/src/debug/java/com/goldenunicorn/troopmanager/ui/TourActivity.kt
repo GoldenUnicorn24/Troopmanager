@@ -19,6 +19,9 @@ import com.goldenunicorn.troopmanager.model.*
 class TourActivity : ComponentActivity() {
     companion object {
         var page by mutableStateOf("spot:INBOX")
+        var customPortraitBytes: ByteArray? = null
+        var customFullbodyBytes: ByteArray? = null
+        var customReady: Boolean = false
         var latestState: GameState? = null
         val rich: GameState by lazy { TourFixture.richState() }
         val life: GameState by lazy { TourFixture.lifeState() }
@@ -45,6 +48,7 @@ class TourActivity : ComponentActivity() {
                             current == "skirmish" -> TourFixture.skirmishState()
                             current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
                             current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
+                            current.startsWith("custom-") -> life
                             current.startsWith("life") -> life
                             current.startsWith("tavern") -> life.copy(life = life.life.copy(place = LifePlace.TAVERN))
                             current == "scene" -> rich.copy(crown = rich.crown.copy(saga = rich.crown.saga.copy(pendingScene =
@@ -58,6 +62,7 @@ class TourActivity : ComponentActivity() {
                         }) }
                         SideEffect { latestState = state }
                         when {
+                            current.startsWith("custom-") -> CustomCharacterTour(current, state)
                             current == "menu" -> MainMenu(GameUiState(inMenu = true, hasSave = true), controller)
                             current == "create" -> CharacterCreation({}, {})
                             current.startsWith("wizard-") -> current.removePrefix("wizard-").toInt().let { step ->
