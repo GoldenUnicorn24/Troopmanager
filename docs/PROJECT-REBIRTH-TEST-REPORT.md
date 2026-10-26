@@ -62,3 +62,15 @@ Bestehende Tests angepasst: vier Stellen, die die Schemanummer 5 fest erwarteten
 - Persönliche Schlachtteilnahme/Verwundung/Gefangenschaft noch nicht an Combat Engine 3.0 gebunden.
 - Der Weltpuls für landlose Spiele ist leichtgewichtig; die vollen KI-Engines laufen erst nach dem Lehnseid.
 - Der CI-Push auf `claude/**` aktualisiert die öffentliche Testversion `dev-latest` und den Screenshot-Branch – so ist der Workflow eingerichtet.
+
+## 5. Meilenstein 2 (Gefolge, Markt, Kämpfe)
+
+| Prüfung | Ergebnis |
+|---|---|
+| CI Unit-Tests, Lint, APK (Push- und PR-Lauf) | ✅ |
+| Emulator-Tour inkl. neuer Seiten `e-market`, `e-skirmish`, `e-party`, `e-captive` | ✅ |
+| Lokale JVM-Tests | ✅ 489 grün |
+
+Neue Tests in `RebirthRoadTest` (11): Freund lehnt ab bzw. schließt sich an und folgt auf Reisen · Söldner kosten Handgeld und Sold und ziehen unbezahlt ab · gekaufte Rüstung ändert Aussehen und Porträt, Waffe die Kampfkraft, Heilerin senkt Wunden · Geschenke nach Geschmack wirken stärker, eins pro Tag · Wolfsjagd wird persönlich ausgefochten, deterministisch, mit Lohn/Scheitern · Gefährten kämpfen mit und erinnern sich · Niederlage verwundet, Gefangenschaft blockiert Reisen und endet nach Ablauf · Lösegeld befreit sofort · Duell ist nicht tödlich und wird erinnert · Hinterhalte auf gefährlichen Straßen, Reise geht nach dem Kampf weiter · Lehnseid übergibt Gefährtin (Kommandantin) und Söldner (Hauptleute).
+
+Kampfbalance per Simulation (40 Läufe je Zeile, 4 Wegelagerer): Schwert 60 allein gewinnt gegen Stärke 40–55 fast immer und verliert gegen 70; mit zwei Gefährten werden auch Stärke-70-Gegner besiegbar. Das Gefolge ist bewusst spielentscheidend, kostet aber Sold.

@@ -30,6 +30,9 @@ GameState
 | `LifeEngine` | Spielstart in vier Modi, Börse, Essen/Trinken/Schlafen, Zeitfenster, landloser Tag, Reisen, Aufträge, Weltpuls, Gerüchte, Lehnseid, Validierung |
 | `NpcEngine` | Deterministische Personengenerierung (Seed = Id), Gefährtin aus Entwurf (voll/teilweise), Anwesenheit nach Routine + Tagesvariation, Erinnerungen |
 | `DialogueEngine` | Interpretiert `DialogueCatalog` (Daten), Begrüßung mit Erinnerungen, Optionen mit ehrlichen Sperrgründen, soziale Prüfung, Einwilligungsentscheidung, Affären-Folgen, Fade-to-Black |
+| `PartyEngine` | Gefolge: Einladung (eigene Entscheidung der Person), Söldner mit Handgeld/Sold, Abzug ohne Sold, Bindung durch Reisen, Kampfkraft, Beförderung zum Hauptmann |
+| `SkirmishEngine` | Persönliche Gefechte (Feldzug, Hinterhalt, Jagd, Duell), Runden mit fünf Aktionen, Wunden, Gefangenschaft, Flucht/Lösegeld |
+| `MarketEngine` | Begehbarer Marktplatz (`WalkGrid`), Schmied/Krämer/Heilerin, Ausrüstung (sichtbar am Charakter), Geschenke |
 | `TavernEngine` | 12×9-Kachel-Raum, A*-Wegfindung ohne Ecken-Schneiden, Sitzplatzvergabe, Betreten/Verlassen, Würfeln, Schlägerei, Tavernenereignisse |
 
 ### Tagesablauf
@@ -67,7 +70,7 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 
 ## Bekannte Grenzen dieser Ausbaustufe
 
-- Nur die Taverne ist begehbar. Markt, Kaserne, Burghof sind Daten-Orte (`LifePlace`) ohne eigene Szene.
-- Persönliche Schlachtteilnahme, Gefangenschaft und Verwundung sind noch nicht an Combat Engine 3.0 angebunden (Roadmap Phase 7).
+- Begehbar sind Taverne und Markt. Kaserne und Burghof sind Daten-Orte (`LifePlace`) ohne eigene Szene.
+- Persönliche Gefechte laufen über die eigene `SkirmishEngine`; die großen Schlachten der Combat Engine 3.0 kennen den Spieler als Person noch nicht.
 - Der Weltpuls ist bewusst leichtgewichtig; erst nach dem Lehnseid laufen die vollen KI-Engines.
 - Personen an Sitzplätzen werden stehend gezeichnet; Sitz-Posen fehlen.
