@@ -166,6 +166,47 @@ object CastleEngine {
         return next.copy(life = next.life.copy(lordQuest = null, lordQuestsDone = next.life.lordQuestsDone + 1))
     }
 
+    // ------------------------------------------------------------ rulers: the court day
+
+    const val COURT_DAY_COOLDOWN = 7
+
+    fun courtBlocker(state: GameState): String? {
+        val lord = lord(state)
+        return when {
+            !state.life.landed -> "Nur Herrscher halten Hoftag mit dem Burgvogt."
+            !open(state) -> "Der Burgvogt empfängt nachts niemanden."
+            lord == null -> "Kein Burgvogt hier."
+            state.life.intoxication >= 30 -> "Betrunken? Nicht vor dem Burgvogt."
+            state.day - state.life.lastCourtDay < COURT_DAY_COOLDOWN ->
+                "Der nächste Hoftag ist an Tag ${state.life.lastCourtDay + COURT_DAY_COOLDOWN}."
+            lord.relation.affinity < -10 -> "${lord.firstName} lässt ausrichten, er habe keine Zeit für dich."
+            else -> null
+        }
+    }
+
+    /** Volunteers the lord sends to a befriended ruler's keep; more for knights and old allies. */
+    fun courtVolunteers(state: GameState): Int {
+        val lord = lord(state) ?: return 0
+        return (30 + lord.relation.affinity.coerceAtLeast(0) / 2 + (if (state.life.knighted) 20 else 0) + state.life.lordQuestsDone * 10).coerceAtMost(120)
+    }
+
+    /** A ruler's visit: the lord, a peer now, sends volunteers to the keep once a week. */
+    fun courtDay(state: GameState): LifeEngine.Result {
+        courtBlocker(state)?.let { return LifeEngine.Result(state, it) }
+        val lord = lord(state)!!
+        val culture = CrownCatalog.info(state.life.provinceId).culture
+        val n = courtVolunteers(state)
+        var population = ArmyEngine.adjustPopulation(state.population, culture, n)
+        population = ArmyEngine.adjustRecruits(population, culture, n)
+        var next = state.copy(population = population, life = state.life.copy(lastCourtDay = state.day))
+        next = LifeEngine.updateNpc(next, NpcEngine.remember(lord.copy(relation = lord.relation.copy(
+            affinity = (lord.relation.affinity + 3).coerceAtMost(100), trust = (lord.relation.trust + 2).coerceAtMost(100))),
+            "court_${state.day}", state.day, "wir haben Hoftag gehalten", 1))
+        next = LifeEngine.passTime(next, 1).state
+        return LifeEngine.Result(LifeEngine.log(next, "Hoftag in ${LifeEngine.locationName(next)}: $n Freiwillige."),
+            "„Die Grenze ist auch unsere Sache.“ ${lord.firstName} schickt $n Freiwillige (${culture.label}) zur Grenzfeste.")
+    }
+
     // ------------------------------------------------------------ the accolade
 
     fun knightBlocker(state: GameState): String? = when {

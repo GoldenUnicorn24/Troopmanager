@@ -44,9 +44,42 @@ object DialogueEngine {
         )
         if (firstEver) updated = NpcEngine.remember(updated, "met", state.day,
             "wir haben uns in ${LifeEngine.locationName(state)} kennengelernt", 1)
+        // News of the player's deeds reaches people; each deed is remarked on once per person.
+        val heard = fame(state, updated)
+        if (heard != null) {
+            updated = NpcEngine.remember(updated, heard.key, state.day, "", 0)
+            updated = updated.copy(relation = updated.relation.copy(affinity = (updated.relation.affinity + heard.affinity).coerceIn(-100, 100)))
+        }
         updated = updated.copy(relation = updated.relation.copy(stage = NpcEngine.stageFor(updated.relation)))
         val next = LifeEngine.updateNpc(state, updated)
-        return Reply(next, greeting(next, updated, firstEver), Outcome.SUCCESS)
+        return Reply(next, greeting(next, updated, firstEver) + (heard?.let { " " + it.line } ?: ""), Outcome.SUCCESS)
+    }
+
+    data class Fame(val key: String, val line: String, val affinity: Int)
+
+    /**
+     * The most notable deed this person has not yet remarked on. Deeds travel as news: being the
+     * ruler, the accolade, tournament victories, freed provinces. Honourable people admire them
+     * more; hot-tempered ones are a little jealous.
+     */
+    fun fame(state: GameState, npc: NpcIdentity): Fame? {
+        val life = state.life
+        val p = state.player.name.substringBefore(' ')
+        val admire = (if (npc.personality.honor >= 55) 2 else 1) - (if (npc.personality.temper >= 65) 1 else 0)
+        val she = life.gender == Gender.FEMALE
+        val candidates = buildList {
+            if (life.landed) add(Fame("heard_ruler", if (npc.role == NpcRole.LORD) "„Willkommen, ${if (she) "Herrin" else "Herr"} der Grenzfeste. Unter Gleichen.“"
+                else "Dann ein Blick, als begreife ${npc.firstName} erst jetzt: „${if (she) "Herrin" else "Herr"} der Grenzfeste – hier, bei uns?“", admire + 1))
+            if (life.knighted) add(Fame("heard_knight", "„Man nennt dich jetzt ${if (she) "Dame" else "Ritter"} $p, hab ich gehört. Steht dir.“", admire))
+            if (life.tournamentsWon > 0) add(Fame("heard_tourney_${life.tournamentsWon}",
+                if (life.tournamentsWon == 1) "„Du warst das, in den Schranken! Drei Gegner, kein einziger Sturz.“" else "„Schon wieder ein Turnier gewonnen? Die Herolde kennen deinen Namen langsam auswendig.“", admire))
+            if (life.lordQuestsDone > 0) {
+                val freed = state.chronicle.lastOrNull { it.title.endsWith(" befreit") }?.title?.removeSuffix(" befreit")
+                add(Fame("heard_freed_${life.lordQuestsDone}", "„${freed ?: "Ein Räubernest"} ist frei, sagt man – und dass du dabei warst.“", admire))
+            }
+        }
+        // Rulers first, then the accolade, then the newest feats.
+        return candidates.firstOrNull { !npc.remembers(it.key) }
     }
 
     fun greeting(state: GameState, npc: NpcIdentity, firstEver: Boolean): String {
@@ -56,12 +89,14 @@ object DialogueEngine {
         if (r.hurtByAffairDay != null && state.day - r.hurtByAffairDay <= 20)
             return "${npc.firstName} sieht dich nicht an. „Ich weiß von ${npc.memories.lastOrNull { it.key.startsWith("affair_") }?.key?.removePrefix("affair_") ?: "der anderen"}. Sag jetzt nichts Falsches.“"
         if (firstEver) return firstImpression(state, npc)
-        val recall = npc.memories.filter { it.key != "met" }.maxByOrNull { abs(it.weight) * 10 + it.day }
+        val recall = npc.memories.filter { it.key != "met" && it.text.isNotBlank() }.maxByOrNull { abs(it.weight) * 10 + it.day }
         val warm = npc.personality.warmth >= 45 || r.affinity >= 30
         val opener = when {
             r.stage == SocialStage.MARRIED -> "„Da bist du ja.“ ${npc.firstName} küsst dich zur Begrüßung."
             r.stage.romantic -> "„${player}.“ Ein Lächeln, das nur dir gilt."
             r.affinity <= -20 -> "„Du schon wieder.“"
+            state.life.landed && r.stage.ordinal < SocialStage.FRIEND.ordinal && npc.role != NpcRole.LORD ->
+                "„${if (state.life.gender == Gender.FEMALE) "Herrin" else "Herr"}.“ ${npc.firstName} verneigt sich."
             warm -> "„${player}! Schön, dich wiederzusehen.“"
             else -> "„${player}.“ Ein knappes Nicken."
         }
@@ -128,6 +163,7 @@ object DialogueEngine {
         if (q.needsMemory != null && !npc.remembers(q.needsMemory)) return true
         if (q.lacksMemory != null && npc.remembers(q.lacksMemory)) return true
         if (q.needsGrievance && !grievance(npc)) return true
+        if (q.deed != null && !hasDeed(state, q.deed)) return true
         if (topic.id == "flirt" && r.stage.ordinal >= SocialStage.PARTNER.ordinal) return true
         if (topic.id == "talk_interest" && npc.interests.isEmpty()) return true
         if (topic.id == "invite" && (!PartyEngine.canAsk(state, npc) || state.life.landed)) return true
@@ -136,6 +172,39 @@ object DialogueEngine {
         if (topic.special == "gift" && npc.role == NpcRole.INNKEEPER && npc.relation.timesMet < 2) return true
         return false
     }
+
+    fun hasDeed(state: GameState, deed: String): Boolean {
+        val l = state.life
+        return when (deed) {
+            "ruler" -> l.landed
+            "knight" -> l.knighted
+            "tourney" -> l.tournamentsWon > 0
+            "freed" -> l.lordQuestsDone > 0
+            "any" -> l.landed || l.knighted || l.tournamentsWon > 0 || l.lordQuestsDone > 0 || l.battleVictories >= 3
+            else -> false
+        }
+    }
+
+    /** The player's best story, told in their own words. */
+    fun deedStory(state: GameState): Pair<String, String> {
+        val l = state.life
+        val freed = state.chronicle.lastOrNull { it.title.endsWith(" befreit") }?.title?.removeSuffix(" befreit")
+        return when {
+            l.landed -> "wie du vor dem Burgvogt gekniet und den Lehnseid geleistet hast, und wie die Grenzfeste nun dir gehört." to "du die Grenzfeste bekommen hast"
+            l.knighted -> "wie die Klinge des Burgvogts deine Schultern berührt hat." to "du zum Ritter geschlagen wurdest"
+            l.tournamentsWon > 0 -> "wie du drei Ritter nacheinander aus dem Sattel geworfen hast." to "du das Turnier gewonnen hast"
+            freed != null -> "wie ihr $freed von den Räuberbaronen befreit habt." to "ihr $freed befreit habt"
+            else -> "von ${l.battleVictories} Kämpfen, aus denen du als Sieger hervorgegangen bist." to "du deine Kämpfe gewonnen hast"
+        }
+    }
+
+    private val petitions = listOf(
+        "Das Mühlrad ist seit dem Sturm gebrochen. Ohne Mühle kein Mehl.",
+        "Die Brunnen im Unterdorf sind verschlammt. Die Kinder werden krank vom Wasser.",
+        "Wölfe holen die Schafe von den Hängen. Wir brauchen Fallen und jemanden, der sie stellt.",
+        "Die Brücke am Ostweg fault. Bald kommt kein Karren mehr darüber.",
+        "Die Witwe vom alten Schmied hat nichts mehr zu essen, seit die Werkstatt leer steht.",
+    )
 
     private fun grievance(npc: NpcIdentity): Boolean =
         npc.relation.rivalry >= 15 || npc.relation.affinity <= -10 || npc.relation.hurtByAffairDay != null
@@ -322,7 +391,7 @@ object DialogueEngine {
             ),
         )
         if (e.memoryKey != null && e.memoryText != null)
-            updated = NpcEngine.remember(updated, e.memoryKey, state.day, e.memoryText, e.memoryWeight)
+            updated = NpcEngine.remember(updated, e.memoryKey, state.day, fill(e.memoryText, state, npc), e.memoryWeight)
         // A sustained flirt turns into mutual interest only when attraction really is there.
         if (topic.id == "flirt" && updated.relation.attraction >= 30 && updated.relation.stage.ordinal < SocialStage.FLIRT.ordinal)
             updated = updated.copy(relation = updated.relation.copy(stage = SocialStage.FLIRT))
@@ -391,6 +460,11 @@ object DialogueEngine {
             .let { if ("{crownNews}" in it) it.replace("{crownNews}", NpcSocialEngine.crownNews(state)) else it }
             .let { if ("{tradeTip}" in it) it.replace("{tradeTip}", NpcSocialEngine.tradeTip(state)) else it }
             .let { if ("{travelRumor}" in it) it.replace("{travelRumor}", NpcSocialEngine.travelRumor(state, npc)) else it }
+            .let { if ("{deedStory}" in it || "{deedShort}" in it) deedStory(state).let { (story, short) -> it.replace("{deedStory}", story.replaceFirstChar { c -> c.uppercase() }).replace("{deedShort}", short) } else it }
+            .let { if ("{petition}" in it) it.replace("{petition}", petitions[Math.floorMod(npc.id.hashCode(), petitions.size)]) else it }
+            .let { if ("{tourneyInfo}" in it) it.replace("{tourneyInfo}",
+                if (CastleEngine.tournamentToday(state)) "Heute! Die Schranken stehen im Burghof, das Startgeld ist ${CastleEngine.TOURNAMENT_FEE} Gold."
+                else "Hier in ${LifeEngine.locationName(state)} an Tag ${CastleEngine.nextTournamentDay(state)}. In Aldenburg öfter – dort lieben sie das Lanzenbrechen.") else it }
             .let { if ("{bondGossip}" in it) it.replace("{bondGossip}", NpcSocialEngine.bondGossip(state, npc)) else it }
     }
 }

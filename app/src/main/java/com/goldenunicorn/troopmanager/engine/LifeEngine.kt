@@ -622,8 +622,12 @@ object LifeEngine {
             renown = state.renown + state.life.renown,
         )
         next = handOverFollowers(next)
+        val knight = if (state.life.knighted) "Ritter " else ""
         next = next.copy(chronicle = next.chronicle + ChronicleEntry(next.day, "Herr der Grenzfeste",
-            "${next.player.name} leistet den Lehnseid und übernimmt die Grenzfeste – mit Gebiet, Vorräten und einer stehenden Armee."))
+            "$knight${next.player.name} leistet den Lehnseid und übernimmt die Grenzfeste – mit Gebiet, Vorräten und einer stehenden Armee."))
+        // Every town hears of it; the lords now treat the player as one of their own.
+        next = next.copy(life = next.life.copy(news = (next.life.news + WorldNews(next.day, next.life.provinceId, "Neuer Herr der Grenzfeste",
+            "${next.player.name} hat den Lehnseid geleistet und herrscht nun über die Grenzfeste.", 3)).takeLast(30)))
         return Result(next, "Du bist jetzt Grenzherr. Reich, Heer und Stadt stehen dir offen.")
     }
 
@@ -667,6 +671,11 @@ object LifeEngine {
                 trait = "Ehemaliger Söldner", rank = "Hauptmann")
         }
         next = next.copy(commanders = next.commanders + captains, life = next.life.copy(party = emptyList()))
+        // They now live at the keep: no longer in town, but they keep their memories of the road.
+        val moved = (listOfNotNull(friend?.takeIf { !state.companion.met }) + swords).map { it.id }.toSet()
+        next = next.copy(life = next.life.copy(npcs = next.life.npcs.map { n ->
+            if (n.id in moved) NpcEngine.remember(n.copy(departed = true), "court", next.day, "du hast mich mit an deinen Hof genommen", 3) else n
+        }))
         return next
     }
 

@@ -88,3 +88,9 @@ Neue Tests in `RebirthCastleTest` (10): jede Stadt hat einen erwachsenen, nicht 
 Alle bisherigen Kampf- und Kampagnentests (Combat Engine 3.0, V06/V10-Abnahme) bleiben unverändert grün – die Kopplung ändert nichts, solange keine Ausrüstung gekauft wurde.
 
 Lokal: **508 Tests grün**. CI- und Emulator-Ergebnis (neue Seiten `g-castle`, `g-tavern` mit Sitz-Pose) siehe PR #14.
+
+## 8. Meilenstein 5 (Herrscher bleibt Person, Ruf, Hoftag)
+
+Neue Tests in `RebirthRulerTest` (9): Gefährtin und angeworbene Söldner ziehen an den Hof und erscheinen an 20 Abenden in keiner Taverne mehr, Nachricht für alle Städte · ein Ritter wird als Ritter chronikiert · Herrscher zahlen am Markt aus der Schatzkammer, Ausrüstung erhöht den Schlachtfaktor, Kaserne und Burghof sind zugänglich · Hoftag: nur für Herrscher, genau die angekündigten Freiwilligen, 7 Tage Pause, mehr für Ritter/Lehnsaufträge · Leute bemerken jede Tat genau einmal, leere „gehört“-Notizen erscheinen nie als Erinnerung · Herrscher werden mit „Herr“ begrüßt, Bittgesuch kostet Gold, wirkt und ist einmalig, für Landlose nicht verfügbar · Prahlen nur mit Taten, ohne offene Platzhalter · Turniertermin stimmt mit der Engine überein · in 90 Tavernenszenen steht niemand direkt vor jemand anderem.
+
+Lokal: **517 Tests grün**. CI- und Emulator-Ergebnis (neue Seite `h-ruler-castle`) siehe PR #14.

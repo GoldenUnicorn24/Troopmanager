@@ -48,7 +48,7 @@ import kotlin.math.sin
 
 /** The walkable castle courtyard: the lord on the dais, guards, banners, the tournament lists. */
 @Composable
-fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit, initialPanel: String? = null) {
     val layout = CastleEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { CastleEngine.placements(state) }
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
@@ -56,7 +56,7 @@ fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
     val pos = remember { Animatable(Offset(layout.entry.x.toFloat(), layout.entry.y.toFloat()), Offset.VectorConverter) }
     var walking by remember { mutableStateOf(false) }
     var target by remember { mutableStateOf<Cell?>(null) }
-    var panel by remember { mutableStateOf<String?>(null) }
+    var panel by remember { mutableStateOf(initialPanel) }
     var npcLine by remember { mutableStateOf("") }
     var playerLine by remember { mutableStateOf("") }
     var summary by remember { mutableStateOf("") }
@@ -212,7 +212,14 @@ private fun LordPanel(state: GameState, summary: String, onResult: (LifeEngine.R
         }
     }
     if (summary.isNotBlank()) Text(summary, color = Gold)
-    val blocker = CastleEngine.audienceBlocker(state)
+    if (life.landed) {
+        InfoBox("Als Herr${if (life.gender == Gender.FEMALE) "in" else ""} der Grenzfeste bist du hier unter Gleichen. Einmal pro Woche kannst du Hoftag halten: " +
+            "${lord?.firstName ?: "Der Burgvogt"} schickt dann Freiwillige an die Grenze – mehr, je besser ihr steht und wenn du Ritter bist.")
+        val cb = CastleEngine.courtBlocker(state)
+        if (cb != null) Text(cb, color = Muted, fontSize = 13.sp)
+        else GoldButton("Hoftag halten (≈ ${CastleEngine.courtVolunteers(state)} Freiwillige)", { onResult(CastleEngine.courtDay(state)) }, Modifier.fillMaxWidth())
+    }
+    val blocker = if (life.landed) null else CastleEngine.audienceBlocker(state)
     if (blocker != null) Text(blocker, color = Danger, fontSize = 13.sp)
     val quest = life.lordQuest
     if (quest != null) {

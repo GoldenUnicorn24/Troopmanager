@@ -7,7 +7,7 @@ package com.goldenunicorn.troopmanager.model
  * so new conversations are added here without touching rules.
  *
  * Placeholders: {player} {npc} {town} {interest} {goal} {origin} {backstory} {rumor} {profession}
- * {like} {dislike}.
+ * {like} {dislike} {deedStory} {petition} {tourneyInfo} {crownNews} {townFlavor}.
  */
 
 enum class Trait { WARMTH, BOLDNESS, HONOR, HUMOR, CURIOSITY, TEMPER }
@@ -36,6 +36,8 @@ data class TopicReq(
     val minTimesMet: Int? = null,
     /** Only after the person was hurt or there is open rivalry. */
     val needsGrievance: Boolean = false,
+    /** A deed the player must have done: "ruler", "knight", "tourney", "freed" or "any". */
+    val deed: String? = null,
 )
 
 data class TopicEffect(
@@ -327,6 +329,38 @@ object DialogueCatalog {
             failure = TopicEffect(affinity = -15, rivalry = 25, brawl = true, memoryKey = "brawl", memoryText = "wir haben uns in der Taverne geprügelt", memoryWeight = -3),
             successLines = listOf("{npc} lässt sich nicht reizen. „Geh deinen Rausch ausschlafen.“"),
             failLines = listOf("Ein Stuhl kippt. {npc} ist schneller auf den Beinen, als du denkst –"),
+        ),
+        // Milestone 5: deeds, the lord, a ruler among the people.
+        DialogueTopic(
+            "brag", TopicKind.FRIENDLY, "Von deinen Taten erzählen", "„Hast du schon gehört, was mir passiert ist?“",
+            req = TopicReq(deed = "any", minStage = SocialStage.ACQUAINTANCE, lacksMemory = "bragged"),
+            difficulty = 30, traits = mapOf(Trait.BOLDNESS to 10, Trait.HUMOR to 5, Trait.HONOR to -10),
+            success = TopicEffect(affinity = 5, trust = 2, renown = 1, memoryKey = "bragged", memoryText = "du hast mir erzählt, wie {deedShort}"),
+            failure = TopicEffect(affinity = -3, memoryKey = "bragged", memoryText = "du hast vor mir angegeben"),
+            successLines = listOf("Du erzählst – {deedStory} {npc} hört mit leuchtenden Augen zu. „Das muss ich weitererzählen.“"),
+            coolSuccessLines = listOf("Du erzählst – {deedStory} {npc} nickt anerkennend. „Respekt.“"),
+            failLines = listOf("{npc} verdreht die Augen. „Ja, ja. Und ich hab einen Drachen mit bloßen Händen erwürgt.“"),
+        ),
+        DialogueTopic(
+            "realm_counsel", TopicKind.TALK, "Was braucht die Grenze?", "„Ihr kennt die Lande besser als jeder andere. Was braucht die Grenze wirklich?“",
+            req = TopicReq(roles = setOf(NpcRole.LORD), minStage = SocialStage.ACQUAINTANCE, lacksMemory = "lord_counsel"),
+            difficulty = 35, traits = mapOf(Trait.HONOR to 10, Trait.CURIOSITY to 10),
+            success = TopicEffect(trust = 6, affinity = 3, teaches = "leadership", memoryKey = "lord_counsel", memoryText = "ich habe dir gesagt, was die Grenze braucht", memoryWeight = 2),
+            failure = TopicEffect(trust = -2),
+            successLines = listOf("„{crownNews} Wer Leute führen will, muss zuerst wissen, wofür sie sterben.“ (+1 Führung)"),
+            failLines = listOf("„Das ist eine Frage für Leute mit mehr Verantwortung als Ihr.“"),
+        ),
+        DialogueTopic(
+            "ask_tourney", TopicKind.TALK, "Wann ist das nächste Turnier?", "„Gibt es bald ein Turnier?“",
+            req = TopicReq(roles = setOf(NpcRole.LORD, NpcRole.SERGEANT, NpcRole.MERCENARY_CAPTAIN, NpcRole.NOBLE, NpcRole.SELLSWORD, NpcRole.INNKEEPER)),
+            success = TopicEffect(affinity = 1),
+            successLines = listOf("„{tourneyInfo}“"),
+        ),
+        DialogueTopic(
+            "petition", TopicKind.BUSINESS, "Was bedrückt die Leute hier?", "„Ich bin nicht nur zum Trinken hier. Was fehlt euch?“",
+            req = TopicReq(deed = "ruler", roles = setOf(NpcRole.REGULAR, NpcRole.INNKEEPER, NpcRole.MERCHANT, NpcRole.SMITH, NpcRole.HEALER), lacksMemory = "petition_heard", cost = 10),
+            success = TopicEffect(affinity = 8, trust = 6, renown = 2, memoryKey = "petition_heard", memoryText = "du hast dir angehört, was uns fehlt, und geholfen", memoryWeight = 3),
+            successLines = listOf("{npc} zögert, dann: „{petition}“ Du lässt zehn Gold aus der Schatulle da. Es spricht sich herum."),
         ),
     )
 

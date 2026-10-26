@@ -327,7 +327,7 @@ private fun PeopleTab(state: GameState) {
                     val other = state.life.npc(b.other(npc.id))!!
                     Text("${b.kind.label}: ${other.name}", color = if (b.kind == BondKind.RIVALS) Danger.copy(alpha = .9f) else ModernBlue, fontSize = 12.sp)
                 }
-            val memories = npc.memories.filter { it.key != "met" }.takeLast(3)
+            val memories = npc.memories.filter { it.key != "met" && it.text.isNotBlank() }.takeLast(3)
             memories.forEach { m -> Text("„${m.text.replaceFirstChar { it.uppercase() }}.“ · Tag ${m.day}", color = if (m.weight < 0) Danger else Muted, fontSize = 12.sp, fontStyle = FontStyle.Italic) }
         }
     }

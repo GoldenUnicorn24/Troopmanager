@@ -67,7 +67,7 @@ object TavernEngine {
             Seat(Cell(8, 7), SeatKind.TABLE), Seat(Cell(10, 7), SeatKind.TABLE), Seat(Cell(9, 6), SeatKind.TABLE),
             Seat(Cell(7, 2), SeatKind.FIRE), Seat(Cell(10, 2), SeatKind.FIRE),
             Seat(Cell(5, 1), SeatKind.STAGE),
-            Seat(Cell(1, 7), SeatKind.STAND), Seat(Cell(10, 3), SeatKind.STAND),
+            Seat(Cell(1, 7), SeatKind.STAND), Seat(Cell(9, 3), SeatKind.STAND),
         ),
     )
 
@@ -136,7 +136,12 @@ object TavernEngine {
         fun take(npc: NpcIdentity, prefer: SeatKind?) {
             // Couples sit together: next to the partner if the partner already has a seat.
             val partnerCell = NpcSocialEngine.partnerOf(state, npc.id)?.let { p -> result.firstOrNull { it.npc.id == p.id }?.cell }
-            val pool = (partnerCell?.let { pc -> free.filter { it.cell.dist(pc) <= 1 }.ifEmpty { free.filter { it.cell.dist(pc) <= 2 } } } ?: emptyList())
+            // Side by side if possible; never directly in front of or behind each other (figures would overlap).
+            val pool = (partnerCell?.let { pc ->
+                free.filter { it.cell.y == pc.y && it.cell.dist(pc) == 1 }
+                    .ifEmpty { free.filter { it.cell.dist(pc) <= 1 && it.cell.x != pc.x } }
+                    .ifEmpty { free.filter { it.cell.dist(pc) <= 2 && it.cell.x != pc.x } }
+            } ?: emptyList())
                 .ifEmpty { free.filter { prefer == null || it.kind == prefer } }.ifEmpty { free }
             if (pool.isEmpty()) return
             val seat = pool[Math.floorMod(npc.id.hashCode() + state.day * 7 + state.life.timeSlot.ordinal * 3, pool.size)]

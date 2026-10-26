@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -62,6 +63,7 @@ fun RealmGameApp(saves: SaveRepository) {
                     !state.life.landed -> LifeShell(state, { controller.update(state, it) }, { controller.notice(it) }, controller::menu)
                     // Rulers can visit a tavern too; while inside, the walkable scene replaces the shell.
                     state.life.skirmish != null -> SkirmishScreen(state, { controller.update(state, it) }, { controller.notice(it) })
+                    state.life.place == LifePlace.MARKET -> MarketScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.CASTLE -> CastleScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.BARRACKS -> BarracksScreen(state, { controller.update(state, it) }, { controller.notice(it) })
                     state.life.place == LifePlace.TAVERN -> TavernScreen(state, { controller.update(state, it) }, { controller.notice(it) }, onExit = {})
@@ -237,10 +239,21 @@ internal fun GameShell(
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
                         }
                     }
-                    IconButton(onClick = {
-                        val entered = com.goldenunicorn.troopmanager.engine.TavernEngine.enter(com.goldenunicorn.troopmanager.engine.LifeEngine.ensurePeople(state))
-                        onState(entered.state); onNotice(entered.message)
-                    }) { Icon(Icons.Outlined.Restaurant, "Taverne besuchen", tint = Gold) }
+                    Box {
+                        var townMenu by remember { mutableStateOf(false) }
+                        IconButton(onClick = { townMenu = true }, modifier = Modifier.testTag("town_menu")) { Icon(Icons.Outlined.Restaurant, "In die Stadt gehen", tint = Gold) }
+                        DropdownMenu(expanded = townMenu, onDismissRequest = { townMenu = false }) {
+                            val e = com.goldenunicorn.troopmanager.engine.LifeEngine.ensurePeople(state)
+                            listOf<Pair<String, () -> com.goldenunicorn.troopmanager.engine.LifeEngine.Result>>(
+                                "Taverne" to { com.goldenunicorn.troopmanager.engine.TavernEngine.enter(e) },
+                                "Markt" to { com.goldenunicorn.troopmanager.engine.MarketEngine.enter(e) },
+                                "Kaserne" to { com.goldenunicorn.troopmanager.engine.BarracksEngine.enter(e) },
+                                "Burghof" to { com.goldenunicorn.troopmanager.engine.CastleEngine.enter(e) },
+                            ).forEach { (label, go) ->
+                                DropdownMenuItem(text = { Text(label) }, onClick = { townMenu = false; val r = go(); onState(r.state); onNotice(r.message) })
+                            }
+                        }
+                    }
                     IconButton(onClick = { showTutorial = true }) { Icon(Icons.Outlined.HelpOutline, "Hilfe", tint = Muted) }
                     IconButton(onClick = { showMore = !showMore }) { Icon(Icons.Outlined.MoreVert, "Mehr: Optionen, Hilfe, Spielstand", tint = Gold) }
                 }

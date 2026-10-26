@@ -51,5 +51,7 @@ class TourTest {
         listOf("barracks").forEach { page(it); shot("f-$it") }
         // Milestone 4: the castle courtyard on a tournament day, seated guests in the tavern.
         listOf("castle", "tavern").forEach { page(it); shot("g-$it") }
+        // Milestone 5: a ruler (and knight) visiting the castle of a town.
+        listOf("ruler-castle").forEach { page(it); shot("h-$it") }
     }
 }

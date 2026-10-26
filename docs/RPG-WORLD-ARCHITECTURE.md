@@ -76,6 +76,13 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 - In großen Schlachten (`BattleResolutionEngine.personalFactor`) zählen gekaufte Waffe und Rüstung sowie offene Wunden, wenn der Herrscher persönlich kämpft. Ohne Ausrüstung und Wunden bleibt der Faktor exakt 1,10/1,22. Rüstung senkt die Verwundungswahrscheinlichkeit (`WarEngine`), eine Verwundung in der Schlacht ist dieselbe Wunde, die der Charakter in der Stadt trägt.
 - Taverne: Paare sitzen nebeneinander; verfeindete Anwesende erzeugen die Szene „Alte Feindschaft“ (schlichten oder Partei ergreifen, mit Erinnerung und Weitergabe).
 
+### Nach dem Lehnseid (Meilenstein 5)
+
+- `LifeEngine.handOverFollowers` setzt die übergebenen Personen auf `departed` (am Hof), Erinnerungen bleiben.
+- Herrscher erreichen Taverne, Markt, Kaserne, Burghof über das Stadtmenü (`App.kt`); `LifeEngine.pay/earn` buchen dann auf `resources.gold`.
+- `CastleEngine.courtDay`: wöchentlicher Hoftag (`lastCourtDay`), Freiwillige über `ArmyEngine.adjustPopulation/adjustRecruits`.
+- `DialogueEngine.fame`: einmalige Bemerkung je Tat und Person (Erinnerung `heard_*` ohne Text, nicht im Rückblick). `TopicReq.deed` schaltet Themen nach Taten frei; Platzhalter `{deedStory}`, `{deedShort}`, `{petition}`, `{tourneyInfo}`.
+
 ## Speicherung und Migration
 
 - `SaveCodec.CURRENT_VERSION = 6`. Schema 4 und 5 werden auf 6 gehoben; `life` fehlt → Standard = klassischer Grenzherr mit Akten.

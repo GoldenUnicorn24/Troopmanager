@@ -37,6 +37,15 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 - Große Schlachten: Waffe, Rüstung und Wunden des Charakters wirken auf den persönlichen Faktor; Rüstung senkt das Verwundungsrisiko, Schlachtwunden heilen wie andere Wunden.
 - Taverne: Paare sitzen nebeneinander, Gäste an Tischen, Tresen und Feuer sitzen (neue Sitz-Pose), Rivalen geraten aneinander („Alte Feindschaft“).
 
+## Meilenstein 5 (umgesetzt)
+
+- **Nach dem Lehnseid bleibt die Person eine Person:** Gefährtin und Söldner ziehen an den Hof und sitzen nicht mehr doppelt in den Tavernen; sie behalten ihre Erinnerungen („du hast mich mit an deinen Hof genommen“). Alle Städte hören vom neuen Herrn, ein Ritter wird als Ritter in die Chronik eingetragen.
+- **Herrscher in der Stadt:** Über das Stadtmenü in der Kopfleiste gehen Herrscher in Taverne, Markt, Kaserne und Burghof. Bezahlt wird aus der Schatzkammer. Gekaufte Ausrüstung und Training wirken in den großen Schlachten.
+- **Hoftag:** Einmal pro Woche schickt der Burgvogt einem Herrscher Freiwillige (Bevölkerung und Rekruten der Kultur der Stadt). Ritter und frühere Lehnsaufträge bringen mehr.
+- **Ruf in Gesprächen:** Die Leute haben von Ritterschlag, Turniersiegen, befreiten Provinzen und dem Lehnseid gehört und sprechen es einmal an. Ehrenhafte bewundern das mehr, Hitzköpfe weniger. Herrscher werden mit „Herr/Herrin“ begrüßt.
+- **Neue Themen:** von den eigenen Taten erzählen (gelingt nicht bei jedem), Rat des Burgvogts (+1 Führung), Turniertermine, Bittgesuche der Leute für Herrscher (10 Gold, deutlich mehr Sympathie).
+- Taverne: Niemand steht mehr direkt vor jemand anderem; Paare sitzen bevorzugt Seite an Seite.
+
 ## Nächste realistische Schritte
 
 1. **Gemalte Porträt-Ebenen** nach Vertrag erstellen (Illustrator oder lizenzierter Generator), in `assets/portraits/` legen – der Code nutzt sie ohne Änderung.

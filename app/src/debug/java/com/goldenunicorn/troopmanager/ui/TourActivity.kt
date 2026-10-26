@@ -40,6 +40,8 @@ class TourActivity : ComponentActivity() {
                                 val base = TourFixture.roadState().let { it.copy(day = 14, life = it.life.copy(timeSlot = TimeSlot.NOON, renown = 40)) }
                                 c.askForTask(c.enter(base).state).state
                             }
+                            current == "ruler-castle" -> com.goldenunicorn.troopmanager.engine.CastleEngine.enter(
+                                com.goldenunicorn.troopmanager.engine.LifeEngine.ensurePeople(rich).let { it.copy(life = it.life.copy(timeSlot = TimeSlot.MORNING, knighted = true)) }).state
                             current == "skirmish" -> TourFixture.skirmishState()
                             current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
                             current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
@@ -64,6 +66,7 @@ class TourActivity : ComponentActivity() {
                             current.startsWith("life-") -> LifeShell(state, { state = it }, {}, {}, initialTab = current.removePrefix("life-").toInt())
                             current == "tavern" -> LifeShell(state, { state = it }, {}, {})
                             current == "market" || current == "skirmish" || current == "captive" || current == "barracks" || current == "castle" -> LifeShell(state, { state = it }, {}, {})
+                            current == "ruler-castle" -> CastleScreen(state, { state = it }, {}, initialPanel = "lord")
                             current == "party" -> LifeShell(state, { state = it }, {}, {}, initialTab = 2)
                             current == "tavern-talk" -> LifeShell(state, { state = it }, {}, {}, initialTalk = "companion")
                             current == "portraits" -> PortraitComparison(life)
