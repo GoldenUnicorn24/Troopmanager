@@ -7,6 +7,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -1007,9 +1010,9 @@ private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modif
     if (framing == Framing.FULL) { PaintedPortrait(appearance, gender, modifier, framing); return }
     val context = LocalContext.current
     val a = remember(appearance) { appearance.normalized() }
-    val layers by androidx.compose.runtime.produceState<Map<String, PortraitAssets.Layer>>(emptyMap(), a, gender) {
-        value = emptyMap()
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender) }
+    var layers by remember(a, gender) { mutableStateOf<Map<String, PortraitAssets.Layer>>(emptyMap()) }
+    LaunchedEffect(a, gender) {
+        layers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender) }
     }
     Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
         val image = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))

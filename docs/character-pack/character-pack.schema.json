@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://troopmanager.local/character-pack-v1.schema.json",
+  "title": "Troopmanager Character Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "character",
+    "source",
+    "portrait"
+  ],
+  "properties": {
+    "format": {
+      "const": "troopmanager-character"
+    },
+    "version": {
+      "const": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "portrait": {
+      "const": "portrait.webp"
+    },
+    "fullbody": {
+      "enum": [
+        "fullbody.webp",
+        null
+      ]
+    },
+    "character": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "age"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 10000
+        },
+        "gender": {
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "DIVERSE"
+          ]
+        },
+        "species": {
+          "enum": [
+            "HUMAN",
+            "ELF",
+            "HALF_ELF"
+          ]
+        },
+        "culture": {
+          "enum": [
+            "HUMAN",
+            "WOOD_ELF",
+            "GOLD_ELF",
+            "WALL"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "profession": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "personality": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "warmth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "boldness": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "honor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "humor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "curiosity": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "temper": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        },
+        "interests": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "role": {
+          "enum": [
+            "INNKEEPER",
+            "REGULAR",
+            "TRAVELER",
+            "MERCENARY_CAPTAIN",
+            "MERCHANT",
+            "NOBLE",
+            "BARD",
+            "COMPANION",
+            "SELLSWORD",
+            "SMITH",
+            "HEALER",
+            "SERGEANT",
+            "LORD"
+          ]
+        },
+        "homeProvinceId": {
+          "enum": [
+            "gm_rabenfurt",
+            "gm_eschenhof",
+            "al_aldenburg",
+            "ks_saltmere",
+            "kw_jadehain",
+            "wh_mondquell",
+            "as_freistatt"
+          ]
+        },
+        "romanceable": {
+          "type": "boolean"
+        },
+        "appearance": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "faceShape": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "jaw": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "cheekbones": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "noseSize": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "noseShape": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "eyeShape": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "eyeColor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "browStyle": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "lips": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "mouthWidth": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "ears": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "skinTone": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "scar": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "tattoo": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "beard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "hairStyle": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "hairLength": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "hairColor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "hairTexture": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "build": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "muscle": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "posture": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "clothing": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "armor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "cloak": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "jewelry": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4
+            },
+            "weapon": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "primaryColor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "accentColor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "expression": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "background": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5
+            },
+            "customImageId": {
+              "type": "null"
+            }
+          }
+        }
+      }
+    }
+  }
+}

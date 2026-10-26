@@ -43,6 +43,31 @@ class CustomCharacterImagesTest {
             fail("Opaque figures must be rejected")
         } catch (expected: IllegalStateException) { assertTrue(expected.message!!.contains("transparent")) }
     }
+    @Test fun sharedPackRoundTripUsesGrantedContentUriAndKeepsAdultIdentity() {
+        val context = instrumentation.targetContext
+        val source = java.io.File(context.cacheDir, "example-character.zip").apply { writeBytes(fixture("character-example.zip")) }
+        val imported = CharacterPackSharing(context).read(Uri.fromFile(source))
+        val id = images.install(imported.portrait, imported.fullbody)
+        try {
+            val record = com.goldenunicorn.troopmanager.model.CustomCharacter(id, "npc:package-test", imported.manifest.character,
+                imported.manifest.source, fullbody = "fullbody.webp")
+            val intent = CharacterPackSharing(context).prepareShare(record)
+            assertEquals(android.content.Intent.ACTION_SEND, intent.action)
+            assertTrue(intent.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+            val uri = intent.clipData!!.getItemAt(0).uri
+            assertEquals("content", uri.scheme)
+            val roundTrip = CharacterPackSharing(context).read(uri)
+            assertEquals("Mira Testfigur", roundTrip.manifest.character.name)
+            assertEquals(27, roundTrip.manifest.character.age)
+            assertEquals(1024, roundTrip.portrait.width)
+            assertNotNull(roundTrip.fullbody)
+            roundTrip.portrait.recycle(); roundTrip.fullbody?.recycle()
+        } finally {
+            images.file(id, CharacterImageKind.PORTRAIT).parentFile!!.deleteRecursively()
+            source.delete()
+            imported.portrait.recycle(); imported.fullbody?.recycle()
+        }
+    }
     @Test fun invalidFileCannotCreateAnImage() {
         try { images.decode("not an image".toByteArray(), CharacterImageKind.PORTRAIT); fail() }
         catch (expected: IllegalArgumentException) { assertTrue(expected.message!!.contains("JPG")) }

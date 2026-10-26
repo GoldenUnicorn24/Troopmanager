@@ -71,6 +71,8 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     }
     var definition by remember(target) { mutableStateOf(initialDefinition()) }
     var age by remember(target) { mutableStateOf(if (target == "new" || target.startsWith("commander:")) "" else definition.age.toString()) }
+    var interests by remember(target) { mutableStateOf(initialDefinition().interests.joinToString(", ")) }
+    var pendingPack by remember { mutableStateOf<ImportedCharacterPack?>(null) }
     var source by remember(target) { mutableStateOf(state.customCharacters.firstOrNull { it.target == target }?.source ?: "") }
     var portrait by remember(target) { mutableStateOf<Bitmap?>(null) }
     var fullbody by remember(target) { mutableStateOf<Bitmap?>(null) }
@@ -91,6 +93,33 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
                 } catch (e: Exception) { error = e.message ?: "Das Bild konnte nicht geladen werden." }
                 finally { busy = false }
             }
+        }
+    }
+    val packagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            busy = true
+            scope.launch {
+                try {
+                    val imported = withContext(Dispatchers.IO) { CharacterPackSharing(context).read(uri) }
+                    target = "new"
+                    pendingPack = imported
+                    error = null
+                } catch (e: Exception) { error = e.message ?: "Das Charakterpaket ist ungültig." }
+                finally { busy = false }
+            }
+        }
+    }
+    LaunchedEffect(pendingPack, target) {
+        val imported = pendingPack
+        if (imported != null && target == "new") {
+            definition = imported.manifest.character
+            age = definition.age.toString()
+            source = imported.manifest.source
+            interests = definition.interests.joinToString(", ")
+            portrait = imported.portrait
+            fullbody = imported.fullbody
+            rights = false
+            pendingPack = null
         }
     }
     val cropBitmap = cropInput
@@ -114,6 +143,22 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
         Text("Eigene Charaktere", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
         Text("Nur eigene oder erlaubte Bilder verwenden. Keine Bilder Minderjähriger als erwachsene Figuren. Alles bleibt auf diesem Gerät.", color = Mist)
         TextButton(onClick = onBack, enabled = !busy) { Text("Zurück") }
+        OutlinedButton(enabled = !busy, onClick = { packagePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Charakterpaket importieren (.zip)") }
+        if (state.customCharacters.isNotEmpty()) {
+            Text("Eigene Charakterpakete teilen", color = PaleGold)
+            state.customCharacters.forEach { record ->
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        try {
+                            val intent = withContext(Dispatchers.IO) { CharacterPackSharing(context).prepareShare(record) }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Charakterpaket teilen"))
+                        } catch (e: Exception) { error = e.message ?: "Das Paket konnte nicht exportiert werden." }
+                        finally { busy = false }
+                    }
+                }) { Text("${record.definition.name} teilen") }
+            }
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             choices.forEach { (key, label) -> FilterChip(target == key, { if (!busy) target = key }, label = { Text(label) }) }
         }
@@ -126,7 +171,6 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
         OutlinedTextField(definition.profession, { definition = definition.copy(profession = it) }, label = { Text("Beruf") }, modifier = Modifier.fillMaxWidth())
         ChoiceRow("Rolle", NpcRole.entries, definition.role, { it.label }) { definition = definition.copy(role = it) }
         ChoiceRow("Heimatstadt", Towns.all, Towns.byProvince(definition.homeProvinceId) ?: Towns.all.first(), { CrownCatalog.info(it.provinceId).name }) { definition = definition.copy(homeProvinceId = it.provinceId) }
-        var interests by remember(target) { mutableStateOf(definition.interests.joinToString(", ")) }
         OutlinedTextField(interests, { interests = it; definition = definition.copy(interests = it.split(',').map(String::trim).filter(String::isNotBlank)) }, label = { Text("Interessen (mit Komma trennen)") }, modifier = Modifier.fillMaxWidth())
         val p = definition.personality
         listOf(Triple("Herzlichkeit", p.warmth, { v: Int -> p.copy(warmth = v) }), Triple("Wagemut", p.boldness, { v: Int -> p.copy(boldness = v) }),
@@ -183,7 +227,7 @@ internal fun CharacterCropEditor(bitmap: Bitmap, kind: CharacterImageKind, onCan
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).testTag("character_crop"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Bild zuschneiden", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
         Text(if (kind == CharacterImageKind.PORTRAIT) "Gesicht im Oval, Augen auf die goldene Linie, Schultern auf die untere Linie ausrichten." else "Körper mittig, Füße auf die goldene Linie ausrichten. Hintergrund muss transparent sein.", color = Mist)
-        Canvas(Modifier.fillMaxWidth().heightIn(max = 440.dp).aspectRatio(kind.width.toFloat() / kind.height).background(Steel).clipToBounds().pointerInput(bitmap, kind) {
+        Canvas(Modifier.widthIn(max = if (kind == CharacterImageKind.PORTRAIT) 352.dp else 220.dp).fillMaxWidth().aspectRatio(kind.width.toFloat() / kind.height).background(Steel).clipToBounds().pointerInput(bitmap, kind) {
             detectTransformGestures { _, pan, zoom, rotation ->
                 if (!busy) crop = latestCrop.copy(zoom = (latestCrop.zoom * zoom).coerceIn(1f, 6f), x = latestCrop.x + pan.x * kind.width / size.width,
                     y = latestCrop.y + pan.y * kind.width / size.width, rotation = (latestCrop.rotation + rotation).coerceIn(-180f, 180f))

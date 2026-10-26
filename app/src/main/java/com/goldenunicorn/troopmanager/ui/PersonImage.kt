@@ -23,9 +23,9 @@ import java.io.File
 @Composable
 internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: Modifier, fallback: @Composable () -> Unit) {
     val context = LocalContext.current
-    val bitmap by produceState<Bitmap?>(null, id, uri, framing) {
-        value = null
-        value = withContext(Dispatchers.IO) {
+    var bitmap by remember(id, uri, framing) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(id, uri, framing) {
+        bitmap = withContext(Dispatchers.IO) {
             val images = CustomCharacterImages(context)
             val kind = if (framing == Framing.FULL) CharacterImageKind.FULLBODY else CharacterImageKind.PORTRAIT
             images.load(id, kind) ?: if (framing != Framing.FULL && uri != null) runCatching {
@@ -58,8 +58,9 @@ internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: 
 internal fun rememberFigureArt(state: GameState): Map<String, androidx.compose.ui.graphics.ImageBitmap> {
     val context = LocalContext.current
     val ids = remember(state.customCharacters) { state.customCharacters.filter { it.fullbody != null }.map { it.id } }
-    val images by produceState<Map<String, androidx.compose.ui.graphics.ImageBitmap>>(emptyMap(), ids) {
-        value = withContext(Dispatchers.IO) { ids.mapNotNull { id -> CustomCharacterImages(context).load(id, CharacterImageKind.FULLBODY, 192)?.let { id to it.asImageBitmap() } }.toMap() }
+    var images by remember(ids) { mutableStateOf<Map<String, androidx.compose.ui.graphics.ImageBitmap>>(emptyMap()) }
+    LaunchedEffect(ids) {
+        images = withContext(Dispatchers.IO) { ids.mapNotNull { id -> CustomCharacterImages(context).load(id, CharacterImageKind.FULLBODY, 192)?.let { id to it.asImageBitmap() } }.toMap() }
     }
     return images
 }

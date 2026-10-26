@@ -22,8 +22,9 @@ private data class CustomTourFixture(val state: GameState, val portrait: Bitmap)
 @Composable
 internal fun CustomCharacterTour(page: String, base: GameState) {
     val context = LocalContext.current
-    val fixture by produceState<CustomTourFixture?>(null) {
-        value = withContext(Dispatchers.IO) {
+    var fixture by remember { mutableStateOf<CustomTourFixture?>(null) }
+    LaunchedEffect(Unit) {
+        fixture = withContext(Dispatchers.IO) {
             val bytes = TourActivity.customPortraitBytes ?: return@withContext null
             val images = CustomCharacterImages(context)
             val portrait = images.decode(bytes, CharacterImageKind.PORTRAIT)

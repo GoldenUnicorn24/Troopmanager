@@ -46,3 +46,11 @@ abgefragt und in den Charaktermetadaten gespeichert. Sie sind keine mitgeliefert
 - `app/src/androidTest/assets/adult-portrait.png`: selbst erstellte geometrische Testfigur (explizites Testalter 27), Pillow-Zeichnung für dieses Projekt, CC0-1.0; kein realistisches Produkt-Artwork.
 - `app/src/androidTest/assets/adult-fullbody.png`: selbst erstellte transparente geometrische Testfigur (Alter 27), CC0-1.0; nur Testzwecke.
 - `app/src/androidTest/assets/adult-exif.jpg`: verkleinerte, gedrehte Variante von `adult-portrait.png` mit EXIF-Orientierung 6, gleiche Herkunft und CC0-1.0.
+- `docs/character-pack/example-character.zip` → `portrait.webp`: WebP-q90-Ableitung von `app/src/androidTest/assets/adult-portrait.png`, gleiche selbst erstellte Testfigur, CC0-1.0.
+- `docs/character-pack/example-character.zip` → `fullbody.webp`: WebP-q90-Ableitung von `app/src/androidTest/assets/adult-fullbody.png`, gleiche selbst erstellte Testfigur, CC0-1.0.
+- `docs/character-pack/example-character.zip` → `manifest.json`: selbst erstellte fiktive Identität mit Pflichtalter 27, Quelle und CC0-1.0 im Paket angegeben.
+- `app/src/androidTest/assets/character-example.zip`: identische Testkopie von `docs/character-pack/example-character.zip`; enthaltene `manifest.json`, `portrait.webp` und `fullbody.webp` sind dieselben selbst erstellten CC0-1.0-Testinhalte.
+- `docs/assets/tavern-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Tavernen-Engine-Layouts, CC0-1.0.
+- `docs/assets/market-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Markt-Engine-Layouts, CC0-1.0.
+- `docs/assets/barracks-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Kasernen-Engine-Layouts, CC0-1.0.
+- `docs/assets/castle-layout-guide.svg`: selbst erstelltes geometrisches Hilfsraster des Burghof-Engine-Layouts, CC0-1.0.

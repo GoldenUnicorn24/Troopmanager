@@ -31,6 +31,8 @@ class SchemaSevenMigrationTest {
         val calls = mutableListOf<String>()
         val migrated = LegacyPortraitMigration.migrate(state) { value -> calls += value; if (value.contains("missing")) null else "file:///internal/custom/one/portrait.webp" }
         assertEquals("file:///internal/custom/one/portrait.webp", migrated.player.portraitUri)
+        assertEquals("one", migrated.life.appearance?.customImageId)
+        assertEquals("one", migrated.crown.playerLook?.customImageId)
         assertNull(migrated.companion.portraitUri)
         assertEquals(2, calls.size)
         assertEquals(migrated, LegacyPortraitMigration.migrate(migrated) { fail("Must not read original twice"); null })

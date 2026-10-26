@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "2346a52",
+  "baselineCommit": "7bc6af59d955940d626a84390e3f4c70fe60fc5c",
+  "command": "gradle --no-daemon --console=plain --max-workers=2 -Dorg.gradle.jvmargs=\"-Xmx3072m -Dfile.encoding=UTF-8\" :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest",
+  "gradleExitCode": 1,
+  "unitTests": {
+    "tests": 563,
+    "suites": 56,
+    "failures": 0,
+    "errors": 0
+  },
+  "lint": {
+    "errors": 3,
+    "warnings": 21,
+    "issue": "ProduceStateDoesNotAssignValue",
+    "status": "failed; implementation changed afterwards; re-verification pending"
+  },
+  "apk": {
+    "baselineBytes": 32264361,
+    "step1Bytes": 32353131,
+    "deltaBytes": 88770,
+    "deltaPercent": 0.275,
+    "baselineSha256": "a338cd685b362c58146fc1fb2ff28be5b9b6f4298bae5f6d6c3d60608a7744c5",
+    "step1Sha256": "84ee2ff846c43e29cd27f8ef0a157a5ed524caca8c07ed7e9296235bfd31c89b"
+  },
+  "emulator": "Software emulation without /dev/kvm; no completed tour or screenshots at this checkpoint"
+}
