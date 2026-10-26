@@ -100,7 +100,7 @@ fun LifeShell(
         }
     }
     if (editLook) {
-        var look by remember { mutableStateOf(state.life.appearance ?: defaultLook(state.life.gender, state.player.species)) }
+        var look by remember(state.life.appearance) { mutableStateOf(state.life.appearance ?: defaultLook(state.life.gender, state.player.species)) }
         AlertDialog(
             onDismissRequest = { editLook = false },
             containerColor = Panel,

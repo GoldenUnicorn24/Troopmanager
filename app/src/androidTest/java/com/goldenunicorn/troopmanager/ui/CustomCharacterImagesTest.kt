@@ -91,6 +91,7 @@ class CustomCharacterImagesTest {
         scope.draw(androidx.compose.ui.unit.Density(1f),androidx.compose.ui.unit.LayoutDirection.Ltr,
             androidx.compose.ui.graphics.Canvas(source),androidx.compose.ui.geometry.Size(32f,32f)) {
             drawRect(androidx.compose.ui.graphics.Color.Gray,androidx.compose.ui.geometry.Offset(8f,8f),androidx.compose.ui.geometry.Size(16f,16f))
+            drawRect(androidx.compose.ui.graphics.Color.Gray.copy(alpha = .5f),androidx.compose.ui.geometry.Offset(2f,2f),androidx.compose.ui.geometry.Size(4f,4f))
         }
         scope.draw(androidx.compose.ui.unit.Density(1f),androidx.compose.ui.unit.LayoutDirection.Ltr,
             androidx.compose.ui.graphics.Canvas(output),androidx.compose.ui.geometry.Size(32f,32f)) {
@@ -98,6 +99,7 @@ class CustomCharacterImagesTest {
         }
         val bitmap = output.asAndroidBitmap()
         assertEquals(0,android.graphics.Color.alpha(bitmap.getPixel(0,0)))
+        assertTrue(android.graphics.Color.alpha(bitmap.getPixel(3,3)) in 127..129)
         val center = bitmap.getPixel(16,16)
         assertEquals(255,android.graphics.Color.alpha(center))
         assertTrue(android.graphics.Color.green(center) > android.graphics.Color.red(center) + 50)

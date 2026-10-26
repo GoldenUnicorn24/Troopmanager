@@ -265,6 +265,7 @@ object HeroineSagaEngine {
             tactics = def.tactics, diplomacy = def.diplomacy,
             trust = (20 + favor / 3).coerceAtMost(100), respect = (25 + favor / 3).coerceAtMost(100),
             affection = (10 + favor / 5).coerceAtMost(100), role = "Feldherrin",
+            npcIdentityId = saga(state).partner?.takeIf { it.background == def.id }?.npcIdentityId,
         )
         var next = state.copy(companion = companion)
         next = withHeroine(next, h.copy(stage = HeroineStage.COMPANION, recruitedDay = state.day))

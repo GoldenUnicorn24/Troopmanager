@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    "testDebugUnitTest",
+    "assembleDebug",
+    "assembleDebugAndroidTest"
+  ],
+  "gradleExitCode": 0,
+  "duration": "3m 36s",
+  "tests": 593,
+  "failures": 0,
+  "errors": 0,
+  "debugApkBytes": 35721397,
+  "debugApkSha256": "7f994d0852aea1f90781d861448a0aa5b4dbe6956d586d4d29668689b80da5f7",
+  "note": "Includes separate copies for different people sharing a content URI. Final Android 26 tint compatibility adjustment is verified by subsequent CI."
+}

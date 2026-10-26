@@ -56,7 +56,7 @@ fun CharacterEditor(
         if (next == appearance) return
         history += appearance
         if (history.size > 40) history.removeAt(0)
-        onChange(next.normalized())
+        onChange(next.normalized().copy(customImageId = appearance.customImageId))
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -88,7 +88,7 @@ fun CharacterEditor(
             }
             RbAction("Rückgängig", enabled = history.isNotEmpty()) {
                 val previous = history.removeAt(history.lastIndex)
-                onChange(previous)
+                onChange(previous.copy(customImageId = appearance.customImageId))
             }
             RbAction("Alles zurücksetzen") { change(defaults) }
             RbAction("Vorlagen") { showTemplates = true }

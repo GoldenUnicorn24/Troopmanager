@@ -250,6 +250,7 @@ data class PartnerProfile(
     val weapon: String? = null,
     val armorStyle: String? = null,
     val look: PortraitSpec? = null,
+    val npcIdentityId: String? = null,
 )
 
 @Serializable

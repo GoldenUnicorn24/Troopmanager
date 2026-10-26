@@ -22,6 +22,7 @@ class TourActivity : ComponentActivity() {
         var customPortraitBytes: ByteArray? = null
         var customFullbodyBytes: ByteArray? = null
         var customReady: Boolean = false
+        var replaceState: ((GameState) -> Unit)? = null
         var latestState: GameState? = null
         val rich: GameState by lazy { TourFixture.richState() }
         val life: GameState by lazy { TourFixture.lifeState() }
@@ -60,7 +61,7 @@ class TourActivity : ComponentActivity() {
                                 "Königliche Kornkammer", "Nach 7 Tagen ist das Werk vollendet. Nahrungslager ×3, Proviant für Feldzüge halbiert.")
                             else -> rich
                         }) }
-                        SideEffect { latestState = state }
+                        SideEffect { latestState = state; replaceState = { state = it } }
                         when {
                             current.startsWith("custom-") -> CustomCharacterTour(current, state)
                             current == "menu" -> MainMenu(GameUiState(inMenu = true, hasSave = true), controller)

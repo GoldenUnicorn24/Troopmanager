@@ -94,3 +94,21 @@ Der Feature-Branch ist für die bestehende Unit-/Lint-/APK-/Emulator-Pipeline vo
 Zusätzlich werden Python-Prüfwerkzeug und Beispielpaket geprüft, fehlende Produktionsdateien
 als Fallback-Bericht hochgeladen. APK-/Screenshot-Artefakte dienen der Prüfung.
 Ein grüner Remote-CI-Lauf ist zum Zeitpunkt dieses Eintrags noch nicht nachgewiesen.
+
+## Lokale Abschlussprüfungen vor Remote-CI
+
+- Stand `62204c7`: kompletter Lauf mit Unit, Lint, App- und Test-APK **Exit 0**, 587 Tests ohne Fehler, 9m 53s.
+- Editor-/Identitätskorrekturen: kompletter Lauf **Exit 0**, 592 Tests ohne Fehler, 9m 23s.
+- Zusätzlicher Test für dieselbe alte Foto-URI bei verschiedenen Personen: Unit, App- und Test-APK **Exit 0**, 593 Tests ohne Fehler, 3m 36s.
+- Danach ergänzt: Alpha-kompatible Tönung auf Android 26–28 und eine engere Obergrenze für dekodierte Zwischenbilder; frischer Remote-CI-Nachweis folgt.
+
+[Nachweis Schritt 3](evidence/custom-art/step3-local.json), [Nachweis Identitätskorrekturen](evidence/custom-art/step4-local.json),
+[Nachweis getrennter Fotoimporte](evidence/custom-art/step5-local.json).
+
+Die Korrekturen verhindern das Überschreiben einer neuen Bild-ID durch einen alten Editorentwurf,
+erhalten Fotos beim Rücksetzen der Vektormerkmale, entfernen eigene Bildreferenzen beim Wechsel
+zum Standardporträt konsistent und exportieren aktuelle Namen und Altersangaben.
+Neue nullable `npcIdentityId`-Felder verknüpfen normale NPCs mit Hofdarstellungen, auch wenn ein Bild
+erst nach dem Hofwechsel importiert wird. Alte Verknüpfungen werden nur bei eindeutiger Namens-/Kultur-
+oder Artübereinstimmung mit expliziter Hof-Erinnerung rekonstruiert; mehrdeutige Fälle bleiben unverknüpft.
+Solche alten Mehrdeutigkeiten erfordern die explizite Auswahl der Person beim Import.

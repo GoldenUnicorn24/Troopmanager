@@ -71,4 +71,84 @@ class SchemaSevenMigrationTest {
         assertNull(CustomImageReference.idFromUri("custom://bad.id/portrait"))
         assertNull(CustomImageReference.idFromUri("custom://old-image/../../private"))
     }
+    @Test fun commanderImportUpdatesTheSameNpcAndKeepsOnePortableIdentity() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val original = CustomCharacter("npc-image","npc:shared",CustomCharacterDefinition("Mira",27),"Eigenes Bild")
+        val added = CustomCharacterEngine.apply(base,original,CustomImageReference.uri(original.id))
+        val atCourt = added.copy(commanders = added.commanders + Commander(999,"Mira",Culture.HUMAN,"knight",portraitUri = CustomImageReference.uri(original.id)))
+        val replacement = original.copy(id = "court-image",target = "commander:999")
+        val changed = CustomCharacterEngine.apply(atCourt,replacement,CustomImageReference.uri(replacement.id))
+        assertEquals("court-image",changed.life.npc("shared")!!.appearance.customImageId)
+        assertEquals(1,changed.customCharacters.size)
+        assertEquals("court-image",changed.customCharacters.single().id)
+        val cleared = CustomCharacterEngine.clearImage(changed,"court-image")
+        assertNull(cleared.life.npc("shared")!!.appearance.customImageId)
+        assertNull(cleared.commanders.first { it.id == 999L }.portraitUri)
+        assertEquals(changed.life.npc("shared")!!.memories,cleared.life.npc("shared")!!.memories)
+    }
+    @Test fun exportUsesCurrentPlayerDataAndHomeTown() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val record = CustomCharacter("player-image","player",CustomCharacterDefinition("Mira",27,homeProvinceId = "al_aldenburg"),"Eigenes Bild")
+        val added = CustomCharacterEngine.apply(base,record,CustomImageReference.uri(record.id))
+        assertEquals("al_aldenburg",added.life.homeProvinceId)
+        val renamed = added.copy(player = added.player.copy(name = "Mira Neu",age = 28))
+        val exported = CustomCharacterEngine.currentDefinition(renamed,record)
+        assertEquals("Mira Neu",exported.name)
+        assertEquals(28,exported.age)
+        val cleared = CustomCharacterEngine.clearImage(renamed,record.id)
+        assertNull(cleared.player.portraitUri)
+        assertNull(cleared.life.appearance?.customImageId)
+        assertNull(cleared.crown.playerLook?.customImageId)
+    }
+
+    @Test fun photoImportedAfterCourtTransferFollowsTheExplicitNpcIdentity() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val friend = NpcEngine.generate("friend",NpcRole.REGULAR,"gm_rabenfurt").copy(name = "Mira")
+        val sword = NpcEngine.generate("sword",NpcRole.SELLSWORD,"gm_rabenfurt")
+        val before = base.copy(life = base.life.copy(npcs = listOf(friend,sword),party = listOf(PartyMember("friend",1),PartyMember("sword",1,4))))
+        val court = LifeEngine.handOverFollowers(before)
+        assertEquals("friend",court.companion.npcIdentityId)
+        val captain = court.commanders.first { it.npcIdentityId == "sword" }
+        val record = CustomCharacter("after-court","commander:${captain.id}",CustomCharacterEngine.definition(sword),"Eigenes Bild")
+        val withPicture = CustomCharacterEngine.apply(court,record,CustomImageReference.uri(record.id))
+        assertEquals("after-court",withPicture.life.npc("sword")!!.appearance.customImageId)
+        val friendRecord = CustomCharacter("friend-photo","npc:friend",CustomCharacterEngine.definition(friend),"Eigenes Bild")
+        val withFriend = CustomCharacterEngine.apply(withPicture,friendRecord,CustomImageReference.uri(friendRecord.id))
+        assertEquals("custom://friend-photo/portrait",withFriend.companion.portraitUri)
+        assertEquals("custom://friend-photo/portrait",withFriend.commanders.first { it.id == COMPANION_COMMANDER_ID }.portraitUri)
+        assertEquals(withFriend,SaveCodec.decode(SaveCodec.encode(withFriend)))
+    }
+    @Test fun editingEveryStockNpcDoesNotRegenerateDuplicatePeople() {
+        val populated = LifeEngine.ensurePeople(GameEngine.newGame("Leon",27,Species.HUMAN,null))
+        val edited = populated.copy(life = populated.life.copy(npcs = populated.life.npcs.map { it.copy(designedByPlayer = true) }))
+        assertEquals(edited,LifeEngine.ensurePeople(edited))
+    }
+    @Test fun legacyCourtLinkIsRecoveredOnlyForUniqueRecordedPeople() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,null)
+        val npc = NpcEngine.generate("former",NpcRole.REGULAR,"gm_rabenfurt").copy(name = "Mira",species = Species.HUMAN,departed = true,
+            memories = listOf(NpcMemory("court",1,"An den Hof gezogen")))
+        val old = base.copy(companion = CompanionProfile(met = true,name = "Mira",species = Species.HUMAN,portraitUri = "content://old/photo"),
+            life = base.life.copy(npcs = listOf(npc)))
+        val linked = LegacyPortraitMigration.migrate(old) { "file:///internal/custom/mira-photo/portrait.webp" }
+        assertEquals("former",linked.companion.npcIdentityId)
+        assertEquals("mira-photo",linked.life.npc("former")!!.appearance.customImageId)
+        val ambiguous = old.copy(life = old.life.copy(npcs = listOf(npc,npc.copy(id = "another"))))
+        val unlinked = LegacyPortraitMigration.migrate(ambiguous) { "file:///internal/custom/mira-photo/portrait.webp" }
+        assertNull(unlinked.companion.npcIdentityId)
+        assertTrue(unlinked.life.npcs.all { it.appearance.customImageId == null })
+    }
+
+    @Test fun sameOriginalPhotoForDifferentPeopleDoesNotMergeTheirIdentities() {
+        val base = GameEngine.newGame("Leon",27,Species.HUMAN,"content://same/photo")
+            .copy(companion = CompanionProfile(name = "Mira",portraitUri = "content://same/photo"))
+        var copies = 0
+        val migrated = LegacyPortraitMigration.migrate(base) { copies++; "file:///internal/custom/person-$copies/portrait.webp" }
+        assertEquals(2,copies)
+        assertNotEquals(migrated.player.portraitUri,migrated.companion.portraitUri)
+        val own = CustomCharacter("new-player-photo","player",CustomCharacterDefinition("Leon Neu",28),"Eigenes Bild")
+        val changed = CustomCharacterEngine.apply(migrated,own,CustomImageReference.uri(own.id))
+        assertEquals("Mira",changed.companion.name)
+        assertEquals(migrated.companion.portraitUri,changed.companion.portraitUri)
+    }
+
 }

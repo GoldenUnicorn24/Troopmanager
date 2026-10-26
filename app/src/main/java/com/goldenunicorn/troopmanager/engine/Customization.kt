@@ -44,7 +44,10 @@ fun renameSettlement(state: GameState, name: String): GameState {
 }
 
 
-fun customizeCommanderPortrait(state: GameState, id: Long, portraitUri: String?): GameState =
-    if (id == com.goldenunicorn.troopmanager.model.COMPANION_COMMANDER_ID)
-        RelationshipEngine.syncCommander(state.copy(companion = state.companion.copy(portraitUri = portraitUri)))
-    else state.copy(commanders = state.commanders.map { if (it.id == id) it.copy(portraitUri = portraitUri) else it })
+fun customizeCommanderPortrait(state: GameState, id: Long, portraitUri: String?): GameState {
+    val target = if (id == com.goldenunicorn.troopmanager.model.COMPANION_COMMANDER_ID) "companion" else "commander:$id"
+    val base = if (portraitUri == null) CustomCharacterEngine.clearImage(state,CustomCharacterEngine.imageIdForTarget(state,target)) else state
+    return if (id == com.goldenunicorn.troopmanager.model.COMPANION_COMMANDER_ID)
+        RelationshipEngine.syncCommander(base.copy(companion = base.companion.copy(portraitUri = portraitUri)))
+    else base.copy(commanders = base.commanders.map { if (it.id == id) it.copy(portraitUri = portraitUri) else it })
+}

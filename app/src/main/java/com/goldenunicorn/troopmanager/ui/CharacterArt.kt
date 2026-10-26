@@ -96,7 +96,7 @@ private fun seedOf(a: CharacterAppearance) = a.hashCode()
 /** The portrait used everywhere (editor, tavern dialogue, people lists). */
 @Composable
 fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    PersonImage(appearance.customImageId, null, framing, modifier) { targetWidth ->
+    PersonImage(appearance.customImageId, null, framing, modifier, useDefinitionFallback = false) { targetWidth ->
         MixedPortrait(appearance, gender, modifier, framing, targetWidth)
     }
 }

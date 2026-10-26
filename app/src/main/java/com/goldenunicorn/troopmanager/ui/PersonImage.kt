@@ -26,7 +26,7 @@ import java.io.File
 
 /** An unreadable custom image always renders the supplied painted/vector fallback. */
 @Composable
-internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: Modifier, fallback: @Composable (Int) -> Unit) {
+internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: Modifier, useDefinitionFallback: Boolean = true, fallback: @Composable (Int) -> Unit) {
     BoxWithConstraints(modifier) {
         val frameWidth = constraints.maxWidth.coerceIn(32,1024)
         val targetWidth = if (framing == Framing.HEAD) (frameWidth * 1024 / 640).coerceAtMost(1024) else frameWidth
@@ -49,7 +49,7 @@ internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: 
         }
         val loaded = bitmap
         if (ArtResolution.source(loaded != null,false) != ArtResolution.Source.CUSTOM) {
-            if (definition != null && id == null) CharacterPortrait(definition.appearance.copy(customImageId = null), definition.gender, modifier, framing)
+            if (definition != null && useDefinitionFallback) CharacterPortrait(definition.appearance.copy(customImageId = null), definition.gender, modifier, framing)
             else fallback(targetWidth)
         } else {
             val image = remember(loaded) { loaded!!.asImageBitmap() }

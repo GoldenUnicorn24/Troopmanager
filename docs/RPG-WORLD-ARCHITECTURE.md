@@ -112,3 +112,5 @@ Importdaten erzeugen normale `NpcIdentity`-Datensätze; bestehende Beziehungen u
 bei einer Ersetzung erhalten. Eigene Bildreferenzen bleiben beim Übergang ans Herrscherlager erhalten.
 Details, Paketformat und Grenzen: `ASSET-STANDARD.md`, `ASSET-PRODUCTION.md`,
 `CHARACTER-PACK-FORMAT.md`, `CUSTOM-CHARACTER-TEST-REPORT.md`.
+
+Nullable `npcIdentityId`-Referenzen in Gefährtinnen-, Partnerinnen- und Kommandantenprofilen erhalten die Weltidentität am Hof. Sie sind additiv; alte Spielstände laden mit null und werden nur bei eindeutigen Spuren verknüpft.

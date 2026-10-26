@@ -46,7 +46,7 @@ internal val LocalCustomCharacterDefinitions = staticCompositionLocalOf<Map<Stri
 internal fun CustomCharactersHost(state: GameState?, onState: (GameState) -> Unit, content: @Composable () -> Unit) {
     var target by remember { mutableStateOf<String?>(null) }
     var open by remember { mutableStateOf(false) }
-    val definitions = remember(state?.customCharacters) { state?.customCharacters?.associate { it.id to it.definition }.orEmpty() }
+    val definitions = remember(state) { state?.customCharacters?.associate { it.id to CustomCharacterEngine.currentDefinition(state,it) }.orEmpty() }
     CompositionLocalProvider(LocalCustomCharacterDefinitions provides definitions,
         LocalOpenCustomCharacters provides if (state == null) null else { value -> target = value; open = true }) { content() }
     if (open && state != null) Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -59,15 +59,25 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val images = remember(context) { CustomCharacterImages(context) }
-    var target by remember { mutableStateOf(initialTarget ?: "new") }
-    val choices = remember(state) { listOf("new" to "Neue Person", "player" to state.player.name, "companion" to state.companion.name) +
-        state.life.npcs.map { "npc:${it.id}" to it.name } + state.commanders.map { "commander:${it.id}" to it.name } }
+    val companionTarget = if (!state.companion.met) state.life.companion?.let { "npc:${it.id}" }
+        ?: state.crown.saga.partner?.let { "partner:${it.background}" } ?: "companion" else "companion"
+    var target by remember { mutableStateOf(when (initialTarget) {
+        "companion" -> companionTarget
+        "commander:$COMPANION_COMMANDER_ID" -> if (state.companion.met) "companion" else initialTarget
+        else -> initialTarget ?: "new"
+    }) }
+    val choices = remember(state) { listOf("new" to "Neue Person", "player" to state.player.name, companionTarget to (if (state.companion.met) state.companion.name else state.life.companion?.name ?: state.crown.saga.partner?.name ?: state.companion.name)) +
+        state.life.npcs.filter { "npc:${it.id}" != companionTarget }.map { "npc:${it.id}" to "${it.name} · ${CrownCatalog.info(it.homeProvinceId).name}" } + state.commanders.filterNot { it.id == COMPANION_COMMANDER_ID && state.companion.met }.map { "commander:${it.id}" to it.name } }
     fun initialDefinition(): CustomCharacterDefinition {
-        state.customCharacters.firstOrNull { it.target == target }?.let { return it.definition }
+        val imageId = CustomCharacterEngine.imageIdForTarget(state,target)
+        state.customCharacters.firstOrNull { it.target == target || it.id == imageId }?.let { return CustomCharacterEngine.currentDefinition(state,it.copy(target = target)) }
         state.life.npcs.firstOrNull { "npc:${it.id}" == target }?.let { return CustomCharacterEngine.definition(it) }
+        state.crown.saga.partner?.takeIf { "partner:${it.background}" == target }?.let {
+            return CustomCharacterDefinition(it.name,it.age,species = it.species,role = NpcRole.COMPANION)
+        }
         return when (target) {
             "player" -> CustomCharacterDefinition(state.player.name, state.player.age, state.life.gender, state.player.species, state.life.culture,
-                state.life.origin, state.life.profession, appearance = state.life.appearance ?: CharacterAppearance())
+                state.life.origin, state.life.profession, homeProvinceId = state.life.homeProvinceId, appearance = state.life.appearance ?: CharacterAppearance())
             "companion" -> CustomCharacterDefinition(state.companion.name, state.companion.age, species = state.companion.species, role = NpcRole.COMPANION)
             else -> CustomCharacterDefinition(state.commanders.firstOrNull { "commander:${it.id}" == target }?.name ?: "", 18)
         }
@@ -77,7 +87,7 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     var interests by remember(target) { mutableStateOf(initialDefinition().interests.joinToString(", ")) }
     var showExports by remember { mutableStateOf(false) }
     var pendingPack by remember { mutableStateOf<ImportedCharacterPack?>(null) }
-    var source by remember(target) { mutableStateOf(state.customCharacters.firstOrNull { it.target == target }?.source ?: "") }
+    var source by remember(target) { mutableStateOf(state.customCharacters.firstOrNull { it.target == target || it.id == CustomCharacterEngine.imageIdForTarget(state,target) }?.source ?: "") }
     var portrait by remember(target) { mutableStateOf<Bitmap?>(null) }
     var fullbody by remember(target) { mutableStateOf<Bitmap?>(null) }
     var cropInput by remember { mutableStateOf<Bitmap?>(null) }
@@ -157,7 +167,7 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
                     busy = true
                     scope.launch {
                         try {
-                            val intent = withContext(Dispatchers.IO) { CharacterPackSharing(context).prepareShare(record) }
+                            val intent = withContext(Dispatchers.IO) { CharacterPackSharing(context).prepareShare(record.copy(definition = CustomCharacterEngine.currentDefinition(state,record))) }
                             context.startActivity(android.content.Intent.createChooser(intent, "Charakterpaket teilen"))
                         } catch (e: Exception) { error = e.message ?: "Das Paket konnte nicht exportiert werden." }
                         finally { busy = false }

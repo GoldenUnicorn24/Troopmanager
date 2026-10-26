@@ -51,7 +51,7 @@ class CustomCharacterImages(private val context: Context) {
         require(legacy || (w >= kind.minWidth && h >= kind.minHeight)) { "Das Bild braucht mindestens ${kind.minWidth} × ${kind.minHeight} Pixel nach Ausrichtung." }
         val options = BitmapFactory.Options().apply {
             inSampleSize = CharacterImageFrames.sampleSize(bounds.outWidth, bounds.outHeight, kind.width * 2, kind.height * 2)
-            while ((bounds.outWidth / inSampleSize).toLong() * (bounds.outHeight / inSampleSize) > 16_000_000) inSampleSize *= 2
+            while ((bounds.outWidth / inSampleSize).toLong() * (bounds.outHeight / inSampleSize) > 8_000_000) inSampleSize *= 2
             inPreferredConfig = Bitmap.Config.ARGB_8888
             inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
         }
