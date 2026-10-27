@@ -1,0 +1,12 @@
+{
+  "registration": {
+    "centerX": 384,
+    "footY": 1480
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; portraits/hair_front/0_0.webp",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "portraits/hair_front/0_0.webp"
+  },
+  "sha256": "d346e72234502aa3e42ecc140c6b366960b3a5f77cd8379c2e29f1f3d6773f04"
+}

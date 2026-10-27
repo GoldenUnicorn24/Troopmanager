@@ -499,7 +499,10 @@ private fun HouseDialog(state: GameState, onDismiss: () -> Unit, apply: (GameEng
         title = { Text("Haus") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                AsyncImage(state.companion.portraitUri ?: "file:///android_asset/portrait_companion.webp", null, Modifier.fillMaxWidth().height(120.dp), contentScale = ContentScale.Crop)
+                val portraitModifier = Modifier.fillMaxWidth().height(120.dp)
+                PersonImage(null, state.companion.portraitUri, Framing.BUST, portraitModifier) {
+                    AsyncImage("file:///android_asset/portrait_companion.webp", null, portraitModifier, contentScale = ContentScale.Crop)
+                }
                 Text("${state.companion.name} · ${state.frontier.bond.stage}", color = PaleGold, fontWeight = FontWeight.Bold)
                 Text("Vertrauen ${state.companion.trust} · Zuneigung ${state.companion.affection}", color = Mist, fontSize = 12.sp)
                 Text("Schwert ${state.player.sword}/${state.companion.sword} · Bogen ${state.player.bow}/${state.companion.bow}. Gemeinsames Training hebt beide.", color = Gold, fontSize = 12.sp)

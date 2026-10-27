@@ -2,9 +2,9 @@ name: Android APK
 
 on:
   push:
-    branches: [ "main", "claude/**", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "codex/custom-character-art", "main", "claude/**", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.4.0-core-overhaul" ]
   pull_request:
-    branches: [ "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
+    branches: [ "claude/project-rebirth-rpg", "main", "codex/v0.61", "codex/v0.62", "codex/v0.63-frontier", "codex/v0.65", "codex/v0.66", "codex/v0.81", "codex/v0.82-overhaul", "codex/v0.83-fun-overhaul", "codex/v0.84-ui-overhaul", "codex/v0.85-modern-ui", "codex/v0.90-war-experience-overhaul", "codex/v0.95-living-realm-overhaul", "codex/v0.96-visual-world-overhaul", "codex/v0.97-battle-tactics-ui-overhaul", "codex/v1.0-realm-war-overhaul", "codex/v0.45-city-ui-overhaul", "codex/v0.6-aaa-overhaul", "codex/v0.4.0-core-overhaul" ]
   workflow_dispatch:
 
 permissions:
@@ -51,6 +51,17 @@ jobs:
             echo "$DEV_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
           fi
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify asset tooling and example character package
+        run: |
+          python3 -m pip install -r scripts/requirements-assets.txt
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+          python3 scripts/check_character_pack_example.py
+          mkdir -p build
+          python3 scripts/check_assets --json > build/asset-report.json
+
       - name: Run unit tests
         run: |
           gradle :app:testDebugUnitTest --stacktrace > /tmp/unit.log 2>&1 || { python3 .github/annotate.py /tmp/unit.log; exit 1; }
@@ -86,7 +97,7 @@ jobs:
           retention-days: 30
 
       - name: Publish download without login
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref != 'refs/heads/codex/custom-character-art'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -122,6 +133,7 @@ jobs:
             app/build/reports/tests/testDebugUnitTest
             app/build/reports/lint-results-debug.*
             build/apk-badging.txt
+            build/asset-report.json
           if-no-files-found: warn
           retention-days: 30
 
@@ -174,7 +186,7 @@ jobs:
                       print(f"::error title={case.get('name')}::{text}")
           PYUI
       - name: Publish screenshots for design review
-        if: always() && github.event_name == 'push'
+        if: always() && github.event_name == 'push' && github.ref != 'refs/heads/codex/custom-character-art'
         run: |
           set -e
           [ -d build/ui-screenshots ] || exit 0

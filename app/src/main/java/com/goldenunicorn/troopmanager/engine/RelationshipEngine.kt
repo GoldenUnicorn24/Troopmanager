@@ -202,7 +202,7 @@ object RelationshipEngine {
                 missionsCompleted = previous?.missionsCompleted ?: 0,
                 battlesFought = previous?.battlesFought ?: 0,
                 victories = previous?.victories ?: 0,
-                casualties = previous?.casualties ?: 0,
+                casualties = previous?.casualties ?: 0, npcIdentityId = c.npcIdentityId,
             )
         return state.copy(
             commanders = state.commanders.filterNot { it.id == COMPANION_COMMANDER_ID } + commander

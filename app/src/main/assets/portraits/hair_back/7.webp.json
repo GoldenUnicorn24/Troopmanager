@@ -1,0 +1,14 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original technical transparent registration layer; intentional empty layer",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "sha256": "a38628b6b08a94cdc177236fb329ba9728085d828a536892657e61da493cb484"
+}

@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+"""Regenerate a complete per-file prompt list. Does not fabricate production artwork."""
+import json
+from asset_contract import ROOT, catalog
+items=catalog()
+(ROOT/'docs/asset-catalog.json').write_text(json.dumps({'version':1,'assets':items},indent=2)+'\n')
+intro='''# Fotorealistische Asset-Produktion
+
+Der Nutzer hat den ursprünglichen gemalten Stil ausdrücklich durch **realistische Bilder** ersetzt.
+Die Produktion verwendet fotorealistische Haut, Haare, Holz, Leder, Wolle und Metall ohne Pinselstriche.
+Alle dargestellten Personen sind erfundene Erwachsene; es wurden keine fremden Fotos verwendet.
+
+## Quellen und Wiederherstellung
+
+Die vollständigen tatsächlich verwendeten Generator-Prompts, Referenzbeziehungen, nativen Maße
+und SHA256-Werte stehen in [`art/photorealistic/production-prompts.json`](../art/photorealistic/production-prompts.json).
+Die hochqualitativ archivierten Quellen liegen unter `art/photorealistic/sources/` und werden
+**nicht** ins APK gepackt. Die dort protokollierten ursprünglichen PNG-Arbeitsplatzpfade sind
+Herstellungsnachweise; der reproduzierbare Export benötigt ausschließlich die eingecheckten WebP-Quellen.
+Bildproduktion: OpenAI-Bildgenerator, 27.10.2026. Herkunft jeder Datei: [CREDITS.md](../CREDITS.md).
+
+Die Quellen enthalten mehrere getrennte Komponenten oder sechs Posen pro Atlas. Der Exportschritt
+verwendet ausschließlich mechanisches Ausschneiden, Freistellmasken, Registrierung, Skalierung,
+Graustufen und WebP-Kodierung, keine nachgezeichneten Ersatzmotive. Voraussetzungen:
+`python3 -m pip install -r scripts/requirements-assets-production.txt` und ImageMagick 7.
+
+```sh
+python3 scripts/make_scene_layouts
+python3 scripts/export_photo_assets portraits
+python3 scripts/export_photo_assets backgrounds
+# Für female und male, jeweils standing, sitting, walk_0, walk_1, walk_2, walk_3:
+python3 scripts/export_photo_assets figure --sex female --pose standing
+# Für tavern, market, barracks und castle:
+python3 scripts/export_photo_assets foreground --scene tavern
+python3 scripts/write_photo_credits
+python3 scripts/check_assets
+```
+
+Die Quellen sind keine 686 unabhängigen Einzelaufnahmen: Frisuren und Ausstattung werden geteilt,
+Ganzkörperkleidung ist unisex, die unterschiedlichen Posen sind eigene generierte Atlasfelder.
+Die Ausgabeformate 1024×1280, 768×1536 und 2160×1440 sind korrekt; einzelne Komponenten und
+Szenenhintergründe werden aus kleineren nativen Bildern hochskaliert. Das erzeugt keine zusätzlichen
+optischen Details. Die unten stehenden Einzeldatei-Prompts bilden den Zielvertrag ab; der tatsächliche
+Herstellungsweg ist vollständig im Quellenmanifest und den `*-exports.json`-Dateien dokumentiert.
+
+## Registrierung und Rendering
+
+82 Porträtebenen, 564 Figurenebenen (zwei Basen × sechs Posen × 47) und 40 Szenenebenen.
+Porträts: Mittelachse x=512, Augenlinie y=560. Figuren: x=384, Fußlinie y=1480.
+Haut, Haare, Kleidung und Umhang sind neutral grau und werden zur Laufzeit multipliziert.
+Augenbilder erhalten natürliche Lidfarbe als Trenninformation: Der Decoder trennt einmalig graue,
+einfärbbare Lidhaut von neutralem Augenweiß/Wimpern. Eine separate Iris wird in diese Öffnung maskiert.
+Nase und Mund erhalten Haut- bzw. Lippenfarbe. Metall, Waffen und Möbel behalten ihre Materialfarben.
+Figurenköpfe verwenden dieselbe Porträtrezeptur wie die Personenansicht. Sitzende Hände werden aus
+der stehenden Originalaufnahme an die Ärmelöffnungen registriert; die Kapuze verbindet das
+registrierte Kopfstück mit der jeweiligen realen Cape-Pose.
+
+55 Dateien sind absichtlich vollständig transparente technische Ebenen: 40 rasierte Haarvarianten
+und 15 Vordergrundzeilen ohne Möbel. Diese Dateien werden im Katalog und in Szenen-Layouts explizit
+gekennzeichnet. Andere leere Ebenen sind Fehler. Sie werden nicht als abgebildete Motive ausgegeben.
+
+Vier Szenen erhalten je einen Tageshintergrund und neun tiefensortierte Möbelzeilen. Farben für
+Abend/Nacht und Kerzenlicht kommen aus dem Renderer. Das 12×9-Engine-Raster bleibt verbindlich.
+Marktdächer liegen hinter Händlern, Tresen vor den Beinen; Burgwachen bleiben eigenständige Figuren.
+
+Dekodierung erfolgt auf IO mit `inSampleSize` und LruCaches, niemals während des Canvas-Draws.
+Fehlende Porträtteile ersetzen nur ihre Komponente durch Vektoren; unvollständige Figurenposen
+verwenden eine vollständige Vektorfigur. Eigene Bilder haben Vorrang.
+
+## Abnahme
+
+`scripts/check_assets` prüft alle 686 Dateien, Format, Maße, echtes Alpha, erlaubte leere Ebenen,
+Graustufen, Registrierung, Größenbudget, SHA256 und Einzelherkunft. CI verwendet den strengen Aufruf.
+Metadaten sind eine Registrierungserklärung und ersetzen keine anatomische Sichtprüfung.
+Android-Tests dekodieren und rendern echte Dateien; die Tour wartet höchstens zehn Sekunden auf
+laufende Bildladevorgänge und prüft anschließend das bestehende Zwei-Sekunden-Aufnahmelimit.
+Aktuelle Ergebnisse und ehrliche Grenzen: [PHOTOREALISTIC-ASSET-REPORT.md](PHOTOREALISTIC-ASSET-REPORT.md).
+
+## Vollständige Dateiliste
+
+Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält pro Datei vollständigen
+Zielprompt, Maße, Alpha, Registrierung und Größenbudget. Neu erzeugen: `python3 scripts/produce_asset_prompts`.
+
+| Datei | Maße | Alpha | Tönbar | Motiv / Pose |
+|---|---|---|---|---|
+'''
+rows=[]
+for a in items:
+ detail=a['prompt'].split('Natural muted material colors. ')[-1] if not a['neutral'] else a['prompt'].split('Neutral grayscale for runtime tint, preserve highlights and shadows. ')[-1]
+ rows.append(f"| `{a['path']}` | {a['width']}×{a['height']} | {'ja' if a['alpha'] else 'nein'} | {'ja' if a['neutral'] else 'nein'} | {detail} |")
+(ROOT/'docs/ASSET-PRODUCTION.md').write_text(intro+'\n'.join(rows)+'\n')
+print(f'{len(items)} Produktionsaufträge, davon 82 Porträtebenen.')

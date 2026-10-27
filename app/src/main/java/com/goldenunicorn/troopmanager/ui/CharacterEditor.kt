@@ -44,6 +44,7 @@ fun CharacterEditor(
     templateKind: String,
     modifier: Modifier = Modifier,
 ) {
+    val openCustom = LocalOpenCustomCharacters.current
     val context = LocalContext.current
     var framing by rememberSaveable { mutableStateOf(Framing.BUST) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -55,7 +56,7 @@ fun CharacterEditor(
         if (next == appearance) return
         history += appearance
         if (history.size > 40) history.removeAt(0)
-        onChange(next.normalized())
+        onChange(next.normalized().copy(customImageId = appearance.customImageId))
     }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -76,8 +77,9 @@ fun CharacterEditor(
                 }
             }
         } }
+        if (openCustom != null) OutlinedButton(onClick = { openCustom(if (templateKind == "player") "player" else "companion") }) { Text("Eigene Charaktere / Bilder") }
         Text(
-            "Vorschau-Renderer: gezeichnete Vektormalerei. Gemalte Porträt-Ebenen werden automatisch genutzt, sobald sie installiert sind.",
+            "Fotorealistische Porträt-Ebenen mit anpassbaren Farben. Eigene Bilder haben Vorrang; fehlende Ebenen werden gezeichnet.",
             color = Muted, fontSize = 11.sp, lineHeight = 15.sp,
         )
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -86,7 +88,7 @@ fun CharacterEditor(
             }
             RbAction("Rückgängig", enabled = history.isNotEmpty()) {
                 val previous = history.removeAt(history.lastIndex)
-                onChange(previous)
+                onChange(previous.copy(customImageId = appearance.customImageId))
             }
             RbAction("Alles zurücksetzen") { change(defaults) }
             RbAction("Vorlagen") { showTemplates = true }

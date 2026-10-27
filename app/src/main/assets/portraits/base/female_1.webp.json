@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; female-bases-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "female-bases-atlas",
+    "panel": 1,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      439,
+      76,
+      429,
+      640
+    ]
+  },
+  "sha256": "3eacffea60cf222361e030d6d22acb0e5c4bba61eb888abb410fec074b6701b7"
+}

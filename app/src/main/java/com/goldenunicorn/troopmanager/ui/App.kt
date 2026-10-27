@@ -55,6 +55,7 @@ fun RealmGameApp(saves: SaveRepository) {
     CompositionLocalProvider(LocalDensity provides Density(systemDensity.density, systemDensity.fontScale * settings.textScale)) {
         MaterialTheme(typography = AppTypography, colorScheme = darkColorScheme(primary = Gold, onPrimary = Ink, secondary = Blue,
             background = Ink, surface = Panel, onSurface = Mist)) {
+            CustomCharactersHost(state, { next -> if (state != null) controller.update(state, next) }) {
             Box(Modifier.fillMaxSize().background(Ink)) {
                 when {
                     ui.inMenu -> MainMenu(ui, controller)
@@ -87,6 +88,7 @@ fun RealmGameApp(saves: SaveRepository) {
                 }
             }
         }
+    }
     }
 }
 

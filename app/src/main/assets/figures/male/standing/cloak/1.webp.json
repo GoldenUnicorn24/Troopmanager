@@ -1,0 +1,24 @@
+{
+  "registration": {
+    "centerX": 384,
+    "footY": 1480
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; figure-cloak-1-wool",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "figure-cloak-1-wool",
+    "panel": 0,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      11,
+      61,
+      351,
+      648
+    ],
+    "headSource": null
+  },
+  "sha256": "4d558cb47a0f70d00e615941240356faa042ccd1b65beacd2909658deb94ac85"
+}

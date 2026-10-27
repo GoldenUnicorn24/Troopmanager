@@ -1,0 +1,207 @@
+{
+  "scenes/castle/foreground_0.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/castle/foreground_1.webp": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1951,
+          22,
+          205,
+          641
+        ],
+        "gridAnchor": [
+          0,
+          1
+        ],
+        "width": 160,
+        "groundY": 638.7259953161592
+      },
+      {
+        "source": "castle-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1951,
+          22,
+          205,
+          641
+        ],
+        "gridAnchor": [
+          11,
+          1
+        ],
+        "width": 160,
+        "groundY": 638.7259953161592
+      }
+    ]
+  },
+  "scenes/castle/foreground_2.webp": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 0,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          13,
+          88,
+          348,
+          557
+        ],
+        "gridAnchor": [
+          6,
+          2
+        ],
+        "width": 430,
+        "groundY": 750.0140515222481
+      }
+    ]
+  },
+  "scenes/castle/foreground_3.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/castle/foreground_4.webp": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          361,
+          325,
+          551,
+          320
+        ],
+        "gridAnchor": [
+          1.5,
+          4
+        ],
+        "width": 360,
+        "groundY": 972.5901639344261
+      }
+    ]
+  },
+  "scenes/castle/foreground_5.webp": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          922,
+          39,
+          471,
+          562
+        ],
+        "gridAnchor": [
+          9.3,
+          5
+        ],
+        "width": 230,
+        "groundY": 1083.8782201405152
+      },
+      {
+        "source": "castle-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          922,
+          39,
+          471,
+          562
+        ],
+        "gridAnchor": [
+          10.7,
+          5
+        ],
+        "width": 230,
+        "groundY": 1083.8782201405152
+      },
+      {
+        "source": "castle-props-atlas",
+        "panel": 3,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1416,
+          346,
+          530,
+          299
+        ],
+        "gridAnchor": [
+          10,
+          5
+        ],
+        "width": 540,
+        "groundY": 1083.8782201405152
+      }
+    ]
+  },
+  "scenes/castle/foreground_6.webp": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          361,
+          325,
+          551,
+          320
+        ],
+        "gridAnchor": [
+          1.5,
+          6
+        ],
+        "width": 360,
+        "groundY": 1195.166276346604
+      }
+    ]
+  },
+  "scenes/castle/foreground_7.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/castle/foreground_8.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  }
+}

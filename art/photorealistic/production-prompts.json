@@ -1,0 +1,778 @@
+{
+  "style": "photorealistic, explicitly replaces painted style",
+  "created": "2026-10-27",
+  "items": [
+    {
+      "id": "portrait-female-master",
+      "prompt": "Photorealistic studio photograph for an offline medieval fantasy character creator. One fictional ADULT woman age 35, frontal perfectly straight head and shoulders, neutral calm expression, bald scalp, NO eyebrows, no beard, no makeup, no jewelry, plain modest neutral light-grey linen undergarment below shoulders. Human face with naturally realistic pores, fine lines, real moist eyes, realistic lips, no beauty retouching, no stylization, absolutely NO painting, brushstrokes, illustration, cartoon or CGI plastic. Entire photograph in neutral black and white for recoloring. Soft large window key light from upper left, quiet fill right, visible natural three dimensional face. Transparent background and true alpha outside person. Canonical composition portrait canvas 1024x1280: face center x512, eyes y560, eye pupils x417 and607, top of bare scalp y210, chin y890, neck to y1050; shoulders across lower frame. Full scalp and both ears visible, head neither tilted nor turned. Real human proportions. This is an original invented adult, no real person reference. No text, grid, guide marks or watermark.",
+      "originalPath": "/workspace/generated_images/exec-ed88fcc7-ed59-48fa-9b16-2a4008d071e5.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "4950116ee5e48ef552f2bb011c582da33e1152a830dc03915a085a9dd1c32ee7",
+      "sourceFile": "art/photorealistic/sources/portrait-female-master.webp",
+      "sourceSha256": "48fc0a072e040ca30452a542120fc70e7792fd6acc243a869e003904a7140882",
+      "references": []
+    },
+    {
+      "id": "portrait-male-master",
+      "prompt": "Photorealistic studio photograph for an offline medieval fantasy character creator. One fictional ADULT man age 38, frontal perfectly straight head and shoulders, neutral calm expression, bald scalp, clean shaven, NO eyebrows, no makeup, no jewelry, plain modest neutral light-grey linen undergarment below shoulders. Human face with realistic pores, fine lines, real moist eyes, realistic lips, no beauty retouching, absolutely NO painting, brushstrokes, illustration, cartoon or CGI plastic. Entire photograph in neutral black and white for recoloring. Soft large window key light from upper left, quiet fill right, visible natural three dimensional face. Transparent background and true alpha outside person. Canonical composition portrait canvas 1024x1280: face center x512, eyes y560, eye pupils x417 and607, top of bare scalp y210, chin y890, neck to y1050; shoulders across lower frame. Full scalp and both ears visible, head neither tilted nor turned. Real human proportions. Original invented adult, no real person reference. No text, grid, guide marks or watermark.",
+      "originalPath": "/workspace/generated_images/exec-90f41c93-56d8-42f3-a8b6-5980e32b2734.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "50838f9df1bbec3187abbb31370858e16010299813fcd81a12286d0c33a43fc0",
+      "sourceFile": "art/photorealistic/sources/portrait-male-master.webp",
+      "sourceSha256": "c03463f85b3d2d016334972799ca668cf829b435d32f4aee22ed899cef4f8486",
+      "references": []
+    },
+    {
+      "id": "outfit-atlas",
+      "prompt": "Production wardrobe asset sheet, PHOTOREALISTIC photographs of five real medieval fantasy costumes on an invisible adult mannequin, no head, no skin, no hands, no background. Exactly FIVE garments in one horizontal row with generous equal transparent spacing, same frontal camera and adult shoulder proportions, from neckline to mid torso with both shoulders fully visible. Left to right: 1 coarse woven linen tunic with lace neck, 2 supple leather doublet with sewn seams, 3 simple modest travel dress with fitted bodice and natural folds, 4 padded quilted gambeson, 5 noble high collar robe with subtle embroidery. Entire set NEUTRAL GRAYSCALE for runtime dyeing. Extremely realistic cloth weave, leather pores, stitching, gravity and folds, soft light upper left. Absolutely NO painting, illustration, cartoon, rendered game icons, lettering or watermark. Transparent alpha background. Keep each item separate and centered in its fifth of the canvas; each neckline at same height. Wide landscape canvas, five equal panels, no panel borders.",
+      "originalPath": "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png",
+      "nativeSize": [
+        1983,
+        793
+      ],
+      "originalSha256": "07388108eec12afb6a70b3378faace231fb613c02429f7e65745ada7ff4d1719",
+      "sourceFile": "art/photorealistic/sources/outfit-atlas.webp",
+      "sourceSha256": "09fca9e5c875f935baeff72e95d76b572f211936f45304305c5fc6b249c8ad76",
+      "references": []
+    },
+    {
+      "id": "hair-short-atlas",
+      "prompt": "Photorealistic wig asset sheet for a medieval character creator: exactly THREE front-view short hairstyles for an invisible adult human head, isolated true transparent alpha, NO face, scalp skin, ears, neck, body or mannequin visible. Three equal panels in a horizontal row, same head scale and position. Left panel: short straight hair with natural side part; middle panel: short wavy hair with side part; right panel: short naturally curly hair. Hair silhouettes anatomically fit an adult head: crown and temple locks only; transparent opening below for forehead, eyes and face. Neutral silver-grey real hair for runtime recoloring; realistic individual fine strands, subtle flyaways, natural specular highlights, softly lit from upper left. Absolutely photographic, no painting, no brushwork, no illustration, no cartoon, no plastic CGI. Do not include any writing, symbols, borders or shadow cards. Entire crown fully visible with transparent margins. Original production asset, wide horizontal composition.",
+      "originalPath": "/workspace/generated_images/exec-ce65d533-69f0-400a-acd5-77deed3d57e1.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "a66f9af70d135d59d7571403fb1465e77c5b69ab4e870331e0aa433d48c9c931",
+      "sourceFile": "art/photorealistic/sources/hair-short-atlas.webp",
+      "sourceSha256": "58f4e15f22722ff03aa28afc8699007c12215345557f4695d9d2c7d1a6ea91c6",
+      "references": []
+    },
+    {
+      "id": "tavern-background",
+      "prompt": "Photorealistic environmental game background, a medieval tavern interior, authentic rough oak back wall and timber beams, small stone hearth on the right, leaded windows, warm candle and daylight illumination; worn dark honey oak floorboards. Real materials and camera-like lighting, high detail, realistic wear, no painterly or cartoon appearance, no illustration, no brushstrokes. Empty scene: NO people, animals, market stalls, tables, chairs, crates, loose props, training targets or foreground objects. Exact composition for a fixed 2D walking grid: canvas 2160x1440 LANDSCAPE 3:2, straight-on elevated orthographic camera with absolutely no perspective convergence; architecture and wall occupy the TOP 27 percent of the image, one level boundary running horizontally across the complete image; all remaining lower image is continuous walkable floor, no obstructions. Floor texture has even scale everywhere for a 12 column by 9 row grid; no visible grid lines. Light source upper left, soft shadows limited to architecture, no baked people shadows. Original invented medieval location, no real landmark, no text, signs, lettering or watermark. Natural restrained colors, not cinematic orange/teal grading. This is photographic realism, NOT a painting.",
+      "originalPath": "/workspace/generated_images/exec-71550587-a7d8-4ab9-bb2b-d6acd4bfddfc.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "8578bfa6e02deec8fae01b61fd1ff93725a44545c86365418b223ddac959b8f1",
+      "sourceFile": "art/photorealistic/sources/tavern-background.webp",
+      "sourceSha256": "bded54c93a16a3083b09af84a053b71c144ba1f9847ee20ee418311ff3cecd36",
+      "references": []
+    },
+    {
+      "id": "market-background",
+      "prompt": "Photorealistic environmental game background, an open medieval market square, modest half-timbered stone buildings across back edge, natural morning light, realistic warm grey worn cobblestone ground. Real materials and camera-like lighting, high detail, realistic wear, no painterly or cartoon appearance, no illustration, no brushstrokes. Empty scene: NO people, animals, market stalls, tables, chairs, crates, loose props, training targets or foreground objects. Exact composition for a fixed 2D walking grid: canvas 2160x1440 LANDSCAPE 3:2, straight-on elevated orthographic camera with absolutely no perspective convergence; architecture and wall occupy the TOP 29 percent of the image, one level boundary running horizontally across the complete image; all remaining lower image is continuous walkable floor, no obstructions. Floor texture has even scale everywhere for a 12 column by 9 row grid; no visible grid lines. Light source upper left, soft shadows limited to architecture, no baked people shadows. Original invented medieval location, no real landmark, no text, signs, lettering or watermark. Natural restrained colors, not cinematic orange/teal grading. This is photographic realism, NOT a painting.",
+      "originalPath": "/workspace/generated_images/exec-73c793ce-ec66-424a-a061-838fc3ec2fd4.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "ebed1a0bb57954db93f538f100b14faccd0b1c3646e33bbbc5635487d49fe0ba",
+      "sourceFile": "art/photorealistic/sources/market-background.webp",
+      "sourceSha256": "5c894c96d366c5b0eaa2ca911f75795ef7427303624e212632e6e362eeb9e942",
+      "references": []
+    },
+    {
+      "id": "barracks-background",
+      "prompt": "Photorealistic environmental game background, a medieval barracks training yard, weathered crenellated stone wall across the rear, pale clear sky above, subtle flag at rear wall; compacted sandy earth ground, natural midday daylight. Real materials and camera-like lighting, high detail, realistic wear, no painterly or cartoon appearance, no illustration, no brushstrokes. Empty scene: NO people, animals, market stalls, tables, chairs, crates, loose props, training targets or foreground objects. Exact composition for a fixed 2D walking grid: canvas 2160x1440 LANDSCAPE 3:2, straight-on elevated orthographic camera with absolutely no perspective convergence; architecture and wall occupy the TOP 27 percent of the image, one level boundary running horizontally across the complete image; all remaining lower image is continuous walkable floor, no obstructions. Floor texture has even scale everywhere for a 12 column by 9 row grid; no visible grid lines. Light source upper left, soft shadows limited to architecture, no baked people shadows. Original invented medieval location, no real landmark, no text, signs, lettering or watermark. Natural restrained colors, not cinematic orange/teal grading. This is photographic realism, NOT a painting.",
+      "originalPath": "/workspace/generated_images/exec-c8405026-1002-46b6-8d93-a051cc79e0ed.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "a55004fc371045cf9ecc79e45ab18527fa4c11a18de386cdfd49bc35cffc583e",
+      "sourceFile": "art/photorealistic/sources/barracks-background.webp",
+      "sourceSha256": "851cd20843f80eb9555c2fa6422f48cbf3f370268b8d36ff369d75803062a519",
+      "references": []
+    },
+    {
+      "id": "castle-background",
+      "prompt": "Photorealistic environmental game background, a medieval castle courtyard, weathered limestone curtain wall and central arched wooden gate across the rear, pale sky, subtle red/gold wall banners; large worn pale stone paving, natural midday daylight. Real materials and camera-like lighting, high detail, realistic wear, no painterly or cartoon appearance, no illustration, no brushstrokes. Empty scene: NO people, animals, market stalls, tables, chairs, crates, loose props, training targets or foreground objects. Exact composition for a fixed 2D walking grid: canvas 2160x1440 LANDSCAPE 3:2, straight-on elevated orthographic camera with absolutely no perspective convergence; architecture and wall occupy the TOP 31 percent of the image, one level boundary running horizontally across the complete image; all remaining lower image is continuous walkable floor, no obstructions. Floor texture has even scale everywhere for a 12 column by 9 row grid; no visible grid lines. Light source upper left, soft shadows limited to architecture, no baked people shadows. Original invented medieval location, no real landmark, no text, signs, lettering or watermark. Natural restrained colors, not cinematic orange/teal grading. This is photographic realism, NOT a painting.",
+      "originalPath": "/workspace/generated_images/exec-d3716cbf-213e-4107-a9d9-72a5fde619a6.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "7ce08e4033abec25ab2424d71db01dbac3808a578fbd94b35f0496248add9cbb",
+      "sourceFile": "art/photorealistic/sources/castle-background.webp",
+      "sourceSha256": "f0f8addbe3e5fcbb1cc882ce370db23afc6c726fefa3e676d216924a123ef09c",
+      "references": []
+    },
+    {
+      "id": "armor-atlas",
+      "prompt": "Photorealistic wardrobe asset sheet: exactly FOUR medieval armor upper torso overlays on invisible adult mannequins, in four equal horizontally spaced panels, true transparent background. No head, skin, body, hands or cloth underlayer; only armor. FRONT VIEW, same adult shoulder width and scale in all panels, neckline same height, full shoulders unclipped, crop at waist. LEFT TO RIGHT: stitched weathered brown leather cuirass with shoulder guards; authentic linked steel chainmail hauberk with coif collar; overlapping burnished steel scale cuirass; polished but weathered steel plate breastplate with articulated pauldrons, small brass rivets. Real physical armor detail, leather pores, metal micro scratches and realistic chain rings. Natural restrained material colors, soft light upper left. Absolutely NO painting, illustration, game icon stylization, cartoon or plastic CGI. No words, grid or watermark. Original invented objects, landscape wide canvas.",
+      "originalPath": "/workspace/generated_images/exec-c2313617-f60e-4db3-a714-5dec47103281.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "82d793118751b7a528711e23009f69d66b8efb4ad71db6a7da7b583e61a5599f",
+      "sourceFile": "art/photorealistic/sources/armor-atlas.webp",
+      "sourceSha256": "bd28a76dc1711e138ff7a5051dce55685f89aaebee059d99434ec7f67a0cea9e",
+      "references": []
+    },
+    {
+      "id": "cloak-atlas",
+      "prompt": "Photorealistic medieval cloak asset sheet on invisible adult mannequins: exactly THREE front-facing shoulder cloaks separated in three equal panels across a wide canvas. LEFT: heavy wool travel cloak with small front clasp and natural folds; CENTER: thick real-looking fur collar cloak; RIGHT: long elven travel cloak with raised hood framing an INVISIBLE head. True transparent alpha inside face/head opening and center chest opening; no person, skin, face, neck, hands, torso or background. Photographically real grey wool fibers and fur, all neutral grayscale for dyeing. Both shoulders and full hood crown visible and uncropped, adult proportions, matching neckline height, soft studio key light upper left. Not painting, not drawing, not cartoon, not CGI plastic. No lettering, labels or watermark.",
+      "originalPath": "/workspace/generated_images/exec-a166c4d7-35f4-4c6d-a419-63c1c9a48bea.png",
+      "nativeSize": [
+        1774,
+        887
+      ],
+      "originalSha256": "2c00a40615da63eb9e210eff18d25a0d5b953a2486ff8e8353f4032c1599416e",
+      "sourceFile": "art/photorealistic/sources/cloak-atlas.webp",
+      "sourceSha256": "40ddc60b0b13528c685be1c7e34ff35825df7f906b309b026e76d3ab573213a9",
+      "references": []
+    },
+    {
+      "id": "female-blank-base",
+      "prompt": "Create the BASE SKIN LAYER for a modular photorealistic adult face, by editing this exact supplied original adult photo. Preserve precisely the same frontal head silhouette, skull, ears, cheekbones, jaw, chin, neck, pore-level photographic skin texture, neutral grayscale values, scale, position, lighting from upper left and alpha background. REMOVE ONLY the eyes, irises, eyelashes, eyebrows, nose including nostrils, and mouth/lips: replace those feature areas with continuous naturally textured skin, gently lit and shaded to join the surrounding cheeks. It is deliberately a featureless modular base; separate eyes/nose/mouth layers will be added later. Do not leave any faint eye or lip shapes. Also remove the linen garment, leaving transparent pixels below the neck/upper collarbones; no torso or breasts. Keep visible adult scalp, face silhouette, ears and neck only. No painting, illustration, new character, new camera, marks or lettering. True transparent alpha outside skin; do not add any object. Maintain original image dimensions and exact head registration.",
+      "references": [
+        "/workspace/generated_images/exec-ed88fcc7-ed59-48fa-9b16-2a4008d071e5.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-bb189e72-496f-486d-9803-a8b1082b7863.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "8be4f7c19890394a3f73980e9c6b715ec13b8d9da0b4dd22ff6e8e77bc790b25",
+      "sourceFile": "art/photorealistic/sources/female-blank-base.webp",
+      "sourceSha256": "88466bfeed614ac258cccd9f501a7157ba9a637ec3a98ba1c27de06e235ebe12"
+    },
+    {
+      "id": "male-blank-base",
+      "prompt": "Create the BASE SKIN LAYER for a modular photorealistic adult face, by editing this exact supplied original adult photo. Preserve precisely the same frontal head silhouette, skull, ears, cheekbones, jaw, chin, neck, pore-level photographic skin texture, neutral grayscale values, scale, position, lighting from upper left and alpha background. REMOVE ONLY the eyes, irises, eyelashes, eyebrows, nose including nostrils, and mouth/lips: replace those feature areas with continuous naturally textured skin, gently lit and shaded to join the surrounding cheeks. It is deliberately a featureless modular base; separate eyes/nose/mouth layers will be added later. Do not leave any faint eye or lip shapes. Also remove the linen garment, leaving transparent pixels below the neck/upper collarbones; no torso or breasts. Keep visible adult scalp, face silhouette, ears and neck only. No painting, illustration, new character, new camera, marks or lettering. True transparent alpha outside skin; do not add any object. Maintain original image dimensions and exact head registration.",
+      "references": [
+        "/workspace/generated_images/exec-90f41c93-56d8-42f3-a8b6-5980e32b2734.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-ef412531-9e6f-4efc-85da-901b87594c82.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "b23180c3276f55a6bf2d01f2c94984d5d63ece9383b37aa7efabde2c736e72cc",
+      "sourceFile": "art/photorealistic/sources/male-blank-base.webp",
+      "sourceSha256": "8aea5643393854b1c7640a87f88a4a4207555998be7ca9cd98507bfcd4d0db34"
+    },
+    {
+      "id": "eyes-atlas",
+      "prompt": "Photorealistic modular face component asset sheet: FOUR PAIRS OF ADULT HUMAN EYES in four equally spaced horizontal panels, frontal view, each pair level with realistic inter-eye spacing. LEFT TO RIGHT: almond eyes, round eyes, narrow eyes, slightly upward slanted eyes. Only sclera, eyelids, thin natural lashes and tear ducts; iris centers can be normal grey since separate recolored irises are added later. NO eyebrows, nose, forehead, cheeks or face; true transparent alpha around each eye component. Natural sclera off-white, lids in neutral grayscale, realistic wet reflections and fine lashes, light from upper left. Real anatomical human eyes, age35+, no makeup or glamor, no cartoon, painting or illustration. No words, labels, borders or watermark. Wide landscape sheet with exact four equal panels, separated components.",
+      "originalPath": "/workspace/generated_images/exec-4887c8b2-070f-4fee-b97b-8e4306de3eb9.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "e840ec47de9a0a254d1791ed1d621fed10eba380e6037435623ace0c638a10b6",
+      "sourceFile": "art/photorealistic/sources/eyes-atlas.webp",
+      "sourceSha256": "d018846bd33731cef71cbabd251a3e9b5a3a7121aafca28f312f90bb235e289a",
+      "references": []
+    },
+    {
+      "id": "nose-atlas",
+      "prompt": "Photorealistic anatomical component asset sheet: FOUR ADULT HUMAN NOSES, exactly frontal view in four separated equal horizontal panels. Left to right: straight narrow nose; subtly aquiline nose; small slightly upturned nose; broad nose with natural wide alae. From bridge just below eyes to tip and nostrils, isolated with natural skin edges, NO eyes, eyebrows, mouth, cheeks or other facial parts. Neutral grayscale skin with photographic pores and subtle realistic shadows, soft light upper left, true transparent alpha outside each isolated nose. Natural adult anatomy, not caricatures, not painting, not illustration, not cartoon, no text or labels or borders. Identical bridge-top height in all four panels, complete nose fully visible.",
+      "originalPath": "/workspace/generated_images/exec-568cc771-db36-4342-aed8-a8d4dd469bd9.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "5d4f78e0de9179ebf8ef688701d1c23b7558afc9eb750de4e6a3b3c2bbb3f6e3",
+      "sourceFile": "art/photorealistic/sources/nose-atlas.webp",
+      "sourceSha256": "d5ee2c549906e2b66d11d0939ad302769feeb829c6de78cbb22c8f738ec4b897",
+      "references": []
+    },
+    {
+      "id": "mouth-atlas",
+      "prompt": "Photorealistic modular adult mouth component asset sheet, exactly FOUR frontal-view mouths in FOUR equal horizontally spaced panels, same scale. Left to right expressions: neutral calm closed lips; warm subtle closed-lip smile with raised corners; serious closed lips with slightly downturned corners; determined firmly pressed lips. Natural ADULT lips, realistic lip creases and soft highlights, no lipstick, no beard, NO nose, teeth, eyes, cheeks, chin or surrounding face. Isolate only the lips, mouth line and tiny naturally fading edge. Neutral grayscale for runtime skin/lip tint. True transparent background, high detail photographic surface, upper-left soft key light, not painting, not illustration, not cartoon. No labels, lettering, borders or watermark.",
+      "originalPath": "/workspace/generated_images/exec-78ea3aaa-aafb-45dd-9403-16a864ab26c6.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "e4e04932f96099a423e74de2aaa04cb8647efb8d2e6e5c2fb2211dec9b8295ee",
+      "sourceFile": "art/photorealistic/sources/mouth-atlas.webp",
+      "sourceSha256": "6caffa7b4d73d68501c1a8be81ea9bc7052abb85b994996e2b2f12f94df63eab",
+      "references": []
+    },
+    {
+      "id": "brows-atlas",
+      "prompt": "Photorealistic eyebrow component asset sheet. Exactly FOUR pairs of eyebrows in four equal horizontal panels: straight; naturally arched; bushy thick; fine thin. Each pair perfectly front-facing, same adult inter-brow distance, realistic individual neutral silver-grey hairs for recoloring, NO skin, eyes, forehead or face, completely transparent true alpha background. Natural grown eyebrow hair, soft studio lighting from upper left, no makeup, adult anatomy. Do not draw, paint or cartoon. No words, grids, labels or watermark, no eyebrows touching panel boundaries.",
+      "originalPath": "/workspace/generated_images/exec-f746b073-def2-4d3d-9575-c865ce0d9e0c.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "fcd043224e5ac6e8b7852c720bed10de1dc025a369cd420ee11ed4aa39c242d8",
+      "sourceFile": "art/photorealistic/sources/brows-atlas.webp",
+      "sourceSha256": "c10d90fc5eefd671dc9edda1b07e79a050e0dd084cac7a078175f28e8e32b249",
+      "references": []
+    },
+    {
+      "id": "female-bases-atlas",
+      "prompt": "Using this supplied original photorealistic featureless ADULT female skin base, make a production sheet of exactly FIVE different female face silhouettes in FIVE equal horizontal panels, same scale, straight frontal camera and eye-plane height. Keep them featureless: NO eyes, eyebrows, nose, mouth, hair or garments. Five adult face SHAPES left-to-right: oval; round and broad; angular strong jaw; heart-shaped broad forehead and tapered chin; long narrow face. Preserve photographic pore-level skin, ears and neck, neutral grayscale, lighting upper left, true transparent alpha outside each head. The shapes must be visibly distinct in jaw, cheek and skull contours while keeping natural adult proportions; not caricatures. Full scalp, both ears and neck visible in every panel. No breasts or torso, modest cropped base neck only. Same layout in every panel, all five heads completely separated, no overlap, no lettering, borders or watermark. Wide landscape production sheet; absolutely no painting or illustration.",
+      "references": [
+        "/workspace/generated_images/exec-bb189e72-496f-486d-9803-a8b1082b7863.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-31cb1cc0-e049-46b1-9dfe-40200b1025e2.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "ae6bf7e77b2f9740f51242598daa44d1d358fa622bedaca4ac373da5f4f935e2",
+      "sourceFile": "art/photorealistic/sources/female-bases-atlas.webp",
+      "sourceSha256": "b9d81834eb281ebaa1fe6031b006488e8c51033652173bc8cfc763d0882cb154"
+    },
+    {
+      "id": "male-bases-atlas",
+      "prompt": "Using this supplied original photorealistic featureless ADULT male skin base, make a production sheet of exactly FIVE different male face silhouettes in FIVE equal horizontal panels, same scale, straight frontal camera and eye-plane height. Keep them featureless: NO eyes, eyebrows, nose, mouth, hair or garments. Five adult face SHAPES left-to-right: oval; round and broad; angular strong jaw; heart-shaped broad forehead and tapered chin; long narrow face. Preserve photographic pore-level skin, ears and neck, neutral grayscale, lighting upper left, true transparent alpha outside each head. The shapes must be visibly distinct in jaw, cheek and skull contours while keeping natural adult proportions; not caricatures. Full scalp, both ears and neck visible in every panel. No breasts or torso, modest cropped base neck only. Same layout in every panel, all five heads completely separated, no overlap, no lettering, borders or watermark. Wide landscape production sheet; absolutely no painting or illustration.",
+      "references": [
+        "/workspace/generated_images/exec-ef412531-9e6f-4efc-85da-901b87594c82.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-249ea4c9-159a-48c3-95b2-2ba6fb0816c2.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "58e9e185fac4f212feacfea82427373371b2f13dde7387df2a4e8ebdccb680e0",
+      "sourceFile": "art/photorealistic/sources/male-bases-atlas.webp",
+      "sourceSha256": "a0a95962d668194374d58f57aec8910b02e31063df04b391e71c1ed5981e01ca"
+    },
+    {
+      "id": "hair-1-atlas",
+      "prompt": "PHOTOREALISTIC wig production sheet, exactly THREE separate wigs across THREE equal horizontal panels, front view of an invisible ADULT human head. Hairstyle in ALL three panels: medium length hair with a deep side part, swept neatly to either side. LEFT panel straight texture, MIDDLE wavy texture, RIGHT curly texture. Only real-looking neutral silver-grey hair, scalp and face openings entirely transparent, NO skin, face, ears, neck, shoulders or mannequin. Full crown, both sides and complete length visible inside each panel with generous transparent gutters; no touching adjacent panels. Scale identical, camera and upper-left soft key light identical, believable natural hair growth and individual fibers, no plastic appearance. True transparent alpha background. Absolutely NO painted look, brushstrokes, drawing, illustration, cartoon, labels, writing, borders or watermark. Wide horizontal layout, 3:1 aspect ratio. Each wig centered in its own third.",
+      "originalPath": "/workspace/generated_images/exec-9133df78-4dd1-4dba-85da-026c10e94ec4.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "8a97bf94f391c60f1e29364345f11aaa419d6cfced21774a36fdc5ec9031cc80",
+      "sourceFile": "art/photorealistic/sources/hair-1-atlas.webp",
+      "sourceSha256": "4e536180b9375aa44a62a7a9c44cfb931eca7ed88a6a5d2f906bca15e45e13c5",
+      "references": []
+    },
+    {
+      "id": "hair-2-atlas",
+      "prompt": "PHOTOREALISTIC wig production sheet, exactly THREE separate wigs across THREE equal horizontal panels, front view of an invisible ADULT human head. Hairstyle in ALL three panels: long loose hair reaching the shoulders, with an open center part and side locks framing an invisible face. LEFT panel straight texture, MIDDLE wavy texture, RIGHT curly texture. Only real-looking neutral silver-grey hair, scalp and face openings entirely transparent, NO skin, face, ears, neck, shoulders or mannequin. Full crown, both sides and complete length visible inside each panel with generous transparent gutters; no touching adjacent panels. Scale identical, camera and upper-left soft key light identical, believable natural hair growth and individual fibers, no plastic appearance. True transparent alpha background. Absolutely NO painted look, brushstrokes, drawing, illustration, cartoon, labels, writing, borders or watermark. Wide horizontal layout, 3:1 aspect ratio. Each wig centered in its own third.",
+      "originalPath": "/workspace/generated_images/exec-b86ce02f-5589-465a-893d-64d731fc7af7.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "f29de70408ca91d044f1ee799eb6d4e2ea617635ab6d4ed2ae81d053a24cfcff",
+      "sourceFile": "art/photorealistic/sources/hair-2-atlas.webp",
+      "sourceSha256": "30dafcdc2334e41931983eed8a8fca75ea8ef39bf4b6bbd13cab42b84a70cce5",
+      "references": []
+    },
+    {
+      "id": "hair-3-atlas",
+      "prompt": "PHOTOREALISTIC wig production sheet, exactly THREE separate wigs across THREE equal horizontal panels, front view of an invisible ADULT human head. Hairstyle in ALL three panels: hair swept back from forehead into a clearly visible high ponytail behind the invisible head. LEFT panel straight texture, MIDDLE wavy texture, RIGHT curly texture. Only real-looking neutral silver-grey hair, scalp and face openings entirely transparent, NO skin, face, ears, neck, shoulders or mannequin. Full crown, both sides and complete length visible inside each panel with generous transparent gutters; no touching adjacent panels. Scale identical, camera and upper-left soft key light identical, believable natural hair growth and individual fibers, no plastic appearance. True transparent alpha background. Absolutely NO painted look, brushstrokes, drawing, illustration, cartoon, labels, writing, borders or watermark. Wide horizontal layout, 3:1 aspect ratio. Each wig centered in its own third.",
+      "originalPath": "/workspace/generated_images/exec-0204d69f-5745-43ab-867f-fc0a748f9a93.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "abbfa19b7c6f7780ec08be88d4218edbfa6dd9039cb177bb89bfbe5537f0a313",
+      "sourceFile": "art/photorealistic/sources/hair-3-atlas.webp",
+      "sourceSha256": "06be588af37126e1b1d80f39143e336f6209e8e169985ed3ce80a6b601670a06",
+      "references": []
+    },
+    {
+      "id": "hair-4-atlas",
+      "prompt": "PHOTOREALISTIC wig production sheet, exactly THREE separate wigs across THREE equal horizontal panels, front view of an invisible ADULT human head. Hairstyle in ALL three panels: hair swept up into a large bun at the back/top of the head, with a few natural temple wisps. LEFT panel straight texture, MIDDLE wavy texture, RIGHT curly texture. Only real-looking neutral silver-grey hair, scalp and face openings entirely transparent, NO skin, face, ears, neck, shoulders or mannequin. Full crown, both sides and complete length visible inside each panel with generous transparent gutters; no touching adjacent panels. Scale identical, camera and upper-left soft key light identical, believable natural hair growth and individual fibers, no plastic appearance. True transparent alpha background. Absolutely NO painted look, brushstrokes, drawing, illustration, cartoon, labels, writing, borders or watermark. Wide horizontal layout, 3:1 aspect ratio. Each wig centered in its own third.",
+      "originalPath": "/workspace/generated_images/exec-8297e611-2c82-4873-a042-ba5fdaa32b30.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "431cc91dfb077943a7742a19c4725eff3fda2d3847a2fcc936b6541f15c41f0e",
+      "sourceFile": "art/photorealistic/sources/hair-4-atlas.webp",
+      "sourceSha256": "ad229a12085380de33af0ad0fc7742b90004592375dcdef51a87f3711528ed75",
+      "references": []
+    },
+    {
+      "id": "hair-5-atlas",
+      "prompt": "Photorealistic wig asset sheet on transparent alpha: THREE adult braided hairstyles across three equal horizontal panels, front view of an invisible head. Left straight hair gathered into two long simple braids; middle wavy hair with a woven braid crown and one braid over the shoulder; right curly hair with tightly braided temples and a long braid. No face, scalp skin, ears, neck, body or mannequin. Neutral silver-grey real hair for recoloring, real individual fibers and soft light upper left. Complete crown and all braids visible, large clear transparent margin on all sides and between wigs, no clipping. Only hair. No painting, illustration, cartoon, plastic, words, labels, borders or watermark. Wide 3:1 layout.",
+      "originalPath": "/workspace/generated_images/exec-58c66b39-c4f1-4da3-a100-3cfdad25a69f.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "e4a50e87fa6ff0b82412bba4c28017c5224c5061cac4c2b067c30fa8fe4a84aa",
+      "sourceFile": "art/photorealistic/sources/hair-5-atlas.webp",
+      "sourceSha256": "2a5675238d1a5575608283a48ab226bf9ff86edbb41ff150329be06c42c72b0a",
+      "references": []
+    },
+    {
+      "id": "hair-6-atlas",
+      "prompt": "Photorealistic wig asset sheet: exactly THREE wild tousled adult hairstyles in three equal horizontal panels, straight frontal view, invisible adult head, no face or skin or neck or body. Left wild STRAIGHT shaggy hair; center untamed WAVY hair; right natural densely CURLY hair. All neutral silver-grey hair for recoloring, same head size, upper-left soft key light. Full crown and sides uncropped with generous transparent space, messy individual flyaways, realistic human hair strands, not plastic. True transparent alpha everywhere else. No background, drawing, painting, cartoon, words, borders or watermark.",
+      "originalPath": "/workspace/generated_images/exec-beda8259-13cc-42c7-8c51-8808d64fa802.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "a72b151e14e6a313dcac86332e8af56c1164c2dc9c38eafc7ae7ad06de7b2221",
+      "sourceFile": "art/photorealistic/sources/hair-6-atlas.webp",
+      "sourceSha256": "234e0cb824206381d9e47589373a57c514220a83ace794a833d5e4e4c2e8baf2",
+      "references": []
+    },
+    {
+      "id": "beard-atlas",
+      "prompt": "Photorealistic facial-hair asset sheet: FOUR separate adult beard overlays in four equal horizontal panels, straight frontal view with an invisible adult face, no skin, lips, eyes, nose, head or background. Left fine short STUBBLE along cheek and chin contour; second a GOATEE with small mustache and chin tuft; third a trimmed FULL BEARD and mustache with transparent mouth opening; fourth a LONG flowing beard with mustache and transparent mouth opening. Neutral silver-grey hair for runtime recoloring, realistic fine hairs and believable adult jaw contours, full beard tips visible, light upper left, true transparent alpha background. Not painting, illustration, cartoon or game icons. No lettering, labels, frames or watermark.",
+      "originalPath": "/workspace/generated_images/exec-a0ede2f2-f823-4fd8-b1b6-55cdd9216937.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "fc67c4197acf9eb841de3b994a9b00417d658d0b9ae29e1d6a950c1dbb2a4cc2",
+      "sourceFile": "art/photorealistic/sources/beard-atlas.webp",
+      "sourceSha256": "dd850a30612261549b698fe13a11c376cf13367426d66d8bd95cc47f0605394a",
+      "references": []
+    },
+    {
+      "id": "marks-atlas",
+      "prompt": "Photorealistic skin overlay production sheet, exactly SEVEN small separated components in SEVEN equal horizontal panels on TRUE transparent alpha, no skin patches or body. LEFT TO RIGHT: four subtle HEALED OLD SCARS, not fresh wounds: thin diagonal raised cheek scar, thin vertical brow/eye-area scar, short horizontal forehead scar, small diagonal chin scar. Then three faded dark tattoo ink overlays: thin angular tribal linework, delicate elven vine, small simple fortified-wall sigil. Realistic irregular scar edges with subtle desaturated pink-grey highlight and shadow; tattoos restrained charcoal ink with naturally softened edges. No blood, no injury, no writing, no numbers, labels, guide lines, borders or watermark. Natural photographic surface, not painted or cartoon. Very wide horizontal sheet with seven separated panels.",
+      "originalPath": "/workspace/generated_images/exec-7a566f45-0d8a-44e4-9065-88e49b0aa7af.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "71e707a4223581949acd4d9d27b14b11a2aba5f58abbda5e97ac17a53551f42f",
+      "sourceFile": "art/photorealistic/sources/marks-atlas.webp",
+      "sourceSha256": "237d970e102cfacc4886809e37858566aeb76862c09f4d35c3b7e18d1c7cbe1f",
+      "references": []
+    },
+    {
+      "id": "brows-transparent",
+      "prompt": "Edit this eyebrow production sheet: KEEP the same FOUR eyebrow pairs in the same FOUR ROWS and at the same exact positions, keep all fine hair detail and neutral grayscale. REMOVE the ENTIRE grey blurred background completely. ONLY the individual eyebrow hairs remain visible with natural alpha edges; every pixel between and around the brows must be fully transparent, not a grey gradient, not smoke, not a drop shadow, not skin. No other changes. Output true alpha transparency. These are detached realistic eyebrow hair components on empty transparency, not a photograph of a background.",
+      "references": [
+        "/workspace/generated_images/exec-f746b073-def2-4d3d-9575-c865ce0d9e0c.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-1f272c2f-c4f8-4d0e-b204-72b1b8bc12cc.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "c3a026ae3c1b85a5e66157803cb1c91a8c86ab2b89bd64c614c555f79e616cd0",
+      "sourceFile": "art/photorealistic/sources/brows-transparent.webp",
+      "sourceSha256": "1624f2142e64e7c1ddb9bbaec09762a7ce05378b33cf90cafc8c99c647b84d62"
+    },
+    {
+      "id": "body-female-0-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult WOMAN age35 with slim slender natural adult build. Natural human proportions and real skin pores, bald head, no hair or jewelry, no makeup. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on the ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Keep face and torso facing camera in all six, no side or back views. Same camera, same physical scale and same floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect 3:4, target2304x3072.",
+      "originalPath": "/workspace/generated_images/exec-90714f5c-d076-48f5-8153-c756178549e2.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "42faeaae89349dccbdd5ae77008d126f2d3185e27181bf4a9f6665754bc4940c",
+      "sourceFile": "art/photorealistic/sources/body-female-0-atlas.webp",
+      "sourceSha256": "dbf014bbf4b307c27d13fa8fb94e0ec972214801c328821c7f8fe0c8fc856d63",
+      "references": []
+    },
+    {
+      "id": "body-female-1-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult WOMAN age35 with athletic fit natural adult build. Natural human proportions and real skin pores, bald head, no hair or jewelry, no makeup. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on the ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Keep face and torso facing camera in all six, no side or back views. Same camera, same physical scale and same floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect 3:4, target2304x3072.",
+      "originalPath": "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "d184766a0ca8f55f5e5596d4d1748a7ec2f41318c54591bd7adc8015b13469c3",
+      "sourceFile": "art/photorealistic/sources/body-female-1-atlas.webp",
+      "sourceSha256": "5a8ad9839357d7fa3a645f9cdf7bc60bcc32907fa4f765eb050a79d73557e7c9",
+      "references": []
+    },
+    {
+      "id": "body-female-2-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult WOMAN age35 with strong broad-shouldered muscular natural adult build. Natural human proportions and real skin pores, bald head, no hair or jewelry, no makeup. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on the ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Keep face and torso facing camera in all six, no side or back views. Same camera, same physical scale and same floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect 3:4, target2304x3072.",
+      "originalPath": "/workspace/generated_images/exec-9cb4eaa3-5c50-4ad0-bffc-b1f7d6e77272.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "cd69bd44bc10cbddd1d79d93e3def80f93335b4eec8344f190aa049ab598c916",
+      "sourceFile": "art/photorealistic/sources/body-female-2-atlas.webp",
+      "sourceSha256": "47c004e995be9ccdcfce57bc2ecc9dea9ab3149dd34478bb3e919afe2ee3488a",
+      "references": []
+    },
+    {
+      "id": "body-female-3-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult WOMAN age35 with stocky broad natural adult build. Natural human proportions and real skin pores, bald head, no hair or jewelry, no makeup. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on the ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Keep face and torso facing camera in all six, no side or back views. Same camera, same physical scale and same floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect 3:4, target2304x3072.",
+      "originalPath": "/workspace/generated_images/exec-ba0d919f-68e0-4196-b81d-19fcb44a50fb.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "9a9752a86569da162cda3ea260b2fb6b9553ed0ba620f7c7ae02df03ce0792e5",
+      "sourceFile": "art/photorealistic/sources/body-female-3-atlas.webp",
+      "sourceSha256": "e678a843877eb05684bb8a4d4bd8edf50da227dbbff9f557cfe2125153823cf7",
+      "references": []
+    },
+    {
+      "id": "body-male-0-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult MAN age38 with slim slender natural adult build. Natural human proportions and real skin pores, bald head, clean shaven, no jewelry. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Face and torso face camera in all six, no side or back views. Same camera, physical scale and floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect3:4, target2304x3072.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-16448fb3-b116-4319-b212-d75df6b82a4e.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "8af5df3aa60037bb2b4e21200706c941c3eb73283e81fa66d0a29c7b93670f9a",
+      "sourceFile": "art/photorealistic/sources/body-male-0-atlas.webp",
+      "sourceSha256": "7df19182b73ab519cae0ee4400e369a2e71820f21ce27d20d80b37ea4fdc075d"
+    },
+    {
+      "id": "body-male-1-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult MAN age38 with athletic fit natural adult build. Natural human proportions and real skin pores, bald head, clean shaven, no jewelry. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Face and torso face camera in all six, no side or back views. Same camera, physical scale and floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect3:4, target2304x3072.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-ba3c2384-fc50-4b50-8a40-eab2f8d89c60.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "4059ba32d0e397c4e580c275dcd9729381ca5a9911e00e4eb46f6da6b74c401d",
+      "sourceFile": "art/photorealistic/sources/body-male-1-atlas.webp",
+      "sourceSha256": "7d6a3612dae82e2f7473ac79437138096f0be23f9434e7ee7d67c7a5b1a5c81e"
+    },
+    {
+      "id": "body-male-2-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult MAN age38 with strong broad-shouldered muscular natural adult build. Natural human proportions and real skin pores, bald head, clean shaven, no jewelry. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Face and torso face camera in all six, no side or back views. Same camera, physical scale and floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect3:4, target2304x3072.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-477d6a02-7fa2-4480-8094-abb7bae877d5.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "270f85dd57b803b9fa6046f8c5565eacb1bcaa2305341ec167f445b2580263c6",
+      "sourceFile": "art/photorealistic/sources/body-male-2-atlas.webp",
+      "sourceSha256": "75dc0559e4d477ae3f7c6efa3d4db6b3b6f514de2d01a962bf353b1ac345d840"
+    },
+    {
+      "id": "body-male-3-atlas",
+      "prompt": "PHOTOREALISTIC production motion sheet, SIX photographs of the SAME fictional adult MAN age38 with stocky broad natural adult build. Natural human proportions and real skin pores, bald head, clean shaven, no jewelry. Modest neutral-grey close fitting sleeveless linen under-tunic and fitted knee-length shorts, bare hands and bare feet. Entire image neutral grayscale for recoloring. EXACTLY THREE columns by TWO rows, six equal cells, each complete figure separate with clear transparent gutters. Reading order: top-left relaxed standing FRONT VIEW with arms at sides; top-middle sitting FRONT VIEW on an invisible chair, thighs horizontal and knees bent, both feet on ground; top-right walking cycle FRONT VIEW left leg forward and right arm forward; bottom-left walking passing pose left heel lifted and arms passing; bottom-middle walking FRONT VIEW right leg forward and left arm forward; bottom-right opposite passing pose right heel lifted. Face and torso face camera in all six, no side or back views. Same camera, physical scale and floor height WITHIN EACH CELL, seated head naturally lower. Complete head, fingers and soles visible, no clipping, no actual chair or floor, no ground shadows, true transparent alpha background. Soft light upper left, photographic capture, NO painting, illustration, cartoon, brushwork or plastic CGI. No labels, text, numbers, borders or watermark. Portrait sheet aspect3:4, target2304x3072.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-00d66fff-5db6-4866-b2ce-da86e756bf8e.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "fa848d0f10db028ecdcbaacf7a650064d1f6f7aea4a1bffba8651d314ae6da11",
+      "sourceFile": "art/photorealistic/sources/body-male-3-atlas.webp",
+      "sourceSha256": "15b9ba3badf8c1988095f0a660f326d75d0d46c1ef7858a036e3f0bceb3e4eb3"
+    },
+    {
+      "id": "figure-outfit-0-atlas",
+      "prompt": "Produce a PHOTOREALISTIC CLOTHING-ONLY layer sheet, using the FIRST reference solely for exact six-pose camera and layout and the SECOND reference for the garment material/design. Outfit: coarse woven medieval linen tunic with laced neckline, simple belt, full-length wool trousers and practical leather ankle boots. Exactly SIX complete clothing sets in THREE columns and TWO rows matching the reference poses: standing; sitting on an invisible seat; left-leg-forward walking; left passing; right-leg-forward walking; right passing. Preserve the same pose positions, physical scale and foot contact height in each panel as reference1, so these clothes overlay its body. REMOVE ALL human skin, head, hair, neck, hands, face and feet; leave empty transparent openings, only garments, trousers/skirt and BOOTS remain, on invisible adult mannequins. No extra objects, chair, floor or shadows. Entire clothing neutral grayscale for dyeing, real fabric weave/leather pores/stitching, convincing physical folds for each pose, soft upper-left light. Complete sleeves, boots and hems visible. No painting, drawing, illustration, cartoon, plastic CGI, text, labels, grid or watermark. True alpha background. Portrait 3:4 sheet with exactly six evenly separated cells.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-847675d7-743e-440f-963d-9ca5d0fa25bb.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "69f3bc81b87c2e70bbc5b87836a5d6c6e546d4bc667dafbbbc170272dde61cdf",
+      "sourceFile": "art/photorealistic/sources/figure-outfit-0-atlas.webp",
+      "sourceSha256": "59ab724717d9d6dc0663d28c187c4731660aa05115aa9936bac0e8d8d1f7c0c7"
+    },
+    {
+      "id": "figure-outfit-1-atlas",
+      "prompt": "Produce a PHOTOREALISTIC CLOTHING-ONLY layer sheet, using the FIRST reference solely for exact six-pose camera and layout and the SECOND reference for the garment material/design. Outfit: medieval leather travel doublet over long linen sleeves, belt, full-length fitted trousers and tall leather boots. Exactly SIX complete clothing sets in THREE columns and TWO rows matching the reference poses: standing; sitting on an invisible seat; left-leg-forward walking; left passing; right-leg-forward walking; right passing. Preserve the same pose positions, physical scale and foot contact height in each panel as reference1, so these clothes overlay its body. REMOVE ALL human skin, head, hair, neck, hands, face and feet; leave empty transparent openings, only garments, trousers/skirt and BOOTS remain, on invisible adult mannequins. No extra objects, chair, floor or shadows. Entire clothing neutral grayscale for dyeing, real fabric weave/leather pores/stitching, convincing physical folds for each pose, soft upper-left light. Complete sleeves, boots and hems visible. No painting, drawing, illustration, cartoon, plastic CGI, text, labels, grid or watermark. True alpha background. Portrait 3:4 sheet with exactly six evenly separated cells.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-2abcb381-5299-4e60-a570-df741867586e.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "0d7ed79ad7b4074a96248771ae32bc80f627a970664b5ce2f8c5763a8bcfec33",
+      "sourceFile": "art/photorealistic/sources/figure-outfit-1-atlas.webp",
+      "sourceSha256": "9bcc43b65eeb7e200b31fa6fe8202901aca8fbfa3f0921865a21fbd464eee8ef"
+    },
+    {
+      "id": "figure-outfit-2-atlas",
+      "prompt": "Produce a PHOTOREALISTIC CLOTHING-ONLY layer sheet, using the FIRST reference solely for exact six-pose camera and layout and the SECOND reference for the garment material/design. Outfit: modest medieval travel dress/long tunic with long sleeves, a simple narrow belt, folded skirt to mid-calf and practical leather boots. Exactly SIX complete clothing sets in THREE columns and TWO rows matching the reference poses: standing; sitting on an invisible seat; left-leg-forward walking; left passing; right-leg-forward walking; right passing. Preserve the same pose positions, physical scale and foot contact height in each panel as reference1, so these clothes overlay its body. REMOVE ALL human skin, head, hair, neck, hands, face and feet; leave empty transparent openings, only garments, trousers/skirt and BOOTS remain, on invisible adult mannequins. No extra objects, chair, floor or shadows. Entire clothing neutral grayscale for dyeing, real fabric weave/leather pores/stitching, convincing physical folds for each pose, soft upper-left light. Complete sleeves, boots and hems visible. No painting, drawing, illustration, cartoon, plastic CGI, text, labels, grid or watermark. True alpha background. Portrait 3:4 sheet with exactly six evenly separated cells.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-127a5bc7-58ec-4d8f-8355-42908f1c5349.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "3f66ed81e2c6b3ea46b22496a1f1b55e9f41529afb21c7d6184583cf4418d133",
+      "sourceFile": "art/photorealistic/sources/figure-outfit-2-atlas.webp",
+      "sourceSha256": "9a66c2346dbf1c327b49012a2681a96312269edb063c063e4af813924eb97671"
+    },
+    {
+      "id": "figure-outfit-3-atlas",
+      "prompt": "Produce a PHOTOREALISTIC CLOTHING-ONLY layer sheet, using the FIRST reference solely for exact six-pose camera and layout and the SECOND reference for the garment material/design. Outfit: medieval quilted gambeson with long sleeves, plain belt, full-length trousers and sturdy leather boots. Exactly SIX complete clothing sets in THREE columns and TWO rows matching the reference poses: standing; sitting on an invisible seat; left-leg-forward walking; left passing; right-leg-forward walking; right passing. Preserve the same pose positions, physical scale and foot contact height in each panel as reference1, so these clothes overlay its body. REMOVE ALL human skin, head, hair, neck, hands, face and feet; leave empty transparent openings, only garments, trousers/skirt and BOOTS remain, on invisible adult mannequins. No extra objects, chair, floor or shadows. Entire clothing neutral grayscale for dyeing, real fabric weave/leather pores/stitching, convincing physical folds for each pose, soft upper-left light. Complete sleeves, boots and hems visible. No painting, drawing, illustration, cartoon, plastic CGI, text, labels, grid or watermark. True alpha background. Portrait 3:4 sheet with exactly six evenly separated cells.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-821a5da2-d8e2-4657-94ab-eb9b52395571.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "f3e323e66b5b0ae379a83e8aa265b7d65b3ff57d21e5ebe3552d755f519c172f",
+      "sourceFile": "art/photorealistic/sources/figure-outfit-3-atlas.webp",
+      "sourceSha256": "309569ebec56598645d8565b40bf31f0569aa4021ad1289a3004931d708c1989"
+    },
+    {
+      "id": "figure-outfit-4-atlas",
+      "prompt": "Produce a PHOTOREALISTIC CLOTHING-ONLY layer sheet, using the FIRST reference solely for exact six-pose camera and layout and the SECOND reference for the garment material/design. Outfit: medieval noble high-collar long robe with subtle embroidered trim, long sleeves, belt, restrained long folds and leather boots. Exactly SIX complete clothing sets in THREE columns and TWO rows matching the reference poses: standing; sitting on an invisible seat; left-leg-forward walking; left passing; right-leg-forward walking; right passing. Preserve the same pose positions, physical scale and foot contact height in each panel as reference1, so these clothes overlay its body. REMOVE ALL human skin, head, hair, neck, hands, face and feet; leave empty transparent openings, only garments, trousers/skirt and BOOTS remain, on invisible adult mannequins. No extra objects, chair, floor or shadows. Entire clothing neutral grayscale for dyeing, real fabric weave/leather pores/stitching, convincing physical folds for each pose, soft upper-left light. Complete sleeves, boots and hems visible. No painting, drawing, illustration, cartoon, plastic CGI, text, labels, grid or watermark. True alpha background. Portrait 3:4 sheet with exactly six evenly separated cells.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-40bcdcd9-a886-4ab3-b161-84b83313a27d.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-b018b37c-09c6-410f-9a55-0268de3029da.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "33a4e1f9b37a601c1d90eb6f9cadd0d7c3c0c44dc87e2beeb90a3bff1b87f3eb",
+      "sourceFile": "art/photorealistic/sources/figure-outfit-4-atlas.webp",
+      "sourceSha256": "884f997c99962ba2848046e95efdd7af44c5ffb572f59260af7e5e17e35f0086"
+    },
+    {
+      "id": "tavern-props-atlas",
+      "prompt": "PHOTOREALISTIC environment prop sheet for a medieval walking game. EXACTLY 5 isolated, completely SEPARATED real-looking objects in 5 equal horizontal panels, left-to-right: 1: long rustic oak bar counter with a visible worn top and paneled front; 2: round oak tavern table on stout legs; 3: short round wooden stool; 4: single iron-banded oak beer barrel; 5: narrow wooden staircase rising backward to the right with a handrail. All front facing, slightly elevated camera about 20 degrees down so tops are visible, same camera, soft light upper left, correct materials and gravity. Fully visible including feet/top with generous transparent margins and gaps; do not overlap objects or combine them. True transparent alpha background, no ground or floor plate, no people, no animals, no lettering, no signs, no labels, no numbers, borders or watermark. Very realistic wood grain, stone, fabric and metal wear; natural restrained colors. Absolutely no drawing, painted look, brushstrokes, illustration, cartoon or plastic game icons. Wide landscape sheet.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-a053fb4e-69f0-43a8-9c80-07261b88de21.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "dc1fc7b54c3216e3aee0e858a8d8b3872c800bb1fdaa61d0c96ba8c8b87f9c2f",
+      "sourceFile": "art/photorealistic/sources/tavern-props-atlas.webp",
+      "sourceSha256": "3554fcd6e2b54a6b9fc7b9bd1172dde1b99ad8121f3e8eb7c4af064d62f14963"
+    },
+    {
+      "id": "market-props-atlas",
+      "prompt": "PHOTOREALISTIC environment prop sheet for a medieval walking game. EXACTLY 4 isolated, completely SEPARATED real-looking objects in 4 equal horizontal panels, left-to-right: 1: smith stall with red and cream striped awning, timber counter and a few tools; 2: general merchant stall with blue and cream striped awning and a few pots; 3: herbalist stall with green and cream striped awning and herbs on counter; 4: single closed wooden crate. All front facing, slightly elevated camera about 20 degrees down so tops are visible, same camera, soft light upper left, correct materials and gravity. Fully visible including feet/top with generous transparent margins and gaps; do not overlap objects or combine them. True transparent alpha background, no ground or floor plate, no people, no animals, no lettering, no signs, no labels, no numbers, borders or watermark. Very realistic wood grain, stone, fabric and metal wear; natural restrained colors. Absolutely no drawing, painted look, brushstrokes, illustration, cartoon or plastic game icons. Wide landscape sheet.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-629d17a8-98b1-4bd4-8079-2970b5b8ced5.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "3e8caab2901ccafcde8ed60a18b551f7ed8e8c7b9a5487e0375ffdb7426c291f",
+      "sourceFile": "art/photorealistic/sources/market-props-atlas.webp",
+      "sourceSha256": "d9e8e4d0c59f054aa16e6306242b3f579be4624c0d68265e0d6252fb0d9ff96d"
+    },
+    {
+      "id": "barracks-props-atlas",
+      "prompt": "PHOTOREALISTIC environment prop sheet for a medieval walking game. EXACTLY 5 isolated, completely SEPARATED real-looking objects in 5 equal horizontal panels, left-to-right: 1: straw training dummy on a wooden stand; 2: round red-and-cream archery target on wooden legs; 3: rack holding several simple spears upright; 4: small plain wooden bench; 5: wooden vaulting training horse with a leather saddle. All front facing, slightly elevated camera about 20 degrees down so tops are visible, same camera, soft light upper left, correct materials and gravity. Fully visible including feet/top with generous transparent margins and gaps; do not overlap objects or combine them. True transparent alpha background, no ground or floor plate, no people, no animals, no lettering, no signs, no labels, no numbers, borders or watermark. Very realistic wood grain, stone, fabric and metal wear; natural restrained colors. Absolutely no drawing, painted look, brushstrokes, illustration, cartoon or plastic game icons. Wide landscape sheet.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-4089bb0f-56da-4a50-badd-461ee11c847e.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "161062a7c35bca1295f5238696fba7623398391f29356012a8bc7d037f7f4be0",
+      "sourceFile": "art/photorealistic/sources/barracks-props-atlas.webp",
+      "sourceSha256": "1df84374e959a3b91412eda84a2ba64598c6f13b8bda1821f43ac3a92d523af2"
+    },
+    {
+      "id": "castle-props-atlas",
+      "prompt": "PHOTOREALISTIC environment prop sheet for a medieval walking game. EXACTLY 5 isolated, completely SEPARATED real-looking objects in 5 equal horizontal panels, left-to-right: 1: carved dark oak high backed throne on a very low stone dais with a small red rug; 2: long rustic wooden table; 3: small medieval jousting pavilion with red and cream cloth; 4: wooden jousting rail fence with supporting feet; 5: freestanding pole with a red and gold heraldic banner. All front facing, slightly elevated camera about 20 degrees down so tops are visible, same camera, soft light upper left, correct materials and gravity. Fully visible including feet/top with generous transparent margins and gaps; do not overlap objects or combine them. True transparent alpha background, no ground or floor plate, no people, no animals, no lettering, no signs, no labels, no numbers, borders or watermark. Very realistic wood grain, stone, fabric and metal wear; natural restrained colors. Absolutely no drawing, painted look, brushstrokes, illustration, cartoon or plastic game icons. Wide landscape sheet.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-fc719aa5-8bce-4cb4-ba5f-c5d4ea036a72.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "ad867d1db5843ee44df9a89350a408a26f6563312c2ed4c7af80cb3212c31da7",
+      "sourceFile": "art/photorealistic/sources/castle-props-atlas.webp",
+      "sourceSha256": "c001b358284c7c90af466c1d6334d7e9633fe43803ec2dfe95758be3b13e7faa"
+    },
+    {
+      "id": "weapons-atlas",
+      "prompt": "PHOTOREALISTIC equipment sheet with exactly SIX complete medieval weapons, in six equal separated vertical panels across a wide landscape image, straight frontal camera. LEFT TO RIGHT: longsword with simple steel blade, crossguard and brown leather scabbard alongside; yew bow with taut string and a small quiver; long wooden spear with steel head; single wooden haft battleaxe with steel head; paired small daggers in leather belt sheaths; long gnarled walking staff. Real steel, wood and leather, soft upper-left light, restrained natural colors, physically believable useful proportions. Entire objects visible with generous transparent margins, no hands, people, ground, background, text, labels, numbers, borders or watermark. True transparent alpha. NO painting, illustration, cartoon, or plastic CGI.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-2ba894cd-7a52-4bc9-b573-1d7b007aa881.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "01061abf198247d5cd1e559050ac3ac64f945cd07bcc18102c07ed1f940d48f9",
+      "sourceFile": "art/photorealistic/sources/weapons-atlas.webp",
+      "sourceSha256": "c037afb245a3ea1fd39e46269c6fae4b6ce6477ece06d55ac5973a786a5f0de4"
+    },
+    {
+      "id": "contact-shadow",
+      "prompt": "One physically realistic soft contact shadow only, on true transparent alpha background. A broad horizontal black oval contact shadow underneath a standing adult person, darkest gently at center, softly fading out to completely transparent on every edge, slightly extending lower right from an upper-left light source. No person, object, feet, floor, ground surface, checkerboard, text or graphic frame. Neutral black/grey alpha shadow suitable as a compositing sprite. Centered with generous transparent margin. Wide 3:1 canvas.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-b1e4dca7-8261-4210-8902-2055a641e791.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "acca6598589b6b9c80b9f74a04fbcdcb9aed9e9ba93d35b3f407d467f99a897f",
+      "sourceFile": "art/photorealistic/sources/contact-shadow.webp",
+      "sourceSha256": "851cb2444b1926b72631c6ff89e323b91257f7d900f75054de6f442c41cf5e56"
+    },
+    {
+      "id": "tavern-background-clean",
+      "prompt": "Edit this original photorealistic empty tavern background: remove the stone fireplace on the far right completely and replace it with a continuous matching timber-and-plaster back wall and oak floor, in the same camera and lighting. This is a modular game background; the fireplace will be a separate transparent foreground prop at a registered location. Preserve all remaining architecture, windows, wood beams, natural warm light and floorboard scale. Do not add any furniture, props, people, writing or painted effects. Full scene remains an empty continuous walkable floor beneath the back wall. Keep exactly the same 3:2 canvas composition and photographic realism, no illustration or brushwork.",
+      "references": [
+        "/workspace/generated_images/exec-71550587-a7d8-4ab9-bb2b-d6acd4bfddfc.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-eedfa664-e033-4230-b74e-469e269ec74b.png",
+      "nativeSize": [
+        1536,
+        1024
+      ],
+      "originalSha256": "4d3de10b6a481f99f9a6b0d0d33c8b8fefddd92827e8d50a35421e95561c2b4f",
+      "sourceFile": "art/photorealistic/sources/tavern-background-clean.webp",
+      "sourceSha256": "2453086c2f62d386a8bd3ee2f2711c6930b91289c5cb02b1fb8d1ebb636f803a"
+    },
+    {
+      "id": "hearth-well-atlas",
+      "prompt": "PHOTOREALISTIC prop asset sheet, exactly TWO completely separate objects side by side with large transparent gutters and margins. LEFT: rustic medieval stone fireplace/hearth with a broad stone arch, dark soot interior, a small natural wood fire and glowing embers, complete outer stone sides and hearth base; real rough grey stone and believable warm fire. RIGHT: circular low medieval stone well with dark water visible inside and a simple wooden bucket on its rim, no roof, no winding poles. Slightly elevated front camera about20 degrees down, soft upper-left key light, natural materials and shadows within objects. No floor, backdrop, people, smoke clouds, text, borders, labels or watermark. True transparent alpha around the two objects. Absolutely no painting, illustration, cartoon or plastic CGI. Both objects fully visible, no clipping. Wide landscape two-panel composition.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-c907ae4d-e11c-47b0-9ecf-5209ff138131.png",
+      "nativeSize": [
+        1774,
+        887
+      ],
+      "originalSha256": "45b72832bbcfb53125c81449ad7eac0071317ecb6b3cc74fe916054027de3743",
+      "sourceFile": "art/photorealistic/sources/hearth-well-atlas.webp",
+      "sourceSha256": "858b028733c1756b479f6bde6be305a89b38ad20a0763df348d8483adfefcb7b"
+    },
+    {
+      "id": "ground-details-atlas",
+      "prompt": "PHOTOREALISTIC surface-decal asset sheet, exactly THREE separated items in three horizontal panels, true transparent alpha outside each item. LEFT: an old rectangular deep red medieval wool tavern rug with a faded muted gold woven border, photographed flat from directly above, real woven fibers and worn edges. MIDDLE: a long narrow red medieval carpet runner with simple muted gold edge trim, fully visible from directly above, realistic worn woven cloth. RIGHT: only a thin broad elliptical white chalk sparring-ring marking, granular rubbed chalk pigment fading naturally at edges, no ground beneath, not a solid white disk. No people, furniture, floor texture, opaque backdrop, shadow card, lettering, labels, border frames or watermark. Real material photographs, no illustration, no painting, no cartoon. Full uncropped items with wide transparent gaps.",
+      "references": [],
+      "originalPath": "/workspace/generated_images/exec-f6975cd3-b82b-42ef-9262-eb37406ea471.png",
+      "nativeSize": [
+        2158,
+        729
+      ],
+      "originalSha256": "98b9b197dc3309b9898c7de0612d704872f13fe7f4e4193fb9b559a63a7bb20d",
+      "sourceFile": "art/photorealistic/sources/ground-details-atlas.webp",
+      "sourceSha256": "f7f5f09d7f32ad901e21e9682ae892706663c04eacd229713b09b8b341f18e30"
+    },
+    {
+      "id": "hood-on-model",
+      "prompt": "Edit the supplied original fictional adult woman's photorealistic studio portrait into a medieval hood fitting reference. Preserve EXACTLY her frontal face, eyes, nose, expression, head anatomy, scale and camera position. Add a naturally worn grey woven wool elven travel hood around her entire bald head and a shoulder cloak with a small clasp below her neck. The hood opening must comfortably show her COMPLETE adult face including forehead, both eyes, cheeks, mouth and chin, without covering eyes or squeezing the head. Hood crown extends a little above scalp, loose realistic cloth folds around temples and shoulders. Entire hood completely visible in frame with transparent margin above; lower cloak continues beyond bottom edge. Neutral grayscale cloth, same upper-left window light, photographic fibers and seams, no jewelry or embroidery. No painted or cartoon effect, no writing or watermark, true transparent background. Keep the same portrait canvas and preserve head registration. Modest fully clothed adult.",
+      "references": [
+        "/workspace/generated_images/exec-ed88fcc7-ed59-48fa-9b16-2a4008d071e5.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-e3e96885-baa2-4a56-a963-06e94973649a.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "91a06e4980363a562a27e6f5b381a09bc6421bb8363fa500bf4821533b3cc3d9",
+      "sourceFile": "art/photorealistic/sources/hood-on-model.webp",
+      "sourceSha256": "e1e030a1579298b87a5192faf75bad59a624b0b06b55a3c9680f718a09614914"
+    },
+    {
+      "id": "hood-registered",
+      "prompt": "Extract ONLY the grey wool hood and shoulder cloak from this exact supplied original photograph. Preserve every cloth pixel, fold, seam, clasp, camera position, scale and outer silhouette unchanged. REMOVE the woman's entire face, scalp, ears, neck and any visible skin and replace those regions with fully transparent alpha, leaving the hood opening EXACTLY the same size and shape as the adult face occupied. Do not shrink the opening or fill it with dark fabric. Keep the dark cloth lining on either side of the original head as cloth, but remove the actual face/head/neck. Also keep the existing transparent outer background. No person, mannequin, skin, hair or new objects. Neutral grayscale, photographic detail unchanged, no repainting, text or watermark. The output is a registered wardrobe layer, same portrait dimensions as the input.",
+      "references": [
+        "/workspace/generated_images/exec-e3e96885-baa2-4a56-a963-06e94973649a.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-9c0a6e06-8191-49e3-8e8e-44fb0c3ef2d3.png",
+      "nativeSize": [
+        1122,
+        1402
+      ],
+      "originalSha256": "a79f7c5bca88a43d13b974c3dce8a10c4f5a39d020a11c577e64b08c401c8f53",
+      "sourceFile": "art/photorealistic/sources/hood-registered.webp",
+      "sourceSha256": "0c9ebde302397f624ced1916bfd80d9309498c09de9ccf1d105d2808ecb325d0"
+    },
+    {
+      "id": "hair-4-complete",
+      "prompt": "Repair the framing of this original three-wig production sheet. Keep exactly three photorealistic adult swept-up BUN hairstyles, left straight hair, middle wavy hair, right curly hair, same silver-grey fibers and frontal view. Show the complete top bun and crown of EVERY wig: all three must fit fully INSIDE their panels with at least 15 percent completely transparent margin above, below and between the wigs. No cropped hair at the image boundaries. Make the wigs a little smaller within their panels if necessary. There must be a clearly recognizable complete bun above/back of each head. Only hair with true transparent alpha, no face, scalp skin, ears, body, neck, mannequin, opaque background, words or borders. Maintain photographic realism, not painting or cartoon. Wide horizontal three-panel sheet.",
+      "references": [
+        "/workspace/generated_images/exec-8297e611-2c82-4873-a042-ba5fdaa32b30.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-2277df42-a831-4005-8294-e909b8bdcc58.png",
+      "nativeSize": [
+        2172,
+        724
+      ],
+      "originalSha256": "799c8393320822dda4a171eb9a23c97ca467ac397ceee1e5d4e7e6c132dde5e0",
+      "sourceFile": "art/photorealistic/sources/hair-4-complete.webp",
+      "sourceSha256": "b51ff872d429e97d2f586d2440aa1fa70398f71629705ac644185e863dab57ad"
+    },
+    {
+      "id": "figure-cloak-1-atlas",
+      "prompt": "Make a PHOTOREALISTIC CLOAK-ONLY motion sheet using the FIRST supplied six-pose adult body reference for camera, placement and scale and the SECOND cloak reference for real cloth/fur texture. Garment: heavy open-front grey wool travel cloak with small clasp at neck, no hood. Exactly SIX complete cloaks, THREE columns by TWO rows, corresponding in reading order to standing; sitting on invisible chair; left-leg-forward walk; left passing; right-leg-forward walk; right passing. The walking cloaks MUST have visibly different, physically natural swinging hems and folds in the four walking frames. Preserve the body reference's physical size and foot-contact height, seated head naturally lower. The cloak must fit that adult anatomy, not a miniature mannequin. REMOVE the body, head, skin, hands, clothing underneath and any seat; only cloak fabric, clasp, fur or hood remain. Open center for torso and legs is transparent. For hooded cloak the empty face opening retains the full size of the reference adult head and comfortably reveals forehead/eyes/cheeks/chin; do NOT shrink or fill the face opening. Full cloak hems/crown visible, transparent margin between panels. Neutral grayscale for recoloring, real woven fibers, natural folds and upper-left light. True transparent alpha, no floor, ground shadows, words, labels, numbers, borders, illustration, painting or cartoon. Portrait3:4 composition.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-a166c4d7-35f4-4c6d-a419-63c1c9a48bea.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-c67f4910-ac7c-4de3-9bfb-d8a7e0bbd81e.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "ba4c60727b1e5c5d68a23bc021075b0a7a317d4d817f171f0274ce8729cc9f85",
+      "sourceFile": "art/photorealistic/sources/figure-cloak-1-atlas.webp",
+      "sourceSha256": "aee760ffaa6b4c91f0e5da1587f2e747c003526d49030870e8fad4e2b454a7b3"
+    },
+    {
+      "id": "figure-cloak-2-atlas",
+      "prompt": "Make a PHOTOREALISTIC CLOAK-ONLY motion sheet using the FIRST supplied six-pose adult body reference for camera, placement and scale and the SECOND cloak reference for real cloth/fur texture. Garment: long open-front grey travel cloak with a thick realistic fur collar, no hood. Exactly SIX complete cloaks, THREE columns by TWO rows, corresponding in reading order to standing; sitting on invisible chair; left-leg-forward walk; left passing; right-leg-forward walk; right passing. The walking cloaks MUST have visibly different, physically natural swinging hems and folds in the four walking frames. Preserve the body reference's physical size and foot-contact height, seated head naturally lower. The cloak must fit that adult anatomy, not a miniature mannequin. REMOVE the body, head, skin, hands, clothing underneath and any seat; only cloak fabric, clasp, fur or hood remain. Open center for torso and legs is transparent. For hooded cloak the empty face opening retains the full size of the reference adult head and comfortably reveals forehead/eyes/cheeks/chin; do NOT shrink or fill the face opening. Full cloak hems/crown visible, transparent margin between panels. Neutral grayscale for recoloring, real woven fibers, natural folds and upper-left light. True transparent alpha, no floor, ground shadows, words, labels, numbers, borders, illustration, painting or cartoon. Portrait3:4 composition.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-a166c4d7-35f4-4c6d-a419-63c1c9a48bea.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-8d908645-2396-4c8c-8b5a-6f63572962f7.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "6be0e2c7b5dd3e932ed8f66f3289b9b1c99a73f62dbdbef10efc467a3b6a1705",
+      "sourceFile": "art/photorealistic/sources/figure-cloak-2-atlas.webp",
+      "sourceSha256": "701dc11acdcd24d13c767bb514ab50b6438fb93f0914350ce17ccba177be8fce"
+    },
+    {
+      "id": "figure-cloak-3-atlas",
+      "prompt": "Make a PHOTOREALISTIC CLOAK-ONLY motion sheet using the FIRST supplied six-pose adult body reference for camera, placement and scale and the SECOND cloak reference for real cloth/fur texture. Garment: long open-front grey elven wool cloak with a raised hood comfortably framing the complete adult head. Exactly SIX complete cloaks, THREE columns by TWO rows, corresponding in reading order to standing; sitting on invisible chair; left-leg-forward walk; left passing; right-leg-forward walk; right passing. The walking cloaks MUST have visibly different, physically natural swinging hems and folds in the four walking frames. Preserve the body reference's physical size and foot-contact height, seated head naturally lower. The cloak must fit that adult anatomy, not a miniature mannequin. REMOVE the body, head, skin, hands, clothing underneath and any seat; only cloak fabric, clasp, fur or hood remain. Open center for torso and legs is transparent. For hooded cloak the empty face opening retains the full size of the reference adult head and comfortably reveals forehead/eyes/cheeks/chin; do NOT shrink or fill the face opening. Full cloak hems/crown visible, transparent margin between panels. Neutral grayscale for recoloring, real woven fibers, natural folds and upper-left light. True transparent alpha, no floor, ground shadows, words, labels, numbers, borders, illustration, painting or cartoon. Portrait3:4 composition.",
+      "references": [
+        "/workspace/generated_images/exec-1b90d3e6-6894-4676-b543-98fb93653f78.png",
+        "/workspace/generated_images/exec-a166c4d7-35f4-4c6d-a419-63c1c9a48bea.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-1138bb8d-4f34-4f8e-9bf1-3ae7d4a55a70.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "5c596a67de4891dc6f1028d955e97578348c2e58184a369212424822b8411482",
+      "sourceFile": "art/photorealistic/sources/figure-cloak-3-atlas.webp",
+      "sourceSha256": "8991d7707bf19968d9cb57ec85b615187bd5bd66d876a2bdb15c1ffdbd2a18e5"
+    },
+    {
+      "id": "figure-cloak-1-wool",
+      "prompt": "Edit the supplied six-pose CLOAK sheet. Keep the same six silhouettes, the sitting pose and all four different swinging walking hems, exact same layout and scale. REPLACE every thick FUR collar with a simple thin plain woven WOOL neckline and small unobtrusive clasp. There must be absolutely NO fur, fleece, feathers, thick collar, hood, head or skin in any panel. All six cloaks are simple open-front WOOL TRAVEL CLOAKS made of ordinary grey woven wool, preserving natural realistic folds and motion. The small neckline opening for the invisible neck stays transparent; the open center for body/legs stays transparent. True alpha everywhere outside cloth. Keep photographic fabric texture and upper-left light. No painting, illustration, text, labels or borders. Three columns by two rows, complete cloaks including hems in frame.",
+      "references": [
+        "/workspace/generated_images/exec-c67f4910-ac7c-4de3-9bfb-d8a7e0bbd81e.png"
+      ],
+      "originalPath": "/workspace/generated_images/exec-2c4684c7-2ed5-48e4-97db-da460571d3ca.png",
+      "nativeSize": [
+        1086,
+        1448
+      ],
+      "originalSha256": "eab644c2f8a8852cdcdafb69fc6a60c68656f8149c64e104eae882d27ddc380a",
+      "sourceFile": "art/photorealistic/sources/figure-cloak-1-wool.webp",
+      "sourceSha256": "296111b0d98ef99562c2a03fc116bea906fd3242fd5d976ea4bd4776cefe6492"
+    }
+  ]
+}

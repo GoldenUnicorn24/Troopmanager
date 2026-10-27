@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; beard-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "beard-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1086,
+      94,
+      511,
+      457
+    ]
+  },
+  "sha256": "72ca2edc42c36c0d214aa2c2e6045bf70eac4c7d78f4be1ce132c5a9a8cb1221"
+}

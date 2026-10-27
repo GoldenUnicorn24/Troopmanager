@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; mouth-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "mouth-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      15,
+      244,
+      504,
+      234
+    ]
+  },
+  "sha256": "a80295d7f66885e41e1766b7b9013a4b47dc276f7da8c513b46a513c0c7ab425"
+}

@@ -86,19 +86,7 @@ internal fun CommanderProfileScreen(
 ) {
     var assigning by remember(commander.id) { mutableStateOf(false) }
     val context = LocalContext.current
-    val portraitPicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri != null) {
-                runCatching {
-                    context.contentResolver.takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                    )
-                }
-                onState(customizeCommanderPortrait(state, commander.id, uri.toString()))
-                onNotice("Kommandanten-Portrait aktualisiert.")
-            }
-        }
+    val openCustom = LocalOpenCustomCharacters.current
     if (assigning) {
         CommanderAllocationScreen(state, commander, { assigning = false }, onState, onNotice)
         return
@@ -168,7 +156,7 @@ internal fun CommanderProfileScreen(
                     Text("Truppen zuweisen", fontSize = 13.sp)
                 }
                 OutlinedButton(
-                    onClick = { portraitPicker.launch(arrayOf("image/*")) },
+                    onClick = { openCustom?.invoke("commander:${commander.id}") },
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                     contentPadding = PaddingValues(8.dp),
                 ) {
@@ -523,18 +511,7 @@ private fun CommanderAllocationScreen(
 
 @Composable
 private fun CommanderPortrait(commander: Commander, modifier: Modifier) {
-    if (commander.portraitUri != null)
-        AsyncImage(
-            model = commander.portraitUri,
-            contentDescription = "Portrait von ${commander.name}",
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-        )
-    else
-        Image(
-            painter = painterResource(portraitResource(commander.portraitKey)),
-            contentDescription = "Portrait von ${commander.name}",
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-        )
+    PersonImage(null, commander.portraitUri, Framing.BUST, modifier) {
+        Image(painterResource(portraitResource(commander.portraitKey)), "Portrait von ${commander.name}", modifier, contentScale = ContentScale.Crop)
+    }
 }

@@ -132,6 +132,7 @@ object Towns {
  */
 @Serializable
 data class CharacterAppearance(
+    val customImageId: String? = null,
     val faceShape: Int = 0,
     val jaw: Int = 50,
     val cheekbones: Int = 50,
@@ -198,6 +199,7 @@ data class CharacterAppearance(
     /** Mapping onto the v1.3 drawn-portrait recipe for every screen that still uses it. */
     fun toPortraitSpec(): PortraitSpec = PortraitSpec(
         skin = skinTone.coerceIn(0, 5),
+        customImageId = customImageId,
         hair = when (hairStyle) { 0, 1 -> 0; 2 -> 1; 3, 5 -> 2; 4 -> 3; 6 -> 4; else -> 5 },
         hairColor = hairColor.coerceIn(0, 7),
         eyes = eyeColor.coerceIn(0, 5),

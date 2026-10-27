@@ -7,9 +7,9 @@ import kotlinx.serialization.json.*
 import kotlinx.serialization.encodeToString
 
 /** Atomic rolling backup plus a protected, byte-exact copy of the last v0.4 save. */
-class SaveRepository internal constructor(private val storage: SaveStorage) {
+class SaveRepository internal constructor(private val storage: SaveStorage, private val migrateImages: (GameState) -> GameState = { it }) {
     constructor(context: Context) : this(PreferencesSaveStorage(
-        context.getSharedPreferences("realm_save", Context.MODE_PRIVATE)))
+        context.getSharedPreferences("realm_save", Context.MODE_PRIVATE)), { LegacyPortraitMigration.migrate(context.applicationContext, it) })
     var lastError: String? = null
         private set
     var activeSlot: Int = 1
@@ -59,7 +59,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
             val primary = read(KEY)
             if (primary != null) {
                 try {
-                    val state = SaveCodec.decode(primary)
+                    val state = migrateImages(SaveCodec.decode(primary))
                     val upgraded = SaveCodec.encode(state)
                     if (upgraded != primary) {
                         try {
@@ -84,7 +84,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
             }
             for (key in listOf(BACKUP_KEY, V097_BACKUP_KEY, V045_BACKUP_KEY, MIGRATION_BACKUP_KEY, LEGACY_MIGRATION_BACKUP_KEY)) {
                 val backup = read(key) ?: continue
-                val recovered = try { SaveCodec.decode(backup) } catch (error: SaveFormatException) {
+                val recovered = try { migrateImages(SaveCodec.decode(backup)) } catch (error: SaveFormatException) {
                     if (error.futureVersion) throw error
                     continue
                 }
@@ -133,7 +133,7 @@ class SaveRepository internal constructor(private val storage: SaveStorage) {
         lastError = null
         return try {
             require(slots()[activeSlot - 1]?.ironman != true) { "Ein Ironman-Spielstand erlaubt keinen Import älterer Zustände." }
-            val imported = SaveCodec.decode(raw)
+            val imported = migrateImages(SaveCodec.decode(raw))
             require(!imported.settings.ironman) { "Ironman-Kampagnen können nicht als fortsetzbarer Import übernommen werden." }
             save(imported)
             if (lastError == null) imported else null

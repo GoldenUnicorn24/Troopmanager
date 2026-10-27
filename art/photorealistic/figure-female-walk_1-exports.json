@@ -1,0 +1,417 @@
+{
+  "figures/female/walk_1/body/0.webp": {
+    "source": "body-female-0-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      105,
+      730,
+      235,
+      694
+    ],
+    "footY": 1480,
+    "headReplacedByPortrait": true,
+    "handRegistration": "pose hands"
+  },
+  "figures/female/walk_1/body/1.webp": {
+    "source": "body-female-1-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      93,
+      724,
+      246,
+      683
+    ],
+    "footY": 1480,
+    "headReplacedByPortrait": true,
+    "handRegistration": "pose hands"
+  },
+  "figures/female/walk_1/body/2.webp": {
+    "source": "body-female-2-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      60,
+      724,
+      292,
+      695
+    ],
+    "footY": 1480,
+    "headReplacedByPortrait": true,
+    "handRegistration": "pose hands"
+  },
+  "figures/female/walk_1/body/3.webp": {
+    "source": "body-female-3-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      86,
+      727,
+      247,
+      681
+    ],
+    "footY": 1480,
+    "headReplacedByPortrait": true,
+    "handRegistration": "pose hands"
+  },
+  "figures/female/walk_1/outfit/0.webp": {
+    "source": "figure-outfit-0-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      68,
+      747,
+      273,
+      615
+    ]
+  },
+  "figures/female/walk_1/outfit/1.webp": {
+    "source": "figure-outfit-1-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      59,
+      733,
+      284,
+      668
+    ]
+  },
+  "figures/female/walk_1/outfit/2.webp": {
+    "source": "figure-outfit-2-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      54,
+      738,
+      278,
+      630
+    ]
+  },
+  "figures/female/walk_1/outfit/3.webp": {
+    "source": "figure-outfit-3-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      46,
+      742,
+      281,
+      652
+    ]
+  },
+  "figures/female/walk_1/outfit/4.webp": {
+    "source": "figure-outfit-4-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      16,
+      754,
+      319,
+      633
+    ]
+  },
+  "figures/female/walk_1/armor/1.webp": {
+    "source": "armor-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      0,
+      89,
+      543,
+      568
+    ]
+  },
+  "figures/female/walk_1/armor/2.webp": {
+    "source": "armor-atlas",
+    "panel": 1,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      543,
+      71,
+      543,
+      594
+    ]
+  },
+  "figures/female/walk_1/armor/3.webp": {
+    "source": "armor-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1086,
+      92,
+      537,
+      567
+    ]
+  },
+  "figures/female/walk_1/armor/4.webp": {
+    "source": "armor-atlas",
+    "panel": 3,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1629,
+      90,
+      543,
+      575
+    ]
+  },
+  "figures/female/walk_1/cloak/1.webp": {
+    "source": "figure-cloak-1-wool",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      3,
+      750,
+      359,
+      617
+    ],
+    "headSource": null
+  },
+  "figures/female/walk_1/cloak/2.webp": {
+    "source": "figure-cloak-2-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      9,
+      744,
+      353,
+      616
+    ],
+    "headSource": null
+  },
+  "figures/female/walk_1/cloak/3.webp": {
+    "source": "figure-cloak-3-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      1,
+      724,
+      361,
+      645
+    ],
+    "headSource": "hood-registered"
+  },
+  "figures/female/walk_1/hair_front/0_0.webp": {
+    "source": "portraits/hair_front/0_0.webp"
+  },
+  "figures/female/walk_1/hair_front/0_1.webp": {
+    "source": "portraits/hair_front/0_1.webp"
+  },
+  "figures/female/walk_1/hair_front/0_2.webp": {
+    "source": "portraits/hair_front/0_2.webp"
+  },
+  "figures/female/walk_1/hair_front/1_0.webp": {
+    "source": "portraits/hair_front/1_0.webp"
+  },
+  "figures/female/walk_1/hair_front/1_1.webp": {
+    "source": "portraits/hair_front/1_1.webp"
+  },
+  "figures/female/walk_1/hair_front/1_2.webp": {
+    "source": "portraits/hair_front/1_2.webp"
+  },
+  "figures/female/walk_1/hair_front/2_0.webp": {
+    "source": "portraits/hair_front/2_0.webp"
+  },
+  "figures/female/walk_1/hair_front/2_1.webp": {
+    "source": "portraits/hair_front/2_1.webp"
+  },
+  "figures/female/walk_1/hair_front/2_2.webp": {
+    "source": "portraits/hair_front/2_2.webp"
+  },
+  "figures/female/walk_1/hair_front/3_0.webp": {
+    "source": "portraits/hair_front/3_0.webp"
+  },
+  "figures/female/walk_1/hair_front/3_1.webp": {
+    "source": "portraits/hair_front/3_1.webp"
+  },
+  "figures/female/walk_1/hair_front/3_2.webp": {
+    "source": "portraits/hair_front/3_2.webp"
+  },
+  "figures/female/walk_1/hair_front/4_0.webp": {
+    "source": "portraits/hair_front/4_0.webp"
+  },
+  "figures/female/walk_1/hair_front/4_1.webp": {
+    "source": "portraits/hair_front/4_1.webp"
+  },
+  "figures/female/walk_1/hair_front/4_2.webp": {
+    "source": "portraits/hair_front/4_2.webp"
+  },
+  "figures/female/walk_1/hair_front/5_0.webp": {
+    "source": "portraits/hair_front/5_0.webp"
+  },
+  "figures/female/walk_1/hair_front/5_1.webp": {
+    "source": "portraits/hair_front/5_1.webp"
+  },
+  "figures/female/walk_1/hair_front/5_2.webp": {
+    "source": "portraits/hair_front/5_2.webp"
+  },
+  "figures/female/walk_1/hair_front/6_0.webp": {
+    "source": "portraits/hair_front/6_0.webp"
+  },
+  "figures/female/walk_1/hair_front/6_1.webp": {
+    "source": "portraits/hair_front/6_1.webp"
+  },
+  "figures/female/walk_1/hair_front/6_2.webp": {
+    "source": "portraits/hair_front/6_2.webp"
+  },
+  "figures/female/walk_1/hair_front/7_0.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "figures/female/walk_1/hair_front/7_1.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "figures/female/walk_1/hair_front/7_2.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "figures/female/walk_1/weapon/0.webp": {
+    "source": "weapons-atlas",
+    "panel": 0,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      33,
+      73,
+      237,
+      854
+    ]
+  },
+  "figures/female/walk_1/weapon/1.webp": {
+    "source": "weapons-atlas",
+    "panel": 1,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      344,
+      48,
+      227,
+      909
+    ]
+  },
+  "figures/female/walk_1/weapon/2.webp": {
+    "source": "weapons-atlas",
+    "panel": 2,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      670,
+      18,
+      39,
+      971
+    ]
+  },
+  "figures/female/walk_1/weapon/3.webp": {
+    "source": "weapons-atlas",
+    "panel": 3,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      833,
+      166,
+      191,
+      746
+    ]
+  },
+  "figures/female/walk_1/weapon/4.webp": {
+    "source": "weapons-atlas",
+    "panel": 4,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      1083,
+      309,
+      199,
+      439
+    ]
+  },
+  "figures/female/walk_1/weapon/5.webp": {
+    "source": "weapons-atlas",
+    "panel": 5,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      1392,
+      19,
+      81,
+      979
+    ]
+  },
+  "figures/female/walk_1/shadow.webp": {
+    "source": "contact-shadow",
+    "panel": 0,
+    "grid": [
+      1,
+      1
+    ],
+    "sourceBox": [
+      362,
+      362,
+      1475,
+      169
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "sourceCommit": "62204c7",
+  "gradleExitCode": 0,
+  "duration": "9m 53s",
+  "tasks": [
+    "testDebugUnitTest",
+    "lintDebug",
+    "assembleDebug",
+    "assembleDebugAndroidTest"
+  ],
+  "unitTests": {
+    "suites": 59,
+    "tests": 587,
+    "failures": 0,
+    "errors": 0
+  },
+  "apk": {
+    "bytes": 32771821,
+    "sha256": "75759a245b905b97acdc21e0a765e422405a721f8923e642a17f7afc83f5b986",
+    "baselineBytes": 32264361,
+    "deltaBytes": 507460
+  },
+  "runtimeTour": "not verified locally; subsequent editor regression fix and remote CI remain pending"
+}

@@ -85,7 +85,7 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 
 ## Speicherung und Migration
 
-- `SaveCodec.CURRENT_VERSION = 6`. Schema 4 und 5 werden auf 6 gehoben; `life` fehlt → Standard = klassischer Grenzherr mit Akten.
+- `SaveCodec.CURRENT_VERSION = 7`. Schema 4–6 werden auf 7 gehoben; `life` fehlt → Standard = klassischer Grenzherr mit Akten.
 - `LifeEngine.validate` prüft Börse, Rausch/Erschöpfung, eindeutige Personen-Ids, Alter ≥ 18 aller Personen, gültige Gefährtin-Referenz, Gefolge, Ausrüstung, Beziehungen, Lehnsauftrag und Turnierstand.
 - Alle Felder ab Meilenstein 2 sind additiv mit Standardwerten – Schema 6 bleibt, ältere Schema-6-Stände laden unverändert.
 - Ältere Herrscher-Spielstände bekommen ihre Stadtbewohner beim ersten Tavernenbesuch (`LifeEngine.ensurePeople`), deterministisch.
@@ -96,3 +96,21 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 - Persönliche Gefechte laufen über die eigene `SkirmishEngine`; in großen Schlachten wirken Ausrüstung und Wunden als Faktor, aber der Spieler ist dort keine einzeln gesteuerte Figur.
 - Der Weltpuls ist bewusst leichtgewichtig; erst nach dem Lehnseid laufen die vollen KI-Engines.
 - Sitz-Pose ist eine einfache Frontalansicht mit Hocker; keine Tischinteraktion (Trinken, Gestik).
+
+## Eigene Charaktere und Bild-Pipeline (Schema 7)
+
+`GameState.customCharacters` ergänzt ausschließlich Identitätsmetadaten, Herkunft und interne Bild-IDs.
+`CharacterAppearance.customImageId` und `PortraitSpec.customImageId` verbinden Welt und Hofdarstellungen.
+Bilder liegen unter `filesDir/custom/{id}/` und werden unabhängig von ursprünglichen Content-URIs gespeichert.
+`LegacyPortraitMigration` kopiert alte Personenporträts einmalig beim Laden und entfernt unlesbare URIs.
+Die Auflösung ist eigenes Bild → fotorealistische Ebenen → Vektor. Teilweise installierte Porträtebenen
+verwenden je fehlender Komponente den Vektor; unvollständige Figurenposen verwenden die ganze Vektorfigur.
+`SceneAssetLayout.validate` vergleicht die 108 Zellen und die Projektion mit den vier Engines.
+Die A*-Wegfindung bleibt unverändert in den Engines.
+
+Importdaten erzeugen normale `NpcIdentity`-Datensätze; bestehende Beziehungen und Erinnerungen bleiben
+bei einer Ersetzung erhalten. Eigene Bildreferenzen bleiben beim Übergang ans Herrscherlager erhalten.
+Details, Paketformat und Grenzen: `ASSET-STANDARD.md`, `ASSET-PRODUCTION.md`,
+`CHARACTER-PACK-FORMAT.md`, `CUSTOM-CHARACTER-TEST-REPORT.md`.
+
+Nullable `npcIdentityId`-Referenzen in Gefährtinnen-, Partnerinnen- und Kommandantenprofilen erhalten die Weltidentität am Hof. Sie sind additiv; alte Spielstände laden mit null und werden nur bei eindeutigen Spuren verknüpft.

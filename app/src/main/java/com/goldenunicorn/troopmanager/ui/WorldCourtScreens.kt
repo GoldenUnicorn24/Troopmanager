@@ -218,22 +218,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
     var companionArmor by remember(state.companion.armorStyle) { mutableStateOf(state.companion.armorStyle) }
     var companionWeapon by remember(state.companion.weapon) { mutableStateOf(state.companion.weapon) }
 
-    val playerPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            onState(GameEngine.updatePlayerPortrait(state, uri.toString()))
-        }
-    }
-    val companionPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            onState(GameEngine.updateCompanionIdentity(state, companionName, uri.toString()))
-        }
-    }
+    val openCustom = LocalOpenCustomCharacters.current
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -254,7 +239,7 @@ internal fun CourtScreen(state: GameState, onState: (GameState) -> Unit, onNotic
                     "Führung " + state.player.leadership,
                     "Taktik " + state.player.tactics
                 ),
-                onPortrait = { playerPicker.launch(arrayOf("image/*")) }
+                onPortrait = { openCustom?.invoke("player") }
             )
         }
 

@@ -1,0 +1,24 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; hair-5-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "hair-5-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      238,
+      16,
+      348,
+      689
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "sha256": "5fe0a24197c36228aa2abfe0cd534ce7d71a5069aec638f080861c391ee8a567"
+}

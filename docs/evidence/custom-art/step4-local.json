@@ -1,0 +1,16 @@
+{
+  "baseCommit": "62204c7",
+  "appSourceFingerprintSha256": "daa9d750db6c2820613cf5d296bdc4d1f7cc9d52def450b6b13935c705bfa9bc",
+  "gradleExitCode": 0,
+  "duration": "9m 23s",
+  "unitTests": {
+    "tests": 592,
+    "failures": 0,
+    "errors": 0
+  },
+  "lint": "passed",
+  "debugApkBytes": 35721210,
+  "debugApkSha256": "3f69ecd4c0dbb59a88cf64e4d95fa28c8d8ca7154400d88376ef0bd961b8dfe5",
+  "androidTestApk": "built, not executed locally",
+  "note": "Subsequent person-scoped URI-copy regression and metadata fallback adjustment require their own fresh check."
+}

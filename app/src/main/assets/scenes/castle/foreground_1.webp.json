@@ -1,0 +1,51 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; castle-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "castle-props-atlas",
+    "objects": [
+      {
+        "source": "castle-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1951,
+          22,
+          205,
+          641
+        ],
+        "gridAnchor": [
+          0,
+          1
+        ],
+        "width": 160,
+        "groundY": 638.7259953161592
+      },
+      {
+        "source": "castle-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1951,
+          22,
+          205,
+          641
+        ],
+        "gridAnchor": [
+          11,
+          1
+        ],
+        "width": 160,
+        "groundY": 638.7259953161592
+      }
+    ]
+  },
+  "sha256": "b8d83baf939ad8da2b855193ad28b969da9e1f61d132897d7f629ccbbcbc1e5e"
+}

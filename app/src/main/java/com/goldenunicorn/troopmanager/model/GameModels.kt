@@ -128,6 +128,7 @@ data class CompanionProfile(
     val respect: Int = 20,
     val affection: Int = 10,
     val role: String = "Gefährtin",
+    val npcIdentityId: String? = null,
 )
 
 @Serializable
@@ -151,6 +152,7 @@ data class Commander(
     val victories: Int = 0,
     val casualties: Int = 0,
     val diplomacy: Int = 35,
+    val npcIdentityId: String? = null,
 )
 
 @Serializable data class UnitAllocation(val type: UnitType, val amount: Int)
@@ -240,7 +242,8 @@ data class Realm(
 
 @Serializable
 data class GameState(
-    val version: Int = 6,
+    val version: Int = 7,
+    val customCharacters: List<CustomCharacter> = emptyList(),
     val day: Int = 1,
     val player: CharacterProfile,
     val companion: CompanionProfile = CompanionProfile(),

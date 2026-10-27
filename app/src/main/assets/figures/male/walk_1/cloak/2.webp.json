@@ -1,0 +1,24 @@
+{
+  "registration": {
+    "centerX": 384,
+    "footY": 1480
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; figure-cloak-2-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "figure-cloak-2-atlas",
+    "panel": 3,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      9,
+      744,
+      353,
+      616
+    ],
+    "headSource": null
+  },
+  "sha256": "24b48372a035a428c9750e54fdcdfe200e68d0b3cd5f166e091c4e1159cfbe65"
+}

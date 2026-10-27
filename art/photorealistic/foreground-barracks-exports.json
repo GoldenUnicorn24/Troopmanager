@@ -1,0 +1,207 @@
+{
+  "scenes/barracks/foreground_0.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/barracks/foreground_1.webp": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          466,
+          106,
+          355,
+          536
+        ],
+        "gridAnchor": [
+          8,
+          1
+        ],
+        "width": 190,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          466,
+          106,
+          355,
+          536
+        ],
+        "gridAnchor": [
+          10,
+          1
+        ],
+        "width": 190,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          875,
+          16,
+          365,
+          661
+        ],
+        "gridAnchor": [
+          4,
+          1
+        ],
+        "width": 170,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          875,
+          16,
+          365,
+          661
+        ],
+        "gridAnchor": [
+          5,
+          1
+        ],
+        "width": 170,
+        "groundY": 599.3513513513514
+      }
+    ]
+  },
+  "scenes/barracks/foreground_2.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/barracks/foreground_3.webp": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 0,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          32,
+          33,
+          386,
+          666
+        ],
+        "gridAnchor": [
+          1,
+          3
+        ],
+        "width": 185,
+        "groundY": 832.8648648648649
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 0,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          32,
+          33,
+          386,
+          666
+        ],
+        "gridAnchor": [
+          3,
+          3
+        ],
+        "width": 185,
+        "groundY": 832.8648648648649
+      }
+    ]
+  },
+  "scenes/barracks/foreground_4.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/barracks/foreground_5.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/barracks/foreground_6.webp": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 3,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1252,
+          371,
+          451,
+          277
+        ],
+        "gridAnchor": [
+          2.5,
+          6
+        ],
+        "width": 340,
+        "groundY": 1183.1351351351352
+      }
+    ]
+  },
+  "scenes/barracks/foreground_7.webp": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1717,
+          144,
+          441,
+          526
+        ],
+        "gridAnchor": [
+          10.5,
+          7
+        ],
+        "width": 355,
+        "groundY": 1299.8918918918919
+      }
+    ]
+  },
+  "scenes/barracks/foreground_8.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; brows-transparent",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "brows-transparent",
+    "panel": 3,
+    "grid": [
+      1,
+      4
+    ],
+    "sourceBox": [
+      40,
+      814,
+      1455,
+      147
+    ]
+  },
+  "sha256": "afbf7a328e646004b5c51a9a066cd0cf29876381549e068a34ef32a1df2bf506"
+}

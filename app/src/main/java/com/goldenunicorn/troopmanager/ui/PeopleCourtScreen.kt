@@ -16,12 +16,14 @@ import com.goldenunicorn.troopmanager.model.*
 /** Embedded in the existing portrait/customization court, preserving those established controls. */
 @Composable
 internal fun PeopleCourtScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (String) -> Unit) {
+    val openCustom = LocalOpenCustomCharacters.current
     fun apply(result: GameEngine.ActionResult) { onState(result.state); onNotice(result.message) }
     var selectedId by remember { mutableStateOf(state.commanders.firstOrNull()?.id) }
     val selected = state.commanders.firstOrNull { it.id == selectedId } ?: state.commanders.firstOrNull()
     val details = state.court.characters.firstOrNull { it.commanderId == selected?.id }
     val bonuses = CharacterEngine.bonuses(state)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Eigene Charaktere") }
         SectionTitle("Hofämter & Karrieren")
         CourtDomainCard {
             Text("Jedes Amt wirkt durch die Fähigkeiten seiner Person. Im Einsatz oder bei geringer Loyalität ruht das Amt.", color = Mist, fontSize = 12.sp)

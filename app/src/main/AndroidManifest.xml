@@ -7,6 +7,13 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Troopmanager"
         android:supportsRtl="true">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.characterpacks"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/character_pack_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

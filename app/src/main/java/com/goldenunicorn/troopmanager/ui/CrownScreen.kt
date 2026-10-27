@@ -439,10 +439,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.heroinesTab(
 @Composable
 internal fun Portrait(key: String, uri: String?, diameter: Int = 64, look: PortraitSpec? = null) {
     val modifier = Modifier.size(diameter.dp).clip(CircleShape).background(Steel)
-    when {
-        uri != null -> AsyncImage(uri, null, modifier, contentScale = ContentScale.Crop)
-        look != null -> DrawnPortrait(look, modifier)
-        else -> Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
+    PersonImage(look?.customImageId, uri, Framing.HEAD, modifier) {
+        if (look != null) CharacterPortrait(appearanceFromPortrait(look), if (key == "knight") Gender.MALE else Gender.FEMALE, modifier, Framing.HEAD)
+        else Image(painterResource(portraitResource(key)), null, modifier, contentScale = ContentScale.Crop)
     }
 }
 
@@ -667,14 +666,18 @@ private fun LooksCard(state: GameState, onState: (GameState) -> Unit) {
     }
     if (editPlayer) LookEditorDialog("Dein Aussehen", state.crown.playerLook ?: ActCatalog.defaultPlayerLook(state.player.species), { editPlayer = false }) {
         editPlayer = false
-        onState(state.copy(crown = state.crown.copy(playerLook = it), player = state.player.copy(portraitUri = null)))
+        val cleared = com.goldenunicorn.troopmanager.engine.CustomCharacterEngine.clearImage(state,
+            com.goldenunicorn.troopmanager.engine.CustomCharacterEngine.imageIdForTarget(state,"player"))
+        onState(cleared.copy(crown = cleared.crown.copy(playerLook = it.copy(customImageId = null)),player = cleared.player.copy(portraitUri = null)))
     }
     if (editPartner && partner != null) LookEditorDialog("Aussehen von ${partner.name}", partner.look ?: ActCatalog.heroineLook(partner.background), { editPartner = false }) { look ->
         editPartner = false
         val companionIsPartner = state.crown.saga.companionId == partner.background
-        onState(state.copy(
-            crown = state.crown.copy(saga = state.crown.saga.copy(partner = partner.copy(look = look, portraitUri = null))),
-            companion = if (companionIsPartner) state.companion.copy(portraitUri = null) else state.companion,
+        val cleared = com.goldenunicorn.troopmanager.engine.CustomCharacterEngine.clearImage(state,
+            com.goldenunicorn.troopmanager.engine.CustomCharacterEngine.imageIdForTarget(state,"partner:${partner.background}"))
+        onState(cleared.copy(
+            crown = cleared.crown.copy(saga = cleared.crown.saga.copy(partner = partner.copy(look = look.copy(customImageId = null), portraitUri = null))),
+            companion = if (companionIsPartner) cleared.companion.copy(portraitUri = null) else cleared.companion,
         ))
     }
 }

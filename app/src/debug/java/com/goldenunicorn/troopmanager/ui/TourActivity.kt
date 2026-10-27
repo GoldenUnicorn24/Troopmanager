@@ -19,6 +19,10 @@ import com.goldenunicorn.troopmanager.model.*
 class TourActivity : ComponentActivity() {
     companion object {
         var page by mutableStateOf("spot:INBOX")
+        var customPortraitBytes: ByteArray? = null
+        var customFullbodyBytes: ByteArray? = null
+        var customReady: Boolean = false
+        var replaceState: ((GameState) -> Unit)? = null
         var latestState: GameState? = null
         val rich: GameState by lazy { TourFixture.richState() }
         val life: GameState by lazy { TourFixture.lifeState() }
@@ -35,6 +39,7 @@ class TourActivity : ComponentActivity() {
                         var state by remember { mutableStateOf(when {
                             current.startsWith("battle") -> TourFixture.battle(rich)
                             current == "market" -> TourFixture.roadState()
+                            current == "photo-night" -> TourFixture.roadState().let { it.copy(life = it.life.copy(timeSlot = TimeSlot.NIGHT)) }
                             current == "barracks" -> com.goldenunicorn.troopmanager.engine.BarracksEngine.enter(TourFixture.roadState().let { it.copy(life = it.life.copy(timeSlot = TimeSlot.NOON)) }).state
                             current == "castle" -> com.goldenunicorn.troopmanager.engine.CastleEngine.let { c ->
                                 val base = TourFixture.roadState().let { it.copy(day = 14, life = it.life.copy(timeSlot = TimeSlot.NOON, renown = 40)) }
@@ -45,6 +50,7 @@ class TourActivity : ComponentActivity() {
                             current == "skirmish" -> TourFixture.skirmishState()
                             current == "party" -> TourFixture.roadState().let { it.copy(life = it.life.copy(place = LifePlace.TOWN)) }
                             current == "captive" -> life.copy(life = life.life.copy(captiveUntil = life.day + 2, captor = "Wegelagerer", place = LifePlace.AWAY, wound = 40))
+                            current.startsWith("custom-") -> life
                             current.startsWith("life") -> life
                             current.startsWith("tavern") -> life.copy(life = life.life.copy(place = LifePlace.TAVERN))
                             current == "scene" -> rich.copy(crown = rich.crown.copy(saga = rich.crown.saga.copy(pendingScene =
@@ -56,8 +62,9 @@ class TourActivity : ComponentActivity() {
                                 "Königliche Kornkammer", "Nach 7 Tagen ist das Werk vollendet. Nahrungslager ×3, Proviant für Feldzüge halbiert.")
                             else -> rich
                         }) }
-                        SideEffect { latestState = state }
+                        SideEffect { latestState = state; replaceState = { state = it } }
                         when {
+                            current.startsWith("custom-") -> CustomCharacterTour(current, state)
                             current == "menu" -> MainMenu(GameUiState(inMenu = true, hasSave = true), controller)
                             current == "create" -> CharacterCreation({}, {})
                             current.startsWith("wizard-") -> current.removePrefix("wizard-").toInt().let { step ->
@@ -67,6 +74,7 @@ class TourActivity : ComponentActivity() {
                             current == "tavern" -> LifeShell(state, { state = it }, {}, {})
                             current == "market" || current == "skirmish" || current == "captive" || current == "barracks" || current == "castle" -> LifeShell(state, { state = it }, {}, {})
                             current == "ruler-castle" -> CastleScreen(state, { state = it }, {}, initialPanel = "lord")
+                            current == "photo-night" -> MarketScreen(state, { state = it }, {})
                             current == "party" -> LifeShell(state, { state = it }, {}, {}, initialTab = 2)
                             current == "tavern-talk" -> LifeShell(state, { state = it }, {}, {}, initialTalk = "companion")
                             current == "portraits" -> PortraitComparison(life)
@@ -90,19 +98,19 @@ private fun PortraitComparison(state: GameState) {
         Modifier.fillMaxSize().background(Ink).padding(12.dp),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
     ) {
-        androidx.compose.material3.Text("ALT (v2.1 DrawnPortrait)  ·  NEU (Rebirth-Renderer)", color = Gold)
+        androidx.compose.material3.Text("ALT (v2.1)  ·  NEU (Foto-Assets)", color = Gold)
         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             DrawnPortrait(player.toPortraitSpec(), Modifier.weight(1f).aspectRatio(1f))
-            PaintedPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
+            CharacterPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
             DrawnPortrait(mira.appearance.toPortraitSpec(), Modifier.weight(1f).aspectRatio(1f))
-            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
+            CharacterPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.8f), Framing.BUST)
         }
         androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-            PaintedPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
-            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
-            PaintedPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.HEAD)
+            CharacterPortrait(player, Gender.MALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
+            CharacterPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.FULL)
+            CharacterPortrait(mira.appearance, Gender.FEMALE, Modifier.weight(1f).aspectRatio(.62f), Framing.HEAD)
         }
     }
 }

@@ -98,6 +98,7 @@ internal fun SaveSlotsPanel(ui: GameUiState, controller: GameViewModel) {
     }
     Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Kampagnenplatz", color = PaleGold)
+        Text("JSON-Spielstandexport enthält keine Bilder. Eigene Bilder bleiben nur auf diesem Gerät. Charakterpakete bitte separat sichern.", color = Muted)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             (1..3).forEach { slot -> FilterChip(ui.activeSlot == slot, { controller.selectSlot(slot) }, label = { Text("Platz $slot") }, modifier = Modifier.weight(1f)) }
         }

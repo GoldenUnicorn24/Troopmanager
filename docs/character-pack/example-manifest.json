@@ -1,0 +1,32 @@
+{
+  "format": "troopmanager-character",
+  "version": 1,
+  "character": {
+    "name": "Mira Testfigur",
+    "age": 27,
+    "gender": "FEMALE",
+    "species": "HUMAN",
+    "culture": "HUMAN",
+    "origin": "Rabenfurt",
+    "profession": "Kräuterkundige",
+    "personality": {
+      "warmth": 65,
+      "boldness": 45,
+      "honor": 70,
+      "humor": 50,
+      "curiosity": 75,
+      "temper": 25
+    },
+    "interests": [
+      "Kräuterkunde",
+      "alte Lieder"
+    ],
+    "role": "REGULAR",
+    "homeProvinceId": "gm_rabenfurt",
+    "romanceable": false,
+    "appearance": {}
+  },
+  "source": "Selbst erstellte geometrische Testfigur für Troopmanager, CC0-1.0 (2026-10-26), keine reale Person",
+  "portrait": "portrait.webp",
+  "fullbody": "fullbody.webp"
+}

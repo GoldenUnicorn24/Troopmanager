@@ -98,7 +98,7 @@ object LifeEngine {
             // about a week, then friendship first. Nothing romantic is pre-set.
             if (designed != null) state = HeroineSagaEngine.setPartner(state, PartnerProfile(
                 designed.name, designed.age, designed.species, config.companionPath, null,
-                look = designed.appearance.toPortraitSpec(),
+                look = designed.appearance.toPortraitSpec(), npcIdentityId = designed.id,
             ))
         } else {
             state = state.copy(
@@ -137,9 +137,12 @@ object LifeEngine {
     }
 
     /** Older saves have no townsfolk yet; they are created once, deterministically, on first need. */
-    fun ensurePeople(state: GameState): GameState =
-        if (state.life.npcs.any { !it.designedByPlayer }) state
-        else state.copy(life = state.life.copy(npcs = Towns.all.flatMap { NpcEngine.populateTown(it) } + state.life.npcs))
+    fun ensurePeople(state: GameState): GameState {
+        val ids = state.life.npcs.map { it.id }.toSet()
+        if (state.life.npcs.any { !it.designedByPlayer } || Towns.all.any { "${it.provinceId}:wirt" in ids }) return state
+        val missing = Towns.all.flatMap { NpcEngine.populateTown(it) }.filterNot { it.id in ids }
+        return state.copy(life = state.life.copy(npcs = missing + state.life.npcs))
+    }
 
     // ------------------------------------------------------------ queries
 
@@ -668,6 +671,7 @@ object LifeEngine {
             next = next.copy(
                 companion = CompanionProfile(
                     met = true, name = friend.name, age = friend.age, species = friend.species,
+                    portraitUri = friend.appearance.customImageId?.let(CustomImageReference::uri), npcIdentityId = friend.id,
                     armorStyle = AppearanceOptions.armor[friend.appearance.armor], weapon = AppearanceOptions.weapons[friend.appearance.weapon],
                     sword = 40 + friend.appearance.muscle / 3, bow = 40 + friend.personality.curiosity / 3, riding = 45,
                     leadership = 30 + friend.personality.boldness / 3, tactics = 30 + friend.personality.honor / 4, diplomacy = 30 + friend.personality.warmth / 3,
@@ -681,9 +685,9 @@ object LifeEngine {
         val swords = members.filter { m -> state.life.party.first { it.npcId == m.id }.wage > 0 }
         val baseId = (next.commanders.maxOfOrNull { it.id } ?: 0L) + 1
         val captains = swords.mapIndexed { i, npc ->
-            Commander(baseId + i, npc.name, npc.culture, "knight", sword = 50 + npc.appearance.muscle / 4, bow = 40,
+            Commander(baseId + i, npc.name, npc.culture, "knight", portraitUri = npc.appearance.customImageId?.let(CustomImageReference::uri), sword = 50 + npc.appearance.muscle / 4, bow = 40,
                 leadership = 35 + npc.personality.boldness / 4, tactics = 35, loyalty = 60 + npc.relation.trust / 4,
-                trait = "Ehemaliger Söldner", rank = "Hauptmann")
+                trait = "Ehemaliger Söldner", rank = "Hauptmann", npcIdentityId = npc.id)
         }
         next = next.copy(commanders = next.commanders + captains, life = next.life.copy(party = emptyList()))
         // They now live at the keep: no longer in town, but they keep their memories of the road.
@@ -709,6 +713,8 @@ object LifeEngine {
         life.tournament?.let { t -> require(t.round in 0..3 && t.opponents.size <= 3) { "Ungültiges Turnier." } }
         require(life.npcs.map { it.id }.distinct().size == life.npcs.size) { "Doppelte Personen." }
         life.npcs.forEach(NpcEngine::validate)
+        val linkedIds = state.commanders.mapNotNull { it.npcIdentityId } + listOfNotNull(state.companion.npcIdentityId,state.crown.saga.partner?.npcIdentityId)
+        require(linkedIds.all { life.npc(it) != null }) { "Verknüpfte Person fehlt." }
         require(life.companionNpcId == null || life.npc(life.companionNpcId) != null) { "Gefährtin fehlt." }
     }
 }

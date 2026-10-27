@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+"""Mechanical atlas extraction/registration only; all pictured subjects come from image generation.
+
+Uses ImageMagick for lossless positioning, alpha masks, resizing and WebP encoding.
+Pillow/numpy/scipy inspect alpha to locate each supplied component, never draw replacement art.
+"""
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+from asset_contract import ROOT, ASSETS, POSES, SCENE_FOREGROUND_ROWS, catalog
+
+os.environ.setdefault('MAGICK_THREAD_LIMIT','1')
+
+MAGICK = shutil.which('magick') or shutil.which('convert')
+SOURCES = ROOT / 'art/photorealistic/sources'
+SPECS = {s['path']: s for s in catalog()}
+TEMP = tempfile.TemporaryDirectory(prefix='troop-photo-')
+WORK = Path(TEMP.name)
+serial = 0
+exports = {}
+
+def run(*args):
+    subprocess.run([MAGICK, *map(str, args)], check=True, stdout=subprocess.DEVNULL)
+
+def temporary(suffix='.miff'):
+    global serial
+    serial += 1
+    return WORK / f'{serial}{suffix}'
+
+def source(name):
+    p = SOURCES / f'{name}.webp'
+    if not p.is_file():
+        raise ValueError(f'Source not archived: {name}')
+    return p
+
+CUSTOM_BOXES = {
+    'tavern-props-atlas':[(0,0,745,683),(745,0,465,683),(1210,0,215,683),(1425,0,300,683),(1725,0,323,683)],
+    'market-props-atlas':[(0,0,560,683),(560,0,560,683),(1120,0,565,683),(1685,0,363,683)],
+    'barracks-props-atlas':[(0,0,425,683),(425,0,365,683),(790,0,390,683),(1180,0,430,683),(1610,0,438,683)],
+    'castle-props-atlas':[(0,0,340,683),(340,0,525,683),(865,0,470,683),(1335,0,505,683),(1840,0,208,683)],
+    'weapons-atlas':[(20,0,265,1024),(325,0,285,1024),(630,0,125,1024),(805,0,240,1024),(1060,0,255,1024),(1350,0,186,1024)],
+    'ground-details-atlas':[(0,0,880,683),(880,0,300,683),(1180,0,868,683)],
+}
+
+def isolate(name, index=0, columns=1, rows=1, keep_fraction=.05):
+    p = source(name)
+    with Image.open(p) as image:
+        w, h = image.size
+        x0, x1 = index % columns * w // columns, (index % columns + 1) * w // columns
+        y0, y1 = index // columns * h // rows, (index // columns + 1) * h // rows
+        if name in CUSTOM_BOXES:
+            rx,ry,rw,rh=CUSTOM_BOXES[name][index]
+            reference=(1536,1024) if name=='weapons-atlas' else (2048,683)
+            x0,y0=round(rx*w/reference[0]),round(ry*h/reference[1])
+            x1,y1=min(w,round((rx+rw)*w/reference[0])),min(h,round((ry+rh)*h/reference[1]))
+        alpha = np.asarray(image.convert('RGBA').getchannel('A'))[y0:y1, x0:x1]
+        labels, count = ndimage.label(alpha > 48)
+        if not count:
+            raise ValueError(f'Empty atlas component: {name}/{index}')
+        sizes = np.bincount(labels.ravel()); sizes[0] = 0
+        keep = sizes >= max(12, sizes.max() * keep_fraction)
+        keep[0] = False
+        mask = ndimage.binary_dilation(keep[labels], iterations=2)
+        yy, xx = np.nonzero(mask)
+        bx, by, bw, bh = int(xx.min()), int(yy.min()), int(xx.max()-xx.min()+1), int(yy.max()-yy.min()+1)
+        pgm = temporary('.pgm')
+        pgm.write_bytes(f'P5\n{x1-x0} {y1-y0}\n255\n'.encode() + (mask.astype(np.uint8)*255).tobytes())
+    out = temporary()
+    run(p, '-crop', f'{x1-x0}x{y1-y0}+{x0}+{y0}', '+repage',
+        pgm, '-alpha', 'off', '-compose', 'CopyOpacity', '-composite',
+        '-crop', f'{bw}x{bh}+{bx}+{by}', '+repage', out)
+    # Restore original soft alpha inside the connected-component selection.
+    original = temporary()
+    run(p, '-crop', f'{bw}x{bh}+{x0+bx}+{y0+by}', '+repage', original)
+    result = temporary()
+    run(original, out, '-compose', 'DstIn', '-composite', result)
+    return result, (bw, bh), {'source':name,'panel':index,'grid':[columns,rows], 'sourceBox':[x0+bx,y0+by,bw,bh]}
+
+def soften(component, brightness=1):
+    image,size,details=component;out=temporary()
+    run(image,'-channel','A','-morphology','Erode','Disk:1','-blur','0x2','+channel',
+        '-channel','RGB','-evaluate','Multiply',brightness,'+channel',out)
+    return out,size,details
+
+def plane(component, canvas, box, neutral=False):
+    image, _, _ = component
+    width, height = canvas
+    x, y, w, h = map(round, box)
+    out = temporary()
+    color = ['-colorspace','Gray','-colorspace','sRGB'] if neutral else []
+    run('-size', f'{width}x{height}', 'xc:none', '(', image,
+        '-resize', f'{w}x{h}!', *color, ')', '-geometry', f'{x:+}{y:+}',
+        '-compose', 'Over', '-composite', out)
+    return out
+
+def fit(component, canvas, width=None, height=None, center_x=512, top=0, neutral=False):
+    _, (w,h), _ = component
+    scale = width/w if width is not None else height/h
+    return plane(component,canvas,(center_x-w*scale/2,top,w*scale,h*scale),neutral)
+
+def write(name, image, details):
+    spec = SPECS[name]
+    target = ASSETS / name
+    target.parent.mkdir(parents=True,exist_ok=True)
+    # Alpha encoding remains lossless. Size check uses the actual encoded result.
+    run(image, '-strip', '-quality', '86', '-define','webp:alpha-quality=100',target)
+    if target.stat().st_size > spec['maxBytes']:
+        run(image, '-strip', '-quality','76','-define','webp:alpha-quality=100',target)
+    provenance = 'Original OpenAI image generation for Troopmanager, 2026-10-27; ' if not details.get('empty') else 'Original technical transparent registration layer; '
+    meta = {'registration':spec['registration'], 'source':provenance+details.get('source','composite'),
+            'license':'Project-original AI-generated artwork; no third-party source images',
+            'production':details, 'sha256':hashlib.sha256(target.read_bytes()).hexdigest()}
+    target.with_suffix('.webp.json').write_text(json.dumps(meta,indent=2)+'\n')
+    exports[name] = details
+
+def empty(name):
+    s = SPECS[name]; out=temporary()
+    run('-size',f"{s['width']}x{s['height']}",'xc:none',out)
+    write(name,out,{'source':'intentional empty layer','empty':True,'reason':'shaved hair or an empty furniture row'})
+
+def portrait_eyes(i):
+    eye_parts=[]
+    for side,x in enumerate([417,607]):
+        eye=soften(isolate('eyes-atlas',i*2+side,8),.88)
+        eye_parts.append(plane(eye,(1024,1280),(x-52.5,535,105,50)))
+    image=temporary();run(*eye_parts,'-compose','Over','-composite',image)
+    write(f'portraits/eyes/{i}.webp',image,{'source':'eyes-atlas','panels':[i*2,i*2+1],'pupilPlane':560})
+
+def portraits():
+    for sex in ('female','male'):
+        for shape in range(5):
+            part=isolate(f'{sex}-bases-atlas',shape,5)
+            write(f'portraits/base/{sex}_{shape}.webp',fit(part,(1024,1280),height=860,top=240,neutral=True),part[2])
+    for i in range(4):
+        portrait_eyes(i)
+        brow=isolate('brows-transparent',i,1,4)
+        write(f'portraits/brows/{i}.webp',plane(brow,(1024,1280),(337,505,350,[17,21,28,12][i]),neutral=True),brow[2])
+        nose=soften(isolate('nose-atlas',i,4))
+        nw=[104,94,96,126][i]
+        write(f'portraits/nose/{i}.webp',plane(nose,(1024,1280),(512-nw/2,552,nw,155),neutral=True),nose[2])
+        mouth=soften(isolate('mouth-atlas',i,4))
+        mw,mh=[(148,46),(160,48),(140,38),(150,40)][i]
+        write(f'portraits/mouth/{i}.webp',plane(mouth,(1024,1280),(512-mw/2,748-mh/2,mw,mh),neutral=True),mouth[2])
+    # Export a real iris/pupil/reflection texture; the renderer clips it inside each eyelid.
+    iris=temporary(); mask=temporary('.pgm')
+    # Native atlas coordinates measured on the unchanged source, not its resized UI preview.
+    with Image.open(source('eyes-atlas')) as original:
+        pixels=np.asarray(original.convert('RGB')); luminance=pixels.mean(axis=2)
+        window=luminance[310:370,110:170]
+        yy,xx=np.unravel_index(window.argmin(),window.shape)
+        cx,cy=110+int(xx),310+int(yy)
+    diameter=74; half=diameter//2
+    run('-size',f'{diameter}x{diameter}','xc:black','-fill','white','-draw',f'circle {half},{half} {diameter-1},{half}',mask)
+    run(source('eyes-atlas'),'-crop',f'{diameter}x{diameter}+{cx-half}+{cy-half}','+repage',mask,'-compose','CopyOpacity','-composite',iris)
+    iris_part=(iris,(diameter,diameter),{'source':'eyes-atlas','sourceBox':[cx-half,cy-half,diameter,diameter]})
+    left=plane(iris_part,(1024,1280),(397,540,40,40),neutral=True)
+    right=plane(iris_part,(1024,1280),(587,540,40,40),neutral=True)
+    pair=temporary();run(left,right,'-compose','Over','-composite',pair)
+    write('portraits/eyes/iris_mask.webp',pair,{**iris_part[2],'pupils':[[417,560],[607,560]]})
+    for style in range(8):
+        for texture in range(3):
+            name=f'portraits/hair_front/{style}_{texture}.webp'
+            if style==7:
+                empty(name); continue
+            part=isolate('hair-short-atlas' if style==0 else 'hair-4-complete' if style==4 else f'hair-{style}-atlas',texture,3)
+            width=660 if style in (0,4) else 790 if style==1 else 890
+            top=15 if style==4 else 50 if style==3 else 80 if style==6 else 185 if style<2 else 165
+            center=512
+            if style in (3,4,6):
+                # Register asymmetric ponytails/updos by the real face opening, not the wig bounding box.
+                inspection=temporary('.png');run(part[0],inspection)
+                with Image.open(inspection) as im:alpha=np.asarray(im.convert('RGBA'))[:,:,3]
+                scale=width/part[1][0];row=min(alpha.shape[0]-1,round((560-top)/scale))
+                labels,n=ndimage.label(alpha[row]<48)
+                spans=ndimage.find_objects(labels)
+                candidates=[(span[0].stop-span[0].start,(span[0].start+span[0].stop-1)/2) for span in spans
+                            if span and span[0].start>0 and span[0].stop<alpha.shape[1]]
+                if candidates:
+                    _,opening=max(candidates);center=512+(part[1][0]/2-opening)*scale
+            image=fit(part,(1024,1280),width=width,center_x=center,top=top,neutral=True)
+            write(name,image,part[2])
+            if texture==0:
+                # Shared photographic wig: base face occludes the back component naturally.
+                write(f'portraits/hair_back/{style}.webp',image,{**part[2],'occlusion':'behind the base skin layer'})
+        if style==7:empty('portraits/hair_back/7.webp')
+    for i in range(4):
+        part=isolate('beard-atlas',i,4)
+        box=[(310,650,404,250),(402,735,220,180),(297,635,430,300),(297,640,430,460)][i]
+        image=plane(part,(1024,1280),box,neutral=True)
+        if i==0:run(image,'-channel','A','-evaluate','Multiply','.25','+channel',image)
+        write(f'portraits/beard/{i+1}.webp',image,part[2])
+    scar_boxes=[(590,610,74,140),(420,510,28,125),(465,435,105,30),(505,805,47,65)]
+    for i in range(7):
+        part=isolate('marks-atlas',i,7)
+        name=f'portraits/marks/scar_{i+1}.webp' if i<4 else f'portraits/marks/tattoo_{i-3}.webp'
+        box=scar_boxes[i] if i<4 else [(596,620,65,145),(330,650,60,155),(480,415,60,80)][i-4]
+        write(name,plane(part,(1024,1280),box),part[2])
+    for group,count in [('outfit',5),('armor',4),('cloak',3)]:
+        for i in range(count):
+            if group=='cloak' and i==2:
+                p=source('hood-registered')
+                with Image.open(p) as im:w,h=im.size
+                # Registration measured on the original, unchanged adult fitting photograph.
+                scale=190/255
+                image=plane((p,(w,h),{}),(1024,1280),(512-562.5*scale,560-505*scale,w*scale,h*scale),neutral=True)
+                write('portraits/cloak/3.webp',image,{'source':'hood-registered','eyeReference':[562.5,505],'scale':scale})
+                continue
+            part=isolate(f'{group}-atlas',i,count)
+            # Garments continue beyond the bust frame; never squash a torso into the bottom strip.
+            top=960 if group!='cloak' else (180 if i==2 else 950)
+            width=1050 if group!='cloak' or i!=2 else 1080
+            name=f'portraits/{group}/{i if group=="outfit" else i+1}.webp'
+            write(name,fit(part,(1024,1280),width=width,top=top,neutral=group!='armor'),part[2])
+
+def backgrounds():
+    boundaries={'tavern':272,'market':320,'barracks':300,'castle':340}
+    for scene,cut in boundaries.items():
+        p=source(scene+'-background-clean' if scene=='tavern' else scene+'-background')
+        with Image.open(p) as im:w,h=im.size
+        layout=json.loads((ASSETS/f'scenes/{scene}/layout.json').read_text())
+        floor=round(layout['floorPolygon'][0][1]); out=temporary()
+        run('(',p,'-crop',f'{w}x{cut}+0+0','+repage','-resize',f'2160x{floor}!',')',
+            '(',p,'-crop',f'{w}x{h-cut}+0+{cut}','+repage','-resize',f'2160x{1440-floor}!',')','-append',out)
+        if scene in ('tavern','castle','barracks'):
+            index={'tavern':0,'castle':1,'barracks':2}[scene]
+            part=isolate('ground-details-atlas',index)
+            rh=(1440-floor)/9
+            box={'tavern':(5.4*180,floor+4.1*rh,3.6*180,2.9*rh),
+                 'castle':(5.6*180,floor+2*rh,.8*180,7*rh),
+                 'barracks':(4.7*180,floor+4.8*rh,2.6*180,2.4*rh)}[scene]
+            decal=plane(part,(2160,1440),box)
+            run(out,decal,'-compose','Over','-composite',out)
+        if scene=='market':
+            # Roofs/back posts stay behind merchants; the corresponding front counters occlude legs.
+            rh=(1440-floor)/9
+            for index,x,row,width in [(0,2,2,540),(1,9,2,540),(2,1.5,6,360)]:
+                part=isolate('market-props-atlas',index,4)
+                height=part[1][1]*width/part[1][0]
+                placed=fit(part,(2160,1440),width=width,center_x=(x+.5)*180,top=floor+(row+.8)*rh-height)
+                run(out,placed,'-compose','Over','-composite',out)
+        write(f'scenes/{scene}/day.webp',out,{'source':scene+'-background','sourceFloorY':cut,'registeredFloorY':floor,'decalSource':'ground-details-atlas' if scene!='market' else None})
+
+def figure(sex,pose,bodies_only=False):
+    panel=POSES.index(pose); seated=pose=='sitting'
+    body_height=1050 if seated else 1410
+    prefix=f'figures/{sex}/{pose}'
+    for build in range(4):
+        part=isolate(f'body-{sex}-{build}-atlas',panel,3,2)
+        image=fit(part,(768,1536),height=body_height,center_x=384,top=1480-body_height,neutral=True)
+        # The body scan is a physical underlayer. Replace its head with the same portrait recipe at runtime.
+        cropped=temporary();neck_top=660 if seated else 300
+        neck=temporary();run(image,'-crop',f'180x150+294+{neck_top}','+repage',neck)
+        run('-size','768x1536','xc:none',neck,'-geometry',f'+294+{neck_top}','-compose','Over','-composite',cropped)
+        if seated:
+            standing=isolate(f'body-{sex}-{build}-atlas',0,3,2)
+            standing_image=fit(standing,(768,1536),height=1410,center_x=384,top=70,neutral=True)
+            for sx,dx in [(156,214),(518,464)]:
+                hand=temporary();run(standing_image,'-crop',f'94x200+{sx}+740','+repage','-resize','80x170!',hand)
+                run(cropped,hand,'-geometry',f'+{dx}+930','-compose','Over','-composite',cropped)
+        else:
+            for x in [156,518]:
+                hand=temporary();run(image,'-crop',f'94x220+{x}+740','+repage',hand)
+                run(cropped,hand,'-geometry',f'+{x}+740','-compose','Over','-composite',cropped)
+        write(f'{prefix}/body/{build}.webp',cropped,{**part[2],'footY':1480,'headReplacedByPortrait':True,'handRegistration':'standing hands at seated cuffs' if seated else 'pose hands'})
+    if bodies_only:return
+    for outfit in range(5):
+        part=isolate(f'figure-outfit-{outfit}-atlas',panel,3,2)
+        height=880 if seated else 1180
+        write(f'{prefix}/outfit/{outfit}.webp',fit(part,(768,1536),height=height,center_x=384,top=1480-height,neutral=True),part[2])
+    for armor in range(4):
+        part=isolate('armor-atlas',armor,4)
+        write(f'{prefix}/armor/{armor+1}.webp',fit(part,(768,1536),width=500,center_x=384,top=650 if seated else 370),part[2])
+    for cloak in range(3):
+        src=['figure-cloak-1-wool','figure-cloak-2-atlas','figure-cloak-3-atlas'][cloak]
+        part=isolate(src,panel,3,2)
+        height=body_height if cloak==2 else (880 if seated else 1180)
+        image=fit(part,(768,1536),height=height,center_x=384,top=1480-height,neutral=True)
+        if cloak==2:
+            # Use the separately registered open hood at head scale. Keep this pose's real cape below it.
+            eye_y=546 if seated else 186
+            cut=round(eye_y+150)
+            lower=temporary();run('-size','768x1536','xc:none','(',image,'-crop',f'768x{1536-cut}+0+{cut}','+repage',')',
+                '-geometry',f'+0+{cut}','-compose','Over','-composite',lower)
+            hood=ASSETS/'portraits/cloak/3.webp';mask=temporary('.miff')
+            a=np.zeros((1280,1024),dtype=np.uint8);a[:1050]=255
+            for y in range(1050,1280):a[y]=round(255*(1280-y)/230)
+            pgm=temporary('.pgm');pgm.write_bytes(b'P5\n1024 1280\n255\n'+a.tobytes())
+            run(pgm,'-alpha','Copy',mask)
+            faded=temporary();run(hood,mask,'-compose','DstIn','-composite',faded)
+            upper=plane((faded,(1024,1280),{}),(768,1536),(384-512*.29,eye_y-560*.29,1024*.29,1280*.29))
+            run(lower,upper,'-compose','Over','-composite',image)
+        write(f'{prefix}/cloak/{cloak+1}.webp',image,{**part[2],'headSource':'hood-registered' if cloak==2 else None})
+    figure_hair(sex,pose)
+    for weapon in range(6):
+        part=isolate('weapons-atlas',weapon)
+        height=[800,880,1390,790,460,1350][weapon]
+        if seated:height*=.78
+        # Equipment is carried alongside the body/belt, leaving the face and walking feet clear.
+        x=[600,165,620,600,580,620][weapon]
+        top=(1480-height) if weapon in (2,5) else (870 if seated else 600)
+        if top+height>1480:top=1480-height
+        image=fit(part,(768,1536),height=height,center_x=x,top=top)
+        write(f'{prefix}/weapon/{weapon}.webp',image,part[2])
+    shadow=isolate('contact-shadow',keep_fraction=.001)
+    image=plane(shadow,(768,1536),(150,1442,468,76),neutral=True)
+    run(image,'-channel','A','-evaluate','Multiply','.45','+channel',image)
+    write(f'{prefix}/shadow.webp',image,shadow[2])
+
+def figure_hair(sex,pose,styles=range(8)):
+    prefix=f'figures/{sex}/{pose}';seated=pose=='sitting'
+    for hair in styles:
+        for texture in range(3):
+            name=f'{prefix}/hair_front/{hair}_{texture}.webp'
+            if hair==7:empty(name);continue
+            p=ASSETS/f'portraits/hair_front/{hair}_{texture}.webp'
+            # Identical portrait registration, scaled to the body's head socket.
+            part=(p,(1024,1280),{'source':f'portraits/hair_front/{hair}_{texture}.webp'})
+            eye_y=546 if seated else 186
+            image=plane(part,(768,1536),(384-512*.29,eye_y-560*.29,1024*.29,1280*.29))
+            write(name,image,part[2])
+
+# source, component, grid-column, painter row, image width (not the collision footprint).
+PROPS={
+ 'tavern': [('hearth-well-atlas',0,8.5,1,360),('tavern-props-atlas',0,2.5,2,720),
+            ('tavern-props-atlas',3,0,2,155),('tavern-props-atlas',3,0,3,155),
+            ('tavern-props-atlas',4,11,5,180)] +
+           [('tavern-props-atlas',1,x,y,260) for x,y in [(3,6),(7,5),(9,7)]] +
+           [('tavern-props-atlas',2,x,y,110) for x,y in [(1,3),(2,3),(4,3),(2,6),(4,6),(3,7),(3,5),(6,5),(8,5),(7,4),(7,6),(8,7),(10,7),(9,6),(7,2),(10,2)]],
+ 'market': [('market-props-atlas',0,2,2,540),('market-props-atlas',1,9,2,540),
+            ('market-props-atlas',2,1.5,6,360),('hearth-well-atlas',1,6,5,245)] +
+           [('market-props-atlas',3,x,y,170) for x,y in [(11,6),(11,7),(4,1)]],
+ 'barracks': [('barracks-props-atlas',0,x,3,185) for x in [1,3]] +
+             [('barracks-props-atlas',1,x,1,190) for x in [8,10]] +
+             [('barracks-props-atlas',2,x,1,170) for x in [4,5]] +
+             [('barracks-props-atlas',3,2.5,6,340),('barracks-props-atlas',4,10.5,7,355)],
+ 'castle': [('castle-props-atlas',4,x,1,160) for x in [0,11]] +
+           [('castle-props-atlas',0,6,2,430)] +
+           [('castle-props-atlas',1,1.5,y,360) for y in [4,6]] +
+           [('castle-props-atlas',2,9.3,5,230),('castle-props-atlas',2,10.7,5,230),('castle-props-atlas',3,10,5,540)]
+}
+
+def foreground(scene):
+    layout=json.loads((ASSETS/f'scenes/{scene}/layout.json').read_text())
+    floor=layout['floorPolygon'][0][1];rh=(1440-floor)/9
+    active={p[3] for p in PROPS[scene]}
+    assert active==SCENE_FOREGROUND_ROWS[scene]
+    counts={'tavern-props-atlas':5,'market-props-atlas':4,'barracks-props-atlas':5,'castle-props-atlas':5,'hearth-well-atlas':2}
+    for row in range(9):
+        name=f'scenes/{scene}/foreground_{row}.webp'
+        if row not in active:empty(name);continue
+        image=temporary();run('-size','2160x1440','xc:none',image)
+        details=[]
+        for src,index,x,y,width in PROPS[scene]:
+            if y!=row:continue
+            part=isolate(src,index,counts[src]);height=part[1][1]*width/part[1][0]
+            feet=floor+(row+.8)*rh
+            placed=fit(part,(2160,1440),width=width,center_x=(x+.5)*180,top=feet-height)
+            if scene=='market' and src=='market-props-atlas' and index<3:
+                split=round(feet-height*.4)
+                front=temporary();run('-size','2160x1440','xc:none','(',placed,'-crop',f'2160x{1440-split}+0+{split}','+repage',')',
+                    '-geometry',f'+0+{split}','-compose','Over','-composite',front)
+                placed=front
+            run(image,placed,'-compose','Over','-composite',image)
+            details.append({**part[2],'gridAnchor':[x,row],'width':width,'groundY':feet})
+        write(name,image,{'source':scene+'-props-atlas','objects':details})
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('part',choices=['portraits','backgrounds','figure','foreground'])
+    parser.add_argument('--sex',choices=['female','male'])
+    parser.add_argument('--pose',choices=POSES)
+    parser.add_argument('--scene',choices=PROPS)
+    parser.add_argument('--bodies-only',action='store_true')
+    parser.add_argument('--hair-only',action='store_true')
+    parser.add_argument('--eyes-only',action='store_true')
+    args=parser.parse_args()
+    assert MAGICK,'ImageMagick required'
+    if args.part=='figure':
+        assert args.sex and args.pose
+        if args.hair_only:figure_hair(args.sex,args.pose,styles=[3,4,6])
+        else:figure(args.sex,args.pose,args.bodies_only)
+    elif args.part=='foreground':
+        assert args.scene
+        foreground(args.scene)
+    elif args.part=='portraits' and args.eyes_only:
+        for i in range(4):portrait_eyes(i)
+    else:globals()[args.part]()
+    suffix=f'-{args.sex}-{args.pose}' if args.part=='figure' else f'-{args.scene}' if args.part=='foreground' else ''
+    output=ROOT/f'art/photorealistic/{args.part}{suffix}-exports.json'
+    previous=json.loads(output.read_text()) if (args.bodies_only or args.hair_only or args.eyes_only) and output.exists() else {}
+    output.write_text(json.dumps(previous|exports,indent=2)+'\n')
+    print(f'{len(exports)} registered {args.part} assets exported.')
+
+if __name__=='__main__':main()

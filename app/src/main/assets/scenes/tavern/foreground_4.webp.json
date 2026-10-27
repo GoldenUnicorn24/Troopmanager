@@ -1,0 +1,31 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; tavern-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "tavern-props-atlas",
+    "objects": [
+      {
+        "source": "tavern-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1283,
+          328,
+          211,
+          303
+        ],
+        "gridAnchor": [
+          7,
+          4
+        ],
+        "width": 110,
+        "groundY": 949.6216216216217
+      }
+    ]
+  },
+  "sha256": "231fd8471ea7d5e4ba30f06d4bbe03a44889b598fbcb9e75c85ac71dd954c725"
+}
