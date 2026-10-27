@@ -1,3 +1,9 @@
+# Aktueller Arbeitsstand: v2.2.0 Charaktereditor & eigene Bilder (Branch `claude/character-editor-v2`, Basis `codex/custom-character-art` @ `479cadd`)
+
+Editor ohne Aufblitzen alter Grafik (explizite Ladezustände), reparierte Figuren-/Porträtebenen
+(`scripts/repair_figure_layers`), „Eigenes Bild verwenden“ direkt in der Spielerstellung und für die
+Gefährtin, Charakterverwaltung. Details und Prüfnachweise: `docs/CHARACTER-EDITOR-V2-REPORT.md`.
+
 # Aktueller Arbeitsstand: v2.2.0 Project Rebirth (Branch `claude/project-rebirth-rpg`, PR #14)
 
 Lebensschicht (`LifeState`, Save-Schema 6), vier Spielmodi, Gefährtin-Frage, Charaktereditor, begehbare Taverne, Markt und Kaserne, Gefolge, persönliche Kämpfe, Wunden, Gefangenschaft, Beziehungsnetz der NPCs.

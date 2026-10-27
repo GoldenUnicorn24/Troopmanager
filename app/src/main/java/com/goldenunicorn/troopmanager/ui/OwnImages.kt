@@ -141,7 +141,7 @@ internal fun OwnImagePanel(imageId: String?, onImageChange: (String?) -> Unit, m
             onUpload = { pick(CharacterImageKind.FULLBODY) }, onRealign = { realign(CharacterImageKind.FULLBODY) },
             onRemove = { remove(CharacterImageKind.FULLBODY) })
         RbAction("Bereits importierte Bilder wählen", enabled = !busy, modifier = Modifier.fillMaxWidth()) { showLibrary = true }
-        if (imageId != null) RbAction("Eigene Bilder entfernen · Standard wiederherstellen", enabled = !busy, modifier = Modifier.fillMaxWidth()) { onImageChange(null) }
+        if (imageId != null) RbAction("Standarddarstellung wiederherstellen", enabled = !busy, modifier = Modifier.fillMaxWidth()) { onImageChange(null) }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Gold)
         problem?.let { Text(it, color = Danger, fontSize = 13.sp, modifier = Modifier.testTag("own_image_error")) }
     }
