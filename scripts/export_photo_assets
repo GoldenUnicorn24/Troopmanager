@@ -126,18 +126,21 @@ def empty(name):
     run('-size',f"{s['width']}x{s['height']}",'xc:none',out)
     write(name,out,{'source':'intentional empty layer','empty':True,'reason':'shaved hair or an empty furniture row'})
 
+def portrait_eyes(i):
+    eye_parts=[]
+    for side,x in enumerate([417,607]):
+        eye=soften(isolate('eyes-atlas',i*2+side,8),.88)
+        eye_parts.append(plane(eye,(1024,1280),(x-52.5,535,105,50)))
+    image=temporary();run(*eye_parts,'-compose','Over','-composite',image)
+    write(f'portraits/eyes/{i}.webp',image,{'source':'eyes-atlas','panels':[i*2,i*2+1],'pupilPlane':560})
+
 def portraits():
     for sex in ('female','male'):
         for shape in range(5):
             part=isolate(f'{sex}-bases-atlas',shape,5)
             write(f'portraits/base/{sex}_{shape}.webp',fit(part,(1024,1280),height=860,top=240,neutral=True),part[2])
     for i in range(4):
-        eye_parts=[]
-        for side,x in enumerate([417,607]):
-            eye=soften(isolate('eyes-atlas',i*2+side,8),.88)
-            eye_parts.append(plane(eye,(1024,1280),(x-67.5,526.2,135,65)))
-        image=temporary();run(*eye_parts,'-compose','Over','-composite',image)
-        write(f'portraits/eyes/{i}.webp',image,{'source':'eyes-atlas','panels':[i*2,i*2+1],'pupilPlane':560})
+        portrait_eyes(i)
         brow=isolate('brows-transparent',i,1,4)
         write(f'portraits/brows/{i}.webp',plane(brow,(1024,1280),(337,505,350,[17,21,28,12][i]),neutral=True),brow[2])
         nose=soften(isolate('nose-atlas',i,4))
@@ -168,9 +171,21 @@ def portraits():
             if style==7:
                 empty(name); continue
             part=isolate('hair-short-atlas' if style==0 else 'hair-4-complete' if style==4 else f'hair-{style}-atlas',texture,3)
-            width=660 if style==0 else 790 if style==1 else 890
-            top=185 if style<2 else 165
-            image=fit(part,(1024,1280),width=width,top=top,neutral=True)
+            width=660 if style in (0,4) else 790 if style==1 else 890
+            top=15 if style==4 else 50 if style==3 else 80 if style==6 else 185 if style<2 else 165
+            center=512
+            if style in (3,4,6):
+                # Register asymmetric ponytails/updos by the real face opening, not the wig bounding box.
+                inspection=temporary('.png');run(part[0],inspection)
+                with Image.open(inspection) as im:alpha=np.asarray(im.convert('RGBA'))[:,:,3]
+                scale=width/part[1][0];row=min(alpha.shape[0]-1,round((560-top)/scale))
+                labels,n=ndimage.label(alpha[row]<48)
+                spans=ndimage.find_objects(labels)
+                candidates=[(span[0].stop-span[0].start,(span[0].start+span[0].stop-1)/2) for span in spans
+                            if span and span[0].start>0 and span[0].stop<alpha.shape[1]]
+                if candidates:
+                    _,opening=max(candidates);center=512+(part[1][0]/2-opening)*scale
+            image=fit(part,(1024,1280),width=width,center_x=center,top=top,neutral=True)
             write(name,image,part[2])
             if texture==0:
                 # Shared photographic wig: base face occludes the back component naturally.
@@ -283,16 +298,7 @@ def figure(sex,pose,bodies_only=False):
             upper=plane((faded,(1024,1280),{}),(768,1536),(384-512*.29,eye_y-560*.29,1024*.29,1280*.29))
             run(lower,upper,'-compose','Over','-composite',image)
         write(f'{prefix}/cloak/{cloak+1}.webp',image,{**part[2],'headSource':'hood-registered' if cloak==2 else None})
-    for hair in range(8):
-        for texture in range(3):
-            name=f'{prefix}/hair_front/{hair}_{texture}.webp'
-            if hair==7:empty(name);continue
-            p=ASSETS/f'portraits/hair_front/{hair}_{texture}.webp'
-            # Identical portrait registration, scaled to the body's head socket.
-            part=(p,(1024,1280),{'source':f'portraits/hair_front/{hair}_{texture}.webp'})
-            eye_y=546 if seated else 186
-            image=plane(part,(768,1536),(384-512*.29,eye_y-560*.29,1024*.29,1280*.29))
-            write(name,image,part[2])
+    figure_hair(sex,pose)
     for weapon in range(6):
         part=isolate('weapons-atlas',weapon)
         height=[800,880,1390,790,460,1350][weapon]
@@ -307,6 +313,19 @@ def figure(sex,pose,bodies_only=False):
     image=plane(shadow,(768,1536),(150,1442,468,76),neutral=True)
     run(image,'-channel','A','-evaluate','Multiply','.45','+channel',image)
     write(f'{prefix}/shadow.webp',image,shadow[2])
+
+def figure_hair(sex,pose,styles=range(8)):
+    prefix=f'figures/{sex}/{pose}';seated=pose=='sitting'
+    for hair in styles:
+        for texture in range(3):
+            name=f'{prefix}/hair_front/{hair}_{texture}.webp'
+            if hair==7:empty(name);continue
+            p=ASSETS/f'portraits/hair_front/{hair}_{texture}.webp'
+            # Identical portrait registration, scaled to the body's head socket.
+            part=(p,(1024,1280),{'source':f'portraits/hair_front/{hair}_{texture}.webp'})
+            eye_y=546 if seated else 186
+            image=plane(part,(768,1536),(384-512*.29,eye_y-560*.29,1024*.29,1280*.29))
+            write(name,image,part[2])
 
 # source, component, grid-column, painter row, image width (not the collision footprint).
 PROPS={
@@ -360,18 +379,23 @@ def main():
     parser.add_argument('--pose',choices=POSES)
     parser.add_argument('--scene',choices=PROPS)
     parser.add_argument('--bodies-only',action='store_true')
+    parser.add_argument('--hair-only',action='store_true')
+    parser.add_argument('--eyes-only',action='store_true')
     args=parser.parse_args()
     assert MAGICK,'ImageMagick required'
     if args.part=='figure':
         assert args.sex and args.pose
-        figure(args.sex,args.pose,args.bodies_only)
+        if args.hair_only:figure_hair(args.sex,args.pose,styles=[3,4,6])
+        else:figure(args.sex,args.pose,args.bodies_only)
     elif args.part=='foreground':
         assert args.scene
         foreground(args.scene)
+    elif args.part=='portraits' and args.eyes_only:
+        for i in range(4):portrait_eyes(i)
     else:globals()[args.part]()
     suffix=f'-{args.sex}-{args.pose}' if args.part=='figure' else f'-{args.scene}' if args.part=='foreground' else ''
     output=ROOT/f'art/photorealistic/{args.part}{suffix}-exports.json'
-    previous=json.loads(output.read_text()) if args.bodies_only and output.exists() else {}
+    previous=json.loads(output.read_text()) if (args.bodies_only or args.hair_only or args.eyes_only) and output.exists() else {}
     output.write_text(json.dumps(previous|exports,indent=2)+'\n')
     print(f'{len(exports)} registered {args.part} assets exported.')
 

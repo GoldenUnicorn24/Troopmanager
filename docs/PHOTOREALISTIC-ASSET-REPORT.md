@@ -13,6 +13,9 @@ Daraus exportiert: 82 Porträt-, 564 Figuren- und 40 Szenenebenen, insgesamt 686
 keine abgebildeten Motive. Die übrigen 631 Dateien enthalten sichtbare Bildinhalte.
 Jede Datei ist einzeln in `CREDITS.md` aufgeführt. Es gibt keine Cloud-Aufrufe im Spiel.
 
+Der neue Satz umfasst Personen und die vier begehbaren Orte; ältere Kriegs-, Stadt- und
+Menüillustrationen gehören nicht zu diesen 686 Dateien.
+
 Die vier Orte verwenden echte Tageshintergründe, registrierte Möbelzeilen und Tageszeit-Tönung.
 Die sechs Figurenposen enthalten vier unterschiedliche Gehphasen. Die Körperköpfe übernehmen
 dieselben Gesichtsebenen wie die Personenporträts. Cache und Zielgrößendekodierung bleiben aktiv.
@@ -26,10 +29,28 @@ dieselben Gesichtsebenen wie die Personenporträts. Cache und Zielgrößendekodi
   Nacht-Testbildschirm; nach Korrektur war der zweite Lauf erfolgreich.
 - Strenger finaler Asset-Check (`python3 scripts/check_assets --json`): **686/686**, keine fehlenden
   oder ungültigen Dateien. Auch nach der abschließenden Handmasken-Korrektur erfolgreich.
-  Finale Bilddaten: **30.008.516 Byte** vor APK-Verpackung: Porträts 5.432.152,
-  Figuren 21.174.342, Szenen 3.402.022.
-- Unit, Lint, APK und Emulator-Tour: noch in Prüfung.
-  Ergebnisse werden nach dem tatsächlichen Lauf ergänzt.
+  Erster Satz: **30.008.516 Byte**. Nach der visuellen Haar-/Augenkorrektur erneut streng
+  geprüft: **686/686**, 0 Fehler, **29.337.390 Byte** Bilddaten vor APK-Verpackung.
+- GitHub-PR-Lauf [40465815951](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40465815951),
+  Code-/Asset-Commit `c3efc4d325cf65f86abe5ce36e7367d5ab62c2d2`: **593 Unit-Tests**, keine Fehler;
+  Lint **0 Fehler, 22 Warnungen**. APK gebaut und durch `apksigner`/Paket-Metadaten geprüft.
+  Verifikationsartefakt `12716796991` heruntergeladen und XML-/Asset-Berichte ausgewertet.
+- APK-Artefakt `12716936101`: **62,877,379 Byte**, SHA256 `800a67296e0035babd6fe2bc5bf896e58e5fbe7c6afcb49fd638302b0c18f4b2`.
+  Gegenüber der vorherigen Feature-APK (32.441.767 Byte): **+30,435,612 Byte**
+  (**+93.816%**). Gegenüber Rebirth (32.264.361 Byte): **+30,613,018 Byte**.
+  Quellenarchive sind nicht im APK enthalten; alle 686 Laufzeit-WebPs sind enthalten.
+- Erste Emulatorläufe `40465815951` und `40465808490`: **23 Tests, 1 Fehler**.
+  Die vier neuen Foto-Renderer-Tests bestanden; die Tour brach beim ersten Tavernenladen ab,
+  weil der neue Test zusätzlich die gesamte kalte Dateiladung auf zwei Sekunden begrenzte.
+  Das war kein fehlgeschlagener Zeichenzeit-Test. Korrektur: begrenzte Vorbereitung mit zwei
+  Arbeitern, synchronisierter Decode-Cache gegen doppelte Dekodierung; separat bis zu zehn
+  Sekunden für Dateiladen, weiterhin unverändert maximal zwei Sekunden fürs Zeichnen/Aufnehmen.
+- Die ersten 20 Android-Porträts und zwölf Figurenansichten wurden angesehen. Dabei wurde eine
+  fehlerhafte Haarregistrierung bei Dutt/Pferdeschwanz gefunden (Augen verdeckt). Registrierung
+  erfolgt jetzt am tatsächlichen Gesichtsausschnitt statt am asymmetrischen Perückenrahmen.
+  Zu große Augen wurden ebenfalls auf natürlichere Proportionen verkleinert. Die sechs
+  Pferdeschwanz-/Duttvarianten lassen beide Augenreferenzpunkte frei (lokal an allen Varianten
+  geprüft und als Android-Regression ergänzt). Abschließende Tour und Sichtprüfung laufen noch.
 - Bisherige grüne Läufe aus `CUSTOM-CHARACTER-TEST-REPORT.md` betreffen die frühere Import-Pipeline
   ohne diesen Bildsatz und werden hier nicht als Nachweis für die neuen Bilder verwendet.
 

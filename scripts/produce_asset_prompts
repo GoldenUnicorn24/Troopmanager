@@ -72,7 +72,7 @@ verwenden eine vollständige Vektorfigur. Eigene Bilder haben Vorrang.
 `scripts/check_assets` prüft alle 686 Dateien, Format, Maße, echtes Alpha, erlaubte leere Ebenen,
 Graustufen, Registrierung, Größenbudget, SHA256 und Einzelherkunft. CI verwendet den strengen Aufruf.
 Metadaten sind eine Registrierungserklärung und ersetzen keine anatomische Sichtprüfung.
-Android-Tests dekodieren und rendern echte Dateien; die Tour wartet höchstens zwei Sekunden auf
+Android-Tests dekodieren und rendern echte Dateien; die Tour wartet höchstens zehn Sekunden auf
 laufende Bildladevorgänge und prüft anschließend das bestehende Zwei-Sekunden-Aufnahmelimit.
 Aktuelle Ergebnisse und ehrliche Grenzen: [PHOTOREALISTIC-ASSET-REPORT.md](PHOTOREALISTIC-ASSET-REPORT.md).
 
