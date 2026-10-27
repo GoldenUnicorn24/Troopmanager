@@ -11,5 +11,5 @@
   "errors": 0,
   "debugApkBytes": 35721397,
   "debugApkSha256": "7f994d0852aea1f90781d861448a0aa5b4dbe6956d586d4d29668689b80da5f7",
-  "note": "Includes separate copies for different people sharing a content URI. Final Android 26 tint compatibility adjustment is verified by subsequent CI."
+  "note": "Includes separate copies for different people sharing a content URI. The final Android 26 tint compatibility and decode-bound adjustments are excluded from this local run; remote CI run 40407467626 subsequently compiled and checked that source. Android 26 runtime remains untested."
 }

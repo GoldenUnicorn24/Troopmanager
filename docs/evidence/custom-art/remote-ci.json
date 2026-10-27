@@ -1,0 +1,93 @@
+{
+  "sourceCommit": "27038efd7ed3e9b3bbdcd52a71bd1dbb757d2e58",
+  "workflowRunId": 40407467626,
+  "workflowUrl": "https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40407467626",
+  "buildJobId": 121868834490,
+  "buildConclusion": "success",
+  "unit": {
+    "suites": 59,
+    "tests": 593,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 22
+  },
+  "apk": {
+    "bytes": 32425383,
+    "sha256": "6f0afebe2a715738906509eeeeabea0f7f4d24193c4545fcb5ea6d7e4e4f1fc7",
+    "baselineCommit": "7bc6af59d955940d626a84390e3f4c70fe60fc5c",
+    "baselineBytes": 32264361,
+    "deltaBytes": 161022,
+    "deltaPercent": 0.499
+  },
+  "assets": {
+    "expected": 686,
+    "installed": 0,
+    "bytes": 0,
+    "missing": 686,
+    "errors": 0
+  },
+  "instrumentation": {
+    "jobId": 121872666912,
+    "conclusion": "success",
+    "apiLevel": 35,
+    "tests": 19,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "screenshots": 69,
+    "tourCaptureLimitMs": 2000,
+    "captureLimitAsserted": true,
+    "uiArtifactId": 12692372522
+  },
+  "runtimeLimitations": [
+    "Android 26 runtime not exercised",
+    "No painted production assets installed; performance with a complete asset set unverified"
+  ],
+  "workflowConclusion": "success",
+  "visualReview": {
+    "fullSizeScreenshots": [
+      {
+        "name": "e-market.png",
+        "sha256": "90dce2feb6e6c1153f9065b0bb2f311a12f83ef1d3075992407d83b8704c036b"
+      },
+      {
+        "name": "f-barracks.png",
+        "sha256": "ba9dfe9c200048a0be74370bc4f28127f6ec96106864e72dbea914a5caebb203"
+      },
+      {
+        "name": "g-castle.png",
+        "sha256": "46e661ee6c8605bbcbc4591731cb63622ef36e6e7c86ee7c1a8db23b35fd44f4"
+      },
+      {
+        "name": "g-tavern.png",
+        "sha256": "b3195c3550029c1da5ac9c253e14f0fb862cda41419eb0cb934cb821967210da"
+      },
+      {
+        "name": "i-custom-compare.png",
+        "sha256": "ad784959b733aa4c23596bc5660bb1f95502114aabed885651112f27398f1ae5"
+      },
+      {
+        "name": "i-custom-crop.png",
+        "sha256": "cb14d4a5bb544d1c30e752a80fee3d5e1f213742c5f59b496e2c82c156179eeb"
+      },
+      {
+        "name": "i-custom-import.png",
+        "sha256": "7be0cbff3a51ba878c7bbea3d4a2efae8f4b09053f6534aa428bfbde3b91f96a"
+      },
+      {
+        "name": "i-custom-tavern.png",
+        "sha256": "2bbead30a38242560b67853e09041edde66a981ea94c0a0d64ac3815e8987a85"
+      }
+    ],
+    "contactSheetsReviewed": 6,
+    "findings": [
+      "Imported portrait and fullbody visible, eye guide aligned; synthetic test art is not production artwork",
+      "Nearby tavern labels overlap on this source; corrected in subsequent commit de06583",
+      "No complete painted asset set available to assess realism or production-asset performance"
+    ]
+  }
+}

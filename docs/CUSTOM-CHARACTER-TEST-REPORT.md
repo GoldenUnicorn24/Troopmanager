@@ -3,6 +3,39 @@
 Basis: `claude/project-rebirth-rpg` @ `7bc6af5`, PR #14 war zum Arbeitsbeginn offen.
 Feature-Branch: `codex/custom-character-art`. Kein Schreiben auf main.
 
+## Aktueller Nachweis (26. Oktober 2026)
+
+Remote-CI für `27038ef`: [Lauf 40407467626](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40407467626).
+Build-Job erfolgreich: 593 Unit-Tests in 59 Suites, keine Fehler oder übersprungenen Tests;
+Lint 0 Fehler / 22 Warnungen; APK-Bau und Signaturprüfung erfolgreich. Auch die letzten
+Android-26-Tönungs- und Decode-Begrenzungsänderungen sind in diesem Stand enthalten.
+Android 35 mit KVM: **19 Instrumentierungstests bestanden**, keine Fehler und keine übersprungenen
+Tests (XML-Laufzeit 81,539 s). **69 Screenshots** erzeugt; `TourTest.everyScreen` bestand einschließlich
+der Vierergruppe `i-custom-*` und der Assertion von höchstens 2000 ms pro Screenshot-Aufnahme.
+Das prüft den Capture-/Zeichenpfad nach dem Laden, nicht eine garantierte Kaltstartzeit.
+
+Sichtprüfung: alle 69 Aufnahmen in sechs Kontaktbögen; zusätzlich Import, Zuschnitt, Porträtvergleich,
+eigene Figur in der Taverne sowie Markt, Kaserne, Burghof und normale Taverne einzeln in voller Größe
+angesehen. Die Testbilder erscheinen im richtigen Rahmen; die Augen-Führung liegt auf der Augenlinie.
+Die synthetische Ganzkörper-Testfigur ist sichtbar und bleibt absichtlich in ihrer festen Pose.
+Zwei nahe Tavernen-Namensschilder überlappten. `de06583` begrenzt lange Beschriftungen und staffelt
+kollidierende Schilder vertikal, ohne Figuren oder Raster zu verschieben. Die frischen Prüfungen
+dieser anschließenden Korrektur sind unter [PR #15 / Checks](https://github.com/GoldenUnicorn24/Troopmanager/pull/15/checks)
+auffindbar; der eingefrorene Nachweis hier bezieht sich ausdrücklich auf `27038ef`.
+
+[Maschinenlesbarer CI- und Sichtprüfungsnachweis](evidence/custom-art/remote-ci.json),
+[UI-Artefakt](https://github.com/GoldenUnicorn24/Troopmanager/actions/runs/40407467626/artifacts/12692372522).
+
+Frisches CI-Debug-APK: **32.425.383 Byte**, SHA-256
+`6f0afebe2a715738906509eeeeabea0f7f4d24193c4545fcb5ea6d7e4e4f1fc7`.
+Gegenüber dem Basis-APK (32.264.361 Byte): **+161.022 Byte / +0,499 %**.
+Die lokale inkrementelle APK (35.721.397 Byte) enthält größere ZIP-Lücken und wird nicht als
+finaler Größenvergleich verwendet. Dokumentationsbilder und Instrumentierungs-Testbilder sind
+im App-APK nicht enthalten. Produktionsgrafiken: weiterhin **0/686**; das 2-s-Limit mit einem
+vollständigen gemalten Asset-Satz und die Android-26-Laufzeit sind noch nicht nachgewiesen.
+
+Die folgenden Abschnitte protokollieren frühere Zwischenstände einschließlich fehlgeschlagener Läufe.
+
 ## Schritt 1 – lokaler Zwischenstand, noch nicht freigegeben
 
 Schema 7 ergänzt `customCharacters` und optionale Bild-IDs. Schema 4–6 bleibt lesbar;
@@ -22,8 +55,9 @@ Frischer Lauf: Gradle 8.9 / Temurin 17, `:app:testDebugUnitTest :app:lintDebug
 
 ## Einschränkungen
 
-- Build und Unit-Ergebnisse siehe oben; korrigierter Lint-Lauf und CI stehen noch aus.
-- Emulator-Tour und Sichtprüfung stehen aus. Das 2-s-Limit ist noch nicht nachgewiesen.
+- Build und Unit-Ergebnisse: aktuelle Nachweise oben; historische Fehlversuche unten.
+- Emulator-Tour und Sichtprüfung auf Android 35 bestanden, siehe aktuellen Nachweis. Android 26 und
+  das 2-s-Limit mit vollständigen gemalten Produktionsassets bleiben ungetestet.
 - Keine automatische Gesichts-, Augen- oder Alterserkennung. Die Person bestätigt die Maske manuell.
 - Keine Offline-Freistellung; transparente Ganzkörperbilder werden verlangt.
 - Eigene Ganzkörperbilder haben eine feste Pose; keine künstliche Gehanimation des Fotos.
