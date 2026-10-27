@@ -9,6 +9,9 @@ visible in the full-figure view of the character editor:
 * each hand was cut as a fixed rectangle that also contained a strip of the thigh/trousers of the
   source photo. Drawn over the garment, this strip looked like a floating skin-coloured plank.
 
+* the eye, nose and mouth patches of the portraits ended in hard, almost fully opaque rectangle
+  edges; on some skin tones the patch outline stayed visible on the face. Their alpha now fades
+  towards the patch border;
 * the elven hood (`portraits/cloak/3.webp`) had a rectangular opening that showed the background
   beside the cheeks and a hard horizontal cut at its lower edge.
 
@@ -118,6 +121,18 @@ def repair_alpha(alpha):
     return result
 
 
+PATCH_FEATHER = {'eyes': 10.0, 'nose': 24.0, 'mouth': 14.0}
+
+
+def feather_patch(alpha, band):
+    """Fade alpha over [band] pixels inside the visible region; the interior stays unchanged."""
+    inside = alpha > .02
+    distance = ndimage.distance_transform_edt(inside)
+    ramp = np.clip(distance / band, 0, 1)
+    ramp = ramp * ramp * (3 - 2 * ramp)  # smoothstep
+    return alpha * ramp
+
+
 HOOD_INTERIOR_ALPHA = 16  # out of 255; the app expands it for the hood's back pass only
 
 
@@ -190,6 +205,25 @@ def main():
             hood_meta.setdefault('production', {})['repair'] = MARKER
             hood_meta['sha256'] = _save(hood, repair_hood(rgba))
             hood_meta_path.write_text(json.dumps(hood_meta, indent=2, ensure_ascii=False) + '\n')
+            repaired += 1
+    for group, band in PATCH_FEATHER.items():
+        for path in sorted((PORTRAITS / group).glob('*.webp')):
+            if path.name == 'iris_mask.webp':
+                continue
+            meta_path = path.with_suffix('.webp.json')
+            meta = json.loads(meta_path.read_text())
+            if meta.get('production', {}).get('repair') == MARKER:
+                continue
+            pending.append(path)
+            if args.check:
+                continue
+            with Image.open(path) as image:
+                rgba = np.asarray(image.convert('RGBA')).astype(np.float32) / 255
+            rgba = rgba.copy()
+            rgba[..., 3] = feather_patch(rgba[..., 3], band)
+            meta.setdefault('production', {})['repair'] = MARKER
+            meta['sha256'] = _save(path, rgba)
+            meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + '\n')
             repaired += 1
     if args.check:
         for path in pending:

@@ -1109,7 +1109,8 @@ internal fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Ge
             }
             else if (key == "iris") clipPath(photographicEyeOpening(a.eyeShape)) { drawTintedArt(bitmap,image.tint,target = target) }
             else {
-                drawTintedArt(bitmap,image.tint,target = target)
+                // Photographic brows are dense; letting a little skin through reads as real hair.
+                drawTintedArt(bitmap,image.tint,target = target,alphaScale = if (key == "brows") .8f else 1f)
                 // Skin-colored eyelids must not also dye the sclera; the iris stays under its lids.
                 if (key == "eyes") image.neutralDetail?.let { drawImage(it,dstSize = target) }
             }

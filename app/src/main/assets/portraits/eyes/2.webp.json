@@ -11,7 +11,8 @@
       4,
       5
     ],
-    "pupilPlane": 560
+    "pupilPlane": 560,
+    "repair": "neck-feather+hand-strip-v1"
   },
-  "sha256": "0fb45354167a06c12aa6df0dee766fc71a83db4f536afcf2712d5927d41cfff4"
+  "sha256": "2f23af25a5fb5c25d73c538bdd6a02b50b0c5da01b25fa459d7f5e2cc5068b77"
 }
