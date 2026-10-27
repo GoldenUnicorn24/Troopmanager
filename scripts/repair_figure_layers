@@ -121,7 +121,7 @@ def repair_alpha(alpha):
     return result
 
 
-PATCH_FEATHER = {'eyes': 10.0, 'nose': 24.0, 'mouth': 14.0}
+PATCH_FEATHER = {'eyes': 4.0, 'nose': 24.0, 'mouth': 14.0}
 
 
 def feather_patch(alpha, band):

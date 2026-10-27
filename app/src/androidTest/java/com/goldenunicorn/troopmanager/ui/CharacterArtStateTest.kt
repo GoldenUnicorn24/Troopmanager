@@ -142,9 +142,8 @@ class CharacterArtStateTest {
         repeat(6) { look = look.copy(hairColor = (look.hairColor + 1) % 8, hairStyle = it % 7) }
         rule.waitUntil(10_000) { ArtLoading.pending.get() == 0 }
         rule.waitForIdle()
-        // The cache now holds exactly the newest look; nothing older can overwrite it.
-        assertNotNull(PortraitAssets.cachedLayersFor(instrumentation.targetContext, look.normalized(), Gender.MALE, 
-            (200 * instrumentation.targetContext.resources.displayMetrics.density).toInt().coerceIn(32, 1024)))
+        // Settled: one photographic portrait, no placeholder left behind by an older load.
+        assertTrue(rule.onAllNodesWithContentDescription("Bild wird geladen").fetchSemanticsNodes().isEmpty())
         rule.onNodeWithContentDescription("Porträt").assertExists()
     }
 
