@@ -110,6 +110,18 @@ class CharacterArtStateTest {
         rule.onNodeWithTag("upload_fullbody").assertHasClickAction()
     }
 
+    @Test fun requirementsAreReachableFromTheEditorAndNameTheRegistration() {
+        var look by mutableStateOf(CharacterAppearance())
+        rule.setContent { Column(Modifier.verticalScroll(rememberScrollState())) { CharacterEditor(look, Gender.MALE, Species.HUMAN, { look = it }, "player") } }
+        rule.onNodeWithTag("image_help").performScrollTo().performClick()
+        rule.onNodeWithTag("image_requirements").assertExists()
+        rule.onNodeWithText("Augen auf y = 560", substring = true).assertExists()
+        rule.onAllNodesWithText("Ganzkörper").filterToOne(hasAnyAncestor(hasTestTag("image_requirements"))).performClick()
+        rule.onNodeWithText("Fußsohlen auf der Linie y = 1480", substring = true).assertExists()
+        rule.onNodeWithText("Verstanden").performClick()
+        rule.onNodeWithTag("image_requirements").assertDoesNotExist()
+    }
+
     @Test fun rapidFramingSwitchesEndInTheLastChosenView() {
         var look by mutableStateOf(CharacterAppearance())
         rule.setContent { Column(Modifier.verticalScroll(rememberScrollState())) { CharacterEditor(look, Gender.MALE, Species.HUMAN, { look = it }, "player") } }

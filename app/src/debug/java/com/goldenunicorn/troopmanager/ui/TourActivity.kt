@@ -66,7 +66,7 @@ class TourActivity : ComponentActivity() {
                         when {
                             current.startsWith("custom-") -> CustomCharacterTour(current, state)
                             current.startsWith("wizard-own") || current.startsWith("crop-") -> OwnImageTour(current)
-                            current == "image-help" -> Box(Modifier.fillMaxSize().background(Ink)) { ImageRequirementsDialog { } }
+                            current == "image-help" -> Box(Modifier.fillMaxSize().background(Ink).statusBarsPadding().padding(12.dp)) { ImageRequirementsContent(com.goldenunicorn.troopmanager.data.CharacterImageKind.PORTRAIT, {}, Modifier.fillMaxSize()) }
                             current.startsWith("companion-editor-") -> CompanionEditorTour(Framing.valueOf(current.substringAfterLast('-').uppercase()))
                             current.startsWith("wizard-2-") -> NewGameWizard({}, {}, initialStep = 2,
                                 initialFraming = Framing.valueOf(current.substringAfterLast('-').uppercase()))

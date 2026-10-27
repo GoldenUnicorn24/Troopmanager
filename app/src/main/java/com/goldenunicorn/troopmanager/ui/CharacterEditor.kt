@@ -249,8 +249,8 @@ internal fun RbChip(label: String, selected: Boolean, enabled: Boolean = true, o
 }
 
 @Composable
-internal fun RbAction(label: String, enabled: Boolean = true, onClick: () -> Unit) {
-    OutlinedButton(onClick = onClick, enabled = enabled, shape = RoundedCornerShape(14.dp), modifier = Modifier.heightIn(min = 48.dp),
+internal fun RbAction(label: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, enabled = enabled, shape = RoundedCornerShape(14.dp), modifier = modifier.heightIn(min = 48.dp),
         border = BorderStroke(1.dp, if (enabled) Gold.copy(alpha = .4f) else Color.White.copy(alpha = .08f))) {
         Text(label, color = if (enabled) PaleGold else Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }

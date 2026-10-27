@@ -140,10 +140,8 @@ internal fun OwnImagePanel(imageId: String?, onImageChange: (String?) -> Unit, m
         OwnImageRow("Ganzkörper", "768 × 1536 · PNG/WebP mit transparentem Hintergrund", status?.fullbody == true, busy, "fullbody",
             onUpload = { pick(CharacterImageKind.FULLBODY) }, onRealign = { realign(CharacterImageKind.FULLBODY) },
             onRemove = { remove(CharacterImageKind.FULLBODY) })
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            RbAction("Importierte Bilder", enabled = !busy) { showLibrary = true }
-            if (imageId != null) RbAction("Standard wiederherstellen", enabled = !busy) { onImageChange(null) }
-        }
+        RbAction("Bereits importierte Bilder wählen", enabled = !busy, modifier = Modifier.fillMaxWidth()) { showLibrary = true }
+        if (imageId != null) RbAction("Eigene Bilder entfernen · Standard wiederherstellen", enabled = !busy, modifier = Modifier.fillMaxWidth()) { onImageChange(null) }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Gold)
         problem?.let { Text(it, color = Danger, fontSize = 13.sp, modifier = Modifier.testTag("own_image_error")) }
     }
@@ -180,16 +178,18 @@ private fun OwnImageRow(title: String, spec: String, present: Boolean, busy: Boo
             Text(if (present) "✓ eigenes Bild" else "Standard", color = if (present) Success else Muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
         Text(spec, color = Muted, fontSize = 11.sp)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onUpload, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.heightIn(min = 44.dp).testTag("upload_$tag"),
-                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-                Text(if (present) "Ersetzen" else "$title hochladen", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Button(onClick = onUpload, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp).testTag("upload_$tag"),
+            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
+            Text(if (present) "$title ersetzen" else "$title hochladen", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+        if (present) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onRealign, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                border = BorderStroke(1.dp, Gold.copy(alpha = .4f)), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                Text("Neu ausrichten", color = PaleGold, fontSize = 13.sp, maxLines = 1)
             }
-            if (present) {
-                OutlinedButton(onClick = onRealign, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.heightIn(min = 44.dp),
-                    border = BorderStroke(1.dp, Gold.copy(alpha = .4f))) { Text("Neu ausrichten", color = PaleGold, fontSize = 13.sp) }
-                OutlinedButton(onClick = onRemove, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.heightIn(min = 44.dp),
-                    border = BorderStroke(1.dp, Danger.copy(alpha = .4f))) { Text("Entfernen", color = Danger, fontSize = 13.sp) }
+            OutlinedButton(onClick = onRemove, enabled = !busy, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                border = BorderStroke(1.dp, Danger.copy(alpha = .4f)), contentPadding = PaddingValues(horizontal = 6.dp)) {
+                Text("Entfernen", color = Danger, fontSize = 13.sp, maxLines = 1)
             }
         }
     }
@@ -256,11 +256,19 @@ internal object ImagePrompts {
 /** „Welches Bild benötige ich?“ – exact requirements with the registration mask. */
 @Composable
 internal fun ImageRequirementsDialog(initial: CharacterImageKind = CharacterImageKind.PORTRAIT, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        ImageRequirementsContent(initial, onDismiss, Modifier.fillMaxWidth(.94f).fillMaxHeight(.92f))
+    }
+}
+
+/** Body of „Welches Bild benötige ich?“; also shown directly in screenshot tours. */
+@Composable
+internal fun ImageRequirementsContent(initial: CharacterImageKind, onDismiss: () -> Unit, modifier: Modifier) {
     var kind by remember { mutableStateOf(initial) }
     val clipboard = LocalClipboardManager.current
     var copied by remember { mutableStateOf(false) }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth(.94f).fillMaxHeight(.92f).clip(RoundedCornerShape(22.dp)).background(Panel)
+    run {
+        Column(modifier.clip(RoundedCornerShape(22.dp)).background(Panel)
             .border(1.dp, Gold.copy(alpha = .3f), RoundedCornerShape(22.dp)).padding(16.dp).testTag("image_requirements"),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Welches Bild benötige ich?", color = PaleGold, fontFamily = Cinzel, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -478,14 +486,17 @@ internal fun CharacterCropEditor(
         }
         error?.let { Text(it, color = Danger, fontSize = 12.sp) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Abbrechen", color = Mist) }
             OutlinedButton(onClick = { if (history.isNotEmpty()) crop = history.removeAt(history.lastIndex) }, enabled = !busy && history.isNotEmpty(),
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Rückgängig", color = PaleGold) }
-            OutlinedButton(onClick = { commit(CharacterImageCrop()) }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Zurücksetzen", color = PaleGold) }
+                modifier = Modifier.weight(1f).heightIn(min = 46.dp)) { Text("Rückgängig", color = PaleGold, maxLines = 1) }
+            OutlinedButton(onClick = { commit(CharacterImageCrop()) }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 46.dp)) {
+                Text("Zurücksetzen", color = PaleGold, maxLines = 1) }
         }
-        Button(onClick = { onSave(crop) }, enabled = !busy && covers && rights, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("crop_confirm"),
-            colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
-            if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Ink, strokeWidth = 2.dp) else Text("Übernehmen", fontWeight = FontWeight.Black)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) { Text("Abbrechen", color = Mist, maxLines = 1) }
+            Button(onClick = { onSave(crop) }, enabled = !busy && covers && rights, modifier = Modifier.weight(1.4f).heightIn(min = 52.dp).testTag("crop_confirm"),
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) {
+                if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Ink, strokeWidth = 2.dp) else Text("Übernehmen", fontWeight = FontWeight.Black)
+            }
         }
     }
 }
