@@ -7,7 +7,7 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 | 0 Audit | Branches, Systeme, Risiken, Arbeitsweise | ✅ `PROJECT-REBIRTH-AUDIT.md` |
 | 1 Neuer Start | Vier Modi, landloser Start, Herkunft/Beruf/Vermögen/Region, Editor, klassischer Grenzherr erhalten | ✅ |
 | 2 Gefährtin | Pflichtfrage A/B/C, Voll-/Teilentwurf, stabile NPC-Identität, frühe natürliche Begegnung, kein Beziehungszwang | ✅ |
-| 3 Porträts | Neuer Renderer, Ganzkörper, Ebenen-Pipeline + Asset-Vertrag | ◐ Pipeline und Renderer fertig, **gemalte Ebenen fehlen** (82 Dateien, siehe Design-Dokument) |
+| 3 Porträts | Neuer Renderer, Ganzkörper, Ebenen-Pipeline + Asset-Vertrag | Fotorealistischer Satz: 82 Porträt-, 564 Figuren- und 40 Szenenebenen; Nachweise in `PHOTOREALISTIC-ASSET-REPORT.md` |
 | 4 Taverne | Begehbare 2.5D-Szene, Tap-to-Move, Wirt, Getränke/Rausch, Essen, Zimmer, Würfeln, Aufträge, Ereignisse, Schlägerei, Verlassen | ✅ |
 | 5 Soziales Leben | Datengetriebene Dialoge, Erinnerungen, Freundschaft, Flirt, Date, Kuss, Nacht (Fade-to-Black), Beziehung, Antrag, Hochzeit, Trennung, Grenzen, Affären-Folgen | ✅ Grundsystem, Beziehungsnetz der NPCs mit Eifersucht und Klatsch, Rollen-Themen (M3); ☐ mehr Inhalte |
 | 6 Weltintegration | Gemeinsame Kronprovinzen, Weltpuls, Gerüchte, Preise/Werber bei Bedrohung, Reisen zwischen 7 Städten, Hinterhalte auf gefährlichen Straßen, **begehbarer Markt** (M2), **begehbare Kaserne**, wandernde Reisende (M3), **begehbarer Burghof**, Lehnsaufträge befreien Provinzen der gemeinsamen Kronkarte (M4), **Wetter und Preise je Stadt** (M6) | ✅ |
@@ -68,5 +68,5 @@ Legende: ✅ in diesem Meilenstein umgesetzt und getestet · ◐ teilweise · �
 Feature-Branch `codex/custom-character-art`: Schema 7, interner Bildspeicher, Photo Picker mit
 Zuschnitt, versionierte Offline-Pakete und zentrale Bildauflösung. Dazu registrierte Szenenlayouts,
 Figurenstandard, vollständige Produktionsprompts und ein Asset-Prüfwerkzeug.
-Der vollständige gemalte Ebenensatz bleibt offen; eine Einzelillustration dient als Stilreferenz.
+Der Nutzer hat den gemalten Stil durch Fotorealismus ersetzt. Der registrierte Fotolagensatz ersetzt die frühere Einzelillustration als Laufzeitgrafik.
 Verifizierter Status und noch offene Tour-/CI-Nachweise stehen in `CUSTOM-CHARACTER-TEST-REPORT.md`.

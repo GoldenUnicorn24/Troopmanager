@@ -1,0 +1,12 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; castle-background",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "castle-background",
+    "sourceFloorY": 340,
+    "registeredFloorY": 438,
+    "decalSource": "ground-details-atlas"
+  },
+  "sha256": "23c8b2b38decec98885d76a4fa658adae09cbda4cc85fd9cfa5a942110671e7f"
+}

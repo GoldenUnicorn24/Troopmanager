@@ -1,0 +1,31 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; market-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "market-props-atlas",
+        "panel": 3,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          1817,
+          320,
+          325,
+          335
+        ],
+        "gridAnchor": [
+          11,
+          7
+        ],
+        "width": 170,
+        "groundY": 1303.251798561151
+      }
+    ]
+  },
+  "sha256": "b0eb3d0f76246aa6831fef535ba1f9361f20d0727afe6c2ae2c80cfc0bf23779"
+}

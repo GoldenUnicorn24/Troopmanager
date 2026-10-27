@@ -1,0 +1,17 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; eyes-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "eyes-atlas",
+    "panels": [
+      4,
+      5
+    ],
+    "pupilPlane": 560
+  },
+  "sha256": "ea9132b9998a233435a1e3d0b82eab7d3c6fe74edae5165f74499bcc6a0a9dec"
+}

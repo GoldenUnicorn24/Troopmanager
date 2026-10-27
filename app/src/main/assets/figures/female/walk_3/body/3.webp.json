@@ -1,0 +1,26 @@
+{
+  "registration": {
+    "centerX": 384,
+    "footY": 1480
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; body-female-3-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "body-female-3-atlas",
+    "panel": 5,
+    "grid": [
+      3,
+      2
+    ],
+    "sourceBox": [
+      769,
+      725,
+      253,
+      683
+    ],
+    "footY": 1480,
+    "headReplacedByPortrait": true,
+    "handRegistration": "pose hands"
+  },
+  "sha256": "195cd83767233a37c81259f87f9e3f7a03461637313225763e02a1f61527ee6e"
+}

@@ -1,0 +1,91 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; tavern-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "tavern-props-atlas",
+    "objects": [
+      {
+        "source": "tavern-props-atlas",
+        "panel": 0,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          17,
+          225,
+          768,
+          411
+        ],
+        "gridAnchor": [
+          2.5,
+          2
+        ],
+        "width": 720,
+        "groundY": 716.1081081081081
+      },
+      {
+        "source": "tavern-props-atlas",
+        "panel": 3,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1524,
+          213,
+          271,
+          404
+        ],
+        "gridAnchor": [
+          0,
+          2
+        ],
+        "width": 155,
+        "groundY": 716.1081081081081
+      },
+      {
+        "source": "tavern-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1283,
+          328,
+          211,
+          303
+        ],
+        "gridAnchor": [
+          7,
+          2
+        ],
+        "width": 110,
+        "groundY": 716.1081081081081
+      },
+      {
+        "source": "tavern-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1283,
+          328,
+          211,
+          303
+        ],
+        "gridAnchor": [
+          10,
+          2
+        ],
+        "width": 110,
+        "groundY": 716.1081081081081
+      }
+    ]
+  },
+  "sha256": "4db362a3ed08fd97d5bc893ff3eb3be8440200dd7fe7cb7ddf5c9dbcffdd9910"
+}

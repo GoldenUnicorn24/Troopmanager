@@ -1,0 +1,1096 @@
+{
+  "portraits/base/female_0.webp": {
+    "source": "female-bases-atlas",
+    "panel": 0,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      13,
+      62,
+      409,
+      654
+    ]
+  },
+  "portraits/base/female_1.webp": {
+    "source": "female-bases-atlas",
+    "panel": 1,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      439,
+      76,
+      429,
+      640
+    ]
+  },
+  "portraits/base/female_2.webp": {
+    "source": "female-bases-atlas",
+    "panel": 2,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      895,
+      67,
+      408,
+      649
+    ]
+  },
+  "portraits/base/female_3.webp": {
+    "source": "female-bases-atlas",
+    "panel": 3,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1332,
+      64,
+      405,
+      651
+    ]
+  },
+  "portraits/base/female_4.webp": {
+    "source": "female-bases-atlas",
+    "panel": 4,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1782,
+      56,
+      375,
+      659
+    ]
+  },
+  "portraits/base/male_0.webp": {
+    "source": "male-bases-atlas",
+    "panel": 0,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      14,
+      43,
+      404,
+      656
+    ]
+  },
+  "portraits/base/male_1.webp": {
+    "source": "male-bases-atlas",
+    "panel": 1,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      441,
+      55,
+      427,
+      643
+    ]
+  },
+  "portraits/base/male_2.webp": {
+    "source": "male-bases-atlas",
+    "panel": 2,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      910,
+      44,
+      393,
+      655
+    ]
+  },
+  "portraits/base/male_3.webp": {
+    "source": "male-bases-atlas",
+    "panel": 3,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1354,
+      44,
+      383,
+      654
+    ]
+  },
+  "portraits/base/male_4.webp": {
+    "source": "male-bases-atlas",
+    "panel": 4,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1793,
+      43,
+      364,
+      656
+    ]
+  },
+  "portraits/eyes/0.webp": {
+    "source": "eyes-atlas",
+    "panels": [
+      0,
+      1
+    ],
+    "pupilPlane": 560
+  },
+  "portraits/brows/0.webp": {
+    "source": "brows-transparent",
+    "panel": 0,
+    "grid": [
+      1,
+      4
+    ],
+    "sourceBox": [
+      37,
+      58,
+      1467,
+      163
+    ]
+  },
+  "portraits/nose/0.webp": {
+    "source": "nose-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      97,
+      33,
+      373,
+      631
+    ]
+  },
+  "portraits/mouth/0.webp": {
+    "source": "mouth-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      15,
+      244,
+      504,
+      234
+    ]
+  },
+  "portraits/eyes/1.webp": {
+    "source": "eyes-atlas",
+    "panels": [
+      2,
+      3
+    ],
+    "pupilPlane": 560
+  },
+  "portraits/brows/1.webp": {
+    "source": "brows-transparent",
+    "panel": 1,
+    "grid": [
+      1,
+      4
+    ],
+    "sourceBox": [
+      30,
+      280,
+      1477,
+      205
+    ]
+  },
+  "portraits/nose/1.webp": {
+    "source": "nose-atlas",
+    "panel": 1,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      611,
+      33,
+      390,
+      630
+    ]
+  },
+  "portraits/mouth/1.webp": {
+    "source": "mouth-atlas",
+    "panel": 1,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      547,
+      251,
+      529,
+      228
+    ]
+  },
+  "portraits/eyes/2.webp": {
+    "source": "eyes-atlas",
+    "panels": [
+      4,
+      5
+    ],
+    "pupilPlane": 560
+  },
+  "portraits/brows/2.webp": {
+    "source": "brows-transparent",
+    "panel": 2,
+    "grid": [
+      1,
+      4
+    ],
+    "sourceBox": [
+      35,
+      512,
+      1468,
+      246
+    ]
+  },
+  "portraits/nose/2.webp": {
+    "source": "nose-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1126,
+      33,
+      414,
+      610
+    ]
+  },
+  "portraits/mouth/2.webp": {
+    "source": "mouth-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1107,
+      242,
+      503,
+      231
+    ]
+  },
+  "portraits/eyes/3.webp": {
+    "source": "eyes-atlas",
+    "panels": [
+      6,
+      7
+    ],
+    "pupilPlane": 560
+  },
+  "portraits/brows/3.webp": {
+    "source": "brows-transparent",
+    "panel": 3,
+    "grid": [
+      1,
+      4
+    ],
+    "sourceBox": [
+      40,
+      814,
+      1455,
+      147
+    ]
+  },
+  "portraits/nose/3.webp": {
+    "source": "nose-atlas",
+    "panel": 3,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1630,
+      33,
+      504,
+      630
+    ]
+  },
+  "portraits/mouth/3.webp": {
+    "source": "mouth-atlas",
+    "panel": 3,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1650,
+      243,
+      506,
+      234
+    ]
+  },
+  "portraits/eyes/iris_mask.webp": {
+    "source": "eyes-atlas",
+    "sourceBox": [
+      111,
+      297,
+      74,
+      74
+    ],
+    "pupils": [
+      [
+        417,
+        560
+      ],
+      [
+        607,
+        560
+      ]
+    ]
+  },
+  "portraits/hair_front/0_0.webp": {
+    "source": "hair-short-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      25,
+      51,
+      662,
+      576
+    ]
+  },
+  "portraits/hair_back/0.webp": {
+    "source": "hair-short-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      25,
+      51,
+      662,
+      576
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/0_1.webp": {
+    "source": "hair-short-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      751,
+      41,
+      681,
+      598
+    ]
+  },
+  "portraits/hair_front/0_2.webp": {
+    "source": "hair-short-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1473,
+      41,
+      684,
+      608
+    ]
+  },
+  "portraits/hair_front/1_0.webp": {
+    "source": "hair-1-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      73,
+      20,
+      569,
+      685
+    ]
+  },
+  "portraits/hair_back/1.webp": {
+    "source": "hair-1-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      73,
+      20,
+      569,
+      685
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/1_1.webp": {
+    "source": "hair-1-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      781,
+      19,
+      633,
+      684
+    ]
+  },
+  "portraits/hair_front/1_2.webp": {
+    "source": "hair-1-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1497,
+      16,
+      651,
+      689
+    ]
+  },
+  "portraits/hair_front/2_0.webp": {
+    "source": "hair-2-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      41,
+      4,
+      667,
+      706
+    ]
+  },
+  "portraits/hair_back/2.webp": {
+    "source": "hair-2-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      41,
+      4,
+      667,
+      706
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/2_1.webp": {
+    "source": "hair-2-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      789,
+      4,
+      614,
+      700
+    ]
+  },
+  "portraits/hair_front/2_2.webp": {
+    "source": "hair-2-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1499,
+      4,
+      623,
+      704
+    ]
+  },
+  "portraits/hair_front/3_0.webp": {
+    "source": "hair-3-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      120,
+      7,
+      511,
+      707
+    ]
+  },
+  "portraits/hair_back/3.webp": {
+    "source": "hair-3-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      120,
+      7,
+      511,
+      707
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/3_1.webp": {
+    "source": "hair-3-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      796,
+      6,
+      544,
+      706
+    ]
+  },
+  "portraits/hair_front/3_2.webp": {
+    "source": "hair-3-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1529,
+      6,
+      574,
+      705
+    ]
+  },
+  "portraits/hair_front/4_0.webp": {
+    "source": "hair-4-complete",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      165,
+      47,
+      451,
+      638
+    ]
+  },
+  "portraits/hair_back/4.webp": {
+    "source": "hair-4-complete",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      165,
+      47,
+      451,
+      638
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/4_1.webp": {
+    "source": "hair-4-complete",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      821,
+      45,
+      512,
+      650
+    ]
+  },
+  "portraits/hair_front/4_2.webp": {
+    "source": "hair-4-complete",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1487,
+      52,
+      517,
+      646
+    ]
+  },
+  "portraits/hair_front/5_0.webp": {
+    "source": "hair-5-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      238,
+      16,
+      348,
+      689
+    ]
+  },
+  "portraits/hair_back/5.webp": {
+    "source": "hair-5-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      238,
+      16,
+      348,
+      689
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/5_1.webp": {
+    "source": "hair-5-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      875,
+      15,
+      444,
+      692
+    ]
+  },
+  "portraits/hair_front/5_2.webp": {
+    "source": "hair-5-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1567,
+      14,
+      446,
+      693
+    ]
+  },
+  "portraits/hair_front/6_0.webp": {
+    "source": "hair-6-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      20,
+      18,
+      655,
+      690
+    ]
+  },
+  "portraits/hair_back/6.webp": {
+    "source": "hair-6-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      20,
+      18,
+      655,
+      690
+    ],
+    "occlusion": "behind the base skin layer"
+  },
+  "portraits/hair_front/6_1.webp": {
+    "source": "hair-6-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      726,
+      23,
+      693,
+      673
+    ]
+  },
+  "portraits/hair_front/6_2.webp": {
+    "source": "hair-6-atlas",
+    "panel": 2,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1480,
+      25,
+      692,
+      678
+    ]
+  },
+  "portraits/hair_front/7_0.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "portraits/hair_front/7_1.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "portraits/hair_front/7_2.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "portraits/hair_back/7.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "portraits/beard/1.webp": {
+    "source": "beard-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      43,
+      121,
+      500,
+      380
+    ]
+  },
+  "portraits/beard/2.webp": {
+    "source": "beard-atlas",
+    "panel": 1,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      644,
+      216,
+      346,
+      324
+    ]
+  },
+  "portraits/beard/3.webp": {
+    "source": "beard-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1086,
+      94,
+      511,
+      457
+    ]
+  },
+  "portraits/beard/4.webp": {
+    "source": "beard-atlas",
+    "panel": 3,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1629,
+      12,
+      524,
+      699
+    ]
+  },
+  "portraits/marks/scar_1.webp": {
+    "source": "marks-atlas",
+    "panel": 0,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      24,
+      98,
+      286,
+      464
+    ]
+  },
+  "portraits/marks/scar_2.webp": {
+    "source": "marks-atlas",
+    "panel": 1,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      425,
+      86,
+      72,
+      548
+    ]
+  },
+  "portraits/marks/scar_3.webp": {
+    "source": "marks-atlas",
+    "panel": 2,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      620,
+      324,
+      310,
+      67
+    ]
+  },
+  "portraits/marks/scar_4.webp": {
+    "source": "marks-atlas",
+    "panel": 3,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      1007,
+      286,
+      186,
+      213
+    ]
+  },
+  "portraits/marks/tattoo_1.webp": {
+    "source": "marks-atlas",
+    "panel": 4,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      1350,
+      82,
+      154,
+      567
+    ]
+  },
+  "portraits/marks/tattoo_2.webp": {
+    "source": "marks-atlas",
+    "panel": 5,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      1651,
+      88,
+      166,
+      564
+    ]
+  },
+  "portraits/marks/tattoo_3.webp": {
+    "source": "marks-atlas",
+    "panel": 6,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      2001,
+      230,
+      138,
+      295
+    ]
+  },
+  "portraits/outfit/0.webp": {
+    "source": "outfit-atlas",
+    "panel": 0,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      6,
+      138,
+      390,
+      557
+    ]
+  },
+  "portraits/outfit/1.webp": {
+    "source": "outfit-atlas",
+    "panel": 1,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      407,
+      99,
+      374,
+      570
+    ]
+  },
+  "portraits/outfit/2.webp": {
+    "source": "outfit-atlas",
+    "panel": 2,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      793,
+      144,
+      396,
+      549
+    ]
+  },
+  "portraits/outfit/3.webp": {
+    "source": "outfit-atlas",
+    "panel": 3,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1189,
+      98,
+      397,
+      595
+    ]
+  },
+  "portraits/outfit/4.webp": {
+    "source": "outfit-atlas",
+    "panel": 4,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      1586,
+      79,
+      392,
+      614
+    ]
+  },
+  "portraits/armor/1.webp": {
+    "source": "armor-atlas",
+    "panel": 0,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      0,
+      89,
+      543,
+      568
+    ]
+  },
+  "portraits/armor/2.webp": {
+    "source": "armor-atlas",
+    "panel": 1,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      543,
+      71,
+      543,
+      594
+    ]
+  },
+  "portraits/armor/3.webp": {
+    "source": "armor-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1086,
+      92,
+      537,
+      567
+    ]
+  },
+  "portraits/armor/4.webp": {
+    "source": "armor-atlas",
+    "panel": 3,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1629,
+      90,
+      543,
+      575
+    ]
+  },
+  "portraits/cloak/1.webp": {
+    "source": "cloak-atlas",
+    "panel": 0,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      1,
+      24,
+      590,
+      840
+    ]
+  },
+  "portraits/cloak/2.webp": {
+    "source": "cloak-atlas",
+    "panel": 1,
+    "grid": [
+      3,
+      1
+    ],
+    "sourceBox": [
+      591,
+      10,
+      591,
+      854
+    ]
+  },
+  "portraits/cloak/3.webp": {
+    "source": "hood-registered",
+    "eyeReference": [
+      562.5,
+      505
+    ],
+    "scale": 0.7450980392156863
+  }
+}

@@ -786,39 +786,48 @@
   "foreground": [
     {
       "row": 0,
-      "path": "foreground_0.webp"
+      "path": "foreground_0.webp",
+      "empty": true
     },
     {
       "row": 1,
-      "path": "foreground_1.webp"
+      "path": "foreground_1.webp",
+      "empty": false
     },
     {
       "row": 2,
-      "path": "foreground_2.webp"
+      "path": "foreground_2.webp",
+      "empty": false
     },
     {
       "row": 3,
-      "path": "foreground_3.webp"
+      "path": "foreground_3.webp",
+      "empty": true
     },
     {
       "row": 4,
-      "path": "foreground_4.webp"
+      "path": "foreground_4.webp",
+      "empty": true
     },
     {
       "row": 5,
-      "path": "foreground_5.webp"
+      "path": "foreground_5.webp",
+      "empty": false
     },
     {
       "row": 6,
-      "path": "foreground_6.webp"
+      "path": "foreground_6.webp",
+      "empty": false
     },
     {
       "row": 7,
-      "path": "foreground_7.webp"
+      "path": "foreground_7.webp",
+      "empty": false
     },
     {
       "row": 8,
-      "path": "foreground_8.webp"
+      "path": "foreground_8.webp",
+      "empty": true
     }
   ]
 }

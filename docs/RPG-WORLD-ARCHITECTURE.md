@@ -103,7 +103,7 @@ Niemand wird außerhalb des geladenen Ortes simuliert. `NpcEngine.placeOf(npc, d
 `CharacterAppearance.customImageId` und `PortraitSpec.customImageId` verbinden Welt und Hofdarstellungen.
 Bilder liegen unter `filesDir/custom/{id}/` und werden unabhängig von ursprünglichen Content-URIs gespeichert.
 `LegacyPortraitMigration` kopiert alte Personenporträts einmalig beim Laden und entfernt unlesbare URIs.
-Die Auflösung ist eigenes Bild → gemalte Ebenen → Vektor. Teilweise installierte Porträtebenen
+Die Auflösung ist eigenes Bild → fotorealistische Ebenen → Vektor. Teilweise installierte Porträtebenen
 verwenden je fehlender Komponente den Vektor; unvollständige Figurenposen verwenden die ganze Vektorfigur.
 `SceneAssetLayout.validate` vergleicht die 108 Zellen und die Projektion mit den vier Engines.
 Die A*-Wegfindung bleibt unverändert in den Engines.

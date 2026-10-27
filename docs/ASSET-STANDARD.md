@@ -30,9 +30,9 @@ Backups nicht auf eine teilweise überschriebene Datei zeigen. Alte Content-URIs
 Laden einmal in interne Dateien kopiert; unlesbare Originale werden verworfen und die
 Bildschirme zeigen den Fallback. Import und Migration verwenden keine Cloud-Dienste.
 
-Die Auflösung ist eigenes Bild → verfügbare gemalte Ebenen → prozedurale Zeichnung.
+Die Auflösung ist eigenes Bild → verfügbare fotorealistische Ebenen → prozedurale Zeichnung.
 Ein Kopfrahmen schneidet immer das Fenster x=192, y=160, Breite=640, Höhe=800 aus dem Standardporträt aus.
-Ohne Ganzkörperbild bleibt die Figur gezeichnet. Ein stehendes eigenes Ganzkörperbild ist
+Ohne Ganzkörperbild verwendet die Figur die mitgelieferten Fotolagen oder den prozeduralen Fallback. Ein stehendes eigenes Ganzkörperbild ist
 kein animiertes Modell; es bleibt auch beim Gehen und Sitzen in seiner importierten Pose.
 
 Der bisherige JSON-Spielstandexport enthält **keine Bilddateien**. Die Oberfläche weist darauf hin.
@@ -44,6 +44,6 @@ Produktionsliste und Prompt je Datei: [ASSET-PRODUCTION.md](ASSET-PRODUCTION.md)
 Prüfung: `python3 -m pip install -r scripts/requirements-assets.txt`, dann `python3 scripts/check_assets`.
 Der Standardaufruf schlägt bei fehlenden Bildern fehl. `--allow-missing` ist für ausdrücklich gewählte
 Fallback-Builds vorgesehen; ungültige vorhandene Dateien bleiben dabei Fehler. Ein grüner Fallback-Build
-behauptet daher nicht, dass ein gemalter Satz fertig ist. `python3 scripts/make_asset_guides /tmp/troop-guides`
+behauptet daher nicht, dass ein Bildsatz fertig ist. `python3 scripts/make_asset_guides /tmp/troop-guides`
 erzeugt alle Hilfsraster außerhalb der Laufzeit-Assets.
 Die tatsächliche Motivregistrierung, Stilkonsistenz und Bildrechte erfordern eine zusätzliche Sichtprüfung.

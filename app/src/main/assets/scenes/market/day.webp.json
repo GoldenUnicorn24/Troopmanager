@@ -1,0 +1,12 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; market-background",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "market-background",
+    "sourceFloorY": 320,
+    "registeredFloorY": 414,
+    "decalSource": null
+  },
+  "sha256": "d8ab6fa00584c7f55880e60b6b62d13ee58a5e4b0a24dc50822f127e8e369623"
+}

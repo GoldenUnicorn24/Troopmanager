@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; outfit-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "outfit-atlas",
+    "panel": 0,
+    "grid": [
+      5,
+      1
+    ],
+    "sourceBox": [
+      6,
+      138,
+      390,
+      557
+    ]
+  },
+  "sha256": "914a428b14858fb72f9534ad9b4e3c6918a1e286ef01cfe6ee06e21e9a177254"
+}

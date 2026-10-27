@@ -1,50 +1,79 @@
-# Asset-Produktion
+# Fotorealistische Asset-Produktion
 
-Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält für jede
-Datei den vollständigen Prompt, Maße, Alpha-/Graustufenanforderung, Registrierung und Größenbudget.
-Er wird mit `python3 scripts/produce_asset_prompts` reproduzierbar aus `scripts/asset_contract.py` erzeugt.
-Keine Führungsmaske wird als fertiges gemaltes Spiel-Asset installiert.
+Der Nutzer hat den ursprünglichen gemalten Stil ausdrücklich durch **realistische Bilder** ersetzt.
+Die Produktion verwendet fotorealistische Haut, Haare, Holz, Leder, Wolle und Metall ohne Pinselstriche.
+Alle dargestellten Personen sind erfundene Erwachsene; es wurden keine fremden Fotos verwendet.
 
-## Gemalte Stilreferenz
+## Quellen und Wiederherstellung
 
-![Eigene Stilreferenz](assets/style-reference.png)
+Die vollständigen tatsächlich verwendeten Generator-Prompts, Referenzbeziehungen, nativen Maße
+und SHA256-Werte stehen in [`art/photorealistic/production-prompts.json`](../art/photorealistic/production-prompts.json).
+Die hochqualitativ archivierten Quellen liegen unter `art/photorealistic/sources/` und werden
+**nicht** ins APK gepackt. Die dort protokollierten ursprünglichen PNG-Arbeitsplatzpfade sind
+Herstellungsnachweise; der reproduzierbare Export benötigt ausschließlich die eingecheckten WebP-Quellen.
+Bildproduktion: OpenAI-Bildgenerator, 27.10.2026. Herkunft jeder Datei: [CREDITS.md](../CREDITS.md).
 
-Für dieses Projekt mit dem OpenAI-Bildgenerator ohne Bildvorlage erzeugt, fiktive erwachsene Figur.
-Diese Einzelillustration ist eine Stilreferenz und erfüllt keinen Ebenenvertrag: unter anderem
-weichen Bildmaße und Augenregistrierung vom Produktionsstandard ab. Sie ist kein mitgeliefertes
-Laufzeit-Asset und wird nicht als eine der 82 fertigen Ebenen gezählt.
+Die Quellen enthalten mehrere getrennte Komponenten oder sechs Posen pro Atlas. Der Exportschritt
+verwendet ausschließlich mechanisches Ausschneiden, Freistellmasken, Registrierung, Skalierung,
+Graustufen und WebP-Kodierung, keine nachgezeichneten Ersatzmotive. Voraussetzungen:
+`python3 -m pip install -r scripts/requirements-assets-production.txt` und ImageMagick 7.
 
-## Gemeinsamer Stil und Abnahme
+```sh
+python3 scripts/make_scene_layouts
+python3 scripts/export_photo_assets portraits
+python3 scripts/export_photo_assets backgrounds
+# Für female und male, jeweils standing, sitting, walk_0, walk_1, walk_2, walk_3:
+python3 scripts/export_photo_assets figure --sex female --pose standing
+# Für tavern, market, barracks und castle:
+python3 scripts/export_photo_assets foreground --scene tavern
+python3 scripts/write_photo_credits
+python3 scripts/check_assets
+```
 
-Semi-realistische gemalte Fantasy, natürliche erwachsene Anatomie, Licht von oben links,
-warme Kerzenbeleuchtung innen, natürliche Materialfarben und gedämpfte Kontraste, keine Comic-Optik.
-Tönbare Teile neutral grau; Alpha außen vollständig transparent. Keine Schrift oder Wasserzeichen.
-Augenlinie und Fußlinie sind Teil der Registrierung, nicht bloß ein späterer Bildschirmzuschnitt.
-Graue Ebenen werden zur Laufzeit mit Haut-, Haar- und Stofffarben multipliziert.
+Die Quellen sind keine 686 unabhängigen Einzelaufnahmen: Frisuren und Ausstattung werden geteilt,
+Ganzkörperkleidung ist unisex, die unterschiedlichen Posen sind eigene generierte Atlasfelder.
+Die Ausgabeformate 1024×1280, 768×1536 und 2160×1440 sind korrekt; einzelne Komponenten und
+Szenenhintergründe werden aus kleineren nativen Bildern hochskaliert. Das erzeugt keine zusätzlichen
+optischen Details. Die unten stehenden Einzeldatei-Prompts bilden den Zielvertrag ab; der tatsächliche
+Herstellungsweg ist vollständig im Quellenmanifest und den `*-exports.json`-Dateien dokumentiert.
 
-Eine Illustration darf erst nach Sichtprüfung, `scripts/check_assets` und Herkunftseintrag in
-`CREDITS.md` nach `app/src/main/assets` übernommen werden. Pro Bild ist eine gleichnamige
-`.json`-Datei (z. B. `female_0.webp.json`) mit den `registration`-Werten aus dem Katalog und
-`source` sowie `license` erforderlich. Metadaten prüfen die erklärte Registrierung; die tatsächliche
-Anatomie und Motivposition muss zusätzlich ein Mensch prüfen. Das Werkzeug erkennt kein Gesicht.
+## Registrierung und Rendering
 
-Figuren: zwei Basen `female` und `male`, je sechs Posen (`standing`, `sitting`, vier Gehphasen).
-Alle Teile derselben Pose liegen deckungsgleich auf 768 × 1536; Mittelachse x=384, Füße y=1480.
-Schatten ist eine eigene Ebene. Divers verwendet die gewählte prozedurale Basis, sofern keine eigene Grafik vorliegt.
+82 Porträtebenen, 564 Figurenebenen (zwei Basen × sechs Posen × 47) und 40 Szenenebenen.
+Porträts: Mittelachse x=512, Augenlinie y=560. Figuren: x=384, Fußlinie y=1480.
+Haut, Haare, Kleidung und Umhang sind neutral grau und werden zur Laufzeit multipliziert.
+Augenbilder erhalten natürliche Lidfarbe als Trenninformation: Der Decoder trennt einmalig graue,
+einfärbbare Lidhaut von neutralem Augenweiß/Wimpern. Eine separate Iris wird in diese Öffnung maskiert.
+Nase und Mund erhalten Haut- bzw. Lippenfarbe. Metall, Waffen und Möbel behalten ihre Materialfarben.
+Figurenköpfe verwenden dieselbe Porträtrezeptur wie die Personenansicht. Sitzende Hände werden aus
+der stehenden Originalaufnahme an die Ärmelöffnungen registriert; die Kapuze verbindet das
+registrierte Kopfstück mit der jeweiligen realen Cape-Pose.
 
-Szenen: ein Tagesbild pro Ort, Tageszeiten per Farbgrading. Perspektive und Boden kommen aus
-`layout.json`, 12 × 9 Zellen bleiben unverändert. Das Tagesbild enthält Wand und Boden;
-Vordergrundmöbel liegen in neun transparenten Zeilenebenen und werden nach Tiefe mit Figuren
-verschachtelt. Nicht walkable Zellen bleiben auch bei fehlenden Bildern gesperrt.
+55 Dateien sind absichtlich vollständig transparente technische Ebenen: 40 rasierte Haarvarianten
+und 15 Vordergrundzeilen ohne Möbel. Diese Dateien werden im Katalog und in Szenen-Layouts explizit
+gekennzeichnet. Andere leere Ebenen sind Fehler. Sie werden nicht als abgebildete Motive ausgegeben.
 
-Budgetziele: Porträts insgesamt 6–9 MiB, Figuren abhängig von Variantenzahl separat messen,
-Szenen nach Kompression separat messen. Die 256-KiB-Grenze pro Personenebene ist eine Obergrenze,
-kein APK-Gesamtbudget. Vor Freigabe den tatsächlichen APK-Zuwachs dokumentieren.
+Vier Szenen erhalten je einen Tageshintergrund und neun tiefensortierte Möbelzeilen. Farben für
+Abend/Nacht und Kerzenlicht kommen aus dem Renderer. Das 12×9-Engine-Raster bleibt verbindlich.
+Marktdächer liegen hinter Händlern, Tresen vor den Beinen; Burgwachen bleiben eigenständige Figuren.
+
+Dekodierung erfolgt auf IO mit `inSampleSize` und LruCaches, niemals während des Canvas-Draws.
+Fehlende Porträtteile ersetzen nur ihre Komponente durch Vektoren; unvollständige Figurenposen
+verwenden eine vollständige Vektorfigur. Eigene Bilder haben Vorrang.
+
+## Abnahme
+
+`scripts/check_assets` prüft alle 686 Dateien, Format, Maße, echtes Alpha, erlaubte leere Ebenen,
+Graustufen, Registrierung, Größenbudget, SHA256 und Einzelherkunft. CI verwendet den strengen Aufruf.
+Metadaten sind eine Registrierungserklärung und ersetzen keine anatomische Sichtprüfung.
+Android-Tests dekodieren und rendern echte Dateien; die Tour wartet höchstens zwei Sekunden auf
+laufende Bildladevorgänge und prüft anschließend das bestehende Zwei-Sekunden-Aufnahmelimit.
+Aktuelle Ergebnisse und ehrliche Grenzen: [PHOTOREALISTIC-ASSET-REPORT.md](PHOTOREALISTIC-ASSET-REPORT.md).
 
 ## Vollständige Dateiliste
 
-Jede folgende Zeile ist ein Produktionsauftrag. Der vollständige Prompt steht unter demselben Pfad
-im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unverändert.
+Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält pro Datei vollständigen
+Zielprompt, Maße, Alpha, Registrierung und Größenbudget. Neu erzeugen: `python3 scripts/produce_asset_prompts`.
 
 | Datei | Maße | Alpha | Tönbar | Motiv / Pose |
 |---|---|---|---|---|
@@ -58,23 +87,23 @@ im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unveränd
 | `portraits/base/male_2.webp` | 1024×1280 | ja | ja | male adult face shape angular; skin, ears and neck only, no features, hair or garment. |
 | `portraits/base/male_3.webp` | 1024×1280 | ja | ja | male adult face shape heart; skin, ears and neck only, no features, hair or garment. |
 | `portraits/base/male_4.webp` | 1024×1280 | ja | ja | male adult face shape narrow; skin, ears and neck only, no features, hair or garment. |
-| `portraits/eyes/0.webp` | 1024×1280 | ja | nein | Eye shape almond; eyelids and sclera only; iris area transparent. |
-| `portraits/eyes/1.webp` | 1024×1280 | ja | nein | Eye shape round; eyelids and sclera only; iris area transparent. |
-| `portraits/eyes/2.webp` | 1024×1280 | ja | nein | Eye shape narrow; eyelids and sclera only; iris area transparent. |
-| `portraits/eyes/3.webp` | 1024×1280 | ja | nein | Eye shape slanted; eyelids and sclera only; iris area transparent. |
+| `portraits/eyes/0.webp` | 1024×1280 | ja | nein | Eye shape almond; photographic eyelids with natural skin chroma for decode-time separation, neutral sclera and lashes; iris color is supplied by a separate registered texture. |
+| `portraits/eyes/1.webp` | 1024×1280 | ja | nein | Eye shape round; photographic eyelids with natural skin chroma for decode-time separation, neutral sclera and lashes; iris color is supplied by a separate registered texture. |
+| `portraits/eyes/2.webp` | 1024×1280 | ja | nein | Eye shape narrow; photographic eyelids with natural skin chroma for decode-time separation, neutral sclera and lashes; iris color is supplied by a separate registered texture. |
+| `portraits/eyes/3.webp` | 1024×1280 | ja | nein | Eye shape slanted; photographic eyelids with natural skin chroma for decode-time separation, neutral sclera and lashes; iris color is supplied by a separate registered texture. |
 | `portraits/eyes/iris_mask.webp` | 1024×1280 | ja | ja | Iris pair, pupil, reflections only; centered at x=417 and x=607, y=560. |
 | `portraits/brows/0.webp` | 1024×1280 | ja | ja | Eyebrow pair: straight. |
 | `portraits/brows/1.webp` | 1024×1280 | ja | ja | Eyebrow pair: arched. |
 | `portraits/brows/2.webp` | 1024×1280 | ja | ja | Eyebrow pair: bushy. |
 | `portraits/brows/3.webp` | 1024×1280 | ja | ja | Eyebrow pair: fine. |
-| `portraits/nose/0.webp` | 1024×1280 | ja | nein | Nose: straight, natural skin shading at the shared registration. |
-| `portraits/nose/1.webp` | 1024×1280 | ja | nein | Nose: aquiline, natural skin shading at the shared registration. |
-| `portraits/nose/2.webp` | 1024×1280 | ja | nein | Nose: upturned, natural skin shading at the shared registration. |
-| `portraits/nose/3.webp` | 1024×1280 | ja | nein | Nose: broad, natural skin shading at the shared registration. |
-| `portraits/mouth/0.webp` | 1024×1280 | ja | nein | Mouth expression: calm. |
-| `portraits/mouth/1.webp` | 1024×1280 | ja | nein | Mouth expression: smiling. |
-| `portraits/mouth/2.webp` | 1024×1280 | ja | nein | Mouth expression: serious. |
-| `portraits/mouth/3.webp` | 1024×1280 | ja | nein | Mouth expression: determined. |
+| `portraits/nose/0.webp` | 1024×1280 | ja | ja | Nose: straight, neutral skin shading at the shared registration; runtime skin tint. |
+| `portraits/nose/1.webp` | 1024×1280 | ja | ja | Nose: aquiline, neutral skin shading at the shared registration; runtime skin tint. |
+| `portraits/nose/2.webp` | 1024×1280 | ja | ja | Nose: upturned, neutral skin shading at the shared registration; runtime skin tint. |
+| `portraits/nose/3.webp` | 1024×1280 | ja | ja | Nose: broad, neutral skin shading at the shared registration; runtime skin tint. |
+| `portraits/mouth/0.webp` | 1024×1280 | ja | ja | Mouth expression: calm; runtime natural lip tint. |
+| `portraits/mouth/1.webp` | 1024×1280 | ja | ja | Mouth expression: smiling; runtime natural lip tint. |
+| `portraits/mouth/2.webp` | 1024×1280 | ja | ja | Mouth expression: serious; runtime natural lip tint. |
+| `portraits/mouth/3.webp` | 1024×1280 | ja | ja | Mouth expression: determined; runtime natural lip tint. |
 | `portraits/hair_back/0.webp` | 1024×1280 | ja | ja | Back hair only: short; no face or front locks. |
 | `portraits/hair_back/1.webp` | 1024×1280 | ja | ja | Back hair only: parted; no face or front locks. |
 | `portraits/hair_back/2.webp` | 1024×1280 | ja | ja | Back hair only: long loose; no face or front locks. |
@@ -695,7 +724,7 @@ im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unveränd
 | `figures/male/walk_3/weapon/5.webp` | 768×1536 | ja | nein | Adult male, walk 3 pose; front camera, same scale across all frames. Walk cycle phase 75 percent. Opposite arm and leg move together; no camera movement. staff only, aligned to hands/belt. |
 | `figures/male/walk_3/shadow.webp` | 768×1536 | ja | nein | Adult male, walk 3 pose; front camera, same scale across all frames. Walk cycle phase 75 percent. Opposite arm and leg move together; no camera movement. Soft contact shadow only, ground contact at the foot line, upper-left key light. |
 | `scenes/tavern/day.webp` | 2160×1440 | nein | nein | tavern architecture and empty floor, no people or foreground furniture. Warm candlelit interior for tavern, natural daylight outdoors. Furniture is supplied as separate row occlusion layers. |
-| `scenes/tavern/foreground_0.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/tavern/foreground_0.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/tavern/foreground_1.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 1 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/tavern/foreground_2.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 2 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/tavern/foreground_3.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
@@ -703,34 +732,34 @@ im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unveränd
 | `scenes/tavern/foreground_5.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 5 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/tavern/foreground_6.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 6 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/tavern/foreground_7.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 7 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/tavern/foreground_8.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/tavern/foreground_8.webp` | 2160×1440 | ja | nein | tavern furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/market/day.webp` | 2160×1440 | nein | nein | market architecture and empty floor, no people or foreground furniture. Warm candlelit interior for tavern, natural daylight outdoors. Furniture is supplied as separate row occlusion layers. |
-| `scenes/market/foreground_0.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/market/foreground_0.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/market/foreground_1.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 1 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/market/foreground_2.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 2 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/market/foreground_3.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/market/foreground_4.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 4 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/market/foreground_3.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
+| `scenes/market/foreground_4.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 4 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/market/foreground_5.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 5 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/market/foreground_6.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 6 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/market/foreground_7.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 7 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/market/foreground_8.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/market/foreground_8.webp` | 2160×1440 | ja | nein | market furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/barracks/day.webp` | 2160×1440 | nein | nein | barracks architecture and empty floor, no people or foreground furniture. Warm candlelit interior for tavern, natural daylight outdoors. Furniture is supplied as separate row occlusion layers. |
-| `scenes/barracks/foreground_0.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/barracks/foreground_0.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/barracks/foreground_1.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 1 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/barracks/foreground_2.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 2 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/barracks/foreground_2.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 2 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/barracks/foreground_3.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/barracks/foreground_4.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 4 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/barracks/foreground_5.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 5 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/barracks/foreground_4.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 4 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
+| `scenes/barracks/foreground_5.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 5 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/barracks/foreground_6.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 6 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/barracks/foreground_7.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 7 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/barracks/foreground_8.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/barracks/foreground_8.webp` | 2160×1440 | ja | nein | barracks furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/castle/day.webp` | 2160×1440 | nein | nein | castle architecture and empty floor, no people or foreground furniture. Warm candlelit interior for tavern, natural daylight outdoors. Furniture is supplied as separate row occlusion layers. |
-| `scenes/castle/foreground_0.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/castle/foreground_0.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 0 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/castle/foreground_1.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 1 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/castle/foreground_2.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 2 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/castle/foreground_3.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/castle/foreground_3.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 3 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
 | `scenes/castle/foreground_4.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 4 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/castle/foreground_5.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 5 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
 | `scenes/castle/foreground_6.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 6 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/castle/foreground_7.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 7 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
-| `scenes/castle/foreground_8.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. |
+| `scenes/castle/foreground_7.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 7 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |
+| `scenes/castle/foreground_8.webp` | 2160×1440 | ja | nein | castle furniture belonging to engine row 8 only, use exact blocked cells from layout.json. Alpha elsewhere; full canvas registered to day.webp. This row contains no foreground objects: export a fully transparent technical layer. |

@@ -56,11 +56,11 @@ Große Live-Vorschau (Kopf / Brustbild / Ganzkörper), Ausdrucks-Auswahl, 7 Reit
 - Kleidung mit Ausschnitt, Schnürung, Steppung, Robe; Leder mit Naht, Kettenhemd aus Ringen, Schuppen, Plattenpanzer mit Grat und Nieten; Umhang, Pelzkragen, Elbenkapuze, Schmuck
 - Ganzkörperfigur für Editor und Taverne (Größe, Statur, Haltung, Waffe, Gehanimation)
 
-Ehrliche Einordnung: Das ist deutlich detaillierter als v2.1, bleibt aber prozedurale Vektormalerei und **kein** gemaltes semi-realistisches Artwork. Der Editor sagt das in einer Zeile selbst.
+Der prozedurale Renderer bleibt als Fallback erhalten. Seit der Fotoproduktion vom 27.10.2026 liefern 82 registrierte Fotolagen Haut-, Haar- und Materialtexturen; eigene importierte Bilder haben Vorrang. Details und Grenzen: `PHOTOREALISTIC-ASSET-REPORT.md`.
 
-### Asset-Vertrag für echte gemalte Ebenen
+### Asset-Vertrag für fotorealistische Ebenen
 
-`PortraitAssets` verwendet jede erfolgreich geladene gemalte Ebene einzeln. Eine fehlende oder beschädigte Ebene wird durch dieselbe prozedurale Komponente ersetzt; ein Basisgesicht ist keine Voraussetzung für andere Ebenen. Alle Dateien: WebP mit Alpha, **1024 × 1280 px**, identische Kopfposition (Augenlinie bei y = 560, Gesichtsmitte x = 512), Licht von oben links, gemalter semi-realistischer Fantasy-Stil, neutraler Grauton für eingefärbte Ebenen.
+`PortraitAssets` verwendet jede erfolgreich geladene Fotoebene einzeln. Eine fehlende oder beschädigte Ebene wird durch dieselbe prozedurale Komponente ersetzt; ein Basisgesicht ist keine Voraussetzung für andere Ebenen. Alle Dateien: WebP mit Alpha, **1024 × 1280 px**, identische Kopfposition (Augenlinie bei y = 560, Gesichtsmitte x = 512), Licht von oben links, fotorealistischer Fantasy-Stil ohne Pinselstriche, neutraler Grauton für eingefärbte Ebenen.
 
 | Ordner | Dateien | Anzahl | Einfärbung |
 |---|---|---|---|

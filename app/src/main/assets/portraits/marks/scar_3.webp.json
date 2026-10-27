@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; marks-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "marks-atlas",
+    "panel": 2,
+    "grid": [
+      7,
+      1
+    ],
+    "sourceBox": [
+      620,
+      324,
+      310,
+      67
+    ]
+  },
+  "sha256": "1ffbeac3538d7a27d51f9900e1567cbabe1d53a7c01e1b00e10339275faa024d"
+}

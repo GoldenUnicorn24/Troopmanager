@@ -1,0 +1,31 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; barracks-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 4,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          1717,
+          144,
+          441,
+          526
+        ],
+        "gridAnchor": [
+          10.5,
+          7
+        ],
+        "width": 355,
+        "groundY": 1299.8918918918919
+      }
+    ]
+  },
+  "sha256": "eff1fea2b53d7b180167eacdbab1ef7fde237add1d190335bc096afb954df401"
+}

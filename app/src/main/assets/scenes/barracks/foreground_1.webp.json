@@ -1,0 +1,91 @@
+{
+  "registration": {},
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; barracks-props-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "barracks-props-atlas",
+    "objects": [
+      {
+        "source": "barracks-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          466,
+          106,
+          355,
+          536
+        ],
+        "gridAnchor": [
+          8,
+          1
+        ],
+        "width": 190,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 1,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          466,
+          106,
+          355,
+          536
+        ],
+        "gridAnchor": [
+          10,
+          1
+        ],
+        "width": 190,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          875,
+          16,
+          365,
+          661
+        ],
+        "gridAnchor": [
+          4,
+          1
+        ],
+        "width": 170,
+        "groundY": 599.3513513513514
+      },
+      {
+        "source": "barracks-props-atlas",
+        "panel": 2,
+        "grid": [
+          5,
+          1
+        ],
+        "sourceBox": [
+          875,
+          16,
+          365,
+          661
+        ],
+        "gridAnchor": [
+          5,
+          1
+        ],
+        "width": 170,
+        "groundY": 599.3513513513514
+      }
+    ]
+  },
+  "sha256": "a8c6dddc1439c1b4e7e2a8751b31642747f5e814cbc0658bb468bd609b41bfcd"
+}

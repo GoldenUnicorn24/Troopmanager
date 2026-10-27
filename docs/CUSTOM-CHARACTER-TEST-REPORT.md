@@ -1,5 +1,7 @@
 # Eigene Charaktere und Grafik: Arbeits- und Testbericht
 
+> Historischer Bericht der Import-Pipeline vor der Fotoproduktion. Aktueller Bildsatz und neue Prüfungen: [PHOTOREALISTIC-ASSET-REPORT.md](PHOTOREALISTIC-ASSET-REPORT.md).
+
 Basis: `claude/project-rebirth-rpg` @ `7bc6af5`, PR #14 war zum Arbeitsbeginn offen.
 Feature-Branch: `codex/custom-character-art`. Kein Schreiben auf main.
 

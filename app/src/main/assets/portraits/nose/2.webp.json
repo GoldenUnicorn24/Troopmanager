@@ -1,0 +1,23 @@
+{
+  "registration": {
+    "centerX": 512,
+    "eyeY": 560
+  },
+  "source": "Original OpenAI image generation for Troopmanager, 2026-10-27; nose-atlas",
+  "license": "Project-original AI-generated artwork; no third-party source images",
+  "production": {
+    "source": "nose-atlas",
+    "panel": 2,
+    "grid": [
+      4,
+      1
+    ],
+    "sourceBox": [
+      1126,
+      33,
+      414,
+      610
+    ]
+  },
+  "sha256": "268b524080850f421b91842707eccb763fff3ba9fdf2d697efb4c7e732cb4c04"
+}

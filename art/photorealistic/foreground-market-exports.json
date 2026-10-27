@@ -1,0 +1,187 @@
+{
+  "scenes/market/foreground_0.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/market/foreground_1.webp": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "market-props-atlas",
+        "panel": 3,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          1817,
+          320,
+          325,
+          335
+        ],
+        "gridAnchor": [
+          4,
+          1
+        ],
+        "width": 170,
+        "groundY": 619.5107913669065
+      }
+    ]
+  },
+  "scenes/market/foreground_2.webp": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "market-props-atlas",
+        "panel": 0,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          6,
+          62,
+          578,
+          566
+        ],
+        "gridAnchor": [
+          2,
+          2
+        ],
+        "width": 540,
+        "groundY": 733.4676258992806
+      },
+      {
+        "source": "market-props-atlas",
+        "panel": 1,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          607,
+          62,
+          568,
+          567
+        ],
+        "gridAnchor": [
+          9,
+          2
+        ],
+        "width": 540,
+        "groundY": 733.4676258992806
+      }
+    ]
+  },
+  "scenes/market/foreground_3.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/market/foreground_4.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  },
+  "scenes/market/foreground_5.webp": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "hearth-well-atlas",
+        "panel": 1,
+        "grid": [
+          2,
+          1
+        ],
+        "sourceBox": [
+          1109,
+          323,
+          629,
+          530
+        ],
+        "gridAnchor": [
+          6,
+          5
+        ],
+        "width": 245,
+        "groundY": 1075.3381294964029
+      }
+    ]
+  },
+  "scenes/market/foreground_6.webp": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "market-props-atlas",
+        "panel": 2,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          1188,
+          61,
+          591,
+          576
+        ],
+        "gridAnchor": [
+          1.5,
+          6
+        ],
+        "width": 360,
+        "groundY": 1189.294964028777
+      },
+      {
+        "source": "market-props-atlas",
+        "panel": 3,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          1817,
+          320,
+          325,
+          335
+        ],
+        "gridAnchor": [
+          11,
+          6
+        ],
+        "width": 170,
+        "groundY": 1189.294964028777
+      }
+    ]
+  },
+  "scenes/market/foreground_7.webp": {
+    "source": "market-props-atlas",
+    "objects": [
+      {
+        "source": "market-props-atlas",
+        "panel": 3,
+        "grid": [
+          4,
+          1
+        ],
+        "sourceBox": [
+          1817,
+          320,
+          325,
+          335
+        ],
+        "gridAnchor": [
+          11,
+          7
+        ],
+        "width": 170,
+        "groundY": 1303.251798561151
+      }
+    ]
+  },
+  "scenes/market/foreground_8.webp": {
+    "source": "intentional empty layer",
+    "empty": true,
+    "reason": "shaved hair or an empty furniture row"
+  }
+}

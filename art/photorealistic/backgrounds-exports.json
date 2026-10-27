@@ -1,0 +1,26 @@
+{
+  "scenes/tavern/day.webp": {
+    "source": "tavern-background",
+    "sourceFloorY": 272,
+    "registeredFloorY": 389,
+    "decalSource": "ground-details-atlas"
+  },
+  "scenes/market/day.webp": {
+    "source": "market-background",
+    "sourceFloorY": 320,
+    "registeredFloorY": 414,
+    "decalSource": null
+  },
+  "scenes/barracks/day.webp": {
+    "source": "barracks-background",
+    "sourceFloorY": 300,
+    "registeredFloorY": 389,
+    "decalSource": "ground-details-atlas"
+  },
+  "scenes/castle/day.webp": {
+    "source": "castle-background",
+    "sourceFloorY": 340,
+    "registeredFloorY": 438,
+    "decalSource": "ground-details-atlas"
+  }
+}
