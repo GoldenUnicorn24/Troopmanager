@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -37,6 +38,8 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goldenunicorn.troopmanager.engine.DialogueEngine
@@ -196,12 +199,26 @@ fun TavernScreen(
                     }
                     drawLighting(state.life.timeSlot, tw, th, wallH, time)
                     // Name tags for people you know, a role tag for the rest.
+                    val occupiedTags = mutableListOf<Rect>()
                     placements.forEach { p ->
                         val known = p.npc.relation.timesMet > 0
                         val label = if (known) p.npc.firstName else if (p.npc.role == NpcRole.INNKEEPER) p.npc.profession else p.npc.profession.substringBefore(' ').take(14)
                         val style = TextStyle(color = if (known) PaleGold else Mist.copy(alpha = .8f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        val m = measurer.measure(label, style)
-                        val top = Offset(tw * (p.cell.x + .5f) - m.size.width / 2f, wallH + th * (p.cell.y + .5f) - tw * 2.7f)
+                        val m = measurer.measure(label, style, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            constraints = Constraints(maxWidth = (tw * 2.5f).toInt().coerceAtLeast(1)))
+                        val origin = Offset(
+                            (tw * (p.cell.x + .5f) - m.size.width / 2f).coerceIn(6f, (size.width - m.size.width - 6f).coerceAtLeast(6f)),
+                            (wallH + th * (p.cell.y + .5f) - tw * 2.7f).coerceIn(2f, (size.height - m.size.height - 2f).coerceAtLeast(2f)))
+                        val tagSize = Size(m.size.width + 12f, m.size.height + 4f)
+                        // Nearby guests can share a row; stagger their labels without moving grid cells.
+                        val top = (0..placements.size * 2).asSequence().map { step ->
+                            val rows = if (step % 2 == 1) -(step + 1) / 2 else step / 2
+                            origin + Offset(0f, rows * (tagSize.height + 4f))
+                        }.firstOrNull { candidate ->
+                            val bounds = Rect(candidate - Offset(6f, 2f), tagSize)
+                            bounds.top >= 0f && bounds.bottom <= size.height && occupiedTags.none { it.overlaps(bounds) }
+                        } ?: origin
+                        occupiedTags += Rect(top - Offset(6f, 2f), tagSize)
                         drawRoundRect(Color.Black.copy(alpha = .55f), top - Offset(6f, 2f), Size(m.size.width + 12f, m.size.height + 4f), CornerRadius(10f))
                         drawText(m, topLeft = top)
                     }
