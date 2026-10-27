@@ -15,7 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-internal data class SceneArt(val background: ImageBitmap?, val foreground: Map<Int, ImageBitmap>)
+internal data class SceneArt(val background: ImageBitmap?, val foreground: Map<Int, ImageBitmap>, val emptyForeground: Set<Int> = emptySet())
 
 internal object SceneAssets {
     private val cache = object : LruCache<String, ImageBitmap>(32 * 1024 * 1024) {
@@ -45,8 +45,8 @@ internal object SceneAssets {
         val layout = context.assets.open("scenes/$scene/layout.json").bufferedReader().use { Json.decodeFromString<SceneAssetLayout>(it.readText()) }
         layout.validate(grid, wall)
         val background = load(context, "scenes/$scene/${layout.image}", false)
-        val foreground = layout.foreground.mapNotNull { f -> load(context, "scenes/$scene/${f.path}", true)?.let { f.row to it } }.toMap()
-        if (background == null && foreground.isEmpty()) null else SceneArt(background, foreground)
+        val foreground = layout.foreground.filterNot { it.empty }.mapNotNull { f -> load(context, "scenes/$scene/${f.path}", true)?.let { f.row to it } }.toMap()
+        if (background == null && foreground.isEmpty()) null else SceneArt(background, foreground,layout.foreground.filter { it.empty }.map { it.row }.toSet())
     }.getOrNull()
 }
 
@@ -54,7 +54,7 @@ internal object SceneAssets {
 internal fun rememberSceneArt(scene: String): SceneArt? {
     val context = LocalContext.current
     var art by remember(scene) { mutableStateOf<SceneArt?>(null) }
-    LaunchedEffect(scene) { art = withContext(Dispatchers.IO) { SceneAssets.load(context, scene) } }
+    LaunchedEffect(scene) { art = ArtLoading.load { withContext(Dispatchers.IO) { SceneAssets.load(context, scene) } } }
     return art
 }
 
@@ -67,11 +67,13 @@ internal fun sceneLight(slot: TimeSlot, indoors: Boolean): Color = when (slot) {
 
 internal fun DrawScope.drawSceneBackground(art: SceneArt?, slot: TimeSlot, indoors: Boolean): Boolean {
     val image = art?.background ?: return false
-    drawTintedArt(image,sceneLight(slot,indoors),target = IntSize(size.width.toInt(),size.height.toInt()))
+    val darken = if (slot == TimeSlot.NIGHT) .5f else if (slot == TimeSlot.EVENING && !indoors) .2f else 0f
+    drawTintedArt(image,sceneLight(slot,indoors).mix(Color.Black,darken),target = IntSize(size.width.toInt(),size.height.toInt()))
     return true
 }
 
 internal fun DrawScope.drawSceneForeground(art: SceneArt?, row: Int, slot: TimeSlot, indoors: Boolean): Boolean {
+    if (row in art?.emptyForeground.orEmpty()) return true
     val image = art?.foreground?.get(row) ?: return false
     drawTintedArt(image,sceneLight(slot,indoors),target = IntSize(size.width.toInt(),size.height.toInt()))
     return true

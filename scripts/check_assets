@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate production images. Missing art is a failure unless explicitly allowed for fallback builds."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from PIL import Image, ImageChops
@@ -21,6 +22,7 @@ def check(root=ASSETS, credits=None):
                 if im.format != 'WEBP': raise ValueError('Datei ist kein WebP')
                 if im.size != (spec['width'],spec['height']): raise ValueError(f'falsche Maße: {im.size}')
                 alpha=im.convert('RGBA').getchannel('A')
+                is_empty=alpha.getbbox() is None
                 if spec['alpha'] and (alpha.getextrema()[0] == 255 or (alpha.getbbox() is None and not spec['allowEmpty'])): raise ValueError('sichtbare Ebene mit echtem Alpha erforderlich')
                 if not spec['alpha'] and alpha.getextrema()[0] < 255: raise ValueError('Hintergrund muss deckend sein')
                 if spec['neutral']:
@@ -31,6 +33,13 @@ def check(root=ASSETS, credits=None):
             meta=json.loads(path.with_suffix(path.suffix+'.json').read_text())
             if meta.get('registration') != spec['registration']: raise ValueError('Augen-/Fußlinie oder Mittelachse in Metadaten falsch')
             if not meta.get('source') or not meta.get('license') or any(str(meta[k]).startswith('REQUIRED') for k in ('source','license')): raise ValueError('Herkunft/Lizenz in Metadaten fehlt')
+            if meta.get('sha256') and hashlib.sha256(path.read_bytes()).hexdigest() != meta['sha256']: raise ValueError('SHA256 stimmt nicht mit Bild überein')
+            if '/foreground_' in name:
+                row=int(path.stem.rsplit('_',1)[1])
+                layout=json.loads((path.parent/'layout.json').read_text())
+                entry=next(item for item in layout['foreground'] if item['row']==row)
+                if entry.get('empty',False) != spec['allowEmpty'] or is_empty != entry.get('empty',False):
+                    raise ValueError('Leere Vordergrundzeile widerspricht Engine-Vertrag oder Layout')
             if name not in credits: raise ValueError('Datei fehlt in CREDITS.md')
         except (OSError,ValueError,KeyError) as exc: errors.append({'path':name,'error':str(exc)})
     for folder in ('portraits','figures','scenes'):

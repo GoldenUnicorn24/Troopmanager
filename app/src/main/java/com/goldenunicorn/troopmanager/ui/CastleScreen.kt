@@ -52,7 +52,9 @@ fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
     val sceneArt = rememberSceneArt("castle")
     val layout = CastleEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { CastleEngine.placements(state) }
-    val figures = rememberFigureArt(state, placements.map { it.npc })
+    val guardLook = remember { CharacterAppearance(armor = 4,weapon = 2,cloak = 1,primaryColor = 0,accentColor = 1).normalized() }
+    val figures = rememberFigureArt(state, placements.map { it.npc },seatedIds = placements.filter { it.lord }.map { it.npc.id }.toSet(),
+        extraLooks = listOf(guardLook to Gender.MALE))
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
     var walkId by remember { mutableLongStateOf(0L) }
     val pos = remember { Animatable(Offset(layout.entry.x.toFloat(), layout.entry.y.toFloat()), Offset.VectorConverter) }
@@ -139,6 +141,10 @@ fun CastleScreen(state: GameState, onState: (GameState) -> Unit, onNotice: (Stri
                     if (!drawSceneBackground(sceneArt, state.life.timeSlot, false)) drawCourtyard(state.life.timeSlot, tw, th, backH, time, tournament)
                     for (row in 0..8) {
                         if (!drawSceneForeground(sceneArt, row, state.life.timeSlot, false)) drawCourtRow(row, tw, th, backH, time, tournament)
+                        layout.guards.filter { it.y == row }.forEach { g ->
+                            val feet = Offset(tw*(g.x+.5f),backH+th*(g.y+.8f))
+                            drawFullFigure(guardLook,Gender.MALE,feet,tw*2.4f/140f,detailed = false,paintedArt = figures,light = sceneLight(state.life.timeSlot,false))
+                        }
                         placements.filter { it.cell.y == row }.forEach { p ->
                             val feet = Offset(tw * (p.cell.x + .5f), backH + th * (p.cell.y + .5f) + th * .3f)
                             drawFullFigure(p.npc.appearance, p.npc.gender, feet, tw * 2.4f / 140f, detailed = false, seated = p.lord, customImage = figures[p.npc.appearance.customImageId], paintedArt = figures, light = sceneLight(state.life.timeSlot, false))
@@ -355,11 +361,6 @@ private fun DrawScope.drawCourtRow(row: Int, tw: Float, th: Float, backH: Float,
             lineTo(c.x + tw * .35f + wave, c.y - tw * .9f); lineTo(c.x + wave, c.y - tw * 1.15f); lineTo(c.x - tw * .35f + wave, c.y - tw * .9f); close()
         }, Color(0xFF7A2430))
         drawCircle(ArtPaletteGold, tw * .12f, Offset(c.x + wave * .5f, c.y - tw * 1.6f))
-    }
-    l.guards.filter { it.y == row }.forEach { g ->
-        val c = cell(g)
-        val guard = CharacterAppearance(armor = 4, weapon = 2, cloak = 1, primaryColor = 0, accentColor = 1).normalized()
-        drawFullFigure(guard, Gender.MALE, Offset(c.x, c.y + th * .3f), tw * 2.4f / 140f, detailed = false)
     }
     if (row == l.tables.first().y || row == l.tables.last().y) l.tables.filter { it.y == row }.let { cells ->
         if (cells.isEmpty()) return@let

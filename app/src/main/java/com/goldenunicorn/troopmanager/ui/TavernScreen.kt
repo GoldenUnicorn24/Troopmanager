@@ -68,7 +68,9 @@ fun TavernScreen(
     val sceneArt = rememberSceneArt("tavern")
     val layout = TavernEngine.layout
     val placements = remember(state.life.npcs, state.day, state.life.timeSlot, state.life.provinceId) { TavernEngine.placements(state) }
-    val figures = rememberFigureArt(state, placements.map { it.npc })
+    val figures = rememberFigureArt(state, placements.map { it.npc },seatedIds = placements.filter {
+        it.npc.role != NpcRole.INNKEEPER && it.kind in setOf(TavernEngine.SeatKind.TABLE,TavernEngine.SeatKind.FIRE,TavernEngine.SeatKind.BAR)
+    }.map { it.npc.id }.toSet())
     var walk by remember { mutableStateOf<WalkRequest?>(null) }
     var walkId by remember { mutableLongStateOf(0L) }
     val pos = remember { Animatable(Offset(layout.door.x.toFloat(), layout.door.y.toFloat()), Offset.VectorConverter) }

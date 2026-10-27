@@ -79,7 +79,7 @@ fun CharacterEditor(
         } }
         if (openCustom != null) OutlinedButton(onClick = { openCustom(if (templateKind == "player") "player" else "companion") }) { Text("Eigene Charaktere / Bilder") }
         Text(
-            "Vorschau-Renderer: gezeichnete Vektormalerei. Gemalte Porträt-Ebenen werden automatisch genutzt, sobald sie installiert sind.",
+            "Fotorealistische Porträt-Ebenen mit anpassbaren Farben. Eigene Bilder haben Vorrang; fehlende Ebenen werden gezeichnet.",
             color = Muted, fontSize = 11.sp, lineHeight = 15.sp,
         )
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

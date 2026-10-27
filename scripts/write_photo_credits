@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Write per-file provenance from the checked-in source and export manifests."""
+import json
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+manifest=json.loads((ROOT/'art/photorealistic/production-prompts.json').read_text())
+rows=['<!-- PHOTOREALISTIC-PRODUCTION:BEGIN -->','## Fotorealistische Originalproduktion – 27.10.2026','',
+'Alle folgenden Bildquellen wurden für Troopmanager mit dem OpenAI-Bildgenerator erzeugt. Keine fremden Fotos, keine realen Personen als Vorlagen; dargestellte Menschen sind erfundene Erwachsene (35/38 Jahre). Die Bildrechte werden als eigene Projektproduktion geführt; es wird keine fremde CC-Lizenz behauptet. Vollständige Prompts, eigene Referenzbeziehungen, native Maße und SHA256: `art/photorealistic/production-prompts.json`.','',
+'Runtime-Dateien werden ausschließlich mechanisch aus diesen Quellen registriert und als WebP exportiert. 40 rasierte Haarebenen und 15 objektlose Szenenzeilen sind transparente technische Flächen. Quellenarchive gehören nicht zum APK.','', '| Quelldatei | Herkunft |','|---|---|']
+for item in manifest['items']:
+ rows.append(f"| `{item['sourceFile']}` | Eigene OpenAI-Bildgenerierung, 27.10.2026; Prompt `{item['id']}` |")
+rows+=['','| Laufzeitdatei | Herkunft |','|---|---|']
+for path in sorted((ROOT/'app/src/main/assets').glob('**/*.webp.json')):
+ meta=json.loads(path.read_text())
+ if 'production' not in meta:continue
+ image=path.with_suffix('');name=image.relative_to(ROOT).as_posix();details=meta['production']
+ provenance='Eigene transparente technische Registrierungsebene' if details.get('empty') else 'Eigene Bildgenerierung; mechanischer Export aus `'+details['source']+'`'
+ rows.append(f'| `{name}` | {provenance} |')
+rows+=['','<!-- PHOTOREALISTIC-PRODUCTION:END -->','']
+path=ROOT/'CREDITS.md';text=path.read_text();marker='<!-- PHOTOREALISTIC-PRODUCTION:BEGIN -->'
+if marker in text:text=text[:text.index(marker)].rstrip()+'\n\n'
+else:text=text.rstrip()+'\n\n'
+path.write_text(text+'\n'.join(rows))
+print(f"{len(manifest['items'])} source credits; {sum(1 for p in (ROOT/'app/src/main/assets').glob('**/*.webp.json') if 'production' in json.loads(p.read_text()))} runtime credits generated.")

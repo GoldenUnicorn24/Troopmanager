@@ -35,7 +35,7 @@ internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: 
         val definition = LocalCustomCharacterDefinitions.current[imageId]
         var bitmap by remember(imageId, uri, framing, targetWidth) { mutableStateOf<Bitmap?>(null) }
         LaunchedEffect(imageId, uri, framing, targetWidth) {
-            bitmap = withContext(Dispatchers.IO) {
+            bitmap = ArtLoading.load { withContext(Dispatchers.IO) {
                 val images = CustomCharacterImages(context)
                 val kind = if (framing == Framing.FULL) CharacterImageKind.FULLBODY else CharacterImageKind.PORTRAIT
                 images.load(imageId, kind, targetWidth) ?: if (framing != Framing.FULL && uri != null) runCatching {
@@ -45,7 +45,7 @@ internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: 
                         images.load(file.parentFile!!.name, kind, targetWidth)
                     } else null
                 }.getOrNull() else null
-            }
+            } }
         }
         val loaded = bitmap
         if (ArtResolution.source(loaded != null,false) != ArtResolution.Source.CUSTOM) {
@@ -69,23 +69,25 @@ internal fun PersonImage(id: String?, uri: String?, framing: Framing, modifier: 
 }
 
 @Composable
-internal fun rememberFigureArt(state: GameState, people: List<com.goldenunicorn.troopmanager.model.NpcIdentity>): FigureArt {
+internal fun rememberFigureArt(state: GameState, people: List<com.goldenunicorn.troopmanager.model.NpcIdentity>, seatedIds: Set<String> = emptySet(), extraLooks: List<Pair<com.goldenunicorn.troopmanager.model.CharacterAppearance,com.goldenunicorn.troopmanager.model.Gender>> = emptyList()): FigureArt {
     val context = LocalContext.current
-    val looks = remember(people, state.life.appearance, state.life.gender, state.player.species) {
-        (people.map { it.appearance to it.gender } + ((state.life.appearance ?: defaultLook(state.life.gender,state.player.species)) to state.life.gender)).distinct()
+    val looks = remember(people, seatedIds, extraLooks, state.life.appearance, state.life.gender, state.player.species) {
+        (people.map { Triple(it.appearance,it.gender,setOf(if (it.id in seatedIds) "sitting" else "standing")) } +
+            Triple(state.life.appearance ?: defaultLook(state.life.gender,state.player.species),state.life.gender,setOf("standing","walk_0","walk_1","walk_2","walk_3")) +
+            extraLooks.map { Triple(it.first,it.second,setOf("standing")) }).distinct()
     }
     var art by remember(looks) { mutableStateOf(FigureArt()) }
     LaunchedEffect(looks) {
-        art = withContext(Dispatchers.IO) {
+        art = ArtLoading.load { withContext(Dispatchers.IO) {
             val custom = looks.mapNotNull { it.first.customImageId }.distinct().mapNotNull { id ->
                 CustomCharacterImages(context).load(id,CharacterImageKind.FULLBODY,192)?.let { id to it.asImageBitmap() }
             }.toMap()
             val painted = mutableMapOf<FigureKey,androidx.compose.ui.graphics.ImageBitmap>()
-            looks.filter { it.first.customImageId !in custom }.forEach { (a,gender) ->
-                FigureAssets.poses.forEach { pose -> FigureAssets.load(context,a,gender,pose)?.let { painted[FigureAssets.key(a,gender,pose)] = it } }
+            looks.filter { it.first.customImageId !in custom }.forEach { (a,gender,poses) ->
+                poses.forEach { pose -> FigureAssets.load(context,a,gender,pose)?.let { painted[FigureAssets.key(a,gender,pose)] = it } }
             }
             FigureArt(custom,painted)
-        }
+        } }
     }
     return art
 }

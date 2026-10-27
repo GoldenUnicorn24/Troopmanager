@@ -40,4 +40,23 @@ class AssetCheckerTest(unittest.TestCase):
     def test_size_budget_is_checked_before_decode(self):
         self.path.write_bytes(self.path.read_bytes()+b'\0'*262144); self.assertIn('budget',self.report()['errors'][0]['error'])
 
+    def test_empty_skin_is_rejected(self):
+        Image.new('RGBA',(1024,1280)).save(self.path,lossless=True)
+        self.assertIn('Alpha',self.report()['errors'][0]['error'])
+    def scene_row(self,row,declared_empty):
+        self.name=f'scenes/tavern/foreground_{row}.webp';self.path=self.root/self.name
+        self.path.parent.mkdir(parents=True,exist_ok=True)
+        Image.new('RGBA',(2160,1440)).save(self.path,lossless=True)
+        self.meta['registration']={};self.write_meta()
+        (self.path.parent/'layout.json').write_text(json.dumps({'foreground':[{'row':row,'empty':declared_empty}]}))
+    def test_empty_furniture_row_is_valid(self):
+        self.scene_row(0,True)
+        self.assertFalse(any(e['path']==self.name for e in self.report()['errors']))
+    def test_occupied_row_cannot_be_declared_empty(self):
+        self.scene_row(2,True)
+        self.assertTrue(any(e['path']==self.name for e in self.report()['errors']))
+    def test_empty_row_layout_must_match_image(self):
+        self.scene_row(0,False)
+        self.assertTrue(any('Layout' in e['error'] for e in self.report()['errors']))
+
 if __name__=='__main__':unittest.main()

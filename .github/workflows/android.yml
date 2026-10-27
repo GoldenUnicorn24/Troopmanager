@@ -60,7 +60,7 @@ jobs:
           python3 -m unittest discover -s scripts -p 'test_*.py'
           python3 scripts/check_character_pack_example.py
           mkdir -p build
-          python3 scripts/check_assets --allow-missing --json > build/asset-report.json
+          python3 scripts/check_assets --json > build/asset-report.json
 
       - name: Run unit tests
         run: |

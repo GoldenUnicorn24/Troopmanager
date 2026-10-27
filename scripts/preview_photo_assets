@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Offline inspection contact sheet of exported layers (actual Compose tour remains authoritative)."""
+import argparse
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+import numpy as np
+from PIL import Image
+
+ROOT=Path(__file__).resolve().parents[1]
+ASSETS=ROOT/'app/src/main/assets/portraits'
+MAGICK=shutil.which('magick') or shutil.which('convert')
+
+def run(*args):subprocess.run([MAGICK,*map(str,args)],check=True)
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('output',type=Path);args=parser.parse_args()
+    with tempfile.TemporaryDirectory(prefix='troop-preview-') as directory:
+        work=Path(directory)
+        looks=[('female_0',0,0,2,0,0,0,'E2B48E','6E4324','2F4A2E'),
+               ('male_2',0,1,1,4,0,3,'D3A57A','3F2818','25365A'),
+               ('female_3',2,1,4,0,1,0,'F1D2BF','E6D8AE','7A2430'),
+               ('male_4',7,0,0,2,0,1,'8C5A3C','1B1714','5C6068')]
+        finished=[]
+        eye_mask=work/'eyes.miff'
+        paths=[]
+        for x in [417,607]:paths.append(f"M {x-50},562 C {x-30},545 {x+24},545 {x+50},560 C {x+26},575 {x-28},575 {x-50},562 Z")
+        run('-size','1024x1280','xc:black','-fill','white','-draw',"path '"+' '.join(paths)+"'",'-alpha','Copy',eye_mask)
+        for number,(base,hair,texture,outfit,armor,cloak,beard,skin,hair_color,fabric) in enumerate(looks):
+            canvas=work/f'{number}.miff';run('-size','1024x1280','xc:#172532',canvas)
+            layers=[(f'hair_back/{hair}',hair_color),(f'base/{base}',skin),(f'outfit/{outfit}',fabric)]
+            if armor:layers.append((f'armor/{armor}',None))
+            if cloak:layers.append((f'cloak/{cloak}','5C6068'))
+            lip='C28B76' if base.startswith('female') else skin
+            layers.extend([('eyes/0',skin),('brows/0',hair_color),('nose/0',skin),('mouth/0',lip)])
+            if beard:layers.append((f'beard/{beard}',hair_color))
+            layers.append((f'hair_front/{hair}_{texture}',hair_color))
+            for index,(path,color) in enumerate(layers):
+                source=ASSETS/f'{path}.webp';part=work/'part.miff';commands=[]
+                if color:
+                    for channel,value in zip('RGB',[int(color[k:k+2],16)/255 for k in [0,2,4]]):commands+=['-channel',channel,'-evaluate','Multiply',str(value)]
+                    commands+=['+channel']
+                run(source,*(['-colorspace','Gray','-colorspace','sRGB'] if path=='eyes/0' else []),*commands,part)
+                if path=='eyes/0':
+                    rgba=np.asarray(Image.open(source).convert('RGBA')).astype(float)
+                    maximum=rgba[:,:,:3].max(axis=2);minimum=rgba[:,:,:3].min(axis=2)
+                    chroma=(maximum-minimum)/np.maximum(maximum,1)
+                    keep=np.where(maximum<40,1,np.clip(1-(chroma-.1)/.08,0,1))
+                    pgm=work/'chroma.pgm';pgm.write_bytes(b'P5\n1024 1280\n255\n'+(keep*255).astype(np.uint8).tobytes())
+                    mask=work/'chroma.miff';run(pgm,'-alpha','Copy',mask)
+                    original=work/'eye-original.miff';run(source,mask,'-compose','DstIn','-composite',original)
+                    run(part,original,'-compose','Over','-composite',part)
+                run(canvas,part,'-compose','Over','-composite',canvas)
+            out=work/f'{number}.png';run(canvas,'-resize','384x480',out);finished.append(out)
+        args.output.parent.mkdir(parents=True,exist_ok=True)
+        run(*finished,'+append',args.output)
+        print(args.output)
+
+if __name__=='__main__':main()

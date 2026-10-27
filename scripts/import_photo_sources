@@ -1,0 +1,37 @@
+#!/usr/bin/env python3
+"""Archive generated originals as high-quality WebP; keep originals untouched."""
+import argparse
+import hashlib
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--limit', type=int, default=8)
+args = parser.parse_args()
+manifest = ROOT / 'art/photorealistic/production-prompts.json'
+data = json.loads(manifest.read_text())
+directory = manifest.parent / 'sources'
+directory.mkdir(exist_ok=True)
+magick = shutil.which('magick') or shutil.which('convert')
+assert magick, 'ImageMagick is required for the offline production export.'
+count = 0
+for item in data['items']:
+    source = Path(item['originalPath'])
+    target = directory / (item['id'] + '.webp')
+    if not target.exists():
+        if count >= args.limit:
+            continue
+        subprocess.run([magick, str(source), '-strip', '-quality', '95',
+                        '-define', 'webp:alpha-quality=100', str(target)], check=True)
+        count += 1
+    with Image.open(source) as image:
+        item['nativeSize'] = list(image.size)
+    item['originalSha256'] = hashlib.sha256(source.read_bytes()).hexdigest()
+    item['sourceFile'] = str(target.relative_to(ROOT))
+    item['sourceSha256'] = hashlib.sha256(target.read_bytes()).hexdigest()
+manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+print(f'{count} source images archived; {len(list(directory.glob("*.webp")))} available.')

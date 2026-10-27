@@ -22,6 +22,8 @@ class TourTest {
     private fun shot(name: String) {
         rule.mainClock.advanceTimeBy(1_500)
         rule.waitForIdle()
+        rule.waitUntil(2_000) { ArtLoading.pending.get() == 0 }
+        rule.waitForIdle()
         val roots = rule.onAllNodes(isRoot())
         val count = roots.fetchSemanticsNodes().size
         val started = android.os.SystemClock.elapsedRealtime()
@@ -38,6 +40,8 @@ class TourTest {
 
     private fun page(name: String) {
         rule.runOnIdle { TourActivity.page = name }
+        rule.waitForIdle()
+        rule.waitUntil(2_000) { ArtLoading.pending.get() == 0 }
         rule.waitForIdle()
     }
 
@@ -66,5 +70,6 @@ class TourTest {
         }
         // Milestone 5: a ruler (and knight) visiting the castle of a town.
         listOf("ruler-castle").forEach { page(it); shot("h-$it") }
+        page("photo-night"); shot("j-photoreal-night-market")
     }
 }

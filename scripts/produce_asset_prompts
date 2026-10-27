@@ -4,53 +4,82 @@ import json
 from asset_contract import ROOT, catalog
 items=catalog()
 (ROOT/'docs/asset-catalog.json').write_text(json.dumps({'version':1,'assets':items},indent=2)+'\n')
-intro='''# Asset-Produktion
+intro='''# Fotorealistische Asset-Produktion
 
-Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält für jede
-Datei den vollständigen Prompt, Maße, Alpha-/Graustufenanforderung, Registrierung und Größenbudget.
-Er wird mit `python3 scripts/produce_asset_prompts` reproduzierbar aus `scripts/asset_contract.py` erzeugt.
-Keine Führungsmaske wird als fertiges gemaltes Spiel-Asset installiert.
+Der Nutzer hat den ursprünglichen gemalten Stil ausdrücklich durch **realistische Bilder** ersetzt.
+Die Produktion verwendet fotorealistische Haut, Haare, Holz, Leder, Wolle und Metall ohne Pinselstriche.
+Alle dargestellten Personen sind erfundene Erwachsene; es wurden keine fremden Fotos verwendet.
 
-## Gemalte Stilreferenz
+## Quellen und Wiederherstellung
 
-![Eigene Stilreferenz](assets/style-reference.png)
+Die vollständigen tatsächlich verwendeten Generator-Prompts, Referenzbeziehungen, nativen Maße
+und SHA256-Werte stehen in [`art/photorealistic/production-prompts.json`](../art/photorealistic/production-prompts.json).
+Die hochqualitativ archivierten Quellen liegen unter `art/photorealistic/sources/` und werden
+**nicht** ins APK gepackt. Die dort protokollierten ursprünglichen PNG-Arbeitsplatzpfade sind
+Herstellungsnachweise; der reproduzierbare Export benötigt ausschließlich die eingecheckten WebP-Quellen.
+Bildproduktion: OpenAI-Bildgenerator, 27.10.2026. Herkunft jeder Datei: [CREDITS.md](../CREDITS.md).
 
-Für dieses Projekt mit dem OpenAI-Bildgenerator ohne Bildvorlage erzeugt, fiktive erwachsene Figur.
-Diese Einzelillustration ist eine Stilreferenz und erfüllt keinen Ebenenvertrag: unter anderem
-weichen Bildmaße und Augenregistrierung vom Produktionsstandard ab. Sie ist kein mitgeliefertes
-Laufzeit-Asset und wird nicht als eine der 82 fertigen Ebenen gezählt.
+Die Quellen enthalten mehrere getrennte Komponenten oder sechs Posen pro Atlas. Der Exportschritt
+verwendet ausschließlich mechanisches Ausschneiden, Freistellmasken, Registrierung, Skalierung,
+Graustufen und WebP-Kodierung, keine nachgezeichneten Ersatzmotive. Voraussetzungen:
+`python3 -m pip install -r scripts/requirements-assets-production.txt` und ImageMagick 7.
 
-## Gemeinsamer Stil und Abnahme
+```sh
+python3 scripts/make_scene_layouts
+python3 scripts/export_photo_assets portraits
+python3 scripts/export_photo_assets backgrounds
+# Für female und male, jeweils standing, sitting, walk_0, walk_1, walk_2, walk_3:
+python3 scripts/export_photo_assets figure --sex female --pose standing
+# Für tavern, market, barracks und castle:
+python3 scripts/export_photo_assets foreground --scene tavern
+python3 scripts/write_photo_credits
+python3 scripts/check_assets
+```
 
-Semi-realistische gemalte Fantasy, natürliche erwachsene Anatomie, Licht von oben links,
-warme Kerzenbeleuchtung innen, natürliche Materialfarben und gedämpfte Kontraste, keine Comic-Optik.
-Tönbare Teile neutral grau; Alpha außen vollständig transparent. Keine Schrift oder Wasserzeichen.
-Augenlinie und Fußlinie sind Teil der Registrierung, nicht bloß ein späterer Bildschirmzuschnitt.
-Graue Ebenen werden zur Laufzeit mit Haut-, Haar- und Stofffarben multipliziert.
+Die Quellen sind keine 686 unabhängigen Einzelaufnahmen: Frisuren und Ausstattung werden geteilt,
+Ganzkörperkleidung ist unisex, die unterschiedlichen Posen sind eigene generierte Atlasfelder.
+Die Ausgabeformate 1024×1280, 768×1536 und 2160×1440 sind korrekt; einzelne Komponenten und
+Szenenhintergründe werden aus kleineren nativen Bildern hochskaliert. Das erzeugt keine zusätzlichen
+optischen Details. Die unten stehenden Einzeldatei-Prompts bilden den Zielvertrag ab; der tatsächliche
+Herstellungsweg ist vollständig im Quellenmanifest und den `*-exports.json`-Dateien dokumentiert.
 
-Eine Illustration darf erst nach Sichtprüfung, `scripts/check_assets` und Herkunftseintrag in
-`CREDITS.md` nach `app/src/main/assets` übernommen werden. Pro Bild ist eine gleichnamige
-`.json`-Datei (z. B. `female_0.webp.json`) mit den `registration`-Werten aus dem Katalog und
-`source` sowie `license` erforderlich. Metadaten prüfen die erklärte Registrierung; die tatsächliche
-Anatomie und Motivposition muss zusätzlich ein Mensch prüfen. Das Werkzeug erkennt kein Gesicht.
+## Registrierung und Rendering
 
-Figuren: zwei Basen `female` und `male`, je sechs Posen (`standing`, `sitting`, vier Gehphasen).
-Alle Teile derselben Pose liegen deckungsgleich auf 768 × 1536; Mittelachse x=384, Füße y=1480.
-Schatten ist eine eigene Ebene. Divers verwendet die gewählte prozedurale Basis, sofern keine eigene Grafik vorliegt.
+82 Porträtebenen, 564 Figurenebenen (zwei Basen × sechs Posen × 47) und 40 Szenenebenen.
+Porträts: Mittelachse x=512, Augenlinie y=560. Figuren: x=384, Fußlinie y=1480.
+Haut, Haare, Kleidung und Umhang sind neutral grau und werden zur Laufzeit multipliziert.
+Augenbilder erhalten natürliche Lidfarbe als Trenninformation: Der Decoder trennt einmalig graue,
+einfärbbare Lidhaut von neutralem Augenweiß/Wimpern. Eine separate Iris wird in diese Öffnung maskiert.
+Nase und Mund erhalten Haut- bzw. Lippenfarbe. Metall, Waffen und Möbel behalten ihre Materialfarben.
+Figurenköpfe verwenden dieselbe Porträtrezeptur wie die Personenansicht. Sitzende Hände werden aus
+der stehenden Originalaufnahme an die Ärmelöffnungen registriert; die Kapuze verbindet das
+registrierte Kopfstück mit der jeweiligen realen Cape-Pose.
 
-Szenen: ein Tagesbild pro Ort, Tageszeiten per Farbgrading. Perspektive und Boden kommen aus
-`layout.json`, 12 × 9 Zellen bleiben unverändert. Das Tagesbild enthält Wand und Boden;
-Vordergrundmöbel liegen in neun transparenten Zeilenebenen und werden nach Tiefe mit Figuren
-verschachtelt. Nicht walkable Zellen bleiben auch bei fehlenden Bildern gesperrt.
+55 Dateien sind absichtlich vollständig transparente technische Ebenen: 40 rasierte Haarvarianten
+und 15 Vordergrundzeilen ohne Möbel. Diese Dateien werden im Katalog und in Szenen-Layouts explizit
+gekennzeichnet. Andere leere Ebenen sind Fehler. Sie werden nicht als abgebildete Motive ausgegeben.
 
-Budgetziele: Porträts insgesamt 6–9 MiB, Figuren abhängig von Variantenzahl separat messen,
-Szenen nach Kompression separat messen. Die 256-KiB-Grenze pro Personenebene ist eine Obergrenze,
-kein APK-Gesamtbudget. Vor Freigabe den tatsächlichen APK-Zuwachs dokumentieren.
+Vier Szenen erhalten je einen Tageshintergrund und neun tiefensortierte Möbelzeilen. Farben für
+Abend/Nacht und Kerzenlicht kommen aus dem Renderer. Das 12×9-Engine-Raster bleibt verbindlich.
+Marktdächer liegen hinter Händlern, Tresen vor den Beinen; Burgwachen bleiben eigenständige Figuren.
+
+Dekodierung erfolgt auf IO mit `inSampleSize` und LruCaches, niemals während des Canvas-Draws.
+Fehlende Porträtteile ersetzen nur ihre Komponente durch Vektoren; unvollständige Figurenposen
+verwenden eine vollständige Vektorfigur. Eigene Bilder haben Vorrang.
+
+## Abnahme
+
+`scripts/check_assets` prüft alle 686 Dateien, Format, Maße, echtes Alpha, erlaubte leere Ebenen,
+Graustufen, Registrierung, Größenbudget, SHA256 und Einzelherkunft. CI verwendet den strengen Aufruf.
+Metadaten sind eine Registrierungserklärung und ersetzen keine anatomische Sichtprüfung.
+Android-Tests dekodieren und rendern echte Dateien; die Tour wartet höchstens zwei Sekunden auf
+laufende Bildladevorgänge und prüft anschließend das bestehende Zwei-Sekunden-Aufnahmelimit.
+Aktuelle Ergebnisse und ehrliche Grenzen: [PHOTOREALISTIC-ASSET-REPORT.md](PHOTOREALISTIC-ASSET-REPORT.md).
 
 ## Vollständige Dateiliste
 
-Jede folgende Zeile ist ein Produktionsauftrag. Der vollständige Prompt steht unter demselben Pfad
-im JSON-Katalog; der gemeinsame Stil und die Registrierung oben gelten unverändert.
+Der maschinenlesbare Katalog [asset-catalog.json](asset-catalog.json) enthält pro Datei vollständigen
+Zielprompt, Maße, Alpha, Registrierung und Größenbudget. Neu erzeugen: `python3 scripts/produce_asset_prompts`.
 
 | Datei | Maße | Alpha | Tönbar | Motiv / Pose |
 |---|---|---|---|---|

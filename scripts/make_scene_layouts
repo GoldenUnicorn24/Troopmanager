@@ -2,7 +2,7 @@
 """Write reviewable scene registrations. Kotlin tests compare these with the actual engines."""
 import json
 from pathlib import Path
-from asset_contract import ROOT, ASSETS, SCENES
+from asset_contract import ROOT, ASSETS, SCENES, SCENE_FOREGROUND_ROWS
 
 def cells(xs,y):return {(x,y) for x in xs}
 wall=cells(range(12),0)
@@ -17,7 +17,7 @@ for scene,wall_tiles in SCENES.items():
     layout={'version':1,'width':2160,'height':1440,'columns':12,'rows':9,'wallTiles':wall_tiles,'cellRatio':.66,'image':'day.webp',
        'floorPolygon':[[0,floor],[2160,floor],[2160,1440],[0,1440]],
        'cells':[{'x':x,'y':y,'centerX':(x+.5)*180,'centerY':(wall_tiles+(y+.5)*.66)*factor,'walkable':(x,y) not in blocked[scene]} for y in range(9) for x in range(12)],
-       'foreground':[{'row':y,'path':f'foreground_{y}.webp'} for y in range(9)]}
+       'foreground':[{'row':y,'path':f'foreground_{y}.webp','empty':y not in SCENE_FOREGROUND_ROWS[scene]} for y in range(9)]}
     folder=ASSETS/'scenes'/scene;folder.mkdir(parents=True,exist_ok=True);(folder/'layout.json').write_text(json.dumps(layout,indent=2)+'\n')
     svg=[f'<svg xmlns="http://www.w3.org/2000/svg" width="2160" height="1440" viewBox="0 0 2160 1440"><rect width="2160" height="1440" fill="#18232c"/><text x="40" y="70" fill="white" font-family="sans-serif" font-size="42">{scene}: Engine-Layout 12 × 9 – nur Hilfsraster</text>']
     for c in layout['cells']:

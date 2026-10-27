@@ -27,9 +27,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -971,7 +973,7 @@ private fun DrawScope.drawTinyHead(a: CharacterAppearance, gender: Gender, c: Of
  * their procedural drawing. Asset decoding runs on IO and is cached by sampled resolution.
  */
 object PortraitAssets {
-    data class Layer(val bitmap: ImageBitmap, val tint: Color?)
+    data class Layer(val bitmap: ImageBitmap, val tint: Color?, val neutralDetail: ImageBitmap? = null)
     private val cache = object : LruCache<String, ImageBitmap>(20 * 1024 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap) = value.width * value.height * 4
     }
@@ -984,13 +986,14 @@ object PortraitAssets {
         found.also { index = it }
     }
     fun installedCount(context: android.content.Context): Int = files(context).size
-    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512): Map<String, Layer> {
+    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512, headOnly: Boolean = false): Map<String, Layer> {
         val sex = if (gender == Gender.FEMALE) "female" else "male"
         val wanted = mapOf(
             "base" to ("base/${sex}_${a.faceShape}.webp" to ArtPalette.skin[a.skinTone].base),
-            "eyes" to ("eyes/${a.eyeShape}.webp" to null), "iris" to ("eyes/iris_mask.webp" to ArtPalette.eyes[a.eyeColor]),
+            "eyes" to ("eyes/${a.eyeShape}.webp" to ArtPalette.skin[a.skinTone].base), "iris" to ("eyes/iris_mask.webp" to ArtPalette.eyes[a.eyeColor]),
             "brows" to ("brows/${a.browStyle}.webp" to ArtPalette.hair[a.hairColor]),
-            "nose" to ("nose/${a.noseShape}.webp" to null), "mouth" to ("mouth/${a.expression}.webp" to null),
+            "nose" to ("nose/${a.noseShape}.webp" to ArtPalette.skin[a.skinTone].base),
+            "mouth" to ("mouth/${a.expression}.webp" to ArtPalette.skin[a.skinTone].lip.mix(ArtPalette.skin[a.skinTone].base,if (gender == Gender.FEMALE) .35f else .7f)),
             "hair_back" to ("hair_back/${a.hairStyle}.webp" to ArtPalette.hair[a.hairColor]),
             "hair_front" to ("hair_front/${a.hairStyle}_${a.hairTexture}.webp" to ArtPalette.hair[a.hairColor]),
             "beard" to ("beard/${a.beard}.webp" to ArtPalette.hair[a.hairColor]),
@@ -999,6 +1002,7 @@ object PortraitAssets {
             "armor" to ("armor/${a.armor}.webp" to null), "cloak" to ("cloak/${a.cloak}.webp" to ArtPalette.fabric[a.accentColor]),
         )
         return wanted.mapNotNull { (key, spec) ->
+            if (headOnly && key in setOf("outfit","armor","cloak","hair_back","hair_front")) return@mapNotNull null
             val path = "portraits/${spec.first}"
             if (path !in files(context)) return@mapNotNull null
             val sample = com.goldenunicorn.troopmanager.data.CharacterImageFrames.sampleSize(1024,1280,targetWidth,targetWidth * 5 / 4)
@@ -1012,7 +1016,19 @@ object PortraitAssets {
                 }
                 context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }?.takeIf { it.hasAlpha() }?.asImageBitmap()
             }.getOrNull()?.also { cache.put(cacheKey, it) } }
-            image?.let { key to Layer(it, spec.second) }
+            image?.let {
+                if (key != "eyes") key to Layer(it,spec.second)
+                else synchronized(cache) {
+                    val skinKey = "$cacheKey:skin"; val neutralKey = "$cacheKey:neutral"
+                    var skin = cache.get(skinKey); var neutral = cache.get(neutralKey)
+                    if (skin == null || neutral == null) {
+                        val surfaces = PhotographicEyes.separate(it.asAndroidBitmap())
+                        skin = surfaces.skin; neutral = surfaces.neutral
+                        cache.put(skinKey,skin); cache.put(neutralKey,neutral)
+                    }
+                    key to Layer(skin!!,spec.second,neutral)
+                }
+            }
         }.toMap()
     }
 }
@@ -1024,7 +1040,7 @@ private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modif
     val a = remember(appearance) { appearance.normalized() }
     var layers by remember(a, gender, targetWidth) { mutableStateOf<Map<String, PortraitAssets.Layer>>(emptyMap()) }
     LaunchedEffect(a, gender, targetWidth) {
-        layers = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender, targetWidth) }
+        layers = ArtLoading.load { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender, targetWidth) } }
     }
     Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
         val image = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
@@ -1042,7 +1058,7 @@ private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modif
 }
 
 /** Every missing/invalid asset replaces exactly its own procedural component. */
-private fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gender, layers: Map<String, PortraitAssets.Layer>) {
+internal fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gender, layers: Map<String, PortraitAssets.Layer>, includeTorso: Boolean = true, includeHair: Boolean = true) {
     val s = 16f
     val center = Offset(512f, 560f + (19.5f + when (a.faceShape) { 4 -> 2.2f; 1 -> -1.4f; 3 -> .4f; else -> 0f }) * .04f * s)
     val g = FaceGeometry(a, gender, center, s)
@@ -1051,16 +1067,34 @@ private fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gen
     fun layer(key: String, fallback: () -> Unit) {
         val image = layers[key]
         if (ArtResolution.source(false, image != null) == ArtResolution.Source.VECTOR) fallback()
-        else drawTintedArt(image!!.bitmap,image.tint,target = androidx.compose.ui.unit.IntSize(1024,1280))
+        else {
+            val bitmap = image!!.bitmap
+            val target = androidx.compose.ui.unit.IntSize(1024,1280)
+            if (key == "iris" && layers["eyes"]?.neutralDetail != null) {
+                drawContext.canvas.saveLayer(androidx.compose.ui.geometry.Rect(Offset.Zero,Size(1024f,1280f)),androidx.compose.ui.graphics.Paint())
+                drawTintedArt(bitmap,image.tint,target = target)
+                drawImage(layers.getValue("eyes").neutralDetail!!,dstSize = target,blendMode = BlendMode.DstIn)
+                drawContext.canvas.restore()
+            }
+            else if (key == "iris") clipPath(photographicEyeOpening(a.eyeShape)) { drawTintedArt(bitmap,image.tint,target = target) }
+            else {
+                drawTintedArt(bitmap,image.tint,target = target)
+                // Skin-colored eyelids must not also dye the sclera; the iris stays under its lids.
+                if (key == "eyes") image.neutralDetail?.let { drawImage(it,dstSize = target) }
+            }
+        }
     }
-    layer("hair_back") { if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, center, s, gender) }
-    if (a.cloak == 3 && "cloak" !in layers) drawHood(a, center, s)
-    if (a.cloak in 1..3 && "cloak" !in layers) drawCloakBack(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s)
+    if (includeHair) layer("hair_back") { if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, center, s, gender) }
+    if (includeTorso && a.cloak == 3 && "cloak" !in layers) drawHood(a, center, s)
+    if (includeTorso && a.cloak in 1..3 && "cloak" !in layers) drawCloakBack(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s)
     // Neck is part of base. The garment covers its lower edge.
+    if (a.ears > 0 && "base" in layers) drawEars(a,g,tone,front = false)
     layer("base") { drawRegisteredBase(a, gender, center, s) }
-    layer("outfit") { drawTorso(a.copy(armor = 0, cloak = 0, jewelry = 0), gender, center, s, shoulder) }
-    layer("armor") { drawArmor(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s) }
-    layer("cloak") { if (a.cloak in 1..3) drawCloakFront(a, center, s, shoulder, center.y + 28f * s) }
+    if (includeTorso) {
+        layer("outfit") { drawTorso(a.copy(armor = 0, cloak = 0, jewelry = 0), gender, center, s, shoulder) }
+        layer("armor") { drawArmor(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s) }
+        if (a.cloak in 1..2) layer("cloak") { drawCloakFront(a, center, s, shoulder, center.y + 28f * s) }
+    }
     layer("eyes") { drawEyes(a, g, tone, true, drawIris = "iris" !in layers) }
     layer("iris") { if ("eyes" in layers) drawEyes(a, g, tone, true, irisOnly = true) }
     layer("brows") { drawBrows(a, g) }
@@ -1069,8 +1103,24 @@ private fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gen
     layer("scar") { drawMarks(a.copy(tattoo = 0), g, tone) }
     layer("tattoo") { drawMarks(a.copy(scar = 0), g, tone) }
     layer("beard") { if (a.beard == 1) stubble(a, g) else if (a.beard >= 2) drawBeard(a, g) }
-    layer("hair_front") { drawFrontHair(a, g, gender) }
+    if (includeHair) {
+        if (a.cloak == 3 && "cloak" in layers) clipRect(top = 210f) {
+            layer("hair_front") { drawFrontHair(a,g,gender) }
+        } else layer("hair_front") { drawFrontHair(a,g,gender) }
+    }
+    if (includeTorso && a.cloak == 3) layer("cloak") { drawCloakFront(a,center,s,shoulder,center.y+28f*s) }
     if (a.jewelry == 4) drawDiadem(a, g)
+}
+
+private fun photographicEyeOpening(shape: Int) = Path().apply {
+    val height = when (shape) { 1 -> 19f; 2 -> 10f; else -> 15f }
+    for (x in listOf(417f,607f)) {
+        val tilt = if (shape == 3) (if (x < 512f) 6f else -6f) else 0f
+        moveTo(x-50f,562f+tilt)
+        cubicTo(x-30f,560f-height,x+24f,560f-height,x+50f,560f-tilt)
+        cubicTo(x+26f,560f+height,x-28f,560f+height,x-50f,562f+tilt)
+        close()
+    }
 }
 
 /** Same appearance recipe for the older court/saga entry points. */

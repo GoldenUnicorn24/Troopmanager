@@ -7,7 +7,7 @@ import kotlin.math.abs
 @Serializable
 data class SceneCell(val x: Int, val y: Int, val centerX: Float, val centerY: Float, val walkable: Boolean)
 @Serializable
-data class SceneForeground(val row: Int, val path: String)
+data class SceneForeground(val row: Int, val path: String, val empty: Boolean = false)
 @Serializable
 data class SceneAssetLayout(
     val version: Int,
@@ -26,7 +26,7 @@ data class SceneAssetLayout(
         require(version == 1 && width == 2160 && height == 1440) { "Ungültiger Szenenstandard." }
         require(columns == grid.width && rows == grid.height && columns == 12 && rows == 9) { "Das Szenenraster stimmt nicht mit der Engine überein." }
         require(abs(wallTiles - expectedWallTiles) < .001f && abs(cellRatio - .66f) < .001f) { "Die Szenenprojektion stimmt nicht mit der Ansicht überein." }
-        require(image == "day.webp" && foreground.sortedBy { it.row } == (0 until rows).map { SceneForeground(it, "foreground_$it.webp") }) { "Ungültige Verdeckungsebenen." }
+        require(image == "day.webp" && foreground.sortedBy { it.row }.map { it.copy(empty = false) } == (0 until rows).map { SceneForeground(it, "foreground_$it.webp") }) { "Ungültige Verdeckungsebenen." }
         val factor = height / (wallTiles + rows * cellRatio)
         val floor = wallTiles * factor
         val expectedPolygon = listOf(listOf(0f, floor), listOf(width.toFloat(), floor), listOf(width.toFloat(), height.toFloat()), listOf(0f, height.toFloat()))
