@@ -23,7 +23,7 @@ internal fun PeopleCourtScreen(state: GameState, onState: (GameState) -> Unit, o
     val details = state.court.characters.firstOrNull { it.commanderId == selected?.id }
     val bonuses = CharacterEngine.bonuses(state)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Eigene Charaktere") }
+        if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Charakterverwaltung · eigene Bilder") }
         SectionTitle("Hofämter & Karrieren")
         CourtDomainCard {
             Text("Jedes Amt wirkt durch die Fähigkeiten seiner Person. Im Einsatz oder bei geringer Loyalität ruht das Amt.", color = Mist, fontSize = 12.sp)

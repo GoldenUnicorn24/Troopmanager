@@ -80,6 +80,58 @@ object CustomCharacterEngine {
         return next
     }
 
+    /** Image files of one set; the UI looks them up, the engine stays free of Android IO. */
+    data class ImageFiles(val portrait: Boolean, val fullbody: Boolean, val source: String)
+
+    /**
+     * Applies a look edited in the character editor (player) including its own image set.
+     * [state] is the state *before* the edit, so the previous image can be released correctly.
+     * Relationship values, memories and all other person data are untouched.
+     */
+    fun syncEditorImage(state: GameState, target: String, look: CharacterAppearance, files: ImageFiles?): GameState {
+        require(target == "player") { "Nur die Spielerfigur wird direkt im Editor gespeichert." }
+        val normalized = look.normalized()
+        val previous = imageIdForTarget(state, target)
+        fun withLook(s: GameState) = s.copy(life = s.life.copy(appearance = normalized), crown = s.crown.copy(playerLook = normalized.toPortraitSpec()))
+        val id = normalized.customImageId
+        if (id == previous) return withLook(state)
+        if (id == null) {
+            val cleared = clearImage(state, previous)
+            return withLook(cleared.copy(customCharacters = cleared.customCharacters.filterNot { it.target == target || it.id == previous }))
+        }
+        val info = files ?: ImageFiles(portrait = true, fullbody = false, source = DEFAULT_SOURCE)
+        val definition = CustomCharacterDefinition(state.player.name, state.player.age, state.life.gender, state.player.species,
+            state.life.culture, state.life.origin.take(2000), state.life.profession.ifBlank { "Reisende" },
+            homeProvinceId = state.life.homeProvinceId.takeIf { Towns.byProvince(it) != null } ?: Towns.all.first().provinceId,
+            appearance = normalized.copy(customImageId = null))
+        val record = CustomCharacter(id, target, definition, info.source.ifBlank { DEFAULT_SOURCE },
+            portrait = if (info.portrait) "portrait.webp" else null, fullbody = if (info.fullbody) "fullbody.webp" else null)
+        val applied = apply(state, record, CustomImageReference.uri(id))
+        // A full-body-only set has no portrait file; portrait screens keep the standard face.
+        return if (info.portrait) applied else applied.copy(player = applied.player.copy(portraitUri = null))
+    }
+
+    /**
+     * Registers an image chosen during character creation for a designed person (the future
+     * companion). Only the picture and its record are added; the person, her routine, relations
+     * and the heroine saga stay exactly as the world generated them.
+     */
+    fun registerDesignedImage(state: GameState, npcId: String, imageId: String, files: ImageFiles): GameState {
+        val npc = state.life.npc(npcId) ?: return state
+        val look = npc.appearance.copy(customImageId = imageId)
+        val record = CustomCharacter(imageId, "npc:$npcId", definition(npc), files.source.ifBlank { DEFAULT_SOURCE },
+            portrait = if (files.portrait) "portrait.webp" else null, fullbody = if (files.fullbody) "fullbody.webp" else null)
+        record.validate()
+        var next = state.copy(customCharacters = state.customCharacters.filterNot { it.target == record.target || it.id == imageId } + record,
+            life = state.life.copy(npcs = state.life.npcs.map { if (it.id == npcId) it.copy(appearance = look) else it }))
+        val partner = next.crown.saga.partner
+        if (partner != null && partner.npcIdentityId == npcId) next = next.copy(crown = next.crown.copy(saga = next.crown.saga.copy(
+            partner = partner.copy(look = look.toPortraitSpec(), portraitUri = if (files.portrait) CustomImageReference.uri(imageId) else partner.portraitUri))))
+        return next
+    }
+
+    const val DEFAULT_SOURCE = "Eigenes Bild, vom Spieler importiert; Bildrechte und Volljährigkeit bestätigt."
+
     private fun npcForTarget(state: GameState,target: String): String? = when {
         target.startsWith("npc:") -> target.removePrefix("npc:")
         target == "companion" -> state.companion.npcIdentityId ?: state.life.companionNpcId?.takeIf { !state.companion.met }

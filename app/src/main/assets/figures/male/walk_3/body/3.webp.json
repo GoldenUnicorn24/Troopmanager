@@ -20,7 +20,8 @@
     ],
     "footY": 1480,
     "headReplacedByPortrait": true,
-    "handRegistration": "pose hands"
+    "handRegistration": "pose hands",
+    "repair": "neck-feather+hand-strip-v1"
   },
-  "sha256": "213736d91d1dbda0c166b0127016ba1b44181ef37d8415f122e0342f629cbb02"
+  "sha256": "febe7a096dc1cb88966929121ab8697671acd01992646bade2977afe89b87094"
 }

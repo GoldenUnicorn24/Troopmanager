@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""Repair cut-outs of figure body layers and the portrait hood (one-time production step, idempotent).
+
+The exported `figures/*/*/body/*.webp` layers contained two kinds of cut-out defects that were
+visible in the full-figure view of the character editor:
+
+* the neck/upper-chest patch was a hard rectangle with the edge of an undershirt, so beige corners
+  stuck out beside the collar of every garment;
+* each hand was cut as a fixed rectangle that also contained a strip of the thigh/trousers of the
+  source photo. Drawn over the garment, this strip looked like a floating skin-coloured plank.
+
+* the elven hood (`portraits/cloak/3.webp`) had a rectangular opening that showed the background
+  beside the cheeks and a hard horizontal cut at its lower edge.
+
+For the body layers only the alpha channel is changed. Colour data, size, registration (centre x=384, feet y=1480)
+and the neutral-grey contract stay untouched. Each repaired file is marked in its JSON metadata
+(`production.repair`) and gets the new SHA-256, so running the script twice changes nothing.
+
+Usage: python3 -m pip install -r scripts/requirements-assets-production.txt
+       python3 scripts/repair_figure_layers [--check]
+"""
+import argparse
+import hashlib
+import io
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+from scipy import ndimage
+
+ROOT = Path(__file__).resolve().parents[1]
+FIGURES = ROOT / 'app/src/main/assets/figures'
+PORTRAITS = ROOT / 'app/src/main/assets/portraits'
+MARKER = 'neck-feather+hand-strip-v1'
+HAND_WINDOWS = ((150, 252), (516, 616))
+
+
+def _run(row, from_end):
+    values = row[::-1] if from_end else row
+    count = 0
+    for value in values:
+        if value > .5:
+            count += 1
+        else:
+            break
+    return count
+
+
+def clean_hand(alpha, x0, x1, y0, y1):
+    """Remove the thigh strip cropped together with a hand.
+
+    The strip touches the crop edge facing the body axis from top to bottom. Its outer contour is
+    interpolated between the rows where strip and hand are clearly separated (top and bottom)."""
+    a = alpha[y0:y1, x0:x1].copy()
+    h, w = a.shape
+    inner_right = (x0 + x1) / 2 < 384
+
+    def width(rows):
+        values = [_run(a[r], inner_right) for r in rows if a[r].max() > .5]
+        values = [v for v in values if 0 < v < w * .8]
+        return int(np.median(values)) if values else None
+
+    top, bottom = width(range(2, 10)), width(range(h - 10, h - 2))
+    if top is None and bottom is None:
+        return alpha
+    top = bottom if top is None else top
+    bottom = top if bottom is None else bottom
+    for r in range(h):
+        cut = int(round(top + (bottom - top) * r / max(1, h - 1))) + 2
+        if inner_right:
+            a[r, w - cut:] = 0
+        else:
+            a[r, :cut] = 0
+    solid = ndimage.binary_opening(a > .3, structure=np.ones((1, 9)))
+    solid = ndimage.binary_dilation(solid, structure=np.ones((3, 3))) & (a > .05)
+    a = np.where(solid, a, 0)
+    labels, count = ndimage.label(a > .05)
+    if count > 1:
+        sizes = ndimage.sum(np.ones_like(a), labels, range(1, count + 1))
+        a[labels != 1 + int(np.argmax(sizes))] = 0
+    soft = ndimage.gaussian_filter((a > .05).astype(float), .9)
+    a = np.minimum(a, np.clip(soft * 1.6, 0, 1))
+    out = alpha.copy()
+    out[y0:y1, x0:x1] = a
+    return out
+
+
+def repair_alpha(alpha):
+    """alpha: float array (1536, 768) in 0..1. Returns the repaired alpha."""
+    height, width = alpha.shape
+    labels, _ = ndimage.label(alpha > .05)
+    result = alpha.copy()
+    for index, region in enumerate(ndimage.find_objects(labels), 1):
+        if region is None:
+            continue
+        component = labels == index
+        y0, y1, x0, x1 = region[0].start, region[0].stop, region[1].start, region[1].stop
+        if component.sum() < 150:
+            result[component] = 0
+            continue
+        if x0 <= 300 and x1 >= 470:  # neck patch: soft ellipse instead of a hard rectangle
+            cy, cx = y0 + (y1 - y0) * .38, (x0 + x1) / 2
+            ry, rx = (y1 - y0) * .62, (x1 - x0) * .40
+            yy, xx = np.mgrid[0:height, 0:width]
+            distance = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2)
+            result = np.where(component, result * np.clip((1 - distance) / .25, 0, 1), result)
+    neck_top = np.nonzero(result.max(axis=1) > .05)[0].min()
+    for x0, x1 in HAND_WINDOWS:
+        rows = np.nonzero(result[:, x0:x1].max(axis=1) > .05)[0]
+        rows = rows[rows > neck_top + 200]
+        if len(rows) == 0:
+            continue
+        y0, y1 = rows.min(), rows.max() + 1
+        columns = np.nonzero(result[y0:y1, x0:x1].max(axis=0) > .05)[0]
+        result = clean_hand(result, x0 + columns.min(), x0 + columns.max() + 1, y0, y1)
+    return result
+
+
+HOOD_INTERIOR_ALPHA = 16  # out of 255; the app expands it for the hood's back pass only
+
+
+def repair_hood(rgba):
+    """Give the hood opening a dark interior that the app can draw *behind* the face.
+
+    The opening keeps a tiny alpha (16/255) with the dark fabric colour. The portrait renderer draws
+    the hood twice: behind the head with that alpha expanded to opaque (dark hood interior instead of
+    background between cheeks and fabric) and in front of the hair with it removed (face stays free).
+    The hard horizontal cut at the lower edge is faded out."""
+    alpha = rgba[..., 3]
+    solid = alpha > .5
+    hole = ndimage.binary_fill_holes(solid) & ~solid
+    out = rgba.copy()
+    interior = .13
+    fade = np.clip(ndimage.distance_transform_edt(hole) / 10.0, 0, 1)
+    for channel in range(3):
+        out[..., channel] = np.where(hole, interior * fade + out[..., channel] * (1 - fade), out[..., channel])
+    out[..., 3] = np.where(hole, np.maximum(alpha, HOOD_INTERIOR_ALPHA / 255.0), alpha)
+    rows = np.nonzero(out[..., 3].max(axis=1) > .5)[0]
+    bottom = rows.max()
+    ramp = np.clip((bottom - np.arange(out.shape[0])) / 80.0, 0, 1)
+    out[..., 3] *= ramp[:, None]
+    return out
+
+
+def _save(path, rgba):
+    image = Image.fromarray(np.clip(rgba * 255 + .5, 0, 255).astype(np.uint8), 'RGBA')
+    buffer = io.BytesIO()
+    image.save(buffer, 'WEBP', quality=90, method=6, exact=True, alpha_quality=100)
+    path.write_bytes(buffer.getvalue())
+    return hashlib.sha256(buffer.getvalue()).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--check', action='store_true', help='Only report files that still need the repair.')
+    args = parser.parse_args()
+    pending, repaired = [], 0
+    for path in sorted(FIGURES.glob('*/*/body/*.webp')):
+        meta_path = path.with_suffix('.webp.json')
+        meta = json.loads(meta_path.read_text())
+        if meta.get('production', {}).get('repair') == MARKER:
+            continue
+        pending.append(path)
+        if args.check:
+            continue
+        with Image.open(path) as image:
+            rgba = np.asarray(image.convert('RGBA')).astype(np.float32) / 255
+        alpha = repair_alpha(rgba[..., 3])
+        rgba = rgba.copy()
+        rgba[..., 3] = alpha
+        # Fully transparent pixels keep neutral grey so the lossy encoder cannot add chroma.
+        out = Image.fromarray(np.clip(rgba * 255 + .5, 0, 255).astype(np.uint8), 'RGBA')
+        buffer = io.BytesIO()
+        out.save(buffer, 'WEBP', quality=90, method=6, exact=True)
+        path.write_bytes(buffer.getvalue())
+        meta.setdefault('production', {})['repair'] = MARKER
+        meta['sha256'] = hashlib.sha256(buffer.getvalue()).hexdigest()
+        meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + '\n')
+        repaired += 1
+    hood = PORTRAITS / 'cloak/3.webp'
+    hood_meta_path = hood.with_suffix('.webp.json')
+    hood_meta = json.loads(hood_meta_path.read_text())
+    if hood_meta.get('production', {}).get('repair') != MARKER:
+        pending.append(hood)
+        if not args.check:
+            with Image.open(hood) as image:
+                rgba = np.asarray(image.convert('RGBA')).astype(np.float32) / 255
+            hood_meta.setdefault('production', {})['repair'] = MARKER
+            hood_meta['sha256'] = _save(hood, repair_hood(rgba))
+            hood_meta_path.write_text(json.dumps(hood_meta, indent=2, ensure_ascii=False) + '\n')
+            repaired += 1
+    if args.check:
+        for path in pending:
+            print(f'NICHT REPARIERT {path.relative_to(ROOT)}')
+        return 1 if pending else 0
+    print(f'{repaired} Ebenen repariert, {len(pending) - repaired} übersprungen.')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

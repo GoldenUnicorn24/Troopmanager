@@ -29,6 +29,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.goldenunicorn.troopmanager.data.*
@@ -86,10 +93,22 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
     var age by remember(target) { mutableStateOf(if (target == "new" || target.startsWith("commander:")) "" else definition.age.toString()) }
     var interests by remember(target) { mutableStateOf(initialDefinition().interests.joinToString(", ")) }
     var showExports by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+    var showLibrary by remember { mutableStateOf(false) }
     var pendingPack by remember { mutableStateOf<ImportedCharacterPack?>(null) }
+    val existingImageId = remember(target, state) { CustomCharacterEngine.imageIdForTarget(state,target) }
     var source by remember(target) { mutableStateOf(state.customCharacters.firstOrNull { it.target == target || it.id == CustomCharacterEngine.imageIdForTarget(state,target) }?.source ?: "") }
     var portrait by remember(target) { mutableStateOf<Bitmap?>(null) }
     var fullbody by remember(target) { mutableStateOf<Bitmap?>(null) }
+    // Pictures already stored for this person are loaded, so editing a name never requires a new upload.
+    LaunchedEffect(target, existingImageId) {
+        val id = existingImageId ?: return@LaunchedEffect
+        val loaded = withContext(Dispatchers.IO) {
+            images.load(id, CharacterImageKind.PORTRAIT, CharacterImageKind.PORTRAIT.width) to images.load(id, CharacterImageKind.FULLBODY, CharacterImageKind.FULLBODY.width)
+        }
+        if (portrait == null) portrait = loaded.first
+        if (fullbody == null) fullbody = loaded.second
+    }
     var cropInput by remember { mutableStateOf<Bitmap?>(null) }
     var kind by remember { mutableStateOf(CharacterImageKind.PORTRAIT) }
     var rights by remember(target) { mutableStateOf(false) }
@@ -148,18 +167,113 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
                 } catch (e: Exception) { error = e.message }
                 finally { busy = false }
             }
-        }, busy = busy, error = error)
+        }, busy = busy, error = error, onHelp = { showHelp = true })
+        if (showHelp) ImageRequirementsDialog(kind) { showHelp = false }
         return
     }
     BackHandler(enabled = !busy) { onBack() }
     val scroll = rememberScrollState()
     LaunchedEffect(error) { if (error != null) scroll.animateScrollTo(0) }
     Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(scroll).padding(16.dp).testTag("custom_characters"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Eigene Charaktere", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
-        Text("Nur eigene oder erlaubte Bilder verwenden. Keine Bilder Minderjähriger als erwachsene Figuren. Alles bleibt auf diesem Gerät.", color = Mist)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Charakterverwaltung", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
+                Text("Eigene Personen mit eigenen Bildern. Alles bleibt auf diesem Gerät.", color = Mist, fontSize = 13.sp)
+            }
+            TextButton(onClick = onBack, enabled = !busy) { Text("Schließen", color = Gold) }
+        }
         error?.let { Text(it, color = Danger, modifier = Modifier.testTag("custom_error")) }
-        TextButton(onClick = onBack, enabled = !busy) { Text("Zurück") }
-        OutlinedButton(enabled = !busy, onClick = { packagePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Charakterpaket importieren (.zip)") }
+        if (state.customCharacters.isNotEmpty()) {
+            SectionTitle("Deine Personen")
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                state.customCharacters.forEach { record ->
+                    val d = CustomCharacterEngine.currentDefinition(state, record)
+                    val selected = record.target == target
+                    Column(Modifier.width(92.dp).clip(RoundedCornerShape(14.dp)).background(if (selected) Gold.copy(alpha = .18f) else Steel.copy(alpha = .5f))
+                        .clickable(enabled = !busy) { target = record.target }.padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        PersonImage(record.id, null, Framing.HEAD, Modifier.size(72.dp).clip(RoundedCornerShape(100.dp)), useDefinitionFallback = true) {
+                            CharacterPortrait(d.appearance, d.gender, Modifier.fillMaxSize(), Framing.HEAD)
+                        }
+                        Text(d.name, color = if (selected) PaleGold else Color.White, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (record.target == "player") "Du" else d.role.label, color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+        Text("Person wählen", color = PaleGold)
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            choices.forEach { (key, label) -> FilterChip(target == key, { if (!busy) target = key }, label = { Text(label) }) }
+        }
+        PremiumPanel(emphasized = true) {
+            Text("Eigenes Bild verwenden", color = PaleGold, fontFamily = Cinzel, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            TextButton(onClick = { showHelp = true }, contentPadding = PaddingValues(0.dp)) { Text("ⓘ  Welches Bild benötige ich?", color = Gold) }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(12.dp)).background(Steel), contentAlignment = Alignment.Center) {
+                        portrait?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Porträt-Vorschau", Modifier.fillMaxSize()) }
+                            ?: Text("Kein Porträt", color = Muted, fontSize = 12.sp)
+                    }
+                    Button(onClick = { kind = CharacterImageKind.PORTRAIT; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy,
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) { Text(if (portrait == null) "Porträt hochladen" else "Porträt ersetzen", fontSize = 12.sp) }
+                    if (portrait != null) TextButton(onClick = { portrait = null }, enabled = !busy) { Text("Entfernen", color = Danger, fontSize = 12.sp) }
+                }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(12.dp)).background(Steel), contentAlignment = Alignment.Center) {
+                        fullbody?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Ganzkörper-Vorschau", Modifier.fillMaxSize()) }
+                            ?: Text("Kein Ganzkörperbild", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+                    }
+                    Button(onClick = { kind = CharacterImageKind.FULLBODY; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy,
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) { Text(if (fullbody == null) "Ganzkörper hochladen" else "Ganzkörper ersetzen", fontSize = 12.sp) }
+                    if (fullbody != null) TextButton(onClick = { fullbody = null }, enabled = !busy) { Text("Entfernen", color = Danger, fontSize = 12.sp) }
+                }
+            }
+            Text("Ohne eigenes Ganzkörperbild zeigt die Ganzkörperansicht eine Standardfigur. Ganzkörperbilder brauchen einen transparenten Hintergrund.", color = Muted, fontSize = 12.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { showLibrary = true }, enabled = !busy) { Text("Importierte Bilder") }
+                OutlinedButton(enabled = !busy, onClick = { packagePicker.launch(arrayOf("application/zip", "application/octet-stream")) }) { Text("Paket (.zip)") }
+            }
+        }
+        OutlinedTextField(definition.name, { definition = definition.copy(name = it) }, label = { Text("Name") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(age, { age = it.filter(Char::isDigit).take(5) }, label = { Text("Alter (Pflicht, mindestens 18)") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
+        ChoiceRow("Geschlecht", Gender.entries, definition.gender, { it.label }) { definition = definition.copy(gender = it) }
+        ChoiceRow("Volk", Species.entries, definition.species, { it.label }) { definition = definition.copy(species = it) }
+        ChoiceRow("Kultur", Culture.entries, definition.culture, { it.label }) { definition = definition.copy(culture = it) }
+        OutlinedTextField(definition.origin, { definition = definition.copy(origin = it) }, label = { Text("Herkunft") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(definition.profession, { definition = definition.copy(profession = it) }, label = { Text("Beruf") }, modifier = Modifier.fillMaxWidth())
+        ChoiceRow("Rolle in der Welt", NpcRole.entries, definition.role, { it.label }) { definition = definition.copy(role = it) }
+        Text("Stammgäste sitzen in der Taverne, Söldner und Ausbilder in der Kaserne, Adlige auf der Burg. Freundschaft oder mehr entsteht nur im Spiel.", color = Muted, fontSize = 12.sp)
+        ChoiceRow("Aufenthaltsort", Towns.all, Towns.byProvince(definition.homeProvinceId) ?: Towns.all.first(), { CrownCatalog.info(it.provinceId).name }) { definition = definition.copy(homeProvinceId = it.provinceId) }
+        OutlinedTextField(interests, { interests = it; definition = definition.copy(interests = it.split(',').map(String::trim).filter(String::isNotBlank)) }, label = { Text("Interessen (mit Komma trennen)") }, modifier = Modifier.fillMaxWidth())
+        val p = definition.personality
+        listOf(Triple("Herzlichkeit", p.warmth, { v: Int -> p.copy(warmth = v) }), Triple("Wagemut", p.boldness, { v: Int -> p.copy(boldness = v) }),
+            Triple("Ehre", p.honor, { v: Int -> p.copy(honor = v) }), Triple("Humor", p.humor, { v: Int -> p.copy(humor = v) }),
+            Triple("Neugier", p.curiosity, { v: Int -> p.copy(curiosity = v) }), Triple("Temperament", p.temper, { v: Int -> p.copy(temper = v) })).forEach { (label, value, change) ->
+            Text("$label: $value", color = Mist)
+            Slider(value.toFloat(), { definition = definition.copy(personality = change(it.toInt())) }, valueRange = 0f..100f)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(definition.romanceable, { definition = definition.copy(romanceable = it) }); Text("Romantik offen (keine automatische Beziehung)", color = Mist) }
+        OutlinedTextField(source, { source = it }, label = { Text("Bildherkunft / Lizenz") }, modifier = Modifier.fillMaxWidth())
+        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(rights, { rights = it }); Text("Ich habe die Bildrechte; alle abgebildeten Personen sind erwachsen.", color = Mist) }
+        if (busy) CircularProgressIndicator()
+        Button(enabled = !busy && rights && (portrait != null || fullbody != null), onClick = {
+            val d = definition.copy(age = age.toIntOrNull() ?: 0, appearance = definition.appearance.copy(customImageId = null))
+            val validation = runCatching { d.validate(); require(source.isNotBlank() && source.length <= 2000) { "Bitte Bildherkunft und Nutzungsrechte mit höchstens 2000 Zeichen angeben." } }
+            if (validation.isFailure) error = validation.exceptionOrNull()?.message else {
+                busy = true
+                scope.launch {
+                    try {
+                        val imageId = withContext(Dispatchers.IO) { images.install(portrait, fullbody, source) }
+                        val personTarget = if (target == "new") "npc:custom-${UUID.randomUUID()}" else target
+                        val record = CustomCharacter(imageId, personTarget, d, source, portrait = if (portrait != null) "portrait.webp" else null,
+                            fullbody = if (fullbody != null) "fullbody.webp" else null)
+                        val next = CustomCharacterEngine.apply(state, record, CustomImageReference.uri(imageId))
+                        onState(next)
+                        onBack()
+                    } catch (e: Exception) { error = e.message ?: "Der Import ist fehlgeschlagen." }
+                    finally { busy = false }
+                }
+            }
+        }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink)) { Text("Charakter speichern", fontWeight = FontWeight.Bold) }
         if (state.customCharacters.isNotEmpty()) {
             TextButton(onClick = { showExports = !showExports }) { Text(if (showExports) "Paketliste schließen" else "Eigene Charakterpakete teilen") }
             if (showExports) state.customCharacters.forEach { record ->
@@ -175,53 +289,22 @@ fun CustomCharactersScreen(state: GameState, onState: (GameState) -> Unit, onBac
                 }) { Text("${record.definition.name} teilen") }
             }
         }
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            choices.forEach { (key, label) -> FilterChip(target == key, { if (!busy) target = key }, label = { Text(label) }) }
-        }
-        OutlinedTextField(definition.name, { definition = definition.copy(name = it) }, label = { Text("Name") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(age, { age = it.filter(Char::isDigit).take(5) }, label = { Text("Alter (Pflicht, mindestens 18)") }, enabled = !busy, modifier = Modifier.fillMaxWidth())
-        portrait?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Porträt-Vorschau", Modifier.height(220.dp).aspectRatio(.8f)) }
-        fullbody?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Ganzkörper-Vorschau", Modifier.height(220.dp).aspectRatio(.5f).background(Steel)) }
-        OutlinedButton(onClick = { kind = CharacterImageKind.PORTRAIT; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Porträt wählen und zuschneiden") }
-        OutlinedButton(onClick = { kind = CharacterImageKind.FULLBODY; picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, enabled = !busy) { Text("Ganzkörper wählen (optional, transparent)") }
-        Text("Ohne Ganzkörperbild bleibt die Figur gezeichnet. PNG/WebP mit Transparenz sind für Ganzkörper erforderlich.", color = Muted)
-        ChoiceRow("Geschlecht", Gender.entries, definition.gender, { it.label }) { definition = definition.copy(gender = it) }
-        ChoiceRow("Volk", Species.entries, definition.species, { it.label }) { definition = definition.copy(species = it) }
-        ChoiceRow("Kultur", Culture.entries, definition.culture, { it.label }) { definition = definition.copy(culture = it) }
-        OutlinedTextField(definition.origin, { definition = definition.copy(origin = it) }, label = { Text("Herkunft") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(definition.profession, { definition = definition.copy(profession = it) }, label = { Text("Beruf") }, modifier = Modifier.fillMaxWidth())
-        ChoiceRow("Rolle", NpcRole.entries, definition.role, { it.label }) { definition = definition.copy(role = it) }
-        ChoiceRow("Heimatstadt", Towns.all, Towns.byProvince(definition.homeProvinceId) ?: Towns.all.first(), { CrownCatalog.info(it.provinceId).name }) { definition = definition.copy(homeProvinceId = it.provinceId) }
-        OutlinedTextField(interests, { interests = it; definition = definition.copy(interests = it.split(',').map(String::trim).filter(String::isNotBlank)) }, label = { Text("Interessen (mit Komma trennen)") }, modifier = Modifier.fillMaxWidth())
-        val p = definition.personality
-        listOf(Triple("Herzlichkeit", p.warmth, { v: Int -> p.copy(warmth = v) }), Triple("Wagemut", p.boldness, { v: Int -> p.copy(boldness = v) }),
-            Triple("Ehre", p.honor, { v: Int -> p.copy(honor = v) }), Triple("Humor", p.humor, { v: Int -> p.copy(humor = v) }),
-            Triple("Neugier", p.curiosity, { v: Int -> p.copy(curiosity = v) }), Triple("Temperament", p.temper, { v: Int -> p.copy(temper = v) })).forEach { (label, value, change) ->
-            Text("$label: $value", color = Mist)
-            Slider(value.toFloat(), { definition = definition.copy(personality = change(it.toInt())) }, valueRange = 0f..100f)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(definition.romanceable, { definition = definition.copy(romanceable = it) }); Text("Romantik offen (keine automatische Beziehung)", color = Mist) }
-        OutlinedTextField(source, { source = it }, label = { Text("Bildherkunft / Lizenz") }, modifier = Modifier.fillMaxWidth())
-        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(rights, { rights = it }); Text("Ich habe die Bildrechte; alle abgebildeten Personen sind erwachsen.", color = Mist) }
-        if (busy) CircularProgressIndicator()
-        Button(enabled = !busy && rights && portrait != null, onClick = {
-            val d = definition.copy(age = age.toIntOrNull() ?: 0, appearance = definition.appearance.copy(customImageId = null))
-            val validation = runCatching { d.validate(); require(source.isNotBlank() && source.length <= 2000) { "Bitte Bildherkunft und Nutzungsrechte mit höchstens 2000 Zeichen angeben." } }
-            if (validation.isFailure) error = validation.exceptionOrNull()?.message else {
-                busy = true
-                scope.launch {
-                    try {
-                        val imageId = withContext(Dispatchers.IO) { images.install(portrait!!, fullbody) }
-                        val personTarget = if (target == "new") "npc:custom-${UUID.randomUUID()}" else target
-                        val record = CustomCharacter(imageId, personTarget, d, source, fullbody = if (fullbody != null) "fullbody.webp" else null)
-                        val next = CustomCharacterEngine.apply(state, record, Uri.fromFile(images.file(imageId, CharacterImageKind.PORTRAIT)).toString())
-                        onState(next)
-                        onBack()
-                    } catch (e: Exception) { error = e.message ?: "Der Import ist fehlgeschlagen." }
-                    finally { busy = false }
+        Text("Hinweis: Der einfache JSON-Spielstandexport enthält keine Bilddateien. Zum Sichern oder Weitergeben eigener Bilder Charakterpakete (.zip) verwenden.",
+            color = Muted, fontSize = 12.sp)
+    }
+    if (showHelp) ImageRequirementsDialog(kind) { showHelp = false }
+    if (showLibrary) ImageLibraryDialog(onDismiss = { showLibrary = false }) { picked ->
+        showLibrary = false
+        busy = true
+        scope.launch {
+            try {
+                val loaded = withContext(Dispatchers.IO) {
+                    images.load(picked, CharacterImageKind.PORTRAIT, CharacterImageKind.PORTRAIT.width) to images.load(picked, CharacterImageKind.FULLBODY, CharacterImageKind.FULLBODY.width)
                 }
-            }
-        }) { Text("Charakter speichern") }
+                portrait = loaded.first; fullbody = loaded.second
+                images.meta(picked)?.source?.takeIf { it.isNotBlank() }?.let { source = it }
+            } catch (e: Exception) { error = e.message } finally { busy = false }
+        }
     }
 }
 
@@ -233,51 +316,3 @@ private fun <T> ChoiceRow(label: String, values: List<T>, selected: T, title: (T
     }
 }
 
-@Composable
-internal fun CharacterCropEditor(bitmap: Bitmap, kind: CharacterImageKind, onCancel: () -> Unit, onSave: (CharacterImageCrop) -> Unit, busy: Boolean = false, error: String? = null) {
-    var crop by remember(bitmap) { mutableStateOf(CharacterImageCrop()) }
-    var confirmed by remember(bitmap) { mutableStateOf(false) }
-    val latestCrop by rememberUpdatedState(crop)
-    val currentBusy by rememberUpdatedState(busy)
-    BackHandler(enabled = !busy) { onCancel() }
-    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(16.dp).testTag("character_crop"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Bild zuschneiden", style = MaterialTheme.typography.headlineSmall, color = PaleGold)
-        Text(if (kind == CharacterImageKind.PORTRAIT) "Gesicht im Oval, Augen auf die goldene Linie, Schultern auf die untere Linie ausrichten." else "Körper mittig, Füße auf die goldene Linie ausrichten. Hintergrund muss transparent sein.", color = Mist)
-        Canvas(Modifier.widthIn(max = if (kind == CharacterImageKind.PORTRAIT) 352.dp else 220.dp).fillMaxWidth().aspectRatio(kind.width.toFloat() / kind.height).background(Steel).clipToBounds().pointerInput(bitmap, kind) {
-            detectTransformGestures { _, pan, zoom, rotation ->
-                if (!currentBusy) crop = latestCrop.copy(zoom = (latestCrop.zoom * zoom).coerceIn(1f, 6f), x = latestCrop.x + pan.x * kind.width / size.width,
-                    y = latestCrop.y + pan.y * kind.width / size.width, rotation = (latestCrop.rotation + rotation).coerceIn(-180f, 180f))
-            }
-        }) {
-            val factor = size.width / kind.width
-            drawContext.canvas.nativeCanvas.apply {
-                val save = save()
-                scale(factor, factor)
-                translate(kind.width / 2f + crop.x, kind.height / 2f + crop.y)
-                rotate(crop.rotation)
-                val s = crop.scale(bitmap.width, bitmap.height, kind)
-                scale(s, s)
-                drawBitmap(bitmap, -bitmap.width / 2f, -bitmap.height / 2f, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG))
-                restoreToCount(save)
-            }
-            val line = if (kind == CharacterImageKind.PORTRAIT) CharacterImageFrames.EYE_Y else CharacterImageFrames.FOOT_Y
-            drawLine(Gold, Offset(0f, line * factor), Offset(size.width, line * factor), 2.dp.toPx())
-            drawLine(Color.White.copy(alpha = .6f), Offset(size.width / 2f, 0f), Offset(size.width / 2f, size.height), 1.dp.toPx())
-            if (kind == CharacterImageKind.PORTRAIT) {
-                drawOval(Gold, Offset(240f * factor, 210f * factor), Size(544f * factor, 680f * factor), style = Stroke(2.dp.toPx()))
-                drawLine(Gold.copy(alpha = .7f), Offset(0f, 1050f * factor), Offset(size.width, 1050f * factor), 1.dp.toPx())
-            }
-        }
-        Text("Zoom", color = Mist); Slider(crop.zoom, { crop = crop.copy(zoom = it) }, valueRange = 1f..6f, enabled = !busy)
-        Text("Drehen", color = Mist); Slider(crop.rotation, { crop = crop.copy(rotation = it) }, valueRange = -180f..180f, enabled = !busy)
-        Text("Horizontal verschieben", color = Mist); Slider(crop.x.coerceIn(-1536f, 1536f), { crop = crop.copy(x = it) }, valueRange = -1536f..1536f, enabled = !busy)
-        Text("Vertikal verschieben", color = Mist); Slider(crop.y.coerceIn(-2304f, 2304f), { crop = crop.copy(y = it) }, valueRange = -2304f..2304f, enabled = !busy)
-        Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(confirmed, { confirmed = it }); Text("Ausrichtung in der Führungsmaske geprüft", color = Mist) }
-        error?.let { Text(it, color = Danger) }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onCancel, enabled = !busy) { Text("Abbrechen") }
-            OutlinedButton(onClick = { crop = CharacterImageCrop(); confirmed = false }, enabled = !busy) { Text("Reset") }
-            Button(onClick = { onSave(crop) }, enabled = confirmed && !busy) { Text("Übernehmen") }
-        }
-    }
-}

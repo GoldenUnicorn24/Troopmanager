@@ -11,7 +11,8 @@
       562.5,
       505
     ],
-    "scale": 0.7450980392156863
+    "scale": 0.7450980392156863,
+    "repair": "neck-feather+hand-strip-v1"
   },
-  "sha256": "476476a1248ae03f1157627850dd3e250bb982860d304ed7e4e5fccb3933e1ee"
+  "sha256": "9d14dccb64c4c38f874c526f04090dad400f66aa7e97739edd6e4fe4a72e9a4a"
 }

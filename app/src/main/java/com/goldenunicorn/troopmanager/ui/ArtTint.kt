@@ -1,6 +1,5 @@
 package com.goldenunicorn.troopmanager.ui
 
-import android.os.Build
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -10,22 +9,25 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
-/** Multiply lighting/color, then restore the original alpha; transparent borders stay transparent. */
-internal fun DrawScope.drawTintedArt(image: ImageBitmap, tint: Color?, offset: IntOffset = IntOffset.Zero, target: IntSize = IntSize(image.width,image.height)) {
-    if (tint == null || tint == Color.White) {
+/**
+ * Multiply lighting/color and keep the original alpha. A colour matrix works on unpremultiplied
+ * colours on every API level, so semi-transparent cut-out edges are tinted like their interior.
+ * (The former Multiply blend mode added the pure tint colour to every partially transparent edge
+ * pixel, which drew light outlines around nose, eye and garment patches.)
+ * [alphaScale]/[alphaOffset] remap the alpha channel: a' = a·scale + offset.
+ */
+internal fun DrawScope.drawTintedArt(image: ImageBitmap, tint: Color?, offset: IntOffset = IntOffset.Zero, target: IntSize = IntSize(image.width,image.height),
+                                     alphaScale: Float = 1f, alphaOffset: Float = 0f) {
+    if ((tint == null || tint == Color.White) && alphaScale == 1f && alphaOffset == 0f) {
         drawImage(image,dstOffset = offset,dstSize = target)
         return
     }
-    // Pre-29 PorterDuff Multiply has different alpha semantics; Modulate is the compatible product.
-    if (Build.VERSION.SDK_INT < 29) {
-        drawImage(image,dstOffset = offset,dstSize = target,colorFilter = ColorFilter.tint(tint,BlendMode.Modulate))
-        return
-    }
-    val topLeft = Offset(offset.x.toFloat(),offset.y.toFloat())
-    val bounds = Size(target.width.toFloat(),target.height.toFloat())
-    drawContext.canvas.saveLayer(Rect(topLeft,bounds),Paint())
-    drawImage(image,dstOffset = offset,dstSize = target)
-    drawRect(tint,topLeft,bounds,blendMode = BlendMode.Multiply)
-    drawImage(image,dstOffset = offset,dstSize = target,blendMode = BlendMode.DstIn)
-    drawContext.canvas.restore()
+    val t = tint ?: Color.White
+    val matrix = ColorMatrix(floatArrayOf(
+        t.red, 0f, 0f, 0f, 0f,
+        0f, t.green, 0f, 0f, 0f,
+        0f, 0f, t.blue, 0f, 0f,
+        0f, 0f, 0f, alphaScale, alphaOffset * 255f,
+    ))
+    drawImage(image,dstOffset = offset,dstSize = target,colorFilter = ColorFilter.colorMatrix(matrix))
 }

@@ -29,4 +29,26 @@ class CharacterImageGeometryTest {
         assertEquals(1480f, CharacterImageCrop().map(384f, 1480f, 768, 1536, CharacterImageKind.FULLBODY).second, .001f)
         assertEquals(4, CharacterImageFrames.sampleSize(2048, 2560, 512, 640))
     }
+    @Test fun fullBodyFitsCompletelyIntoTheFrameAtZoomOne() {
+        // A tall transparent figure (1000 × 3000) must keep head and feet inside 768 × 1536.
+        val crop = CharacterImageCrop()
+        val top = crop.map(500f, 0f, 1000, 3000, CharacterImageKind.FULLBODY)
+        val bottom = crop.map(500f, 3000f, 1000, 3000, CharacterImageKind.FULLBODY)
+        assertEquals(0f, top.second, .01f)
+        assertEquals(1536f, bottom.second, .01f)
+        // A portrait still covers its frame.
+        assertTrue(crop.coversFrame(1000, 3000, CharacterImageKind.PORTRAIT))
+    }
+    @Test fun quarterTurnsStayInRange() {
+        assertEquals(90f, CharacterImageCrop().turned(90f).rotation, .001f)
+        assertEquals(-90f, CharacterImageCrop(rotation = 180f).turned(90f).rotation, .001f)
+        assertEquals(180f, CharacterImageCrop(rotation = -90f).turned(-90f).rotation, .001f)
+    }
+    @Test fun coveringZoomFillsARotatedPortrait() {
+        val rotated = CharacterImageCrop(rotation = 30f)
+        assertFalse(rotated.coversFrame(1024, 1280, CharacterImageKind.PORTRAIT))
+        val zoom = rotated.coveringZoom(1024, 1280, CharacterImageKind.PORTRAIT)
+        assertTrue(rotated.copy(zoom = zoom).coversFrame(1024, 1280, CharacterImageKind.PORTRAIT))
+        assertTrue(zoom <= CharacterImageCrop.MAX_ZOOM)
+    }
 }

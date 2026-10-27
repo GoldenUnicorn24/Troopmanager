@@ -1,6 +1,7 @@
 package com.goldenunicorn.troopmanager.ui
 
 import android.content.Context
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +27,8 @@ import com.goldenunicorn.troopmanager.model.AppearanceOptions
 import com.goldenunicorn.troopmanager.model.CharacterAppearance
 import com.goldenunicorn.troopmanager.model.Gender
 import com.goldenunicorn.troopmanager.model.Species
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -43,45 +46,95 @@ fun CharacterEditor(
     onChange: (CharacterAppearance) -> Unit,
     templateKind: String,
     modifier: Modifier = Modifier,
+    initialFraming: Framing = Framing.BUST,
 ) {
     val openCustom = LocalOpenCustomCharacters.current
     val context = LocalContext.current
-    var framing by rememberSaveable { mutableStateOf(Framing.BUST) }
+    var framing by rememberSaveable { mutableStateOf(initialFraming) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val history = remember { mutableStateListOf<CharacterAppearance>() }
     var locks by remember { mutableStateOf(setOf<String>()) }
     var showTemplates by remember { mutableStateOf(false) }
     val defaults = remember(gender, species) { defaultLook(gender, species) }
+    val latestAppearance by rememberUpdatedState(appearance)
     fun change(next: CharacterAppearance) {
         if (next == appearance) return
         history += appearance
         if (history.size > 40) history.removeAt(0)
         onChange(next.normalized().copy(customImageId = appearance.customImageId))
     }
+    val own = rememberOwnImageStatus(appearance.customImageId)
+    val ownPortrait = own?.portrait == true
+    val ownFullbody = own?.fullbody == true
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { Box(
-            Modifier.widthIn(max = 368.dp).fillMaxWidth().aspectRatio(.8f).clip(RoundedCornerShape(24.dp))
-                .border(1.dp, Gold.copy(alpha = .25f), RoundedCornerShape(24.dp)).testTag("editor_preview"),
-        ) {
-            CharacterPortrait(appearance, gender, Modifier.fillMaxSize(), framing)
-            Row(Modifier.align(Alignment.TopCenter).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(Framing.HEAD to "Kopf", Framing.BUST to "Brustbild", Framing.FULL to "Ganzkörper").forEach { (f, label) ->
-                    RbChip(label, framing == f) { framing = f }
+        // View mode lives above the picture, never on top of the face.
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.Black.copy(alpha = .35f))
+            .border(1.dp, Color.White.copy(alpha = .1f), RoundedCornerShape(14.dp)).padding(4.dp).testTag("framing_bar"),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(Framing.HEAD to "Kopf", Framing.BUST to "Brustbild", Framing.FULL to "Ganzkörper").forEach { (f, label) ->
+                val selected = framing == f
+                Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) Gold.copy(alpha = .22f) else Color.Transparent)
+                    .border(1.dp, if (selected) Gold else Color.Transparent, RoundedCornerShape(10.dp))
+                    .clickable { framing = f }.testTag("framing_${f.name.lowercase()}"), contentAlignment = Alignment.Center) {
+                    Text(label, color = if (selected) PaleGold else Mist, fontSize = 14.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
                 }
             }
-            Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.Transparent, Ink.copy(alpha = .85f)))).padding(10.dp)) {
-                Text("Ausdruck", color = Muted, fontSize = 11.sp)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    AppearanceOptions.expressions.forEachIndexed { i, label -> RbChip(label, appearance.expression == i) { change(appearance.copy(expression = i)) } }
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            val previewWidth = minOf(maxWidth, 380.dp)
+            Box(
+                Modifier.width(previewWidth).aspectRatio(.8f).clip(RoundedCornerShape(24.dp))
+                    .border(1.dp, Gold.copy(alpha = .25f), RoundedCornerShape(24.dp)).testTag("editor_preview"),
+            ) {
+                // Same identity in all three views; only the framing changes (soft cross-fade).
+                Crossfade(framing, animationSpec = androidx.compose.animation.core.tween(180), label = "framing") { f ->
+                    CharacterPortrait(appearance, gender, Modifier.fillMaxSize(), f, identity = templateKind)
                 }
             }
-        } }
-        if (openCustom != null) OutlinedButton(onClick = { openCustom(if (templateKind == "player") "player" else "companion") }) { Text("Eigene Charaktere / Bilder") }
-        Text(
-            "Fotorealistische Porträt-Ebenen mit anpassbaren Farben. Eigene Bilder haben Vorrang; fehlende Ebenen werden gezeichnet.",
-            color = Muted, fontSize = 11.sp, lineHeight = 15.sp,
-        )
+            // Warm the other two views of this look so switching does not wait for decoding.
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            val widthPx = with(density) { previewWidth.roundToPx() }.coerceIn(32, 1024)
+            LaunchedEffect(appearance, gender, widthPx) {
+                kotlinx.coroutines.delay(350)
+                withContext(Dispatchers.IO) {
+                    val look = latestAppearance.normalized()
+                    runCatching {
+                        PortraitAssets.layersFor(context, look, gender, widthPx)
+                        PortraitAssets.layersFor(context, look, gender, (widthPx * 1024 / 640).coerceAtMost(1024))
+                        FigureAssets.load(context, look, gender, "standing", widthPx)
+                        look.customImageId?.let { id ->
+                            val images = com.goldenunicorn.troopmanager.data.CustomCharacterImages(context)
+                            images.load(id, com.goldenunicorn.troopmanager.data.CharacterImageKind.PORTRAIT, widthPx)
+                            images.load(id, com.goldenunicorn.troopmanager.data.CharacterImageKind.FULLBODY, widthPx.coerceAtMost(768))
+                        }
+                    }
+                }
+            }
+        }
+        val note = when {
+            framing == Framing.FULL && appearance.customImageId != null && !ownFullbody && own != null ->
+                "Kein eigenes Ganzkörperbild: Hier steht eine Standardfigur mit erzeugtem Gesicht. Sie gibt dein Porträt nicht wieder."
+            framing == Framing.FULL && ownFullbody -> "Dein eigenes Ganzkörperbild – feste Pose, es wird nicht animiert."
+            framing != Framing.FULL && ownPortrait -> "Dein eigenes Porträt. Gesichts- und Haarregler wirken nur auf die Standarddarstellung und die Ganzkörperfigur."
+            else -> null
+        }
+        if (note != null) Text(note, color = Muted, fontSize = 12.sp, lineHeight = 16.sp, modifier = Modifier.testTag("preview_note"))
+        // Expression is separate from the view mode and never covers the figure.
+        val expressionActive = !(framing != Framing.FULL && ownPortrait) && !(framing == Framing.FULL && ownFullbody)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(if (expressionActive) "Ausdruck" else "Ausdruck (nur für die Standarddarstellung)", color = Muted, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AppearanceOptions.expressions.forEachIndexed { i, label ->
+                    RbChip(label, appearance.expression == i, enabled = expressionActive) { change(appearance.copy(expression = i)) }
+                }
+            }
+        }
+        OwnImagePanel(appearance.customImageId, onImageChange = { id -> onChange(latestAppearance.copy(customImageId = id)) })
+        if (openCustom != null) TextButton(onClick = { openCustom(if (templateKind == "player") "player" else "companion") }) {
+            Text("Weitere Personen und Bilder verwalten", color = Gold)
+        }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             RbAction("Zufall") {
                 change(NpcEngine.randomAppearance(kotlin.random.Random(System.nanoTime()), gender, species, appearance, locks))
@@ -180,16 +233,17 @@ fun defaultLook(gender: Gender, species: Species): CharacterAppearance {
 // ------------------------------------------------------------ rows
 
 @Composable
-internal fun RbChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun RbChip(label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(100.dp),
         color = if (selected) Gold.copy(alpha = .2f) else Color.Black.copy(alpha = .35f),
         border = BorderStroke(1.dp, if (selected) Gold else Color.White.copy(alpha = .14f)),
         modifier = Modifier.heightIn(min = 40.dp),
     ) {
         Box(Modifier.padding(horizontal = 14.dp, vertical = 9.dp), contentAlignment = Alignment.Center) {
-            Text(label, color = if (selected) PaleGold else Mist, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+            Text(label, color = (if (selected) PaleGold else Mist).copy(alpha = if (enabled) 1f else .4f), fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
         }
     }
 }

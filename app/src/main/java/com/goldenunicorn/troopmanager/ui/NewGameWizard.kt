@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.goldenunicorn.troopmanager.engine.CustomCharacterEngine
 import com.goldenunicorn.troopmanager.engine.GameEngine
 import com.goldenunicorn.troopmanager.engine.LifeEngine
 import com.goldenunicorn.troopmanager.engine.NpcEngine
@@ -44,7 +45,10 @@ fun NewGameWizard(
     initialStep: Int = 0,
     initialCompanion: CompanionChoice? = null,
     initialMode: GameMode = GameMode.FREE_LIFE,
+    initialLook: CharacterAppearance? = null,
+    initialFraming: Framing = Framing.BUST,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var mode by remember { mutableStateOf(initialMode) }
     var name by remember { mutableStateOf(if (initialStep > 0) "Leon Falkner" else "") }
     var ageText by remember { mutableStateOf("24") }
@@ -56,7 +60,7 @@ fun NewGameWizard(
     var wealth by remember { mutableStateOf(WealthLevel.MODEST) }
     var home by remember { mutableStateOf(Towns.startable().first().provinceId) }
     var backstory by remember { mutableStateOf("") }
-    var look by remember { mutableStateOf(defaultLook(Gender.MALE, Species.HUMAN)) }
+    var look by remember { mutableStateOf(initialLook ?: defaultLook(Gender.MALE, Species.HUMAN)) }
     var sword by remember { mutableIntStateOf(30) }
     var bow by remember { mutableIntStateOf(30) }
     var riding by remember { mutableIntStateOf(30) }
@@ -120,17 +124,32 @@ fun NewGameWizard(
             )
             else -> null
         }
-        return LifeEngine.newGame(LifeEngine.StartConfig(
+        val created = LifeEngine.newGame(LifeEngine.StartConfig(
             mode = mode, name = name.trim(), age = age, gender = gender, species = species, culture = culture,
             background = if (mode.landed) Background.BORDER_LORD else background, profession = profession,
             wealth = if (mode == GameMode.SANDBOX) wealth else background.wealth, homeProvinceId = home,
-            backstory = backstory, appearance = look,
+            backstory = backstory, appearance = look.copy(customImageId = null),
             attributes = GameEngine.StartingAttributes(sword, bow, riding, leadership, tactics, diplomacy),
             startingCultures = if (mode.landed) cultures else null,
             weapon = AppearanceOptions.weapons[look.weapon], armorStyle = AppearanceOptions.armor[look.armor],
             ironman = ironman, storyActs = storyActs,
             companionChoice = companionChoice ?: CompanionChoice.NONE, companionDraft = draft, companionPath = cPath,
         ))
+        // Own pictures chosen in the editor become regular custom-character records of these two people.
+        var state = created
+        look.customImageId?.let { id ->
+            val base = state
+            state = runCatching { CustomCharacterEngine.syncEditorImage(base, "player", look, ownImageFiles(context, id)) }.getOrElse {
+                base.copy(life = base.life.copy(appearance = look.normalized()), crown = base.crown.copy(playerLook = look.normalized().toPortraitSpec()))
+            }
+        }
+        val companionImage = cLook.customImageId
+        val companionId = state.life.companionNpcId
+        if (companionImage != null && companionId != null && draft != null) {
+            state = runCatching { CustomCharacterEngine.registerDesignedImage(state, companionId, companionImage,
+                ownImageFiles(context, companionImage) ?: CustomCharacterEngine.ImageFiles(true, false, CustomCharacterEngine.DEFAULT_SOURCE)) }.getOrDefault(state)
+        }
+        return state
     }
 
     BackHandler(enabled = index > 0) { index-- }
@@ -163,7 +182,7 @@ fun NewGameWizard(
                     WizardLabel("Geschlecht")
                     ChipLine(Gender.entries.map { it.label }, gender.label) { label ->
                         gender = Gender.entries.first { it.label == label }
-                        look = defaultLook(gender, species).copy(hairColor = look.hairColor, skinTone = look.skinTone)
+                        look = defaultLook(gender, species).copy(hairColor = look.hairColor, skinTone = look.skinTone, customImageId = look.customImageId)
                     }
                     WizardLabel("Volk")
                     ChipLine(Species.entries.map { it.label }, species.label) { label ->
@@ -198,7 +217,7 @@ fun NewGameWizard(
                     }
                     OutlinedTextField(backstory, { backstory = it.take(600) }, label = { Text("Hintergrundgeschichte (optional)") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                 }
-                WizardStep.LOOK -> CharacterEditor(look, gender, species, { look = it }, "player")
+                WizardStep.LOOK -> CharacterEditor(look, gender, species, { look = it }, "player", initialFraming = initialFraming)
                 WizardStep.SKILLS -> {
                     InfoBox("Jeder Wert startet bei 30. Verteile 100 Punkte. Deine Herkunft gibt zusätzlich +5 auf zwei passende Werte. Beim Start erhältst du außerdem 30 Fertigkeitspunkte.")
                     Text("Noch $remaining Punkte frei", color = if (remaining == 0) Gold else Mist, fontWeight = FontWeight.Bold)

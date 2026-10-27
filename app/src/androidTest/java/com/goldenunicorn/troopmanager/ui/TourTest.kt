@@ -8,6 +8,8 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.goldenunicorn.troopmanager.model.Spot
 import org.junit.Rule
@@ -74,6 +76,18 @@ class TourTest {
             rule.waitUntil(2_000) { TourActivity.customReady }
             if (it == "custom-compare") rule.waitUntil(2_000) { rule.onAllNodesWithContentDescription("Eigenes Porträt").fetchSemanticsNodes().isNotEmpty() }
             shot("i-$it")
+        }
+        // v2.2 editor: the three views, the companion editor, the requirements and own pictures.
+        listOf("wizard-2-head", "wizard-2-full", "companion-editor-full", "image-help").forEach { page(it); shot("k-$it") }
+        listOf("wizard-own-head", "wizard-own-bust", "wizard-own-full", "wizard-ownbody-full", "crop-new-bust").forEach {
+            TourActivity.customReady = false
+            page(it)
+            rule.waitUntil(4_000) { TourActivity.customReady }
+            shot("k-$it")
+            if (it == "wizard-own-bust") {
+                rule.onNodeWithTag("own_image_panel").performScrollTo()
+                shot("k-wizard-own-panel")
+            }
         }
         // Milestone 5: a ruler (and knight) visiting the castle of a town.
         listOf("ruler-castle").forEach { page(it); shot("h-$it") }

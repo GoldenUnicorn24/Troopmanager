@@ -20,7 +20,8 @@
     ],
     "footY": 1480,
     "headReplacedByPortrait": true,
-    "handRegistration": "standing hands at seated cuffs"
+    "handRegistration": "standing hands at seated cuffs",
+    "repair": "neck-feather+hand-strip-v1"
   },
-  "sha256": "a54dd7ef28d647f55863b581c4967be7a4c20ad1b0f81bc9b3328972e43e9ec8"
+  "sha256": "320e50bffa58ec3a02d6510af316c6ae2f79e46a2a93744078ed691dbdaf9e76"
 }

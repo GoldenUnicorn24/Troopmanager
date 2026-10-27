@@ -37,7 +37,8 @@ data class CustomCharacter(
     val target: String,
     val definition: CustomCharacterDefinition,
     val source: String,
-    val portrait: String = "portrait.webp",
+    /** Null only for a full-body-only set; the standard portrait is used then. */
+    val portrait: String? = "portrait.webp",
     val fullbody: String? = null,
 ) {
     fun validate() {
@@ -45,7 +46,7 @@ data class CustomCharacter(
         require(target.length in 1..200) { "Ungültige Personenzuordnung." }
         definition.validate()
         require(source.isNotBlank() && source.length <= 2000) { "Bitte Herkunft und Nutzungsrechte angeben." }
-        require(portrait == "portrait.webp" && (fullbody == null || fullbody == "fullbody.webp")) { "Ungültiger interner Bildpfad." }
+        require((portrait == "portrait.webp" || (portrait == null && fullbody != null)) && (fullbody == null || fullbody == "fullbody.webp")) { "Ungültiger interner Bildpfad." }
     }
 }
 

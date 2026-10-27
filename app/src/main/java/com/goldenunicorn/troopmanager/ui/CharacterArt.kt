@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -97,9 +98,9 @@ private fun seedOf(a: CharacterAppearance) = a.hashCode()
 
 /** The portrait used everywhere (editor, tavern dialogue, people lists). */
 @Composable
-fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST) {
-    PersonImage(appearance.customImageId, null, framing, modifier, useDefinitionFallback = false) { targetWidth ->
-        MixedPortrait(appearance, gender, modifier, framing, targetWidth)
+fun CharacterPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier = Modifier, framing: Framing = Framing.BUST, identity: Any? = null) {
+    PersonImage(appearance.customImageId, null, framing, modifier, useDefinitionFallback = false, background = appearance.background) { targetWidth ->
+        MixedPortrait(appearance, gender, modifier, framing, targetWidth, identity)
     }
 }
 
@@ -816,6 +817,8 @@ private fun DrawScope.drawDiadem(a: CharacterAppearance, g: FaceGeometry) {
 internal fun DrawScope.drawFullFigure(a: CharacterAppearance, gender: Gender, feet: Offset, unit: Float, detailed: Boolean, walkPhase: Float = 0f, seated: Boolean = false, customImage: ImageBitmap? = null, paintedArt: FigureArt? = null, light: Color = Color.White) {
     if (customImage != null) { drawCustomFigure(customImage, feet, unit, light = light); return }
     paintedArt?.get(a,gender,walkPhase,seated)?.let { drawCustomFigure(it,feet,unit,shadow = false,light = light); return }
+    // Still composing: draw nothing rather than briefly showing the procedural stand-in.
+    if (paintedArt?.loading == true) return
     if (light == Color.White) { drawProceduralFullFigure(a,gender,feet,unit,detailed,walkPhase,seated); return }
     val topLeft = Offset(feet.x - unit * 52f,feet.y - unit * 160f)
     val bounds = Size(unit * 104f,unit * 168f)
@@ -986,7 +989,13 @@ object PortraitAssets {
         found.also { index = it }
     }
     fun installedCount(context: android.content.Context): Int = files(context).size
-    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512, headOnly: Boolean = false): Map<String, Layer> {
+    /** Memory-only lookup for the first frame; null unless every installed layer of this look is cached. */
+    fun cachedLayersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512, headOnly: Boolean = false): Map<String, Layer>? {
+        if (index == null) return null
+        return runCatching { layersFor(context, a, gender, targetWidth, headOnly, cacheOnly = true) }.getOrNull()
+    }
+    private class NotCached : RuntimeException()
+    fun layersFor(context: android.content.Context, a: CharacterAppearance, gender: Gender, targetWidth: Int = 512, headOnly: Boolean = false, cacheOnly: Boolean = false): Map<String, Layer> {
         val sex = if (gender == Gender.FEMALE) "female" else "male"
         val wanted = mapOf(
             "base" to ("base/${sex}_${a.faceShape}.webp" to ArtPalette.skin[a.skinTone].base),
@@ -1007,6 +1016,7 @@ object PortraitAssets {
             if (path !in files(context)) return@mapNotNull null
             val sample = com.goldenunicorn.troopmanager.data.CharacterImageFrames.sampleSize(1024,1280,targetWidth,targetWidth * 5 / 4)
             val cacheKey = "${context.packageName}:$path:$sample"
+            if (cacheOnly && synchronized(cache) { cache.get(cacheKey) } == null) throw NotCached()
             val image = synchronized(cache) { cache.get(cacheKey) ?: runCatching {
                 val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 context.assets.open(path).use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -1021,6 +1031,7 @@ object PortraitAssets {
                 else synchronized(cache) {
                     val skinKey = "$cacheKey:skin"; val neutralKey = "$cacheKey:neutral"
                     var skin = cache.get(skinKey); var neutral = cache.get(neutralKey)
+                    if (cacheOnly && (skin == null || neutral == null)) throw NotCached()
                     if (skin == null || neutral == null) {
                         val surfaces = PhotographicEyes.separate(it.asAndroidBitmap())
                         skin = surfaces.skin; neutral = surfaces.neutral
@@ -1033,29 +1044,49 @@ object PortraitAssets {
     }
 }
 
+/** Holds the last completely loaded rendering of one identity (editor) between two edits. */
+private class LastRendering { var look: CharacterAppearance? = null; var layers: Map<String, PortraitAssets.Layer>? = null }
+
+/**
+ * Photographic portrait. The first frame uses memory-cached layers when available; otherwise a neutral
+ * placeholder is shown until all layers of *this* look are decoded. The procedural drawing is only
+ * used for layers that are genuinely missing, never as a transient loading state. With an [identity]
+ * (the editor), the previous rendering of the same person stays visible while an edited look loads,
+ * so changing one option does not blink through the placeholder.
+ */
 @Composable
-private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier, framing: Framing, targetWidth: Int) {
-    if (framing == Framing.FULL) { PaintedFigurePortrait(appearance, gender, modifier); return }
+private fun MixedPortrait(appearance: CharacterAppearance, gender: Gender, modifier: Modifier, framing: Framing, targetWidth: Int, identity: Any? = null) {
+    if (framing == Framing.FULL) { PaintedFigurePortrait(appearance, gender, modifier, targetWidth, identity); return }
     val context = LocalContext.current
     val a = remember(appearance) { appearance.normalized() }
-    var layers by remember(a, gender, targetWidth) { mutableStateOf<Map<String, PortraitAssets.Layer>>(emptyMap()) }
+    var layers by remember(a, gender, targetWidth) { mutableStateOf(PortraitAssets.cachedLayersFor(context, a, gender, targetWidth)) }
     LaunchedEffect(a, gender, targetWidth) {
+        if (layers != null) return@LaunchedEffect
         layers = ArtLoading.load { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { PortraitAssets.layersFor(context, a, gender, targetWidth) } }
     }
+    val last = remember(identity, gender) { LastRendering() }
+    val current = layers
+    SideEffect { if (current != null && identity != null) { last.look = a; last.layers = current } }
+    val look = if (current != null) a else last.look.takeIf { identity != null }
+    val shown = current ?: last.layers.takeIf { identity != null }
+    if (look == null || shown == null) { ArtLoadingPlaceholder(a.background, modifier); return }
     Box(modifier.clipToBounds().semantics { contentDescription = "Porträt" }.drawWithCache {
         val image = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
         CanvasDrawScope().draw(this, layoutDirection, androidx.compose.ui.graphics.Canvas(image), size) {
-            drawRect(Brush.radialGradient(ArtPalette.backgrounds[a.background], Offset(size.width * .3f, size.height * .25f), size.maxDimension))
-            val frame = if (framing == Framing.HEAD) intArrayOf(192, 160, 640, 800) else intArrayOf(0, 0, 1024, 1280)
+            drawRect(Brush.radialGradient(ArtPalette.backgrounds[look.background], Offset(size.width * .3f, size.height * .25f), size.maxDimension))
+            val frame = if (framing == Framing.HEAD) com.goldenunicorn.troopmanager.data.CharacterImageFrames.head else intArrayOf(0, 0, 1024, 1280)
             val factor = maxOf(size.width / frame[2], size.height / frame[3])
             withTransform({
                 translate((size.width - frame[2] * factor) / 2f - frame[0] * factor, (size.height - frame[3] * factor) / 2f - frame[1] * factor)
                 scale(factor, factor, Offset.Zero)
-            }) { drawRegisteredPortrait(a, gender, layers) }
+            }) { drawRegisteredPortrait(look, gender, shown) }
         }
         onDrawBehind { drawImage(image) }
     })
 }
+
+/** Alpha of the hood interior in portraits/cloak/3.webp (see scripts/repair_figure_layers). */
+private const val HOOD_INTERIOR_ALPHA = 16f
 
 /** Every missing/invalid asset replaces exactly its own procedural component. */
 internal fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Gender, layers: Map<String, PortraitAssets.Layer>, includeTorso: Boolean = true, includeHair: Boolean = true) {
@@ -1084,6 +1115,10 @@ internal fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Ge
             }
         }
     }
+    // Hood, back pass: its opening carries a faint dark interior (alpha 16/255) that is expanded here,
+    // so the space between cheeks and fabric shows the inside of the hood instead of the background.
+    val hood = layers["cloak"]?.takeIf { includeTorso && a.cloak == 3 }
+    if (hood != null) drawTintedArt(hood.bitmap,hood.tint,target = androidx.compose.ui.unit.IntSize(1024,1280),alphaScale = 255f / HOOD_INTERIOR_ALPHA)
     if (includeHair) layer("hair_back") { if (a.hairStyle in setOf(2, 3, 5, 6)) drawBackHair(a, center, s, gender) }
     if (includeTorso && a.cloak == 3 && "cloak" !in layers) drawHood(a, center, s)
     if (includeTorso && a.cloak in 1..3 && "cloak" !in layers) drawCloakBack(a, center, s, shoulder, center.y + 28f * s, center.y + 60f * s)
@@ -1108,7 +1143,12 @@ internal fun DrawScope.drawRegisteredPortrait(a: CharacterAppearance, gender: Ge
             layer("hair_front") { drawFrontHair(a,g,gender) }
         } else layer("hair_front") { drawFrontHair(a,g,gender) }
     }
-    if (includeTorso && a.cloak == 3) layer("cloak") { drawCloakFront(a,center,s,shoulder,center.y+28f*s) }
+    // Hood, front pass: the interior is removed again, only the fabric covers hair and shoulders.
+    if (includeTorso && a.cloak == 3) {
+        if (hood != null) drawTintedArt(hood.bitmap,hood.tint,target = androidx.compose.ui.unit.IntSize(1024,1280),
+            alphaScale = 255f / (255f - HOOD_INTERIOR_ALPHA),alphaOffset = -HOOD_INTERIOR_ALPHA / (255f - HOOD_INTERIOR_ALPHA))
+        else drawCloakFront(a,center,s,shoulder,center.y+28f*s)
+    }
     if (a.jewelry == 4) drawDiadem(a, g)
 }
 

@@ -101,13 +101,19 @@ fun LifeShell(
     }
     if (editLook) {
         var look by remember(state.life.appearance) { mutableStateOf(state.life.appearance ?: defaultLook(state.life.gender, state.player.species)) }
+        val editorContext = androidx.compose.ui.platform.LocalContext.current
         AlertDialog(
             onDismissRequest = { editLook = false },
             containerColor = Panel,
             title = { Text("Aussehen ändern", color = PaleGold, fontFamily = Cinzel) },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { CharacterEditor(look, state.life.gender, state.player.species, { look = it }, "player") } },
             confirmButton = { TextButton(onClick = {
-                onState(state.copy(life = state.life.copy(appearance = look), crown = state.crown.copy(playerLook = look.toPortraitSpec())))
+                // Own pictures are registered with the person (record, portrait reference) – never by replacing other data.
+                val saved = runCatching { com.goldenunicorn.troopmanager.engine.CustomCharacterEngine.syncEditorImage(state, "player", look,
+                    ownImageFiles(editorContext, look.customImageId)) }.getOrElse {
+                    state.copy(life = state.life.copy(appearance = look), crown = state.crown.copy(playerLook = look.toPortraitSpec()))
+                }
+                onState(saved)
                 editLook = false
             }) { Text("Übernehmen", color = Gold) } },
             dismissButton = { TextButton(onClick = { editLook = false }) { Text("Abbrechen") } },
@@ -308,7 +314,7 @@ private fun WorldTab(state: GameState, onState: (GameState) -> Unit, onNotice: (
 private fun PeopleTab(state: GameState) {
     val known = state.life.npcs.filter { it.relation.timesMet > 0 }.sortedByDescending { it.relation.affinity + it.relation.trust }
     val openCustom = LocalOpenCustomCharacters.current
-    if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Eigene Charaktere") }
+    if (openCustom != null) OutlinedButton(onClick = { openCustom(null) }) { Text("Charakterverwaltung · eigene Bilder") }
     PageTitle("Leute", "Wen du kennst – und was sie über dich denken.")
     if (known.isEmpty()) EmptyCard("Du kennst hier noch niemanden. Tavernen sind ein guter Anfang.")
     known.forEach { npc ->
