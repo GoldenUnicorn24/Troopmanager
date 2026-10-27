@@ -19,10 +19,17 @@ import org.junit.runner.RunWith
 class TourTest {
     @get:Rule val rule = createAndroidComposeRule<TourActivity>()
 
+    private fun awaitAssets() {
+        val started = android.os.SystemClock.elapsedRealtime()
+        // Cold disk IO is separate from the unchanged two-second capture/draw budget below.
+        rule.waitUntil(10_000) { ArtLoading.pending.get() == 0 }
+        android.util.Log.i("TourAssets","asset wait: ${android.os.SystemClock.elapsedRealtime()-started} ms")
+    }
+
     private fun shot(name: String) {
         rule.mainClock.advanceTimeBy(1_500)
         rule.waitForIdle()
-        rule.waitUntil(2_000) { ArtLoading.pending.get() == 0 }
+        awaitAssets()
         rule.waitForIdle()
         val roots = rule.onAllNodes(isRoot())
         val count = roots.fetchSemanticsNodes().size
@@ -41,7 +48,7 @@ class TourTest {
     private fun page(name: String) {
         rule.runOnIdle { TourActivity.page = name }
         rule.waitForIdle()
-        rule.waitUntil(2_000) { ArtLoading.pending.get() == 0 }
+        awaitAssets()
         rule.waitForIdle()
     }
 

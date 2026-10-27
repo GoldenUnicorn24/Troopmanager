@@ -57,10 +57,10 @@ internal object FigureAssets {
             found
         }
     }
-    private fun layer(context: Context, path: String): ImageBitmap? {
+    private fun layer(context: Context, path: String): ImageBitmap? = synchronized(layers) {
         val cacheKey = "${context.packageName}:$path"
-        layers.get(cacheKey)?.let { return it }
-        return runCatching {
+        layers.get(cacheKey)?.let { return@synchronized it }
+        runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.assets.open(path).use { BitmapFactory.decodeStream(it,null,bounds) }
             require(bounds.outWidth == 768 && bounds.outHeight == 1536 && bounds.outMimeType == "image/webp")

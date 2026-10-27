@@ -20,6 +20,11 @@ import androidx.compose.ui.unit.IntSize
 import com.goldenunicorn.troopmanager.data.*
 import com.goldenunicorn.troopmanager.model.GameState
 import com.goldenunicorn.troopmanager.model.CustomImageReference
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,9 +87,13 @@ internal fun rememberFigureArt(state: GameState, people: List<com.goldenunicorn.
             val custom = looks.mapNotNull { it.first.customImageId }.distinct().mapNotNull { id ->
                 CustomCharacterImages(context).load(id,CharacterImageKind.FULLBODY,192)?.let { id to it.asImageBitmap() }
             }.toMap()
-            val painted = mutableMapOf<FigureKey,androidx.compose.ui.graphics.ImageBitmap>()
-            looks.filter { it.first.customImageId !in custom }.forEach { (a,gender,poses) ->
-                poses.forEach { pose -> FigureAssets.load(context,a,gender,pose)?.let { painted[FigureAssets.key(a,gender,pose)] = it } }
+            val gate = Semaphore(2)
+            val painted = coroutineScope {
+                looks.filter { it.first.customImageId !in custom }.flatMap { (a,gender,poses) ->
+                    poses.map { pose -> async { gate.withPermit {
+                        FigureAssets.load(context,a,gender,pose)?.let { FigureAssets.key(a,gender,pose) to it }
+                    } } }
+                }.awaitAll().filterNotNull().toMap()
             }
             FigureArt(custom,painted)
         } }

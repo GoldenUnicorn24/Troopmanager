@@ -43,6 +43,11 @@ class PhotographicAssetsTest {
                 cloak = shape%4,beard = if (gender==Gender.MALE) shape else 0).normalized()
             val layers = PortraitAssets.layersFor(context,look,gender,256)
             for (key in listOf("base","eyes","iris","brows","nose","mouth","outfit","hair_front","hair_back")) assertTrue("Missing $key for $gender/$shape",key in layers)
+            if (shape in listOf(3,4)) {
+                val hair = layers.getValue("hair_front").bitmap.asAndroidBitmap()
+                for (x in listOf(417,607)) assertTrue("Ponytail/updo must leave both eye references clear",
+                    android.graphics.Color.alpha(hair.getPixel(x*hair.width/1024,560*hair.height/1280))<100)
+            }
             val image = ImageBitmap(256,320)
             CanvasDrawScope().draw(Density(1f),LayoutDirection.Ltr,Canvas(image),Size(256f,320f)) {
                 drawRect(Color(0xFF172532))
@@ -62,7 +67,7 @@ class PhotographicAssetsTest {
                 assertNotNull("Missing $gender/$pose",image)
                 val bitmap = image!!.asAndroidBitmap()
                 assertEquals(192,bitmap.width); assertEquals(384,bitmap.height)
-                assertTrue("No visible boots near foot reference",(0 until bitmap.width).any { android.graphics.Color.alpha(bitmap.getPixel(it,368))>120 })
+                assertTrue("Figure body must reach the foot reference (exclude weapon and soft shadow)",(60 until 132).any { android.graphics.Color.alpha(bitmap.getPixel(it,368))>120 })
                 val pixels = IntArray(192*180);bitmap.getPixels(pixels,0,192,0,200,192,180)
                 if (pose.startsWith("walk_")) walking += pixels.contentHashCode()
                 save("figure-${gender.name}-$pose",image)
