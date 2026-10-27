@@ -4,8 +4,14 @@ Alle Figuren sind erwachsen. Beim Import sind ein Alter ab 18 und die Bestätigu
 dass die Rechte am Bild vorliegen und abgebildete Personen erwachsen sind. Eine automatische
 Alters- oder Gesichtserkennung gibt es nicht. Die Ausrichtung wird in der Führungsmaske manuell bestätigt.
 
-„Eigene Charaktere“ ist im laufenden Spiel aus dem Charaktereditor und den Personenansichten
-sowie über die bisherigen Porträt-Schaltflächen erreichbar. Die Android-Bildauswahl braucht
+**„Eigenes Bild verwenden“** ist Teil jedes Charaktereditors – schon in „Neues Spiel → Aussehen“
+und beim Gestalten der zukünftigen Gefährtin, ohne laufendes Spiel. Porträt und Ganzkörperbild
+werden getrennt hochgeladen, neu ausgerichtet, ersetzt oder entfernt; „Importierte Bilder“
+übernimmt einen bereits gespeicherten Satz als eigene Kopie; „Standard wiederherstellen“ entfernt
+beides. „Welches Bild benötige ich?“ erklärt Maße, Format, Perspektive, Licht und Ausrichtung mit
+der Führungsmaske und bietet je eine kopierbare Vorlage für einen Bildgenerator.
+Die **Charakterverwaltung** (früher „Eigene Charaktere“) ist im laufenden Spiel aus dem
+Charaktereditor, den Personenansichten und über die bisherigen Porträt-Schaltflächen erreichbar. Die Android-Bildauswahl braucht
 keine Speicherberechtigung. Auf älteren Android-Versionen nutzt AndroidX den verfügbaren System-Picker.
 
 | | Porträt | Optionaler Ganzkörper |
@@ -20,12 +26,17 @@ keine Speicherberechtigung. Auf älteren Android-Versionen nutzt AndroidX den ve
 
 ![Führungsmaske Ganzkörper](assets/fullbody-guide.svg)
 
-Mit zwei Fingern oder den Reglern zoomen, drehen und verschieben. Das Porträt muss alle Ecken
-des Rahmens füllen. Augenlinie und Schultern an der Maske ausrichten. Ganzkörperbilder dürfen
+Mit zwei Fingern zoomen, drehen und verschieben; Knöpfe für Zoom, Vierteldrehung, Hilfslinien,
+Rückgängig und Zurücksetzen. Bei Zoom 1 füllt ein Porträt den Rahmen, ein Ganzkörperbild passt
+vollständig hinein (Kopf und Füße werden nicht abgeschnitten). Das Porträt muss alle Ecken
+des Rahmens füllen („Rahmen füllen“ hilft). Augenlinie und Schultern an der Maske ausrichten. Ganzkörperbilder dürfen
 transparente Ränder haben. Die Vorschau und die gespeicherte Datei verwenden dieselbe Transformation.
 
-Bilder werden unter `filesDir/custom/{id}/portrait.webp` und optional `fullbody.webp` gespeichert.
-Das Original darf danach gelöscht werden. Ersetzungen bekommen neue IDs, sodass bestehende
+Bilder werden unter `filesDir/custom/{id}/portrait.webp` und/oder `fullbody.webp` gespeichert
+(mindestens eines von beiden). Zusätzlich liegen dort eine auf höchstens 2560 px verkleinerte Kopie
+des Originals (`original_portrait.webp`, `original_fullbody.webp`) und `meta.json` mit Herkunft und
+letztem Zuschnitt – dadurch kann ein Bild später neu ausgerichtet werden. Das Original auf dem Gerät
+darf danach gelöscht werden. Ersetzungen bekommen neue IDs, sodass bestehende
 Backups nicht auf eine teilweise überschriebene Datei zeigen. Alte Content-URIs werden beim
 Laden einmal in interne Dateien kopiert; unlesbare Originale werden verworfen und die
 Bildschirme zeigen den Fallback. Import und Migration verwenden keine Cloud-Dienste.

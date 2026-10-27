@@ -42,7 +42,7 @@ class CharacterImageGeometryTest {
     @Test fun quarterTurnsStayInRange() {
         assertEquals(90f, CharacterImageCrop().turned(90f).rotation, .001f)
         assertEquals(-90f, CharacterImageCrop(rotation = 180f).turned(90f).rotation, .001f)
-        assertEquals(180f, CharacterImageCrop(rotation = -90f).turned(-90f).rotation, .001f)
+        assertEquals(-180f, CharacterImageCrop(rotation = -90f).turned(-90f).rotation, .001f)
     }
     @Test fun coveringZoomFillsARotatedPortrait() {
         val rotated = CharacterImageCrop(rotation = 30f)

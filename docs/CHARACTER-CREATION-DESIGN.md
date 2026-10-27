@@ -40,7 +40,13 @@
 
 ## Editor-Funktionen
 
-Große Live-Vorschau (Kopf / Brustbild / Ganzkörper), Ausdrucks-Auswahl, 7 Reiter, Slider mit Beschriftung, „↺ zurück“ je Merkmal, Rückgängig (40 Schritte), Alles zurücksetzen, **kontrollierter Zufall** (10 Sperren: Gesicht, Augen, Mund, Haut, Frisur, Haarfarbe, Bart, Körper, Ausrüstung, Farben), Vorlagen speichern/laden/löschen (bis 20, lokal).
+Ansichtsleiste (Kopf / Brustbild / Ganzkörper) **über** der großen Live-Vorschau, Ausdruck **darunter** –
+keine Bedienelemente liegen auf der Figur. Ansichtswechsel blenden weich über (180 ms); alle drei
+Ansichten zeigen dieselbe Person aus demselben Zustand. Darunter das Panel **„Eigenes Bild verwenden“**
+(Porträt und Ganzkörper getrennt: hochladen, neu ausrichten, ersetzen, entfernen; importierte Bilder;
+„Welches Bild benötige ich?“). Mit eigenem Porträt sind Ausdruck und Gesichtsregler als „nur für die
+Standarddarstellung“ gekennzeichnet; ohne eigenes Ganzkörperbild sagt die Ganzkörperansicht ausdrücklich,
+dass dort eine Standardfigur steht. Weiter: 7 Reiter, Slider mit Beschriftung, „↺ zurück“ je Merkmal, Rückgängig (40 Schritte), Alles zurücksetzen, **kontrollierter Zufall** (10 Sperren: Gesicht, Augen, Mund, Haut, Frisur, Haarfarbe, Bart, Körper, Ausrüstung, Farben), Vorlagen speichern/laden/löschen (bis 20, lokal).
 
 ## Porträt-Pipeline
 
